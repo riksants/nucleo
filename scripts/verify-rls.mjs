@@ -70,6 +70,14 @@ const newDel = await b.from('records').delete().eq('id', cid).select()
 check('B não apaga conclusões de A', (newDel.data ?? []).length === 0)
 await a.from('records').delete().eq('id', cid)
 
+// Etapa 2: coleções novas (exige a migração 20261003000000_etapa2_uso_semanal.sql)
+const wid = `rls-week-${Date.now()}`
+const wIns = await a.from('records').insert({ user_id: aId, collection: 'weekCheckins', id: wid, data: { note: 'privado' }, client_updated_at: now })
+check('servidor aceita as coleções da Etapa 2 (migração executada)', !wIns.error, wIns.error?.message)
+const wRead = await b.from('records').select('*').eq('id', wid)
+check('B não lê check-ins de A', !wRead.error && wRead.data.length === 0)
+await a.from('records').delete().eq('id', wid)
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

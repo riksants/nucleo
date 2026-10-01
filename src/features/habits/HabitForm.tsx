@@ -1,26 +1,37 @@
 import { isTime } from '../../../supabase/functions/_shared/planner/time.ts'
 import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
-import type { Habit, RecurrenceRule } from '../../data/types'
+import { CATEGORY_LABEL } from '../../core/weekGoals'
+import type { Habit, HabitCategory, RecurrenceRule } from '../../data/types'
 import { useFeedback } from '../../ui/Feedback'
-import { Field, FormGrid, TextInput } from '../../ui/Field'
+import { Field, FormGrid, Select, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft } from '../../ui/formHooks'
 import { ToggleRow } from '../planner/controls'
 import { RuleEditor, ruleProblem } from '../daily/RuleEditor'
 
-const PRESETS = ['Beber água', 'Treinar', 'Estudar', 'Ler', 'Dormir cedo', 'Meditar', 'Comer bem']
+/** Presets also set the category, which links the habit to weekly metrics. */
+const PRESETS: { name: string; category: HabitCategory }[] = [
+  { name: 'Beber água', category: 'water' },
+  { name: 'Treinar', category: 'training' },
+  { name: 'Estudar', category: 'study' },
+  { name: 'Ler', category: 'reading' },
+  { name: 'Dormir cedo', category: 'sleep' },
+  { name: 'Meditar', category: 'meditation' },
+  { name: 'Comer bem', category: 'food' },
+]
 
 export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): void; habit: Habit | null }) {
   const { save, remove, settings } = useStore()
   const { toast, confirm } = useFeedback()
   const now = nowIn(zoneOf(settings))
-  const [d, set] = useDraft(open, () => ({
+  const [d, set, setAll] = useDraft(open, () => ({
     name: habit?.name ?? '',
     rule: (habit?.rule ?? { type: 'daily' }) as RecurrenceRule,
     time: habit?.time ?? '',
     goal: habit?.goal ?? '',
     active: habit?.active ?? true,
+    category: (habit?.category ?? '') as HabitCategory | '',
   }))
 
   const submit = async () => {
@@ -28,7 +39,7 @@ export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): 
     const problem = ruleProblem(d.rule)
     if (problem) return problem
     if (d.time && !isTime(d.time)) return 'Confira o horário'
-    await save('habits', { ...habit, name: d.name.trim(), rule: d.rule, time: d.time, goal: d.goal.trim(), active: d.active, startDate: habit?.startDate ?? now.date })
+    await save('habits', { ...habit, name: d.name.trim(), rule: d.rule, time: d.time, goal: d.goal.trim(), active: d.active, category: d.category || undefined, startDate: habit?.startDate ?? now.date })
     toast(habit ? 'Hábito atualizado' : 'Hábito criado')
     onClose()
   }
@@ -56,12 +67,22 @@ export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): 
         {!habit && !d.name && (
           <div className="-mt-2 flex flex-wrap gap-2">
             {PRESETS.map((p) => (
-              <button key={p} type="button" onClick={() => set('name', p)} className="press h-9 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-                {p}
+              <button key={p.name} type="button" onClick={() => setAll((x) => ({ ...x, name: p.name, category: p.category }))} className="press h-9 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
+                {p.name}
               </button>
             ))}
           </div>
         )}
+        <Field label="Categoria" hint="opcional · liga às metas e ao Score">
+          <Select value={d.category} onChange={(e) => set('category', e.target.value as HabitCategory | '')}>
+            <option value="">Sem categoria</option>
+            {(Object.keys(CATEGORY_LABEL) as HabitCategory[]).map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABEL[c]}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <RuleEditor value={d.rule} onChange={(r) => set('rule', r)} kinds={['daily', 'weekdays']} today={now.weekday} />
         <div className="half">
           <Field label="Horário" hint="opcional">

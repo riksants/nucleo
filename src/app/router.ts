@@ -27,6 +27,7 @@ export type RoutePath =
   | '/recurring'
   | '/agenda'
   | '/focus'
+  | '/week'
 
 export interface Route {
   path: RoutePath

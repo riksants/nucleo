@@ -4,7 +4,7 @@ import type { ModuleId } from '../../data/types'
 
 /** Suggested starting set for someone new. Everything else is one tap away. */
 export const starterModules: Partial<Record<ModuleId, boolean>> = Object.fromEntries(
-  MODULES.map((m) => [m.id, ['today', 'finance', 'tasks', 'projects', 'notes', 'inbox', 'habits', 'agenda'].includes(m.id)]),
+  MODULES.map((m) => [m.id, ['today', 'finance', 'tasks', 'projects', 'notes', 'inbox', 'habits', 'agenda', 'week'].includes(m.id)]),
 )
 
 export function Switch({ checked, label }: { checked: boolean; label?: string }) {

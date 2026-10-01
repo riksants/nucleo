@@ -103,4 +103,11 @@ describe('agenda (camada de visualização)', () => {
     const items = buildAgenda(sample(), { ...settings(), timeZone: 'Asia/Dubai' }, '2026-10-01', '2026-10-01', NOW)
     expect(items.find((i) => i.title === 'Jantar')!.status).toBe('ended')
   })
+
+  it('rotina e plano alimentar só valem a partir do dia em que foram criados', () => {
+    const data = sample()
+    data.routinePlans[0] = { ...data.routinePlans[0], createdAt: '2026-10-02T12:00:00Z' }
+    expect(buildAgenda(data, settings(), '2026-10-01', '2026-10-01', NOW).some((i) => i.kind === 'routine')).toBe(false)
+    expect(buildAgenda(data, settings(), '2026-10-08', '2026-10-08', NOW).some((i) => i.kind === 'routine')).toBe(true)
+  })
 })

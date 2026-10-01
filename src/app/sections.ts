@@ -15,7 +15,7 @@ export const SEARCH: Section = { path: '/search', label: 'Buscar', icon: Search 
 export const SETTINGS: Section = { path: '/settings', label: 'Configurações', icon: SettingsIcon }
 
 /** Preferred order for the three tab-bar slots after Início. The original three come first. */
-const PRIMARY_ORDER: ModuleId[] = ['finance', 'projects', 'tasks', 'today', 'agenda', 'sales', 'routine', 'meals', 'subscribers', 'clients', 'notes']
+const PRIMARY_ORDER: ModuleId[] = ['finance', 'projects', 'tasks', 'today', 'agenda', 'week', 'sales', 'routine', 'meals', 'subscribers', 'clients', 'notes']
 
 /** Início + up to three enabled sections. Same tabs as before unless the person hides one. */
 export function primarySections(settings: Pick<Settings, 'modules'>): Section[] {

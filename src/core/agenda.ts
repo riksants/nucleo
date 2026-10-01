@@ -9,6 +9,7 @@ import type { BlockKind, CalendarEvent, DataState, Habit, MealPlan, PlannedMeal,
 import { indexCompletions, routineStatus, statusOf, type CompletionIndex } from './completions'
 import { habitsDue, recurringDue } from './habits'
 import { addDaysToDate, nowIn, weekdayOfDate, zoneOf } from './period'
+import { wallClock } from '../lib/zoned'
 
 export type AgendaKind = 'event' | 'task' | 'routine' | 'habit' | 'recurring' | 'meal'
 
@@ -65,6 +66,11 @@ export function sortAgenda(items: AgendaItem[]): AgendaItem[] {
   return [...items].sort((a, b) => (a.date !== b.date ? (a.date < b.date ? -1 : 1) : minutes(a.start) - minutes(b.start) || a.title.localeCompare(b.title)))
 }
 
+function beforeCreation(createdAt: string, date: string, settings: Settings): boolean {
+  if (!createdAt) return false
+  return date < wallClock(new Date(createdAt), zoneOf(settings)).date
+}
+
 interface Ctx {
   data: DataState
   settings: Settings
@@ -96,7 +102,8 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
   }
 
   const plan = data.routinePlans.find((p) => p.id === 'routine-current')
-  if (on('routine') && plan) {
+  // A plan only applies from the day it was created (past weeks didn't have it).
+  if (on('routine') && plan && !beforeCreation(plan.createdAt, date, settings)) {
     for (const block of plan.blocks) {
       // Meals come from the meal plan when it exists, to avoid showing lunch twice.
       if (block.day !== weekday || (block.kind === 'meal' && on('meals') && data.mealPlans.some((m) => m.id === 'meals-current'))) continue
@@ -116,7 +123,7 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
   }
 
   const meals = data.mealPlans.find((p) => p.id === 'meals-current') as MealPlan | undefined
-  if (on('meals') && meals) {
+  if (on('meals') && meals && !beforeCreation(meals.createdAt, date, settings)) {
     for (const meal of meals.meals) {
       if (meal.day !== weekday) continue
       out.push({ key: `meal:${meal.id}:${date}`, kind: 'meal', date, start: meal.time, end: '', title: meal.label, status: 'pending', checkable: false, source: { kind: 'meal', meal } })

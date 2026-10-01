@@ -114,7 +114,11 @@ export interface Habit extends Entity {
   active: boolean
   /** First day it counts ("YYYY-MM-DD"). */
   startDate: string
+  /** Optional: links the habit to weekly metrics (training, study…). Older habits have none. */
+  category?: HabitCategory
 }
+
+export type HabitCategory = 'training' | 'study' | 'reading' | 'water' | 'sleep' | 'meditation' | 'food' | 'other'
 
 export interface RecurringItem extends Entity {
   title: string
@@ -125,7 +129,7 @@ export interface RecurringItem extends Entity {
   startDate: string
 }
 
-export type CompletionSource = 'habit' | 'recurring' | 'routine'
+export type CompletionSource = 'habit' | 'recurring' | 'routine' | 'challenge'
 
 /**
  * One record per item per day: `${source}:${sourceId}:${date}`. Marking twice,
@@ -346,6 +350,8 @@ export interface Settings {
   timeZone?: string
   /** Opens Morning mode once per day before noon (off by default). */
   morningAutoOpen?: boolean
+  /** Hide the NÚCLEO Score everywhere (it is still never stored as the source of truth). */
+  hideScore?: boolean
   /** Sections already announced to this person, so new ones are announced once. */
   modulesSeen?: ModuleId[]
   /** Last change, used to resolve edits made on two devices. */
@@ -371,6 +377,7 @@ export type ModuleId =
   | 'habits'
   | 'recurring'
   | 'agenda'
+  | 'week'
 
 export interface WrappedKey {
   salt: string
@@ -430,6 +437,10 @@ export interface Collections {
   completions: Completion
   events: CalendarEvent
   focusSessions: FocusSession
+  weeklyGoals: WeeklyGoal
+  challenges: Challenge
+  weekCheckins: WeekCheckin
+  weekSnapshots: WeekSnapshot
 }
 
 export type CollectionName = keyof Collections
@@ -457,6 +468,80 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'completions',
   'events',
   'focusSessions',
+  'weeklyGoals',
+  'challenges',
+  'weekCheckins',
+  'weekSnapshots',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
+
+/* ----------------------------- Uso semanal (Etapa 2) ----------------------------- */
+
+/** Week id = the Monday of the week, "YYYY-MM-DD", in the person's time zone. */
+export type WeekId = string
+
+export type WeeklyGoalKind = 'quantity' | 'money' | 'frequency' | 'percent' | 'manual'
+
+/**
+ * A goal for one week. Progress is computed from real data through `metric`
+ * (see core/metrics.ts); only `manual` goals store a value.
+ */
+export interface WeeklyGoal extends Entity {
+  week: WeekId
+  title: string
+  kind: WeeklyGoalKind
+  /** Metric key (e.g. "training.days", "habit:<id>") or null for manual goals. */
+  metric: string | null
+  target: number
+  manualValue: number
+  status: 'active' | 'done' | 'archived'
+  /** Same key across weeks ("repeat next week"), used for weekly streaks. */
+  repeatKey: string
+}
+
+export type ChallengeMode = 'daily' | 'total'
+
+export interface Challenge extends Entity {
+  /** Suggested template id, or null when personalized. */
+  template: string | null
+  name: string
+  objective: string
+  /** daily: every day must meet the condition; total: the sum over the period reaches the target. */
+  mode: ChallengeMode
+  /** daily: condition key ("habit:<id>", "category:<cat>", "training", "routine:80", "manual"); total: metric key. */
+  rule: string
+  target: number
+  startDate: string
+  durationDays: number
+  /** Set when the person ends it early. */
+  endedAt: string | null
+  /** Daily mode: only these weekdays count (e.g. weekdays only). Empty = every day. */
+  days?: Weekday[]
+}
+
+export type CheckinTopic = 'energy' | 'productivity' | 'food' | 'training' | 'sleep' | 'mood' | 'organization'
+
+/** One per week (id = week). Every answer is optional. */
+export interface WeekCheckin extends Entity {
+  week: WeekId
+  answers: Partial<Record<CheckinTopic, 1 | 2 | 3 | 4 | 5>>
+  note: string
+}
+
+/**
+ * How a closed week looked when it was closed. Never rewritten automatically;
+ * carries the versions of the formulas used.
+ */
+export interface WeekSnapshot extends Entity {
+  week: WeekId
+  timeZone: string
+  closedAt: string
+  metricsVersion: number
+  metrics: Record<string, number | null>
+  goals: { id: string; title: string; target: number; value: number; achieved: boolean }[]
+  challenges: { id: string; name: string; status: string; progress: number }[]
+  /** Filled only once a Score formula is approved and versioned. */
+  scoreVersion?: number
+  score?: Record<string, number | null>
+}

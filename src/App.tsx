@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { CloudOff } from 'lucide-react'
-import { lazy, Suspense, useEffect, useState, type ComponentType, type LazyExoticComponent } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type LazyExoticComponent } from 'react'
 import { ALL_MODULE_IDS, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
 import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
@@ -40,6 +40,7 @@ import { Sheet } from './ui/Sheet'
 // Etapa 1 pages load on demand, outside the initial bundle.
 const InboxPage = lazy(() => import('./features/inbox/InboxPage').then((m) => ({ default: m.InboxPage })))
 const RecurringPage = lazy(() => import('./features/recurring/RecurringPage').then((m) => ({ default: m.RecurringPage })))
+const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })))
 const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))
 const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
 const HabitsPage = lazy(() => import('./features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
@@ -71,6 +72,7 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/recurring': RecurringPage,
   '/agenda': AgendaPage,
   '/focus': FocusPage,
+  '/week': WeekPage,
 }
 
 function useSearchShortcut() {
@@ -136,6 +138,31 @@ function useMorningAutoOpen() {
   }, [ready])
 }
 
+/**
+ * Closes finished weeks (snapshot) once the app is open, without slowing the
+ * start: the code loads on demand, runs once per day, and only with "Semana" on.
+ */
+function useWeekCloser() {
+  const { ready, settings, data, save } = useStore()
+  const latest = useRef(data)
+  latest.current = data
+  const day = nowIn(zoneOf(settings)).date
+  const on = ready && settings.onboarded && isEnabled(settings, 'week')
+  useEffect(() => {
+    if (!on) return
+    const timer = window.setTimeout(async () => {
+      const { buildSnapshot, weeksToClose } = await import('./core/snapshots')
+      for (const week of weeksToClose(latest.current, settings)) {
+        // Fixed id = the week: written once, never rewritten automatically.
+        if (latest.current.weekSnapshots.some((s) => s.id === week)) continue
+        await save('weekSnapshots', buildSnapshot(latest.current, settings, week))
+      }
+    }, 1500)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [on, day])
+}
+
 export function App() {
   const { ready, settings, loadError, retryLoad } = useStore()
   const { userId, signOut } = useSession()
@@ -143,6 +170,7 @@ export function App() {
   const migration = useMigrationCandidate(userId)
   useSearchShortcut()
   useMorningAutoOpen()
+  useWeekCloser()
 
   if (loadError) {
     return (

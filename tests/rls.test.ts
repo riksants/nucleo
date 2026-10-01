@@ -134,8 +134,8 @@ describe('regras de escrita', () => {
   })
 })
 
-describe('Etapa 1: coleções novas', () => {
-  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions']
+describe('Etapas 1 e 2: coleções novas', () => {
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots']
 
   it('a migração mantém registros antigos e aceita as coleções novas', async () => {
     expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
@@ -156,5 +156,14 @@ describe('Etapa 1: coleções novas', () => {
     await as(B, `insert into records (collection, id, data, client_updated_at) values ('completions', 'habit:h1:2026-10-01', '{"status":"skipped"}', $1)`, [now()])
     expect((await as(A, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'done' })
     expect((await as(B, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'skipped' })
+  })
+})
+
+describe('Etapa 2: check-in e resumo por semana', () => {
+  it('um check-in por semana (id = semana); B não lê nem sobrescreve o de A', async () => {
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('weekCheckins', '2026-09-28', '{"note":"de A"}', $1)`, [now()])
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('weekCheckins', '2026-09-28', '{"note":"de B"}', $1)`, [now()])
+    expect((await as(A, `select data from records where collection = 'weekCheckins' and id = '2026-09-28'`)).rows.map((r) => r.data)).toEqual([{ note: 'de A' }])
+    expect((await as(B, `update records set data = '{}' where collection = 'weekSnapshots'`)).affectedRows).toBe(0)
   })
 })

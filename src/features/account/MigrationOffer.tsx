@@ -36,6 +36,10 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   completions: 'Marcações do dia',
   events: 'Compromissos',
   focusSessions: 'Sessões de foco',
+  weeklyGoals: 'Metas semanais',
+  challenges: 'Desafios',
+  weekCheckins: 'Check-ins semanais',
+  weekSnapshots: 'Resumos de semanas fechadas',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

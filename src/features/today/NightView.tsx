@@ -1,9 +1,12 @@
-import { CalendarArrowUp, CalendarX2, MoonStar, SkipForward } from 'lucide-react'
+import { CalendarArrowUp, CalendarX2, ChevronRight, MoonStar, SkipForward } from 'lucide-react'
+import { isEnabled } from '../../app/modules'
+import { navigate } from '../../app/router'
+import { useStore } from '../../data/store'
 import { useState, type ReactNode } from 'react'
 import { useDailyActions } from '../../core/actions'
 import type { AgendaItem } from '../../core/agenda'
 import { nightSentence, type DayPlan } from '../../core/day'
-import { addDaysToDate } from '../../core/period'
+import { addDaysToDate, weekdayOfDate } from '../../core/period'
 import type { Task } from '../../data/types'
 import { formatDateValue } from '../../lib/dates'
 import { Button } from '../../ui/Button'
@@ -89,6 +92,8 @@ function RescheduleSheet({ task, onClose, min }: { task: Task | null; onClose():
 
 /** Close the day: what got done, what stays, and a look at tomorrow. No judgment. */
 export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan: DayPlan }) {
+  const { settings } = useStore()
+  const weekday = weekdayOfDate(plan.date)
   const { open, sheets } = useOpenItem()
   const [rescheduling, setRescheduling] = useState<Task | null>(null)
   const [showDone, setShowDone] = useState(false)
@@ -162,6 +167,16 @@ export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan:
             ))}
           </div>
         </section>
+      )}
+
+      {weekday === 0 && isEnabled(settings, 'week') && (
+        <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 border-accent/30 p-4 text-left hover:border-accent/50">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
+            <span className="text-[13px] text-faint">Opcional — tarefas, compromissos e metas.</span>
+          </span>
+          <ChevronRight size={18} className="text-faint" />
+        </button>
       )}
 
       <section>
