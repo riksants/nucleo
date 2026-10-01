@@ -1,9 +1,67 @@
 import type { Cents, Currency } from '../data/types'
 
-export const CURRENCY_INFO: Record<Currency, { symbol: string; label: string; locale: string }> = {
-  EUR: { symbol: '€', label: 'Euro', locale: 'pt-PT' },
-  BRL: { symbol: 'R$', label: 'Real', locale: 'pt-BR' },
-  AED: { symbol: 'د.إ', label: 'Dirham', locale: 'pt-PT' },
+interface CurrencyInfo {
+  symbol: string
+  label: string
+  /** Symbol goes after the number (AED is RTL text). */
+  suffix: boolean
+}
+
+/** Hand-tuned entries for the original three currencies, so their look stays exactly the same. */
+const KNOWN: Record<string, CurrencyInfo> = {
+  EUR: { symbol: '€', label: 'Euro', suffix: false },
+  BRL: { symbol: 'R$', label: 'Real', suffix: false },
+  AED: { symbol: 'د.إ', label: 'Dirham', suffix: true },
+  USD: { symbol: 'US$', label: 'Dólar americano', suffix: false },
+}
+
+const cache = new Map<string, CurrencyInfo>()
+let displayNames: Intl.DisplayNames | null = null
+
+let supported: Set<string> | null = null
+
+/** A real ISO 4217 currency known by the browser (rejects crypto and made-up codes). */
+export function isCurrencyCode(code: string): boolean {
+  if (!/^[A-Z]{3}$/.test(code)) return false
+  if (!supported) {
+    try {
+      supported = new Set(Intl.supportedValuesOf('currency'))
+    } catch {
+      supported = new Set(Object.keys(KNOWN))
+    }
+  }
+  return supported.has(code) || code in KNOWN
+}
+
+export function currencyInfo(code: Currency): CurrencyInfo {
+  const known = KNOWN[code] ?? cache.get(code)
+  if (known) return known
+  let symbol = code
+  let label = code
+  try {
+    symbol = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: code }).formatToParts(1).find((p) => p.type === 'currency')?.value ?? code
+  } catch {
+    // unknown code: show it as is
+  }
+  try {
+    displayNames ??= new Intl.DisplayNames('pt-BR', { type: 'currency' })
+    const name = displayNames.of(code)
+    if (name) label = name[0].toUpperCase() + name.slice(1)
+  } catch {
+    // DisplayNames unavailable
+  }
+  const info = { symbol, label, suffix: false }
+  cache.set(code, info)
+  return info
+}
+
+/** Every currency the browser knows, for the search picker. */
+export function allCurrencyCodes(): Currency[] {
+  try {
+    return Intl.supportedValuesOf('currency')
+  } catch {
+    return Object.keys(KNOWN)
+  }
 }
 
 /**
@@ -68,6 +126,7 @@ export function formatMoney(
 ): string {
   const n = formatNumber(cents, opts)
   const sign = cents < 0 ? '−' : opts.sign && cents > 0 ? '+' : ''
-  if (currency === 'AED') return `${sign}${n} د.إ`
-  return `${sign}${CURRENCY_INFO[currency].symbol} ${n}`
+  const info = currencyInfo(currency)
+  if (info.suffix) return `${sign}${n} ${info.symbol}`
+  return `${sign}${info.symbol} ${n}`
 }

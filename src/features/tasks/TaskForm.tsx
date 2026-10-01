@@ -16,6 +16,7 @@ export function TaskForm({ open, onClose, task, defaultProjectId }: { open: bool
     title: task?.title ?? '',
     projectId: task?.projectId ?? defaultProjectId ?? null,
     dueDate: task?.dueDate ?? '',
+    dueTime: task?.dueTime ?? '',
     priority: task?.priority ?? ('none' as TaskPriority),
     status: task?.status ?? ('todo' as TaskStatus),
   }))
@@ -23,7 +24,7 @@ export function TaskForm({ open, onClose, task, defaultProjectId }: { open: bool
   const submit = async () => {
     if (!d.title.trim()) return 'Escreva o título da tarefa'
     const completedAt = d.status === 'done' ? (task?.completedAt ?? new Date().toISOString()) : null
-    await save('tasks', { ...task, ...d, title: d.title.trim(), completedAt })
+    await save('tasks', { ...task, ...d, dueTime: d.dueDate ? d.dueTime : '', title: d.title.trim(), completedAt })
     toast(task ? 'Tarefa atualizada' : 'Tarefa criada')
     onClose()
   }
@@ -52,6 +53,13 @@ export function TaskForm({ open, onClose, task, defaultProjectId }: { open: bool
             <TextInput type="date" value={d.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
           </Field>
         </div>
+        {d.dueDate && (
+          <div className="half">
+            <Field label="Horário" hint="opcional · vira compromisso">
+              <TextInput type="time" value={d.dueTime} onChange={(e) => set('dueTime', e.target.value)} />
+            </Field>
+          </div>
+        )}
         <div className="half">
           <Field label="Prioridade">
             <Segmented block size="sm" value={d.priority} onChange={(v) => set('priority', v)} options={TASK_PRIORITY.map((p) => ({ ...p, label: p.value === 'none' ? '—' : p.label }))} />

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { readPref, writePref } from '../lib/prefs'
 import { effectiveRates, fetchRates, makeConverter, RATES_MAX_AGE_MS, type Converter } from '../lib/rates'
-import { createIndexedDbRepository, type Repository } from './repository'
+import { createIndexedDbRepository, type Repository, type SyncStatus } from './repository'
 import { balanceOf } from './selectors'
 import {
   COLLECTION_NAMES,
@@ -11,7 +11,9 @@ import {
   type Currency,
   type DataState,
   type Entity,
+  type ModuleId,
   type Settings,
+  STARTER_CURRENCIES,
   type Transaction,
   type TransactionType,
 } from './types'
@@ -20,7 +22,7 @@ const EMPTY_DATA = Object.fromEntries(COLLECTION_NAMES.map((n) => [n, []])) as u
 
 export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
-  baseCurrency: 'EUR',
+  baseCurrency: 'BRL',
   initialBalance: 0,
   startedAt: '',
   rates: null,
@@ -42,6 +44,10 @@ export class MissingRateError extends Error {
 
 interface Store {
   ready: boolean
+  loadError: string | null
+  retryLoad(): void
+  repository: Repository
+  syncStatus: SyncStatus | null
   data: DataState
   settings: Settings
   balance: Cents
@@ -56,7 +62,7 @@ interface Store {
   updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string }): Promise<Transaction>
   adjustBalance(target: Cents): Promise<Transaction | null>
   updateSettings(patch: Partial<Settings>): Promise<void>
-  completeOnboarding(baseCurrency: Currency, initialBalance: Cents): Promise<void>
+  completeOnboarding(baseCurrency: Currency, initialBalance: Cents, modules?: Partial<Record<ModuleId, boolean>>): Promise<void>
   refreshRates(): Promise<boolean>
   importData(data: Partial<DataState>, settings: Settings | null, mode: 'merge' | 'replace'): Promise<void>
 }
@@ -66,9 +72,12 @@ const StoreContext = createContext<Store | null>(null)
 export function StoreProvider({ children, repository }: { children: ReactNode; repository?: Repository }) {
   const repo = useMemo(() => repository ?? createIndexedDbRepository(), [repository])
   const [ready, setReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(() => repo.status?.() ?? null)
   const [data, setData] = useState<DataState>(EMPTY_DATA)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
-  const [displayCurrency, setDisplay] = useState<Currency>(() => readPref<Currency>('displayCurrency', 'EUR'))
+  const [displayPref, setDisplayPref] = useState<Currency | null>(() => readPref<Currency | null>('displayCurrency', null))
   const [ratesLoading, setRatesLoading] = useState(false)
 
   // Actions read the latest state through refs so they stay referentially stable.
@@ -78,15 +87,44 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   settingsRef.current = settings
 
   useEffect(() => {
+    let alive = true
+    setLoadError(null)
     repo
       .load()
       .then(({ data, settings }) => {
+        if (!alive) return
         setData(data)
         if (settings) setSettings({ ...DEFAULT_SETTINGS, ...settings })
         setReady(true)
       })
-      .catch((err) => console.error('Falha ao carregar dados', err))
+      .catch((err) => {
+        console.error('Falha ao carregar dados', err)
+        if (alive) setLoadError(err instanceof Error ? err.message : String(err))
+      })
     navigator.storage?.persist?.().catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [repo, attempt])
+
+  // Signed in: reload from the local cache whenever the sync brings remote changes.
+  useEffect(() => {
+    if (!repo.subscribe) return
+    return repo.subscribe((event) => {
+      if (event.type === 'status') {
+        setSyncStatus(repo.status?.() ?? null)
+        return
+      }
+      repo.load().then(({ data, settings }) => {
+        dataRef.current = data
+        setData(data)
+        if (settings) {
+          const next = { ...DEFAULT_SETTINGS, ...settings }
+          settingsRef.current = next
+          setSettings(next)
+        }
+      })
+    })
   }, [repo])
 
   const rates = useMemo(() => effectiveRates(settings), [settings])
@@ -94,7 +132,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
 
   const updateSettings = useCallback(
     async (patch: Partial<Settings>) => {
-      const next = { ...settingsRef.current, ...patch }
+      const next = { ...settingsRef.current, ...patch, updatedAt: new Date().toISOString() }
       settingsRef.current = next
       setSettings(next)
       await repo.saveSettings(next)
@@ -127,10 +165,16 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
     }
   }, [ready, refreshRates])
 
-  const setDisplayCurrency = useCallback((c: Currency) => {
-    setDisplay(c)
-    writePref('displayCurrency', c)
-  }, [])
+  // Viewing currency: saved with the account settings and remembered on the device.
+  const displayCurrency = settings.displayCurrency ?? displayPref ?? settings.baseCurrency
+  const setDisplayCurrency = useCallback(
+    (c: Currency) => {
+      setDisplayPref(c)
+      writePref('displayCurrency', c)
+      void updateSettings({ displayCurrency: c })
+    },
+    [updateSettings],
+  )
 
   const save = useCallback(
     async <K extends CollectionName>(collection: K, draft: Draft<Collections[K]>) => {
@@ -205,11 +249,21 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   )
 
   const completeOnboarding = useCallback(
-    async (baseCurrency: Currency, initialBalance: Cents) => {
-      setDisplayCurrency(baseCurrency)
-      await updateSettings({ onboarded: true, baseCurrency, initialBalance, startedAt: new Date().toISOString() })
+    async (baseCurrency: Currency, initialBalance: Cents, modules?: Partial<Record<ModuleId, boolean>>) => {
+      setDisplayPref(baseCurrency)
+      writePref('displayCurrency', baseCurrency)
+      await updateSettings({
+        onboarded: true,
+        baseCurrency,
+        initialBalance,
+        startedAt: new Date().toISOString(),
+        displayCurrency: baseCurrency,
+        currencies: [baseCurrency, ...STARTER_CURRENCIES.filter((c) => c !== baseCurrency)],
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ...(modules ? { modules, modulesReviewed: true } : {}),
+      })
     },
-    [setDisplayCurrency, updateSettings],
+    [updateSettings],
   )
 
   const importData = useCallback(
@@ -242,6 +296,10 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
 
   const value: Store = {
     ready,
+    loadError,
+    retryLoad: () => setAttempt((n) => n + 1),
+    repository: repo,
+    syncStatus,
     data,
     settings,
     balance,

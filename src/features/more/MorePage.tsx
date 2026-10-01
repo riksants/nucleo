@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
-import { SEARCH, SECONDARY, SETTINGS, type Section } from '../../app/sections'
+import { SEARCH, secondarySections, SETTINGS, type Section } from '../../app/sections'
 import { useStore } from '../../data/store'
 import type { CollectionName } from '../../data/types'
 
@@ -11,6 +11,8 @@ const COUNT_OF: Partial<Record<string, CollectionName>> = {
   '/accounts': 'accounts',
   '/notes': 'notes',
   '/portfolio': 'portfolio',
+  '/sales': 'sales',
+  '/subscribers': 'subscribers',
 }
 
 function Tile({ section, count }: { section: Section; count?: number }) {
@@ -29,12 +31,12 @@ function Tile({ section, count }: { section: Section; count?: number }) {
 }
 
 export function MorePage() {
-  const { data } = useStore()
+  const { data, settings } = useStore()
   return (
     <>
       <PageHeader title="Mais" />
       <div className="grid grid-cols-2 gap-3">
-        {SECONDARY.map((s) => {
+        {secondarySections(settings).map((s) => {
           const key = COUNT_OF[s.path]
           return <Tile key={s.path} section={s} count={key ? data[key].length : undefined} />
         })}

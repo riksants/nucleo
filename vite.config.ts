@@ -32,6 +32,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/nucleo/index.html',
+        // Push notifications (works with the app closed where the platform allows it).
+        importScripts: ['push-sw.js'],
       },
     }),
   ],

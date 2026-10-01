@@ -2,12 +2,12 @@ import { Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { MissingRateError, useStore } from '../../data/store'
 import { sortByNewest } from '../../data/selectors'
-import { CURRENCIES, type Currency, type Transaction } from '../../data/types'
-import { amountToInput, CURRENCY_INFO, formatMoney, parseAmount } from '../../lib/money'
+import type { Currency, Transaction } from '../../data/types'
+import { amountToInput, currencyInfo, formatMoney, parseAmount } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { useDraft } from '../../ui/formHooks'
-import { Segmented } from '../../ui/Segmented'
+import { CurrencyPicker } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 
 /** The fast "+ / −" flow: amount, reason, confirm. Also edits an existing entry. */
 export function TransactionSheet({ open, onClose, type, editing }: Props) {
-  const { data, displayCurrency, settings, hasRates, addTransaction, updateTransaction, remove } = useStore()
+  const { data, displayCurrency, settings, convert, addTransaction, updateTransaction, remove } = useStore()
   const { toast, confirm } = useFeedback()
   const reasonRef = useRef<HTMLInputElement>(null)
   const [tried, setTried] = useState(false)
@@ -28,7 +28,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const kind = editing?.type ?? type
   const [draft, set] = useDraft(open, () => ({
     amount: editing ? amountToInput(editing.amount) : '',
-    currency: editing?.currency ?? (hasRates ? displayCurrency : settings.baseCurrency),
+    currency: editing?.currency ?? (convert(100, displayCurrency, settings.baseCurrency) !== null ? displayCurrency : settings.baseCurrency),
     reason: editing?.reason ?? '',
   }))
   useEffect(() => {
@@ -83,7 +83,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const title = editing ? (kind === 'adjust' ? 'Ajuste de saldo' : 'Editar movimentação') : kind === 'in' ? 'Adicionar dinheiro' : 'Retirar dinheiro'
   const verb = kind === 'in' ? 'Adicionar' : kind === 'out' ? 'Retirar' : 'Salvar'
   const confirmLabel = editing ? 'Salvar alterações' : cents ? `${verb} ${formatMoney(cents, draft.currency)}` : 'Confirmar'
-  const symbol = CURRENCY_INFO[draft.currency].symbol
+  const symbol = currencyInfo(draft.currency).symbol
 
   return (
     <Sheet
@@ -136,12 +136,13 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           {tried && amountError && <p className="mt-1.5 text-sm text-expense">{amountError}</p>}
           {kind !== 'adjust' && (
             <div className="mt-3">
-              <Segmented
+              <CurrencyPicker
                 block
                 label="Moeda"
                 value={draft.currency}
                 onChange={(c: Currency) => set('currency', c)}
-                options={CURRENCIES.map((c) => ({ value: c, label: `${c} ${CURRENCY_INFO[c].symbol}`, disabled: !hasRates && c !== settings.baseCurrency }))}
+                format={(c) => `${c} ${currencyInfo(c).symbol}`}
+                isDisabled={(c) => c !== settings.baseCurrency && convert(100, c, settings.baseCurrency) === null}
               />
             </div>
           )}

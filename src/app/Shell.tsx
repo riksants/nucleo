@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
-import { MORE, PRIMARY, SEARCH, SECONDARY, SETTINGS, type Section } from './sections'
+import { useStore } from '../data/store'
+import { SyncBadge } from '../features/account/SyncBadge'
+import { MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
 
-function isActive(section: Section, path: RoutePath) {
-  if (section.path === '/more') return path === '/more' || SECONDARY.some((s) => s.path === path) || path === '/settings'
+function isActive(section: Section, path: RoutePath, primary: Section[]) {
+  if (section.path === '/more') return !primary.some((s) => s.path === path)
   return section.path === path
 }
 
@@ -19,11 +21,13 @@ export function Logo() {
 }
 
 function BottomNav({ path }: { path: RoutePath }) {
+  const { settings } = useStore()
+  const primary = primarySections(settings)
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/88 backdrop-blur-xl lg:hidden" aria-label="Navegação principal">
-      <div className="mx-auto grid max-w-lg grid-cols-5 px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
-        {[...PRIMARY, MORE].map((s) => {
-          const active = isActive(s, path)
+      <div className="mx-auto grid max-w-lg px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
+        {[...primary, MORE].map((s) => {
+          const active = isActive(s, path, primary)
           const Icon = s.icon
           return (
             <a
@@ -66,6 +70,8 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
 }
 
 function Sidebar({ path }: { path: RoutePath }) {
+  const { settings } = useStore()
+  const secondary = secondarySections(settings)
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg px-4 py-6 lg:flex" aria-label="Navegação">
       <div className="mb-6 flex items-center gap-3 px-2">
@@ -82,17 +88,22 @@ function Sidebar({ path }: { path: RoutePath }) {
         <kbd className="ml-auto rounded-md border border-line px-1.5 text-[11px]">/</kbd>
       </button>
       <nav className="flex flex-col gap-0.5">
-        {PRIMARY.map((s) => (
+        {primarySections(settings).map((s) => (
           <SideLink key={s.path} section={s} path={path} />
         ))}
       </nav>
-      <div className="mt-6 mb-2 px-3 text-xs font-medium tracking-wide text-faint uppercase">Organização</div>
-      <nav className="flex flex-col gap-0.5">
-        {SECONDARY.map((s) => (
-          <SideLink key={s.path} section={s} path={path} />
-        ))}
-      </nav>
-      <div className="mt-auto">
+      {secondary.length > 0 && (
+        <>
+          <div className="mt-6 mb-2 px-3 text-xs font-medium tracking-wide text-faint uppercase">Organização</div>
+          <nav className="flex flex-col gap-0.5">
+            {secondary.map((s) => (
+              <SideLink key={s.path} section={s} path={path} />
+            ))}
+          </nav>
+        </>
+      )}
+      <div className="mt-auto space-y-2 pt-6">
+        <SyncBadge />
         <SideLink section={SETTINGS} path={path} />
       </div>
     </aside>

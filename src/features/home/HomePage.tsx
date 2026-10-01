@@ -1,6 +1,7 @@
 import { AnimatePresence } from 'framer-motion'
-import { ChevronRight, Search, Settings } from 'lucide-react'
+import { CalendarCheck, ChevronRight, Search, Settings } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
 import { optionOf, PROJECT_STATUS } from '../../data/labels'
 import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upcomingCharges } from '../../data/selectors'
@@ -65,6 +66,7 @@ export function HomePage() {
   const goals = sortByNewest(data.goals.filter((g) => !g.purchasedAt)).slice(0, 2)
   const charges = upcomingCharges(data.tools, 30).slice(0, 4)
   const today = new Date()
+  const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
 
   return (
     <>
@@ -73,17 +75,23 @@ export function HomePage() {
           <p className="text-[13px] font-medium text-faint first-letter:uppercase">{formatWeekday(today)}</p>
           <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em] lg:text-[34px]">{greeting(today)}</h1>
         </div>
-        <div className="flex gap-1 lg:hidden">
-          <IconButton label="Buscar" onClick={() => navigate('/search')}>
+        <div className="flex gap-1">
+          {on('today') && (
+            <IconButton label="Hoje" onClick={() => navigate('/today')}>
+              <CalendarCheck size={21} />
+            </IconButton>
+          )}
+          <IconButton label="Buscar" className="lg:hidden" onClick={() => navigate('/search')}>
             <Search size={21} />
           </IconButton>
-          <IconButton label="Configurações" onClick={() => navigate('/settings')}>
+          <IconButton label="Configurações" className="lg:hidden" onClick={() => navigate('/settings')}>
             <Settings size={21} />
           </IconButton>
         </div>
       </header>
 
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+        {on('finance') && (
         <div className="space-y-7">
           <div className="space-y-3">
             <BalanceCard />
@@ -111,8 +119,10 @@ export function HomePage() {
             )}
           </Block>
         </div>
+        )}
 
         <div className="space-y-7">
+          {on('tasks') && (
           <Block title={openTasks.length ? `Tarefas pendentes · ${openTasks.length}` : 'Tarefas'} action={openTasks.length ? 'Ver todas' : undefined} onAction={() => navigate('/tasks')}>
             {openTasks.length ? (
               <div className="card p-1.5">
@@ -126,7 +136,9 @@ export function HomePage() {
               <EmptyLine text="Nenhuma tarefa pendente" action="Adicionar" onAction={() => taskSheet.show()} />
             )}
           </Block>
+          )}
 
+          {on('projects') && (
           <Block title={activeProjects.length ? `Projetos ativos · ${activeProjects.length}` : 'Projetos'} action={activeProjects.length ? 'Ver todos' : undefined} onAction={() => navigate('/projects')}>
             {activeProjects.length ? (
               <div className="card p-1.5">
@@ -147,7 +159,9 @@ export function HomePage() {
               <EmptyLine text="Nenhum projeto ativo" action="Ver projetos" onAction={() => navigate('/projects')} />
             )}
           </Block>
+          )}
 
+          {on('goals') && (
           <Block title="Metas" action={goals.length ? 'Ver todas' : undefined} onAction={() => navigate('/goals')}>
             {goals.length ? (
               <div className="grid gap-3">
@@ -159,7 +173,9 @@ export function HomePage() {
               <EmptyLine text="Nenhuma meta ainda" action="Nova meta" onAction={() => goalSheet.show()} />
             )}
           </Block>
+          )}
 
+          {on('tools') && (
           <Block title="Próximas cobranças" action={charges.length ? 'Ferramentas' : undefined} onAction={() => navigate('/tools')}>
             {charges.length ? (
               <div className="card p-1.5">
@@ -183,6 +199,7 @@ export function HomePage() {
               <EmptyLine text="Nada a pagar nos próximos 30 dias" action="Ferramentas" onAction={() => navigate('/tools')} />
             )}
           </Block>
+          )}
         </div>
       </div>
 

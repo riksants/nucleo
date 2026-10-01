@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
-import type { Account } from '../../data/types'
+import type { Account, SealedValue } from '../../data/types'
 import { copyText, displayUrl, normalizeUrl } from '../../lib/links'
 import { Button, IconButton } from '../../ui/Button'
 import { EmptyState, SearchField } from '../../ui/Display'
@@ -12,23 +12,58 @@ import { useSheet } from '../../ui/formHooks'
 import { useOpenParam } from '../useOpenParam'
 import { useNames } from '../shared/useNames'
 import { AccountForm } from './AccountForm'
+import { useVault } from './vault'
+import { VaultBar, VaultCreateSheet, VaultUnlockSheet } from './VaultSheets'
 
-function CopyRow({ label, value, secret }: { label: string; value: string; secret?: boolean }) {
+function CopyRow({ label, value, secret, sealed, onLocked }: { label: string; value: string; secret?: boolean; sealed?: SealedValue; onLocked?(): void }) {
   const { toast } = useFeedback()
+  const vault = useVault()
   const [shown, setShown] = useState(false)
+  const [plain, setPlain] = useState<string | null>(null)
+
+  // Hide again as soon as the vault locks.
+  if (sealed && !vault.unlocked && (shown || plain !== null)) {
+    setShown(false)
+    setPlain(null)
+  }
+
+  const open = async (): Promise<string | null> => {
+    if (!sealed) return value
+    if (!vault.unlocked) {
+      onLocked?.()
+      return null
+    }
+    try {
+      const text = plain ?? (await vault.reveal(sealed))
+      setPlain(text)
+      return text
+    } catch {
+      toast('Não foi possível abrir esta senha', 'error')
+      return null
+    }
+  }
+
+  const toggle = async () => {
+    if (shown) return setShown(false)
+    if ((await open()) !== null) setShown(true)
+  }
+
   const copy = async () => {
-    const ok = await copyText(value)
+    const text = await open()
+    if (text === null) return
+    const ok = await copyText(text)
     toast(ok ? 'Copiado' : 'Não foi possível copiar', ok ? 'success' : 'error')
   }
+  const visible = sealed ? (plain ?? '') : value
 
   return (
     <div className="flex items-center gap-2 rounded-2xl bg-raised py-1.5 pr-1.5 pl-4">
       <div className="min-w-0 flex-1 py-1">
         <p className="text-xs text-faint">{label}</p>
-        <p className={`truncate text-[15px] ${secret && !shown ? 'tracking-[0.2em]' : ''}`}>{secret && !shown ? '••••••••••' : value}</p>
+        <p className={`truncate text-[15px] ${secret && !shown ? 'tracking-[0.2em]' : ''}`}>{secret && !shown ? '••••••••••' : visible}</p>
       </div>
       {secret && (
-        <IconButton label={shown ? 'Esconder senha' : 'Mostrar senha'} size="sm" onClick={() => setShown(!shown)}>
+        <IconButton label={shown ? 'Esconder senha' : 'Mostrar senha'} size="sm" onClick={toggle}>
           {shown ? <EyeOff size={18} /> : <Eye size={18} />}
         </IconButton>
       )}
@@ -39,7 +74,7 @@ function CopyRow({ label, value, secret }: { label: string; value: string; secre
   )
 }
 
-function AccountCard({ account, onEdit }: { account: Account; onEdit(a: Account): void }) {
+function AccountCard({ account, onEdit, onLocked }: { account: Account; onEdit(a: Account): void; onLocked(): void }) {
   const names = useNames()
   const related = [names.client(account.clientId), names.project(account.projectId)].filter(Boolean).join(' · ')
   return (
@@ -61,7 +96,8 @@ function AccountCard({ account, onEdit }: { account: Account; onEdit(a: Account)
       <div className="space-y-2">
         {account.email && <CopyRow label="E-mail" value={account.email} />}
         {account.username && <CopyRow label="Usuário" value={account.username} />}
-        {account.password && <CopyRow label="Senha" value={account.password} secret />}
+        {account.secret && <CopyRow label="Senha" value="" secret sealed={account.secret} onLocked={onLocked} />}
+        {!account.secret && account.password && <CopyRow label="Senha (sem cofre)" value={account.password} secret />}
       </div>
       {account.notes && <p className="mt-3 px-1 text-sm leading-relaxed whitespace-pre-wrap text-soft">{account.notes}</p>}
     </article>
@@ -72,6 +108,7 @@ export function AccountsPage() {
   const { data } = useStore()
   const [query, setQuery] = useState('')
   const form = useSheet<Account>()
+  const [vaultSheet, setVaultSheet] = useState<'create' | 'unlock' | null>(null)
   useOpenParam(data.accounts, form.show)
   const names = useNames()
 
@@ -90,6 +127,7 @@ export function AccountsPage() {
           </Button>
         }
       />
+      <VaultBar onCreate={() => setVaultSheet('create')} onUnlock={() => setVaultSheet('unlock')} />
       {data.accounts.length === 0 ? (
         <EmptyState icon={<KeyRound size={22} />} title="Nenhuma conta ainda" text="Anote e-mails, usuários e senhas dos serviços que você usa." action="Adicionar conta" onAction={() => form.show()} />
       ) : (
@@ -100,7 +138,7 @@ export function AccountsPage() {
           {list.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {list.map((a) => (
-                <AccountCard key={a.id} account={a} onEdit={form.show} />
+                <AccountCard key={a.id} account={a} onEdit={form.show} onLocked={() => setVaultSheet('unlock')} />
               ))}
             </div>
           ) : (
@@ -108,7 +146,9 @@ export function AccountsPage() {
           )}
         </>
       )}
-      <AccountForm open={form.open} onClose={form.close} account={form.item} />
+      <AccountForm open={form.open} onClose={form.close} account={form.item} onVault={setVaultSheet} />
+      <VaultCreateSheet open={vaultSheet === 'create'} onClose={() => setVaultSheet(null)} />
+      <VaultUnlockSheet open={vaultSheet === 'unlock'} onClose={() => setVaultSheet(null)} />
     </>
   )
 }

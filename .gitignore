@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Builds de teste e segredos locais
+dist-cloud
+.env
+.env.local
+supabase/.temp

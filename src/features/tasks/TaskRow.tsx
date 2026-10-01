@@ -78,6 +78,7 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
             <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-faint">
               {project && <span className="truncate">{project}</span>}
               {task.dueDate && !done && <DueLabel date={task.dueDate} />}
+              {task.dueDate && task.dueTime && !done && <span className="num">{task.dueTime}</span>}
             </span>
           )}
         </button>

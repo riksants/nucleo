@@ -1,4 +1,5 @@
-import { COLLECTION_NAMES, CURRENCIES, type DataState, type Settings } from '../data/types'
+import { COLLECTION_NAMES, type DataState, type Settings } from '../data/types'
+import { isCurrencyCode } from './money'
 
 const APP_ID = 'nucleo'
 const FORMAT_VERSION = 1
@@ -19,9 +20,20 @@ export interface ParsedBackup {
   total: number
 }
 
-export function buildBackup(data: DataState, settings: Settings): Blob {
-  const file: BackupFile = { app: APP_ID, version: FORMAT_VERSION, exportedAt: new Date().toISOString(), settings, data }
-  return new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' })
+/**
+ * Backup file. Passwords never go out in plain text: vault-sealed passwords stay
+ * encrypted (the vault's wrapped key travels with the settings, so the same
+ * vault password opens them after restoring) and legacy plain-text ones are left out.
+ */
+export function buildBackup(data: DataState, settings: Settings): { blob: Blob; omittedPasswords: number } {
+  let omittedPasswords = 0
+  const accounts = data.accounts.map((a) => {
+    if (!a.password) return a
+    omittedPasswords++
+    return { ...a, password: '' }
+  })
+  const file: BackupFile = { app: APP_ID, version: FORMAT_VERSION, exportedAt: new Date().toISOString(), settings, data: { ...data, accounts } }
+  return { blob: new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }), omittedPasswords }
 }
 
 export function backupFileName(d = new Date()) {
@@ -60,7 +72,7 @@ export function parseBackup(text: string): ParsedBackup {
   let settings: Settings | null = null
   if (isRecord(json.settings)) {
     const s = json.settings as unknown as Settings
-    if (CURRENCIES.includes(s.baseCurrency) && typeof s.initialBalance === 'number') settings = s
+    if (typeof s.baseCurrency === 'string' && isCurrencyCode(s.baseCurrency) && typeof s.initialBalance === 'number') settings = s
   }
 
   return { exportedAt: typeof json.exportedAt === 'string' ? json.exportedAt : '', settings, data, counts, total }

@@ -14,6 +14,14 @@ export type RoutePath =
   | '/portfolio'
   | '/settings'
   | '/search'
+  | '/today'
+  | '/sales'
+  | '/subscribers'
+  | '/routine'
+  | '/meals'
+  | '/planner'
+  | '/account'
+  | '/reminders'
 
 export interface Route {
   path: RoutePath

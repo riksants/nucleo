@@ -95,3 +95,11 @@ export function periodStart(period: Period, now = new Date()): Date | null {
 export function monthName(d = new Date()): string {
   return new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(d)
 }
+
+/** Adds months keeping the day inside the target month (31 Jan + 1 → 28/29 Feb). */
+export function addMonths(d: Date, months: number, anchorDay = d.getDate()): Date {
+  const target = new Date(d.getFullYear(), d.getMonth() + months, 1)
+  const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(anchorDay, last))
+  return target
+}

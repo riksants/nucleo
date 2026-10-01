@@ -3,22 +3,29 @@ import { ArrowLeft, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Logo } from '../../app/Shell'
 import { useStore } from '../../data/store'
-import { CURRENCIES, type Currency } from '../../data/types'
-import { CURRENCY_INFO, parseAmount } from '../../lib/money'
+import { STARTER_CURRENCIES, type Currency, type ModuleId } from '../../data/types'
+import { currencyInfo, parseAmount } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
-
-const POINTS = ['Saldo em EUR, BRL e AED', 'Projetos, clientes e tarefas', 'Tudo salvo no seu aparelho']
+import { CurrencySheet } from '../../ui/CurrencySheet'
+import { useSession } from '../account/session'
+import { ModulePicker, starterModules } from '../settings/ModulePicker'
 
 export function Onboarding() {
   const { completeOnboarding } = useStore()
+  const auth = useSession()
   const [step, setStep] = useState(0)
-  const [currency, setCurrency] = useState<Currency>('EUR')
+  const [currency, setCurrency] = useState<Currency>('BRL')
+  const [searching, setSearching] = useState(false)
+  const [modules, setModules] = useState<Partial<Record<ModuleId, boolean>>>(starterModules)
   const [amount, setAmount] = useState('')
   const cents = amount.trim() ? parseAmount(amount) : 0
+  const choices = STARTER_CURRENCIES.includes(currency) ? STARTER_CURRENCIES : [...STARTER_CURRENCIES, currency]
+  const points = ['Saldo em qualquer moeda', 'Projetos, clientes, tarefas e mais', auth.userId ? 'Sincronizado na sua conta' : auth.configured ? 'No aparelho ou sincronizado na sua conta' : 'Tudo salvo no seu aparelho']
+  const steps = modules.finance ? 4 : 3
 
   const finish = () => {
     if (cents === null) return
-    completeOnboarding(currency, cents)
+    completeOnboarding(currency, modules.finance ? cents : 0, modules)
   }
 
   return (
@@ -33,7 +40,7 @@ export function Onboarding() {
             <span />
           )}
           <div className="flex gap-1.5" aria-hidden>
-            {[0, 1, 2].map((i) => (
+            {Array.from({ length: steps }, (_, i) => i).map((i) => (
               <span key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? 'w-6 bg-accent' : 'w-1.5 bg-white/15'}`} />
             ))}
           </div>
@@ -57,7 +64,7 @@ export function Onboarding() {
                   <h1 className="mt-8 text-[38px] leading-[1.05] font-semibold tracking-[-0.04em]">Seu centro de organização.</h1>
                   <p className="mt-4 text-[17px] leading-relaxed text-soft">Dinheiro, trabalho e anotações num lugar só — rápido de abrir, simples de usar.</p>
                   <ul className="mt-8 space-y-3">
-                    {POINTS.map((p) => (
+                    {points.map((p) => (
                       <li key={p} className="flex items-center gap-3 text-[16px]">
                         <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent-hi">
                           <Check size={14} strokeWidth={3} />
@@ -67,9 +74,16 @@ export function Onboarding() {
                     ))}
                   </ul>
                 </div>
-                <Button size="lg" block onClick={() => setStep(1)}>
-                  Começar
-                </Button>
+                <div className="space-y-2.5">
+                  <Button size="lg" block onClick={() => setStep(1)}>
+                    {auth.userId ? 'Configurar minha conta' : auth.configured ? 'Começar sem conta' : 'Começar'}
+                  </Button>
+                  {auth.configured && !auth.userId && (
+                    <Button size="lg" variant="secondary" block onClick={() => auth.openAuth('signin')}>
+                      Entrar ou criar conta
+                    </Button>
+                  )}
+                </div>
               </>
             )}
 
@@ -77,9 +91,9 @@ export function Onboarding() {
               <>
                 <div className="flex-1 pt-10">
                   <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">Qual sua moeda principal?</h1>
-                  <p className="mt-2 text-[16px] text-soft">Seu saldo é guardado nela. Você pode ver em qualquer moeda depois.</p>
+                  <p className="mt-2 text-[16px] text-soft">Seu saldo é guardado nela. Você pode ver em outras moedas depois.</p>
                   <div className="mt-8 space-y-3" role="radiogroup">
-                    {CURRENCIES.map((c) => {
+                    {choices.map((c) => {
                       const active = c === currency
                       return (
                         <button
@@ -92,9 +106,9 @@ export function Onboarding() {
                             active ? 'border-accent bg-accent/10' : 'border-line bg-surface hover:border-line-strong'
                           }`}
                         >
-                          <span className="grid size-11 place-items-center rounded-2xl bg-elevated text-[17px] font-semibold">{CURRENCY_INFO[c].symbol}</span>
+                          <span className="grid h-11 min-w-11 place-items-center rounded-2xl bg-elevated px-1.5 text-[15px] font-semibold">{currencyInfo(c).symbol}</span>
                           <span className="flex-1">
-                            <span className="block text-[17px] font-semibold">{CURRENCY_INFO[c].label}</span>
+                            <span className="block text-[17px] font-semibold">{currencyInfo(c).label}</span>
                             <span className="text-sm text-faint">{c}</span>
                           </span>
                           <span className={`grid size-6 place-items-center rounded-full border-2 ${active ? 'border-accent bg-accent text-white' : 'border-white/20'}`}>
@@ -103,7 +117,11 @@ export function Onboarding() {
                         </button>
                       )
                     })}
+                    <button type="button" onClick={() => setSearching(true)} className="w-full py-2 text-left text-[15px] font-medium text-accent-hi hover:text-ink">
+                      Outra moeda…
+                    </button>
                   </div>
+                  <CurrencySheet open={searching} onClose={() => setSearching(false)} value={currency} onPick={setCurrency} />
                 </div>
                 <Button size="lg" block onClick={() => setStep(2)}>
                   Continuar
@@ -114,10 +132,25 @@ export function Onboarding() {
             {step === 2 && (
               <>
                 <div className="flex-1 pt-10">
+                  <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">O que você quer usar?</h1>
+                  <p className="mt-2 text-[16px] text-soft">Só aparece o que você escolher. Dá para mudar em Configurações, sem perder nada.</p>
+                  <div className="mt-6">
+                    <ModulePicker value={modules} onChange={setModules} />
+                  </div>
+                </div>
+                <Button size="lg" block onClick={() => (modules.finance ? setStep(3) : finish())}>
+                  {modules.finance ? 'Continuar' : 'Entrar'}
+                </Button>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="flex-1 pt-10">
                   <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">Quanto você tem hoje?</h1>
                   <p className="mt-2 text-[16px] text-soft">Esse é o seu saldo inicial. Não conta como entrada.</p>
                   <label className="mt-8 flex items-center gap-3 rounded-[1.25rem] border border-line bg-raised px-5 focus-within:border-accent/70">
-                    <span className="text-2xl font-medium text-soft">{CURRENCY_INFO[currency].symbol}</span>
+                    <span className="text-2xl font-medium text-soft">{currencyInfo(currency).symbol}</span>
                     <input
                       inputMode="decimal"
                       autoFocus

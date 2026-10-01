@@ -2,7 +2,7 @@ import { ChevronRight, Search } from 'lucide-react'
 import { useState } from 'react'
 import { navigate, type RoutePath } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
-import { PRIMARY, SECONDARY } from '../../app/sections'
+import { MODULE_BY_PATH } from '../../app/modules'
 import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Entity } from '../../data/types'
@@ -25,7 +25,7 @@ interface Group {
 const MAX_PER_GROUP = 6
 
 function iconFor(path: RoutePath) {
-  return [...PRIMARY, ...SECONDARY].find((s) => s.path === path)?.icon ?? Search
+  return MODULE_BY_PATH[path]?.icon ?? Search
 }
 
 export function SearchPage() {

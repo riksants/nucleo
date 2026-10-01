@@ -2,27 +2,27 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } fr
 import { Minus, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../data/store'
-import { CURRENCIES, type Cents, type Currency } from '../../data/types'
+import type { Cents, Currency } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
-import { CURRENCY_INFO, formatMoney, formatNumber } from '../../lib/money'
+import { currencyInfo, formatMoney, formatNumber } from '../../lib/money'
 import { useSheet } from '../../ui/formHooks'
-import { Segmented } from '../../ui/Segmented'
+import { CurrencyPicker } from '../../ui/Field'
 import { TransactionSheet } from './TransactionSheet'
 
 /** Big balance number: muted currency symbol and cents, prominent whole part. */
 function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
   const [whole, decimals] = formatNumber(cents).split(',')
-  const symbol = CURRENCY_INFO[currency].symbol
+  const { symbol, suffix } = currencyInfo(currency)
   const small = 'text-[26px] font-medium text-soft lg:text-[30px]'
   return (
     <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap" aria-label={formatMoney(cents, currency)}>
       {cents < 0 && <span className="text-[44px] leading-none font-semibold lg:text-[56px]">−</span>}
-      {currency !== 'AED' && <span className={small}>{symbol}</span>}
+      {!suffix && <span className={small}>{symbol}</span>}
       <span className="text-[52px] leading-none font-semibold tracking-[-0.045em] lg:text-[64px]">
         {whole}
         <span className={small}>,{decimals}</span>
       </span>
-      {currency === 'AED' && <span className={small}>{symbol}</span>}
+      {suffix && <span className={small}>{symbol}</span>}
     </span>
   )
 }
@@ -46,7 +46,7 @@ function useCountTo(target: Cents) {
 }
 
 export function BalanceCard() {
-  const { balance, settings, displayCurrency, setDisplayCurrency, convert, hasRates } = useStore()
+  const { balance, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
   const sheet = useSheet<'in' | 'out'>()
   const [delta, setDelta] = useState<{ id: number; cents: Cents } | null>(null)
 
@@ -87,12 +87,12 @@ export function BalanceCard() {
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[13px] font-medium tracking-[0.08em] text-soft uppercase">Saldo</span>
-          <Segmented
+          <CurrencyPicker
             size="sm"
             label="Moeda de exibição"
             value={currency}
             onChange={setDisplayCurrency}
-            options={CURRENCIES.map((c) => ({ value: c, label: c, disabled: !hasRates && c !== settings.baseCurrency }))}
+            isDisabled={(c) => c !== settings.baseCurrency && convert(100, settings.baseCurrency, c) === null}
           />
         </div>
 

@@ -1,8 +1,18 @@
 import { COLLECTION_NAMES, type CollectionName, type Collections, type DataState, type Settings } from './types'
 
+export type RepoEvent = { type: 'data' } | { type: 'status' }
+
+export interface SyncStatus {
+  state: 'idle' | 'syncing' | 'offline' | 'error'
+  pending: number
+  lastSyncAt: string | null
+  error: string | null
+}
+
 /**
- * Persistence boundary. The UI only talks to this interface, so a remote/sync
- * implementation can replace IndexedDB later without touching screens.
+ * Persistence boundary. The UI only talks to this interface: the local
+ * IndexedDB implementation (no account) and the synced one (signed in) are
+ * interchangeable.
  */
 export interface Repository {
   load(): Promise<{ data: DataState; settings: Settings | null }>
@@ -11,21 +21,27 @@ export interface Repository {
   saveSettings(settings: Settings): Promise<void>
   /** Writes every item in one transaction. With `replace`, existing records are cleared first. */
   bulkWrite(data: Partial<DataState>, settings: Settings | null, replace: boolean): Promise<void>
+  /** Remote changes and sync status (synced repository only). */
+  subscribe?(listener: (event: RepoEvent) => void): () => void
+  status?(): SyncStatus
+  syncNow?(): Promise<void>
+  dispose?(): void
 }
 
-const DB_NAME = 'nucleo'
-const DB_VERSION = 1
-const META = 'meta'
+export const LOCAL_DB = 'nucleo'
+const DB_VERSION = 2
+export const META = 'meta'
+export const OUTBOX = 'outbox'
 const SETTINGS_KEY = 'settings'
 
-function request<T>(req: IDBRequest<T>): Promise<T> {
+export function request<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
   })
 }
 
-function done(tx: IDBTransaction): Promise<void> {
+export function done(tx: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -33,31 +49,47 @@ function done(tx: IDBTransaction): Promise<void> {
   })
 }
 
-function openDatabase(): Promise<IDBDatabase> {
-  const req = indexedDB.open(DB_NAME, DB_VERSION)
+/** Opens (and upgrades) a database with one store per collection plus meta and outbox. */
+export function openDatabase(name: string = LOCAL_DB): Promise<IDBDatabase> {
+  const req = indexedDB.open(name, DB_VERSION)
   req.onupgradeneeded = () => {
     const db = req.result
-    for (const name of COLLECTION_NAMES) {
-      if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' })
+    for (const store of COLLECTION_NAMES) {
+      if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' })
     }
     if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
+    if (!db.objectStoreNames.contains(OUTBOX)) db.createObjectStore(OUTBOX, { keyPath: 'key' })
   }
   return request(req)
 }
 
-export function createIndexedDbRepository(): Repository {
-  const dbPromise = openDatabase()
+export async function readAll(db: IDBDatabase): Promise<{ data: DataState; settings: Settings | null }> {
+  const tx = db.transaction([...COLLECTION_NAMES, META], 'readonly')
+  // All requests must be issued before the first await, or the transaction closes.
+  const lists = COLLECTION_NAMES.map((name) => request(tx.objectStore(name).getAll()))
+  const settingsReq = request(tx.objectStore(META).get(SETTINGS_KEY))
+  const [values, settings] = await Promise.all([Promise.all(lists), settingsReq])
+  const data = Object.fromEntries(COLLECTION_NAMES.map((name, i) => [name, values[i]])) as unknown as DataState
+  return { data, settings: (settings as Settings | undefined) ?? null }
+}
+
+export async function readMeta<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
+  const tx = db.transaction(META, 'readonly')
+  return (await request(tx.objectStore(META).get(key))) as T | undefined
+}
+
+export async function writeMeta(db: IDBDatabase, key: string, value: unknown): Promise<void> {
+  const tx = db.transaction(META, 'readwrite')
+  tx.objectStore(META).put(value, key)
+  await done(tx)
+}
+
+export function createIndexedDbRepository(name: string = LOCAL_DB): Repository {
+  const dbPromise = openDatabase(name)
 
   return {
     async load() {
-      const db = await dbPromise
-      const tx = db.transaction([...COLLECTION_NAMES, META], 'readonly')
-      // All requests must be issued before the first await, or the transaction closes.
-      const lists = COLLECTION_NAMES.map((name) => request(tx.objectStore(name).getAll()))
-      const settingsReq = request(tx.objectStore(META).get(SETTINGS_KEY))
-      const [values, settings] = await Promise.all([Promise.all(lists), settingsReq])
-      const data = Object.fromEntries(COLLECTION_NAMES.map((name, i) => [name, values[i]])) as unknown as DataState
-      return { data, settings: (settings as Settings | undefined) ?? null }
+      return readAll(await dbPromise)
     },
 
     async put(collection, item) {
@@ -94,3 +126,5 @@ export function createIndexedDbRepository(): Repository {
     },
   }
 }
+
+export { SETTINGS_KEY }

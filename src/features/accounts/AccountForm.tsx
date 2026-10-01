@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../../data/store'
 import type { Account } from '../../data/types'
 import { useFeedback } from '../../ui/Feedback'
@@ -7,9 +7,11 @@ import { Field, FormGrid, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
 import { ClientSelect, ProjectSelect } from '../shared/RelationSelect'
+import { useVault } from './vault'
 
-export function AccountForm({ open, onClose, account }: { open: boolean; onClose(): void; account: Account | null }) {
+export function AccountForm({ open, onClose, account, onVault }: { open: boolean; onClose(): void; account: Account | null; onVault(sheet: 'create' | 'unlock'): void }) {
   const { save } = useStore()
+  const vault = useVault()
   const { toast } = useFeedback()
   const del = useDelete()
   const [reveal, setReveal] = useState(false)
@@ -23,10 +25,33 @@ export function AccountForm({ open, onClose, account }: { open: boolean; onClose
     password: account?.password ?? '',
     notes: account?.notes ?? '',
   }))
+  // Sealed password, decrypted only while the form is open and the vault is unlocked.
+  const [loaded, setLoaded] = useState<string | null>(null)
+  const legacy = Boolean(account?.password)
+  const canEditPassword = legacy || vault.unlocked
+  useEffect(() => {
+    setReveal(false)
+    setLoaded(null)
+    if (!open || !account?.secret || !vault.unlocked) return
+    vault.reveal(account.secret).then((plain) => {
+      setLoaded(plain)
+      set('password', plain)
+    }, () => {})
+  }, [open, account, vault.unlocked])
 
   const submit = async () => {
     if (!d.name.trim()) return 'Informe o nome ou serviço'
-    await save('accounts', { ...account, ...d, name: d.name.trim(), link: d.link.trim(), email: d.email.trim(), username: d.username.trim() })
+    const base = { ...account, ...d, name: d.name.trim(), link: d.link.trim(), email: d.email.trim(), username: d.username.trim() }
+    let secret = account?.secret ?? null
+    if (vault.unlocked) {
+      // New or changed password goes into the vault; the plain field is cleared.
+      if (d.password !== (loaded ?? account?.password ?? '')) secret = d.password ? await vault.sealText(d.password) : null
+      else if (account?.password) secret = await vault.sealText(account.password)
+      base.password = ''
+    } else if (!legacy) {
+      base.password = ''
+    }
+    await save('accounts', { ...base, secret })
     toast(account ? 'Conta atualizada' : 'Conta adicionada')
     onClose()
   }
@@ -64,7 +89,16 @@ export function AccountForm({ open, onClose, account }: { open: boolean; onClose
             <TextInput autoComplete="off" value={d.username} onChange={(e) => set('username', e.target.value)} {...noAuto} />
           </Field>
         </div>
-        <Field label="Senha">
+        <Field label="Senha" hint={!vault.exists ? 'requer o cofre' : !vault.unlocked && !legacy ? 'cofre fechado' : undefined}>
+          {!canEditPassword ? (
+            <button
+              type="button"
+              onClick={() => onVault(vault.exists ? 'unlock' : 'create')}
+              className="flex h-12 w-full items-center rounded-[var(--radius-field)] border border-dashed border-line-strong px-4 text-left text-[15px] text-soft hover:text-ink"
+            >
+              {vault.exists ? (account?.secret ? 'Abrir o cofre para ver ou alterar' : 'Abrir o cofre para guardar a senha') : 'Criar o cofre para guardar senhas'}
+            </button>
+          ) : (
           <div className="relative">
             {/* Plain text field masked with CSS so browsers don't offer to save it as a login. */}
             <TextInput
@@ -78,6 +112,7 @@ export function AccountForm({ open, onClose, account }: { open: boolean; onClose
               {reveal ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          )}
         </Field>
         <div className="half">
           <Field label="Cliente" hint="opcional">

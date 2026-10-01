@@ -1,7 +1,9 @@
-import { ChevronDown } from 'lucide-react'
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
-import { CURRENCIES, type Currency } from '../data/types'
-import { CURRENCY_INFO } from '../lib/money'
+import { ChevronDown, Ellipsis } from 'lucide-react'
+import { useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { useStore } from '../data/store'
+import type { Currency } from '../data/types'
+import { currencyInfo } from '../lib/money'
+import { CurrencySheet, quickCurrencies } from './CurrencySheet'
 import { Segmented } from './Segmented'
 
 const CONTROL =
@@ -58,9 +60,10 @@ export function MoneyInput({
   return (
     <div className="flex gap-2">
       <div className="relative flex-1">
-        <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-soft">{CURRENCY_INFO[currency].symbol}</span>
+        <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-soft">{currencyInfo(currency).symbol}</span>
         <input
-          className={`${CONTROL} num h-12 ${currency === 'AED' ? 'pl-12' : currency === 'BRL' ? 'pl-11' : 'pl-9'}`}
+          className={`${CONTROL} num h-12`}
+          style={{ paddingLeft: currency === 'AED' ? 48 : currency === 'BRL' ? 44 : currency === 'EUR' ? 36 : 22 + currencyInfo(currency).symbol.length * 9 }}
           inputMode="decimal"
           value={value}
           placeholder={placeholder}
@@ -73,8 +76,57 @@ export function MoneyInput({
   )
 }
 
-export function CurrencyPicker({ value, onChange, size = 'md' }: { value: Currency; onChange(c: Currency): void; size?: 'sm' | 'md' }) {
-  return <Segmented size={size} value={value} onChange={onChange} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
+/**
+ * The person's quick currencies as a segmented control, plus "…" to search any other.
+ * `isDisabled` lets a form block currencies it cannot convert.
+ */
+export function CurrencyPicker({
+  value,
+  onChange,
+  size = 'md',
+  block,
+  label,
+  isDisabled,
+  format = (c) => c,
+}: {
+  value: Currency
+  onChange(c: Currency): void
+  size?: 'sm' | 'md'
+  block?: boolean
+  label?: string
+  isDisabled?(c: Currency): boolean
+  format?(c: Currency): string
+}) {
+  const { settings } = useStore()
+  const [searching, setSearching] = useState(false)
+  const quick = quickCurrencies(settings).slice(0, 3)
+  const shown = quick.includes(value) ? quick : [...quick, value]
+  const options = shown.map((c) => ({ value: c, label: format(c), disabled: isDisabled?.(c) }))
+  return (
+    <div className={`flex items-center gap-1.5 ${block ? 'w-full' : ''}`}>
+      <div className={block ? 'min-w-0 flex-1' : ''}>
+        <Segmented size={size} block={block} label={label} value={value} onChange={onChange} options={options} />
+      </div>
+      <button
+        type="button"
+        aria-label="Outras moedas"
+        title="Outras moedas"
+        onClick={() => setSearching(true)}
+        className={`press grid shrink-0 place-items-center rounded-[0.9rem] border border-line bg-raised text-soft hover:text-ink ${size === 'sm' ? 'size-10' : 'size-12'}`}
+      >
+        <Ellipsis size={18} />
+      </button>
+      <CurrencySheet
+        open={searching}
+        onClose={() => setSearching(false)}
+        value={value}
+        onPick={(c) => {
+          if (isDisabled?.(c)) return
+          onChange(c)
+        }}
+      />
+    </div>
+  )
 }
 
 export function FormGrid({ children }: { children: ReactNode }) {

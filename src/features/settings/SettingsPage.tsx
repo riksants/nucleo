@@ -1,11 +1,14 @@
-import { ChevronRight, Download, RefreshCw, Scale, Upload } from 'lucide-react'
+import { Bell, ChevronRight, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
+import { isEnabled } from '../../app/modules'
+import { navigate } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
-import type { Currency } from '../../data/types'
+import { COLLECTION_NAMES, type Account, type Currency, type DataState, type ModuleId } from '../../data/types'
 import { backupFileName, buildBackup, parseBackup, saveFile, type ParsedBackup } from '../../lib/backup'
 import { formatDateTime } from '../../lib/dates'
-import { amountToInput, CURRENCY_INFO, formatMoney, formatNumber, parseAmount } from '../../lib/money'
+import { amountToInput, currencyInfo, formatMoney, formatNumber, parseAmount } from '../../lib/money'
+import { vaultPasswordProblem } from '../../lib/vault'
 import { effectiveRates } from '../../lib/rates'
 import { Button } from '../../ui/Button'
 import { Badge, SectionTitle } from '../../ui/Display'
@@ -13,19 +16,14 @@ import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft } from '../../ui/formHooks'
+import { CurrencySheet, quickCurrencies } from '../../ui/CurrencySheet'
+import { Segmented } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
+import { COLLECTION_LABELS } from '../account/MigrationOffer'
+import { useSession } from '../account/session'
+import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
+import { ModulePicker } from './ModulePicker'
 
-const COLLECTION_LABELS: Record<string, string> = {
-  transactions: 'Movimentações',
-  goals: 'Metas',
-  clients: 'Clientes',
-  projects: 'Projetos',
-  tasks: 'Tarefas',
-  tools: 'Ferramentas',
-  accounts: 'Contas',
-  notes: 'Anotações',
-  portfolio: 'Portfólio',
-}
 
 function Group({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
   return (
@@ -83,22 +81,20 @@ function AdjustSheet({ open, onClose }: { open: boolean; onClose(): void }) {
 function RatesSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   const { settings, updateSettings } = useStore()
   const { toast } = useFeedback()
-  const [d, set] = useDraft(open, () => ({
-    BRL: settings.manualRates.BRL ? String(settings.manualRates.BRL).replace('.', ',') : '',
-    AED: settings.manualRates.AED ? String(settings.manualRates.AED).replace('.', ',') : '',
-  }))
+  const codes = quickCurrencies(settings, [settings.baseCurrency, settings.displayCurrency ?? settings.baseCurrency]).filter((c) => c !== 'EUR')
+  const [d, , setAll] = useDraft(open, () => Object.fromEntries(codes.map((c) => [c, settings.manualRates[c] ? String(settings.manualRates[c]).replace('.', ',') : ''])) as Record<string, string>)
   const parseRate = (s: string) => {
     if (!s.trim()) return undefined
     const n = Number(s.replace(',', '.'))
     return Number.isFinite(n) && n > 0 ? n : null
   }
   const submit = async () => {
-    const BRL = parseRate(d.BRL)
-    const AED = parseRate(d.AED)
-    if (BRL === null || AED === null) return 'Confira as taxas'
     const manualRates: Partial<Record<Currency, number>> = {}
-    if (BRL) manualRates.BRL = BRL
-    if (AED) manualRates.AED = AED
+    for (const c of codes) {
+      const v = parseRate(d[c] ?? '')
+      if (v === null) return `Confira a taxa de ${c}`
+      if (v) manualRates[c] = v
+    }
     await updateSettings({ manualRates })
     toast('Taxas salvas')
     onClose()
@@ -108,10 +104,10 @@ function RatesSheet({ open, onClose }: { open: boolean; onClose(): void }) {
     <FormSheet open={open} onClose={onClose} title="Taxa manual" onSubmit={submit}>
       <p className="pb-2 text-[15px] leading-relaxed text-soft">Deixe em branco para usar a cotação automática.</p>
       <FormGrid>
-        {(['BRL', 'AED'] as const).map((c) => (
+        {codes.map((c) => (
           <div key={c} className="half">
-            <Field label={`1 EUR em ${c}`} hint={auto ? `auto: ${formatNumber(Math.round(auto[c] * 100))}` : undefined}>
-              <TextInput className="num" inputMode="decimal" placeholder={auto ? String(auto[c].toFixed(4)).replace('.', ',') : '0,00'} value={d[c]} onChange={(e) => set(c, e.target.value)} />
+            <Field label={`1 EUR em ${c}`} hint={auto?.[c] ? `auto: ${formatNumber(Math.round(auto[c] * 100))}` : 'sem cotação'}>
+              <TextInput className="num" inputMode="decimal" placeholder={auto?.[c] ? String(auto[c].toFixed(4)).replace('.', ',') : '0,00'} value={d[c] ?? ''} onChange={(e) => setAll((x) => ({ ...x, [c]: e.target.value }))} />
             </Field>
           </div>
         ))}
@@ -123,6 +119,8 @@ function RatesSheet({ open, onClose }: { open: boolean; onClose(): void }) {
 function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose(): void }) {
   const { importData } = useStore()
   const { toast, confirm } = useFeedback()
+  const vault = useVault()
+  const { userId } = useSession()
   const run = async (mode: 'merge' | 'replace') => {
     if (!backup) return
     if (mode === 'replace') {
@@ -134,7 +132,18 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
       })
       if (!ok) return
     }
-    await importData(backup.data, backup.settings, mode)
+    let data: Partial<DataState> = backup.data
+    const plain = (backup.data.accounts ?? []).filter((a) => a.password)
+    if (plain.length) {
+      // Old backups may carry plain-text passwords: they are sealed before being stored.
+      if (vault.unlocked) data = { ...data, accounts: await Promise.all((backup.data.accounts ?? []).map((a: Account) => vault.sealAccount(a))) }
+      else if (userId) {
+        toast('Este backup tem senhas sem criptografia. Abra o cofre (em Contas) antes de importar.', 'error')
+        return
+      }
+    }
+    data = Object.fromEntries(Object.entries(data).filter(([k]) => (COLLECTION_NAMES as string[]).includes(k)))
+    await importData(data, backup.settings, mode)
     toast('Dados importados')
     onClose()
   }
@@ -161,7 +170,7 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
           </p>
           <div className="card divide-y divide-line">
             {Object.entries(backup.counts).map(([k, n]) => (
-              <Row key={k} label={COLLECTION_LABELS[k] ?? k} value={n} />
+              <Row key={k} label={COLLECTION_LABELS[k as keyof typeof COLLECTION_LABELS] ?? k} value={n} />
             ))}
           </div>
         </>
@@ -171,19 +180,29 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
 }
 
 export function SettingsPage() {
-  const { settings, data, balance, refreshRates, ratesLoading, updateSettings } = useStore()
+  const { settings, data, balance, refreshRates, ratesLoading, updateSettings, setDisplayCurrency } = useStore()
   const { toast } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [sheet, setSheet] = useState<'adjust' | 'rates' | null>(null)
+  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | null>(null)
+  const { configured, email } = useSession()
+  const vault = useVault()
+  const display = settings.displayCurrency ?? settings.baseCurrency
+  const rateCodes = quickCurrencies(settings, [settings.baseCurrency, display]).filter((c) => c !== 'EUR')
+  const pickMain = async (c: Currency) => {
+    setDisplayCurrency(c)
+    await updateSettings({ displayCurrency: c, currencies: [c, ...quickCurrencies(settings).filter((x) => x !== c)].slice(0, 6) })
+    toast(`Moeda principal: ${c}`)
+  }
   const [backup, setBackup] = useState<ParsedBackup | null>(null)
 
   const rates = effectiveRates(settings)
 
   const exportData = async () => {
-    const ok = await saveFile(buildBackup(data, settings), backupFileName())
+    const { blob, omittedPasswords } = buildBackup(data, settings)
+    const ok = await saveFile(blob, backupFileName())
     if (!ok) return
     await updateSettings({ lastBackupAt: new Date().toISOString() })
-    toast('Dados exportados')
+    toast(omittedPasswords ? `Exportado sem ${omittedPasswords} senha(s) fora do cofre` : 'Dados exportados')
   }
 
   const pickFile = async (file: File | undefined) => {
@@ -205,8 +224,15 @@ export function SettingsPage() {
     <>
       <PageHeader title="Configurações" />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
-        <Group title="Saldo">
-          <Row label="Moeda principal" value={`${settings.baseCurrency} ${CURRENCY_INFO[settings.baseCurrency].symbol}`} />
+        <Group title="Conta e seções">
+          {configured && <Row label="Conta" icon={<UserRound size={18} />} value={email ?? 'Só neste aparelho'} onClick={() => navigate('/account')} />}
+          <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
+          <Row label="Lembretes e notificações" icon={<Bell size={18} />} onClick={() => navigate('/reminders')} />
+        </Group>
+
+        <Group title="Saldo" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
+          <Row label="Moeda principal" icon={<Coins size={18} />} value={`${display} ${currencyInfo(display).symbol}`} onClick={() => setSheet('currency')} />
+          {display !== settings.baseCurrency && <Row label="Moeda de registro do saldo" value={settings.baseCurrency} />}
           <Row label="Saldo inicial" value={formatMoney(settings.initialBalance, settings.baseCurrency)} />
           <Row label="Saldo atual" value={formatMoney(balance, settings.baseCurrency)} />
           <Row label="Corrigir saldo" icon={<Scale size={18} />} onClick={() => setSheet('adjust')} />
@@ -220,14 +246,14 @@ export function SettingsPage() {
               : 'Ainda sem cotação. Conecte-se à internet ou defina uma taxa manual.'
           }
         >
-          {(['BRL', 'AED'] as const).map((c) => (
+          {rateCodes.map((c) => (
             <Row
               key={c}
               label={`1 EUR em ${c}`}
               value={
                 <span className="inline-flex items-center gap-2">
                   {settings.manualRates[c] && <Badge tone="warn">manual</Badge>}
-                  {rates ? formatNumber(Math.round(rates[c] * 100)) : '—'}
+                  {rates?.[c] ? formatNumber(Math.round(rates[c] * 100)) : 'sem cotação'}
                 </span>
               }
             />
@@ -236,9 +262,22 @@ export function SettingsPage() {
           <Row label="Definir taxa manual" icon={<span className="text-[15px] font-semibold">≈</span>} onClick={() => setSheet('rates')} />
         </Group>
 
+        {isEnabled(settings, 'accounts') && vault.exists && (
+          <Group title="Cofre de senhas" note="A senha do cofre é diferente da senha de login. Sem ela (ou sem o código de recuperação) as senhas guardadas não podem ser recuperadas.">
+            <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+                <KeyRound size={18} />
+              </span>
+              <span className="min-w-0 flex-1 text-[15px]">Fechar após</span>
+              <Segmented size="sm" value={String(vault.meta?.autoLockMin ?? 5)} onChange={(v) => vault.setAutoLock(Number(v))} options={AUTO_LOCK_OPTIONS.map((m) => ({ value: String(m), label: `${m} min` }))} />
+            </div>
+            <Row label="Trocar senha do cofre" onClick={() => setSheet('vaultPassword')} />
+          </Group>
+        )}
+
         <Group
           title="Backup"
-          note={`Seus dados ficam salvos neste aparelho. Exporte um backup de vez em quando. Último: ${settings.lastBackupAt ? formatDateTime(settings.lastBackupAt).toLowerCase() : 'nunca'}.`}
+          note={`${email ? 'Seus dados estão na sua conta e neste aparelho.' : 'Seus dados ficam salvos neste aparelho.'} Senhas só saem criptografadas pelo cofre. Último backup: ${settings.lastBackupAt ? formatDateTime(settings.lastBackupAt).toLowerCase() : 'nunca'}.`}
         >
           <Row label="Exportar dados" icon={<Download size={18} />} onClick={exportData} />
           <Row label="Importar dados" icon={<Upload size={18} />} onClick={() => fileRef.current?.click()} />
@@ -249,6 +288,53 @@ export function SettingsPage() {
       <AdjustSheet open={sheet === 'adjust'} onClose={() => setSheet(null)} />
       <RatesSheet open={sheet === 'rates'} onClose={() => setSheet(null)} />
       <ImportSheet backup={backup} onClose={() => setBackup(null)} />
+      <CurrencySheet open={sheet === 'currency'} onClose={() => setSheet(null)} value={display} onPick={pickMain} title="Moeda principal" />
+      <ModulesSheet open={sheet === 'modules'} onClose={() => setSheet(null)} />
+      <VaultPasswordSheet open={sheet === 'vaultPassword'} onClose={() => setSheet(null)} />
     </>
+  )
+}
+
+function ModulesSheet({ open, onClose }: { open: boolean; onClose(): void }) {
+  const { settings, updateSettings } = useStore()
+  const set = (next: Partial<Record<ModuleId, boolean>>) => updateSettings({ modules: next, modulesReviewed: true })
+  return (
+    <Sheet open={open} onClose={onClose} title="Seções visíveis">
+      <p className="pb-4 text-[15px] leading-relaxed text-soft">Esconder uma seção não apaga nada: os dados voltam quando você liga de novo.</p>
+      <ModulePicker value={settings.modules ?? {}} onChange={set} isOn={(id) => isEnabled(settings, id)} />
+    </Sheet>
+  )
+}
+
+function VaultPasswordSheet({ open, onClose }: { open: boolean; onClose(): void }) {
+  const vault = useVault()
+  const { toast } = useFeedback()
+  const [d, set] = useDraft(open, () => ({ current: '', next: '', confirm: '' }))
+  const submit = async () => {
+    const problem = vaultPasswordProblem(d.next)
+    if (problem) return problem
+    if (d.next !== d.confirm) return 'As senhas não são iguais'
+    try {
+      await vault.changePassword(d.current, d.next)
+    } catch {
+      return 'Senha atual do cofre incorreta'
+    }
+    toast('Senha do cofre trocada')
+    onClose()
+  }
+  return (
+    <FormSheet open={open} onClose={onClose} title="Trocar senha do cofre" onSubmit={submit}>
+      <FormGrid>
+        <Field label="Senha atual do cofre">
+          <TextInput type="password" autoComplete="current-password" value={d.current} onChange={(e) => set('current', e.target.value)} />
+        </Field>
+        <Field label="Nova senha do cofre" hint="mín. 10 caracteres">
+          <TextInput type="password" autoComplete="new-password" value={d.next} onChange={(e) => set('next', e.target.value)} />
+        </Field>
+        <Field label="Repita a nova senha">
+          <TextInput type="password" autoComplete="new-password" value={d.confirm} onChange={(e) => set('confirm', e.target.value)} />
+        </Field>
+      </FormGrid>
+    </FormSheet>
   )
 }
