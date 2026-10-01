@@ -6,7 +6,7 @@ import { MODULE_BY_PATH } from '../../app/modules'
 import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Entity } from '../../data/types'
-import { formatDateTime } from '../../lib/dates'
+import { formatDateTime, formatDateValue } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { EmptyState, SearchField } from '../../ui/Display'
 
@@ -54,6 +54,10 @@ export function SearchPage() {
         group('/accounts', 'Contas', data.accounts, (a) => [a.name, a.link, a.email, a.username, a.notes], (a) => ({ title: a.name, subtitle: a.email || a.username })),
         group('/goals', 'Metas', data.goals, (g) => [g.name, g.note], (g) => ({ title: g.name, subtitle: formatMoney(g.price, g.currency) })),
         group('/portfolio', 'Portfólio', data.portfolio, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
+        group('/agenda', 'Compromissos', data.events, (ev) => [ev.title, ev.notes], (ev) => ({ title: ev.title, subtitle: `${formatDateValue(ev.date)} · ${ev.start}` })),
+        group('/habits', 'Hábitos', data.habits, (h) => [h.name, h.goal], (h) => ({ title: h.name, subtitle: h.goal || undefined })),
+        group('/recurring', 'Recorrentes', data.recurring, (x) => [x.title, x.notes], (x) => ({ title: x.title })),
+        group('/inbox', 'Caixa de entrada', data.inbox, (i) => [i.text], (i) => ({ title: i.text.slice(0, 80), subtitle: i.status === 'done' ? 'Organizado' : 'Para organizar' })),
       ].filter((g) => g.hits.length > 0)
     : []
 

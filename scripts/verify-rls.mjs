@@ -60,6 +60,16 @@ check('usuário não aciona o envio de notificações', Boolean(claim.error))
 const anonRead = await anon.from('records').select('*').limit(1)
 check('sem login nada é lido', Boolean(anonRead.error) || anonRead.data.length === 0)
 
+// Etapa 1: coleções novas (exige a migração 20261002000000_etapa1_uso_diario.sql)
+const cid = `habit:${id}:2026-10-01`
+const newIns = await a.from('records').insert({ user_id: aId, collection: 'completions', id: cid, data: { status: 'done' }, client_updated_at: now })
+check('servidor aceita as coleções da Etapa 1 (migração executada)', !newIns.error, newIns.error?.message)
+const newRead = await b.from('records').select('*').eq('id', cid)
+check('B não lê conclusões de A', !newRead.error && newRead.data.length === 0)
+const newDel = await b.from('records').delete().eq('id', cid).select()
+check('B não apaga conclusões de A', (newDel.data ?? []).length === 0)
+await a.from('records').delete().eq('id', cid)
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

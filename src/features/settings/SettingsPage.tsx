@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
@@ -22,7 +22,7 @@ import { Sheet } from '../../ui/Sheet'
 import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useSession } from '../account/session'
 import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
-import { ModulePicker } from './ModulePicker'
+import { ModulePicker, Switch } from './ModulePicker'
 
 
 function Group({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
@@ -228,6 +228,24 @@ export function SettingsPage() {
           {configured && <Row label="Conta" icon={<UserRound size={18} />} value={email ?? 'Só neste aparelho'} onClick={() => navigate('/account')} />}
           <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
           <Row label="Lembretes e notificações" icon={<Bell size={18} />} onClick={() => navigate('/reminders')} />
+          {isEnabled(settings, 'today') && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(settings.morningAutoOpen)}
+              onClick={() => updateSettings({ morningAutoOpen: !settings.morningAutoOpen })}
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+                <Sunrise size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px]">Abrir o Modo Manhã sozinho</span>
+                <span className="block text-[13px] text-faint">Uma vez por dia, antes do meio-dia</span>
+              </span>
+              <Switch checked={Boolean(settings.morningAutoOpen)} />
+            </button>
+          )}
         </Group>
 
         <Group title="Saldo" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>

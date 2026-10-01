@@ -28,3 +28,5 @@ dist-cloud
 .env
 .env.local
 supabase/.temp
+dist-e2e
+dist-e2e-cloud

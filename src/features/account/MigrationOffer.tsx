@@ -30,6 +30,12 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   plannerProfiles: 'Questionários',
   routinePlans: 'Rotinas',
   mealPlans: 'Planos alimentares',
+  inbox: 'Caixa de entrada',
+  habits: 'Hábitos',
+  recurring: 'Recorrentes',
+  completions: 'Marcações do dia',
+  events: 'Compromissos',
+  focusSessions: 'Sessões de foco',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

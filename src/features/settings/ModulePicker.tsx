@@ -4,7 +4,7 @@ import type { ModuleId } from '../../data/types'
 
 /** Suggested starting set for someone new. Everything else is one tap away. */
 export const starterModules: Partial<Record<ModuleId, boolean>> = Object.fromEntries(
-  MODULES.map((m) => [m.id, ['today', 'finance', 'tasks', 'projects', 'notes'].includes(m.id)]),
+  MODULES.map((m) => [m.id, ['today', 'finance', 'tasks', 'projects', 'notes', 'inbox', 'habits', 'agenda'].includes(m.id)]),
 )
 
 export function Switch({ checked, label }: { checked: boolean; label?: string }) {
@@ -21,10 +21,21 @@ export function Switch({ checked, label }: { checked: boolean; label?: string })
 }
 
 /** Toggle list of sections. Hiding a section never deletes its data. */
-export function ModulePicker({ value, onChange, isOn }: { value: Partial<Record<ModuleId, boolean>>; onChange(next: Partial<Record<ModuleId, boolean>>): void; isOn?(id: ModuleId): boolean }) {
+export function ModulePicker({
+  value,
+  onChange,
+  isOn,
+  only,
+}: {
+  value: Partial<Record<ModuleId, boolean>>
+  onChange(next: Partial<Record<ModuleId, boolean>>): void
+  isOn?(id: ModuleId): boolean
+  /** Show just these sections (e.g. the ones that are new). */
+  only?: ModuleId[]
+}) {
   return (
     <div className="card divide-y divide-line overflow-hidden">
-      {MODULES.map((m) => {
+      {MODULES.filter((m) => !only || only.includes(m.id)).map((m) => {
         const on = isOn ? isOn(m.id) : Boolean(value[m.id])
         const Icon = m.icon
         return (

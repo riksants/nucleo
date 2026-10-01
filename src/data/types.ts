@@ -78,6 +78,83 @@ export interface Task extends Entity {
   completedAt: string | null
   /** Optional "HH:MM". A dated task with a time is shown as an appointment. */
   dueTime?: string
+  /** Optional free text. Older tasks simply don't have it. */
+  notes?: string
+}
+
+/* ----------------------------- Uso diário (Etapa 1) ----------------------------- */
+
+/**
+ * Repetition rule shared by habits and recurring checklist items. Occurrences
+ * are computed when needed (core/recurrence.ts); nothing is stored ahead of time.
+ */
+export type RecurrenceRule =
+  | { type: 'daily' }
+  /** Specific weekdays (also used for "every week on Tuesday"). */
+  | { type: 'weekdays'; days: Weekday[] }
+  /** Day of the month; 29–31 fall on the last day in shorter months. */
+  | { type: 'monthly'; dayOfMonth: number }
+
+/** Quick capture. Stays until organized; never deleted by converting it. */
+export interface InboxItem extends Entity {
+  text: string
+  status: 'open' | 'done'
+  /** What it became, when converted (task, note, event, project…). */
+  convertedTo: { collection: CollectionName; id: string } | null
+  processedAt: string | null
+}
+
+export interface Habit extends Entity {
+  name: string
+  rule: RecurrenceRule
+  /** "HH:MM" or "" (any time of the day). */
+  time: string
+  /** Optional free-text goal, e.g. "2 litros". */
+  goal: string
+  active: boolean
+  /** First day it counts ("YYYY-MM-DD"). */
+  startDate: string
+}
+
+export interface RecurringItem extends Entity {
+  title: string
+  rule: RecurrenceRule
+  time: string
+  notes: string
+  active: boolean
+  startDate: string
+}
+
+export type CompletionSource = 'habit' | 'recurring' | 'routine'
+
+/**
+ * One record per item per day: `${source}:${sourceId}:${date}`. Marking twice,
+ * or on two devices, lands on the same record. Undoing deletes it.
+ */
+export interface Completion extends Entity {
+  source: CompletionSource
+  sourceId: string
+  /** Day of the occurrence, in the person's time zone. */
+  date: string
+  /** "skipped" is never counted as done. */
+  status: 'done' | 'skipped'
+}
+
+/** Appointment with a duration. A past time does NOT mean it happened. */
+export interface CalendarEvent extends Entity {
+  title: string
+  date: string
+  start: string
+  end: string
+  notes: string
+}
+
+/** A finished focus session (the running timer lives on the device until then). */
+export interface FocusSession extends Entity {
+  taskId: string | null
+  startedAt: string
+  endedAt: string
+  minutes: number
 }
 
 export type ToolBilling = 'monthly' | 'yearly' | 'once' | 'free'
@@ -179,7 +256,7 @@ export interface Subscriber extends Entity {
 
 /* ----------------------------- Rotina e alimentação ----------------------------- */
 
-import type { MealAnswers, PlannedMeal, PlannerMode, RoutineAnswers, RoutineBlock, ShoppingItem } from '../../supabase/functions/_shared/planner/types.ts'
+import type { MealAnswers, PlannedMeal, PlannerMode, RoutineAnswers, RoutineBlock, ShoppingItem, Weekday } from '../../supabase/functions/_shared/planner/types.ts'
 export type {
   BlockKind,
   Commitment,
@@ -267,6 +344,10 @@ export interface Settings {
   reminders?: ReminderPrefs
   /** IANA zone used for routine times and reminders. */
   timeZone?: string
+  /** Opens Morning mode once per day before noon (off by default). */
+  morningAutoOpen?: boolean
+  /** Sections already announced to this person, so new ones are announced once. */
+  modulesSeen?: ModuleId[]
   /** Last change, used to resolve edits made on two devices. */
   updatedAt?: string
 }
@@ -286,6 +367,10 @@ export type ModuleId =
   | 'meals'
   | 'sales'
   | 'subscribers'
+  | 'inbox'
+  | 'habits'
+  | 'recurring'
+  | 'agenda'
 
 export interface WrappedKey {
   salt: string
@@ -339,6 +424,12 @@ export interface Collections {
   plannerProfiles: PlannerProfile
   routinePlans: RoutinePlan
   mealPlans: MealPlan
+  inbox: InboxItem
+  habits: Habit
+  recurring: RecurringItem
+  completions: Completion
+  events: CalendarEvent
+  focusSessions: FocusSession
 }
 
 export type CollectionName = keyof Collections
@@ -360,6 +451,12 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'plannerProfiles',
   'routinePlans',
   'mealPlans',
+  'inbox',
+  'habits',
+  'recurring',
+  'completions',
+  'events',
+  'focusSessions',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }

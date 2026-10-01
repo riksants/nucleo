@@ -12,16 +12,17 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft, useSheet } from '../../ui/formHooks'
 import { useOpenParam } from '../useOpenParam'
 
-function NoteEditor({ open, onClose, note }: { open: boolean; onClose(): void; note: Note | null }) {
+export function NoteEditor({ open, onClose, note, initial, onSaved }: { open: boolean; onClose(): void; note: Note | null; initial?: { title?: string; body?: string }; onSaved?(note: Note): void }) {
   const { save } = useStore()
   const { toast } = useFeedback()
   const del = useDelete()
-  const [d, set] = useDraft(open, () => ({ title: note?.title ?? '', body: note?.body ?? '', pinned: note?.pinned ?? false }))
+  const [d, set] = useDraft(open, () => ({ title: note?.title ?? initial?.title ?? '', body: note?.body ?? initial?.body ?? '', pinned: note?.pinned ?? false }))
 
   const submit = async () => {
     if (!d.title.trim() && !d.body.trim()) return 'A nota está vazia'
-    await save('notes', { ...note, title: d.title.trim(), body: d.body, pinned: d.pinned })
+    const saved = await save('notes', { ...note, title: d.title.trim(), body: d.body, pinned: d.pinned })
     toast(note ? 'Nota atualizada' : 'Nota criada')
+    onSaved?.(saved)
     onClose()
   }
 

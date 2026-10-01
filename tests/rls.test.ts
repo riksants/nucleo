@@ -4,7 +4,7 @@
  * same way PostgREST does (role `authenticated` + JWT `sub` claim).
  */
 import { PGlite } from '@electric-sql/pglite'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 const A = '11111111-1111-4111-8111-111111111111'
@@ -40,7 +40,8 @@ const now = () => new Date().toISOString()
 beforeAll(async () => {
   db = new PGlite()
   await db.exec(SUPABASE_STUB)
-  await db.exec(readFileSync('supabase/migrations/20261001000000_nucleo_init.sql', 'utf8'))
+  // All migrations, in order, exactly as they run on Supabase.
+  for (const file of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'))
   await db.exec(`grant select, insert, update, delete on all tables in schema public to service_role;`)
   await db.query(`insert into auth.users (id) values ($1), ($2)`, [A, B])
   await as(A, `insert into records (collection, id, data, client_updated_at) values ('notes', 'n1', '{"title":"segredo de A"}', $1)`, [now()])
@@ -130,5 +131,30 @@ describe('regras de escrita', () => {
     await as(B, `select claim_push_endpoint($1, 'p', 'a')`, [ep])
     expect((await as(A, 'select * from push_subscriptions')).rows).toHaveLength(0)
     expect((await as(B, 'select * from push_subscriptions')).rows).toHaveLength(1)
+  })
+})
+
+describe('Etapa 1: coleções novas', () => {
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions']
+
+  it('a migração mantém registros antigos e aceita as coleções novas', async () => {
+    expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
+    for (const c of NEW) await as(A, `insert into records (collection, id, data, client_updated_at) values ($1, 'x1', '{}', $2)`, [c, now()])
+    await expect(as(A, `insert into records (collection, id, data, client_updated_at) values ('inventada', 'x', '{}', $1)`, [now()])).rejects.toThrow(/records_collection_check/)
+  })
+
+  it('B não lê, altera, apaga nem cria hábitos e conclusões de A', async () => {
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('completions', 'habit:h1:2026-10-01', '{"status":"done"}', $1)`, [now()])
+    for (const c of NEW) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = '{"status":"skipped"}' where id = 'habit:h1:2026-10-01'`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection = 'completions'`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'habits', 'hB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    expect((await as(A, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'done' })
+  })
+
+  it('mesma conclusão (mesmo id fixo) em contas diferentes não colide', async () => {
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('completions', 'habit:h1:2026-10-01', '{"status":"skipped"}', $1)`, [now()])
+    expect((await as(A, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'done' })
+    expect((await as(B, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'skipped' })
   })
 })

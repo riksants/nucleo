@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { CloudOff } from 'lucide-react'
-import { useEffect, useState, type ComponentType } from 'react'
-import { isRouteAllowed, MODULE_BY_PATH } from './app/modules'
+import { lazy, Suspense, useEffect, useState, type ComponentType, type LazyExoticComponent } from 'react'
+import { ALL_MODULE_IDS, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
 import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
 import { useStore } from './data/store'
@@ -32,10 +32,19 @@ import { TasksPage } from './features/tasks/TasksPage'
 import { TodayPage } from './features/today/TodayPage'
 import { ToolsPage } from './features/tools/ToolsPage'
 import { isEnabled } from './app/modules'
+import { nowIn, zoneOf } from './core/period'
+import { readPref, writePref } from './lib/prefs'
 import { Button } from './ui/Button'
 import { Sheet } from './ui/Sheet'
 
-const PAGES: Record<RoutePath, ComponentType> = {
+// Etapa 1 pages load on demand, outside the initial bundle.
+const InboxPage = lazy(() => import('./features/inbox/InboxPage').then((m) => ({ default: m.InboxPage })))
+const RecurringPage = lazy(() => import('./features/recurring/RecurringPage').then((m) => ({ default: m.RecurringPage })))
+const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))
+const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
+const HabitsPage = lazy(() => import('./features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+
+const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType>> = {
   '/': HomePage,
   '/finance': FinancePage,
   '/projects': ProjectsPage,
@@ -57,6 +66,11 @@ const PAGES: Record<RoutePath, ComponentType> = {
   '/planner': PlannerPage,
   '/account': AccountPage,
   '/reminders': RemindersPage,
+  '/inbox': InboxPage,
+  '/habits': HabitsPage,
+  '/recurring': RecurringPage,
+  '/agenda': AgendaPage,
+  '/focus': FocusPage,
 }
 
 function useSearchShortcut() {
@@ -72,13 +86,18 @@ function useSearchShortcut() {
   }, [])
 }
 
-/** One-time introduction of the new sections for people who used the app before. Nothing changes until they choose. */
+/**
+ * One-time introduction of new sections for people who used the app before.
+ * Shows only sections they haven't been told about; nothing is switched on unless they choose.
+ */
 function NewSectionsSheet() {
   const { settings, updateSettings } = useStore()
   const [open, setOpen] = useState(true)
+  const [shown] = useState(() => unseenModules(settings).map((m) => m.id))
+  const firstTime = !settings.modulesReviewed
   const close = () => {
     setOpen(false)
-    void updateSettings({ modulesReviewed: true })
+    void updateSettings({ modulesReviewed: true, modulesSeen: ALL_MODULE_IDS() })
   }
   return (
     <Sheet
@@ -91,10 +110,30 @@ function NewSectionsSheet() {
         </Button>
       }
     >
-      <p className="pb-4 text-[15px] leading-relaxed text-soft">Hoje, Vendas, Assinantes, Rotina e Alimentação chegaram desligadas. Ligue só o que quiser usar — dá para mudar depois em Configurações, e esconder nunca apaga dados.</p>
-      <ModulePicker value={settings.modules ?? {}} onChange={(modules) => updateSettings({ modules })} isOn={(id) => isEnabled(settings, id)} />
+      <p className="pb-4 text-[15px] leading-relaxed text-soft">
+        {firstTime ? 'Hoje, Vendas, Assinantes, Rotina e Alimentação chegaram desligadas.' : 'Chegaram seções novas, desligadas.'} Ligue só o que quiser usar — dá para mudar depois em Configurações, e esconder nunca apaga dados.
+      </p>
+      <ModulePicker value={settings.modules ?? {}} onChange={(modules) => updateSettings({ modules })} isOn={(id) => isEnabled(settings, id)} only={firstTime ? undefined : shown} />
     </Sheet>
   )
+}
+
+/**
+ * Optional (off by default): opens Morning mode when the app is opened before
+ * noon, at most once per day, in the person's time zone. Never from a deep link.
+ */
+function useMorningAutoOpen() {
+  const { ready, settings } = useStore()
+  const { path } = useRoute()
+  useEffect(() => {
+    if (!ready || !settings.onboarded || !settings.morningAutoOpen || !isEnabled(settings, 'today') || path !== '/') return
+    const now = nowIn(zoneOf(settings))
+    if (now.hour >= 12 || readPref<string>('morningAutoOpened', '') === now.date) return
+    writePref('morningAutoOpened', now.date)
+    navigate('/today', { mode: 'morning' })
+    // Only when the app opens, not on every navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 }
 
 export function App() {
@@ -103,6 +142,7 @@ export function App() {
   const { path } = useRoute()
   const migration = useMigrationCandidate(userId)
   useSearchShortcut()
+  useMorningAutoOpen()
 
   if (loadError) {
     return (
@@ -127,6 +167,15 @@ export function App() {
   if (migration.summary) return <MigrationOffer summary={migration.summary} onDone={migration.dismiss} />
   if (!settings.onboarded) return <Onboarding />
 
+  // Focus mode: one task on screen, without tab bar or menus.
+  if (path === '/focus') {
+    return (
+      <Suspense fallback={null}>
+        <FocusPage />
+      </Suspense>
+    )
+  }
+
   // A hidden section is not reachable by link either (its data stays intact).
   const allowed = isRouteAllowed(settings, path)
   const Page = allowed ? (PAGES[path] ?? HomePage) : HomePage
@@ -139,9 +188,11 @@ export function App() {
             A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
           </p>
         )}
-        <Page />
+        <Suspense fallback={null}>
+          <Page />
+        </Suspense>
       </motion.div>
-      {!settings.modulesReviewed && <NewSectionsSheet />}
+      {unseenModules(settings).length > 0 && <NewSectionsSheet />}
       <ReminderCenter />
     </Shell>
   )

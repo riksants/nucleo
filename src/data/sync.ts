@@ -42,6 +42,13 @@ interface OutboxEntry {
   updatedAt: string
 }
 
+/** The app is newer than the database: some sections stay queued on the device until the SQL migration runs. */
+export class ServerOutdatedError extends Error {
+  constructor() {
+    super('Algumas seções novas ainda não podem ser salvas na nuvem: o banco precisa da atualização (migração SQL). Elas ficam guardadas neste aparelho até lá.')
+  }
+}
+
 export class PlainPasswordError extends Error {
   constructor() {
     super('Senhas só são sincronizadas criptografadas. Desbloqueie ou crie o cofre.')
@@ -127,6 +134,8 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   let status: SyncStatus = { state: 'idle', pending: 0, lastSyncAt: null, error: null }
   let flushTimer: ReturnType<typeof setTimeout> | undefined
   let running: Promise<void> | null = null
+  /** Last flush hit collections the server doesn't accept yet (migration pending). */
+  let outdated = false
   let disposed = false
 
   const emit = (e: RepoEvent) => listeners.forEach((l) => l(e))
@@ -172,16 +181,29 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   async function flush() {
     const db = await dbPromise
     const entries = await outbox()
+    const rejected: string[] = []
     for (let i = 0; i < entries.length; i += BATCH) {
-      const batch = entries.slice(i, i + BATCH)
-      await remote.upsert(
-        batch.map((e) => ({ collection: e.collection, id: e.id, data: e.data, deleted: e.deleted, client_updated_at: e.updatedAt })),
-      )
+      const all = entries.slice(i, i + BATCH)
+      // Sent per collection: if the server doesn't accept one collection yet
+      // (database not migrated), the others still sync and nothing is lost.
+      const byCollection = new Map<CollectionName, OutboxEntry[]>()
+      for (const e of all) byCollection.set(e.collection, [...(byCollection.get(e.collection) ?? []), e])
+      const batch: OutboxEntry[] = []
+      for (const [collection, group] of byCollection) {
+        try {
+          await remote.upsert(group.map((e) => ({ collection: e.collection, id: e.id, data: e.data, deleted: e.deleted, client_updated_at: e.updatedAt })))
+          batch.push(...group)
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          if (!message.includes('records_collection_check')) throw err
+          rejected.push(collection)
+        }
+      }
       // Read back what the server kept: a newer edit from another device wins over a late one.
-      const byCollection = new Map<CollectionName, string[]>()
-      for (const e of batch) byCollection.set(e.collection, [...(byCollection.get(e.collection) ?? []), e.id])
       const serverRows: RemoteRow[] = []
-      for (const [collection, ids] of byCollection) serverRows.push(...(await remote.fetch(collection, ids)))
+      for (const [collection, group] of byCollection) {
+        if (!rejected.includes(collection)) serverRows.push(...(await remote.fetch(collection, group.map((e) => e.id))))
+      }
       const current = new Map((await outbox()).map((e) => [e.key, e]))
       const tx = db.transaction([...COLLECTION_NAMES, OUTBOX], 'readwrite')
       for (const e of batch) {
@@ -196,6 +218,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       }
       await done(tx)
     }
+    outdated = rejected.length > 0
 
     if (await readMeta<boolean>(db, 'settingsDirty')) {
       const { settings } = await readAll(db)
@@ -271,7 +294,9 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       try {
         await flush()
         const changed = await pull()
-        setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending: await pendingCount() })
+        const pending = await pendingCount()
+        if (outdated) setStatus({ state: 'error', error: new ServerOutdatedError().message, lastSyncAt: new Date().toISOString(), pending })
+        else setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending })
         if (changed && !disposed) emit({ type: 'data' })
       } catch (err) {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false

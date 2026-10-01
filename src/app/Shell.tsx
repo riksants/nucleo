@@ -2,7 +2,9 @@ import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
+import { isEnabled } from './modules'
 import { SyncBadge } from '../features/account/SyncBadge'
+import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
 import { MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
 
 function isActive(section: Section, path: RoutePath, primary: Section[]) {
@@ -87,6 +89,7 @@ function Sidebar({ path }: { path: RoutePath }) {
         Buscar em tudo
         <kbd className="ml-auto rounded-md border border-line px-1.5 text-[11px]">/</kbd>
       </button>
+      <SidebarCapture />
       <nav className="flex flex-col gap-0.5">
         {primarySections(settings).map((s) => (
           <SideLink key={s.path} section={s} path={path} />
@@ -112,14 +115,19 @@ function Sidebar({ path }: { path: RoutePath }) {
 
 export function Shell({ children }: { children: ReactNode }) {
   const { path } = useRoute()
+  const { settings } = useStore()
   return (
     <div className="min-h-dvh">
       <Sidebar path={path} />
       <main
-        className="px-5 pt-[calc(env(safe-area-inset-top)+14px)] pb-[calc(env(safe-area-inset-bottom)+104px)] lg:ml-64 lg:px-10 lg:pt-10 lg:pb-16"
+        className={`px-5 pt-[calc(env(safe-area-inset-top)+14px)] lg:ml-64 lg:px-10 lg:pt-10 lg:pb-16 ${
+          // Extra room so the quick-capture button never covers the end of a list.
+          isEnabled(settings, 'inbox') ? 'pb-[calc(env(safe-area-inset-bottom)+172px)]' : 'pb-[calc(env(safe-area-inset-bottom)+104px)]'
+        }`}
       >
         <div className="mx-auto w-full max-w-lg lg:max-w-5xl">{children}</div>
       </main>
+      <QuickCaptureButton />
       <BottomNav path={path} />
     </div>
   )

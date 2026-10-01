@@ -260,7 +260,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
         displayCurrency: baseCurrency,
         currencies: [baseCurrency, ...STARTER_CURRENCIES.filter((c) => c !== baseCurrency)],
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        ...(modules ? { modules, modulesReviewed: true } : {}),
+        ...(modules ? { modules, modulesReviewed: true, modulesSeen: Object.keys(modules) as ModuleId[] } : {}),
       })
     },
     [updateSettings],

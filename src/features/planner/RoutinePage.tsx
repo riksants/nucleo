@@ -1,5 +1,8 @@
 import { AlertTriangle, CalendarClock, Check, Plus, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useDailyActions } from '../../core/actions'
+import { indexCompletions, routineStatus } from '../../core/completions'
+import { todayIn, weekDates, zoneOf } from '../../core/period'
 import { DAY_LONG, DAY_SHORT, emptyRoutineAnswers, findConflicts, KIND_LABEL, sortBlocks, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { navigate } from '../../app/router'
@@ -110,28 +113,24 @@ function BlockSheet({ open, onClose, block, plan, answers }: { open: boolean; on
 }
 
 export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: RoutinePlan; day: Weekday; editable: boolean; onEdit(b: RoutineBlock): void; answers: RoutineAnswers }) {
-  const { save } = useStore()
-  const date = dateOfWeekday(day)
-  const today = toDateInput()
+  const { data, settings } = useStore()
+  const { setRoutine } = useDailyActions()
+  // "Today" and this week in the person's time zone.
+  const today = todayIn(zoneOf(settings))
+  const date = weekDates(today)[(day + 6) % 7]
   const blocks = plan.blocks.filter((b) => b.day === day)
-  const done = new Set(plan.done[date] ?? [])
+  const index = useMemo(() => indexCompletions(data.completions), [data.completions])
+  // One record per block per day; marks made before (inside the plan) are still read.
+  const isDoneId = (id: string) => routineStatus(index, plan, id, date) === 'done'
   const conflictIds = new Set(findConflicts(plan.blocks, answers).flatMap((c) => c.ids))
 
-  const toggle = async (b: RoutineBlock) => {
-    const list = new Set(done)
-    if (list.has(b.id)) list.delete(b.id)
-    else list.add(b.id)
-    // Keep only the last ~60 days of history.
-    const cutoff = toDateInput(new Date(Date.now() - 60 * 86_400_000))
-    const kept = Object.fromEntries(Object.entries(plan.done).filter(([k]) => k >= cutoff))
-    await save('routinePlans', { ...plan, done: { ...kept, [date]: [...list] } })
-  }
+  const toggle = (b: RoutineBlock) => setRoutine(plan, b.id, date, !isDoneId(b.id))
 
   if (!blocks.length) return <p className="card px-4 py-4 text-[15px] text-faint">Nada planejado.</p>
   return (
     <div className="card p-1.5">
       {blocks.map((b) => {
-        const isDone = done.has(b.id)
+        const isDone = isDoneId(b.id)
         return (
           <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
             {!editable && date <= today ? (

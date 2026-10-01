@@ -8,13 +8,14 @@ import { buildBackup } from '../src/lib/backup'
 import { changeVaultPassword, createVault, open, resetWithRecovery, seal, unlockWithPassword, WrongVaultSecretError } from '../src/lib/vault'
 
 /** In-memory server with the same rules as the SQL: per user, stale writes ignored. */
-function fakeServer() {
+function fakeServer(opts: { reject?: Set<string> } = {}) {
   const rows = new Map<string, RemoteRow & { server_updated_at: string }>()
   let settings: { data: Settings; updatedAt: string } | null = null
   let clock = 0
   const stamp = () => new Date(Date.UTC(2026, 9, 1) + ++clock * 1000).toISOString()
   const api: RemoteApi = {
     async upsert(list) {
+      if (list.some((r) => opts.reject?.has(r.collection))) throw new Error('new row for relation "records" violates check constraint "records_collection_check"')
       for (const r of list) {
         const key = `${r.collection}:${r.id}`
         const old = rows.get(key)
@@ -115,6 +116,29 @@ describe('sincronização', () => {
     await a.flush() // chega depois, mas é mais antiga
     await a.pull()
     expect(((await a.load()).data.tasks[0] as unknown as { title: string }).title).toBe('nova')
+  })
+})
+
+describe('servidor ainda sem a migração da Etapa 1', () => {
+  it('coleções antigas sincronizam; as novas ficam na fila do aparelho e sobem depois da migração', async () => {
+    const reject = new Set(['habits', 'completions'])
+    const server = fakeServer({ reject })
+    const repo = createSyncedRepository('u-outdated', server.api, { autoSync: false })
+    await repo.load()
+    await repo.put('notes', entity('n1', { title: 'nota', body: '', pinned: false }) as never)
+    await repo.put('habits', entity('h1', { name: 'Água' }) as never)
+    await repo.put('completions', entity('habit:h1:2026-10-01', { status: 'done' }) as never)
+    await repo.flush()
+    expect(server.rows.has('notes:n1')).toBe(true)
+    expect(server.rows.has('habits:h1')).toBe(false)
+    expect(await repo.pendingCount()).toBe(2)
+    const local = await repo.load()
+    expect(local.data.habits.map((h) => h.id)).toEqual(['h1'])
+    reject.clear() // migração executada
+    await repo.flush()
+    expect(server.rows.has('habits:h1')).toBe(true)
+    expect(server.rows.has('completions:habit:h1:2026-10-01')).toBe(true)
+    expect(await repo.pendingCount()).toBe(0)
   })
 })
 

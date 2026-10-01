@@ -22,6 +22,11 @@ export type RoutePath =
   | '/planner'
   | '/account'
   | '/reminders'
+  | '/inbox'
+  | '/habits'
+  | '/recurring'
+  | '/agenda'
+  | '/focus'
 
 export interface Route {
   path: RoutePath

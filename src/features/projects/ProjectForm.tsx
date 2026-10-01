@@ -10,12 +10,27 @@ import { useDelete, useDraft } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { ClientSelect } from '../shared/RelationSelect'
 
-export function ProjectForm({ open, onClose, project, onDeleted }: { open: boolean; onClose(): void; project: Project | null; onDeleted?(): void }) {
+export function ProjectForm({
+  open,
+  onClose,
+  project,
+  onDeleted,
+  initial,
+  onSaved,
+}: {
+  open: boolean
+  onClose(): void
+  project: Project | null
+  onDeleted?(): void
+  /** Prefill for a new project (e.g. converting an inbox item). */
+  initial?: { name?: string; notes?: string }
+  onSaved?(project: Project): void
+}) {
   const { save, displayCurrency } = useStore()
   const { toast } = useFeedback()
   const del = useDelete()
   const [d, set] = useDraft(open, () => ({
-    name: project?.name ?? '',
+    name: project?.name ?? initial?.name ?? '',
     clientId: project?.clientId ?? null,
     kind: project?.kind ?? ('site' as ProjectKind),
     status: project?.status ?? ('notStarted' as ProjectStatus),
@@ -26,7 +41,7 @@ export function ProjectForm({ open, onClose, project, onDeleted }: { open: boole
     received: project ? amountToInput(project.received) : '',
     currency: project?.currency ?? displayCurrency,
     link: project?.link ?? '',
-    notes: project?.notes ?? '',
+    notes: project?.notes ?? initial?.notes ?? '',
   }))
 
   const submit = async () => {
@@ -35,8 +50,9 @@ export function ProjectForm({ open, onClose, project, onDeleted }: { open: boole
     const received = d.received.trim() ? parseAmount(d.received) : 0
     if (charged === null || received === null) return 'Confira os valores'
     const endDate = d.status === 'done' && !d.endDate ? toDateInput() : d.endDate
-    await save('projects', { ...project, ...d, name: d.name.trim(), link: d.link.trim(), notes: d.notes.trim(), charged, received, endDate })
+    const saved = await save('projects', { ...project, ...d, name: d.name.trim(), link: d.link.trim(), notes: d.notes.trim(), charged, received, endDate })
     toast(project ? 'Projeto atualizado' : 'Projeto criado')
+    onSaved?.(saved)
     onClose()
   }
 
