@@ -36,6 +36,29 @@ export function newId(): string {
 
 export type Draft<T extends Entity> = Omit<T, keyof Entity> & Partial<Entity>
 
+/** Optional details (Etapa 3). Left out = the record keeps exactly what it had. */
+export interface TransactionExtras {
+  category?: string | null
+  unnecessary?: boolean
+}
+
+/**
+ * Applies optional details without touching records that never had them: an
+ * empty category or an unmarked expense removes the key instead of writing it.
+ */
+export function withExtras<T extends Partial<Transaction>>(tx: T, type: TransactionType, extras: TransactionExtras): T {
+  const out = { ...tx }
+  if ('category' in extras) {
+    if (extras.category && type !== 'adjust') out.category = extras.category
+    else delete out.category
+  }
+  if ('unnecessary' in extras) {
+    if (extras.unnecessary && type === 'out') out.unnecessary = true
+    else delete out.unnecessary
+  }
+  return out
+}
+
 export class MissingRateError extends Error {
   constructor() {
     super('Sem cotação disponível para converter esta moeda.')
@@ -58,8 +81,8 @@ interface Store {
   setDisplayCurrency(c: Currency): void
   save<K extends CollectionName>(collection: K, draft: Draft<Collections[K]>): Promise<Collections[K]>
   remove(collection: CollectionName, id: string): Promise<void>
-  addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string }): Promise<Transaction>
-  updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string }): Promise<Transaction>
+  addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
+  updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   adjustBalance(target: Cents): Promise<Transaction | null>
   updateSettings(patch: Partial<Settings>): Promise<void>
   completeOnboarding(baseCurrency: Currency, initialBalance: Cents, modules?: Partial<Record<ModuleId, boolean>>): Promise<void>
@@ -212,22 +235,22 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   )
 
   const addTransaction = useCallback<Store['addTransaction']>(
-    async ({ type, amount, currency, reason }) => {
+    async ({ type, amount, currency, reason, ...extras }) => {
       const base = toBase(amount, currency)
-      return save('transactions', { type, amount, currency, reason, baseAmount: type === 'in' ? base : -base })
+      return save('transactions', withExtras({ type, amount, currency, reason, baseAmount: type === 'in' ? base : -base }, type, extras))
     },
     [save, toBase],
   )
 
   const updateTransaction = useCallback<Store['updateTransaction']>(
-    async (tx, { amount, currency, reason }) => {
+    async (tx, { amount, currency, reason, ...extras }) => {
       // Keep the rate from the original moment when only the amount changes.
       const base =
         currency === tx.currency && tx.amount > 0
           ? Math.round((Math.abs(tx.baseAmount) / tx.amount) * amount)
           : toBase(amount, currency)
       const sign = tx.type === 'out' || (tx.type === 'adjust' && tx.baseAmount < 0) ? -1 : 1
-      return save('transactions', { ...tx, amount, currency, reason, baseAmount: sign * base })
+      return save('transactions', withExtras({ ...tx, amount, currency, reason, baseAmount: sign * base }, tx.type, extras))
     },
     [save, toBase],
   )

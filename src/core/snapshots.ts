@@ -39,6 +39,10 @@ export function flattenMetrics(m: RangeMetrics): Record<string, number | null> {
     'finance.income': m.finance?.income ?? null,
     'finance.expense': m.finance?.expense ?? null,
     'finance.net': m.finance?.net ?? null,
+    'finance.count': m.finance?.count ?? null,
+    'finance.unnecessaryCount': m.finance?.unnecessaryCount ?? null,
+    'finance.unnecessaryAmount': m.finance?.unnecessaryAmount ?? null,
+    'finance.saved': m.saved,
   }
 }
 
@@ -57,6 +61,7 @@ export function buildSnapshot(data: DataState, settings: Settings, week: WeekId,
     closedAt: now.toISOString(),
     metricsVersion: METRICS_VERSION,
     metrics: flattenMetrics(m),
+    financeTop: m.finance?.top ?? null,
     goals: data.weeklyGoals
       .filter((g) => g.week === week && g.status !== 'archived')
       .map((g) => {

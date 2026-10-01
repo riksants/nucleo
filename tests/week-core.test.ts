@@ -8,7 +8,7 @@ import { occurrenceStreak, weekStreak } from '../src/core/streaks'
 import { goalProgress } from '../src/core/weekGoals'
 import type { Challenge, Completion, DataState, Settings, WeeklyGoal } from '../src/data/types'
 
-const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [] })
+const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [] })
 const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 0, startedAt: '2026-01-01T00:00:00Z', rates: null, manualRates: {}, lastBackupAt: null, timeZone: 'America/Sao_Paulo', modules: { habits: true, routine: true, recurring: true, agenda: true } } as Settings
 const e = { createdAt: '', updatedAt: '' }
 const done = (source: Completion['source'], id: string, date: string, status: Completion['status'] = 'done'): Completion => ({ ...e, id: completionId(source, id, date), source, sourceId: id, date, status })
@@ -64,7 +64,7 @@ describe('métricas da semana', () => {
       { ...e, id: 'b', createdAt: '2026-09-30T15:00:00Z', type: 'out', amount: 20000, currency: 'BRL', baseAmount: -20000, reason: 'r' },
       { ...e, id: 'c', createdAt: '2026-09-28T02:00:00Z', type: 'out', amount: 999, currency: 'BRL', baseAmount: -999, reason: 'domingo 23h em SP: semana anterior' },
     ]
-    expect(weekMetrics(d, { ...settings, modules: { finance: true } }, WEEK, NOW).finance).toEqual({ income: 50000, expense: 20000, net: 30000 })
+    expect(weekMetrics(d, { ...settings, modules: { finance: true } }, WEEK, NOW).finance).toMatchObject({ income: 50000, expense: 20000, net: 30000 })
   })
 })
 
@@ -145,7 +145,7 @@ describe('fotos semanais', () => {
   })
   it('foto guarda métricas, Score histórico e as versões das fórmulas', () => {
     const snap = buildSnapshot(trainingData(), settings, WEEK, new Date('2026-10-06T12:00:00Z'))
-    expect(snap).toMatchObject({ id: WEEK, week: WEEK, metricsVersion: 1, timeZone: 'America/Sao_Paulo' })
+    expect(snap).toMatchObject({ id: WEEK, week: WEEK, metricsVersion: 2, timeZone: 'America/Sao_Paulo' })
     expect(snap.metrics['training.done']).toBe(2)
     expect(snap.scoreVersion).toBe(1)
     expect(snap.score).toHaveProperty('overall')

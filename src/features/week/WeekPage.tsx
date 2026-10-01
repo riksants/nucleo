@@ -9,7 +9,9 @@ import { useStore } from '../../data/store'
 import { formatDateTime } from '../../lib/dates'
 import { Button, IconButton } from '../../ui/Button'
 import { Badge, Progress, SectionTitle } from '../../ui/Display'
+import { isEnabled } from '../../app/modules'
 import { CheckinSheet } from './CheckinSheet'
+import { MoneyCard } from './MoneyCard'
 import { ChallengesSection } from './ChallengesSection'
 import { weekLabel } from './GoalForm'
 import { GoalsSection } from './GoalsSection'
@@ -45,7 +47,8 @@ export function WeekPage() {
   const h = headline(w.flat)
   const goals = w.goals.map((g) => goalProgress(g, w.metrics))
   const goalsDone = goals.filter((g) => g.achieved).length
-  const sentences = summarySentences(w.flat, { current: w.isCurrent, currency: settings.baseCurrency })
+  const money = isEnabled(settings, 'finance')
+  const sentences = summarySentences(w.flat, { current: w.isCurrent, currency: settings.baseCurrency, skipFinance: money })
   const comparison = compareWeeks(w.flat, w.prevFlat)
   const checkinDone = data.weekCheckins.some((c) => c.id === w.week)
   // Sunday: a gentle, optional suggestion (no notification).
@@ -133,6 +136,8 @@ export function WeekPage() {
               <p className="card px-5 py-4 text-[15px] text-faint">Quando você marcar tarefas, hábitos ou rotina, o resumo aparece aqui.</p>
             )}
           </section>
+
+          {money && <MoneyCard week={w.week} today={w.today} isCurrent={w.isCurrent} snapshot={w.snapshot} flat={w.flat} prevFlat={w.prevFlat} />}
 
           <GoalsSection week={w.week} currentWeek={w.current} metrics={w.metrics} editable={!w.closed} />
         </div>

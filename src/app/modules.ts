@@ -39,7 +39,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'projects', path: '/projects', label: 'Projetos', icon: FolderKanban, description: 'Trabalhos, prazos e valores', legacy: true },
   { id: 'tasks', path: '/tasks', label: 'Tarefas', icon: ListTodo, description: 'O que fazer e compromissos', legacy: true },
   { id: 'clients', path: '/clients', label: 'Clientes', icon: Users, description: 'Contatos e histórico', legacy: true },
-  { id: 'goals', path: '/goals', label: 'Metas', icon: Target, description: 'Compras que você quer fazer', legacy: true },
+  { id: 'goals', path: '/goals', label: 'Metas de compra', icon: Target, description: 'Compras que você quer fazer', legacy: true },
   { id: 'tools', path: '/tools', label: 'Ferramentas', icon: Wrench, description: 'Assinaturas que você paga', legacy: true },
   { id: 'accounts', path: '/accounts', label: 'Contas', icon: KeyRound, description: 'Acessos e senhas (cofre)', legacy: true },
   { id: 'notes', path: '/notes', label: 'Anotações', icon: NotebookPen, description: 'Notas rápidas', legacy: true },

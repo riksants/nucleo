@@ -8,7 +8,7 @@ import { COLLECTION_NAMES } from '../src/data/types'
  * Adding a collection without bumping DB_VERSION would leave existing users
  * without that store (the app would fail to load). Keep this table in sync.
  */
-const VERSION_FOR_COLLECTION_COUNT: Record<number, number> = { 9: 1, 16: 2, 22: 3, 26: 4 }
+const VERSION_FOR_COLLECTION_COUNT: Record<number, number> = { 9: 1, 16: 2, 22: 3, 26: 4, 27: 5 }
 
 describe('versão do banco no aparelho', () => {
   it('cada conjunto de coleções tem a sua versão (não esquecer de aumentar)', () => {

@@ -11,6 +11,11 @@ import { EmptyState, SearchField, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips, Segmented } from '../../ui/Segmented'
 import { useOpenParam } from '../useOpenParam'
+import { useRoute } from '../../app/router'
+import { allCategories, categoryLabel, NO_CATEGORY } from '../../core/financeCategories'
+import { Select } from '../../ui/Field'
+import { FinanceGoalsSection } from './FinanceGoals'
+import { MonthSummaryView, ThisMonthCard } from './MonthView'
 import { BalanceCard } from './BalanceCard'
 import { GroupedTransactions } from './TransactionList'
 import { TransactionSheet } from './TransactionSheet'
@@ -18,7 +23,14 @@ import { TransactionSheet } from './TransactionSheet'
 type TypeFilter = 'all' | 'in' | 'out'
 
 export function FinancePage() {
+  const { params } = useRoute()
+  if (params.get('view') === 'month') return <MonthSummaryView month={params.get('m')} />
+  return <FinanceHome />
+}
+
+function FinanceHome() {
   const { data, settings, displayCurrency, convert } = useStore()
+  const [category, setCategory] = useState('all')
   const [period, setPeriod] = usePref<Period>('finance.period', 'month')
   const [typeFilter, setTypeFilter] = usePref<TypeFilter>('finance.type', 'all')
   const [query, setQuery] = useState('')
@@ -36,14 +48,15 @@ export function FinancePage() {
     (t) =>
       (!since || new Date(t.createdAt) >= since) &&
       (typeFilter === 'all' || t.type === typeFilter) &&
-      matches(query, t.reason, String(t.amount / 100)),
+      (category === 'all' || (category === 'none' ? !t.category && t.type !== 'adjust' : t.category === category)) &&
+      matches(query, t.reason, String(t.amount / 100), t.category ? categoryLabel(settings, t.category) : null),
   )
 
   return (
     <>
       <PageHeader title="Financeiro" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
-        <div className="space-y-4 lg:sticky lg:top-10">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
+        <div className="space-y-4">
           <BalanceCard />
 
           <div className="card p-5">
@@ -75,6 +88,9 @@ export function FinancePage() {
               </p>
             </div>
           </div>
+
+          <ThisMonthCard />
+          <FinanceGoalsSection />
         </div>
 
         <section>
@@ -82,7 +98,7 @@ export function FinancePage() {
           <div className="mb-3">
             <SearchField value={query} onChange={setQuery} placeholder="Buscar por motivo ou valor" />
           </div>
-          <div className="mb-5">
+          <div className="mb-5 flex flex-wrap items-center gap-3">
             <Chips
               value={typeFilter}
               onChange={setTypeFilter}
@@ -92,6 +108,19 @@ export function FinancePage() {
                 { value: 'out', label: 'Saídas' },
               ]}
             />
+            <div className="min-w-[11rem] flex-1 sm:max-w-[15rem]">
+              <Select aria-label="Filtrar por categoria" value={category} onChange={(e) => setCategory(e.target.value)} className="h-10!">
+                <option value="all">Todas as categorias</option>
+                <option value="none">{NO_CATEGORY}</option>
+                {allCategories(settings)
+                  .filter((c) => typeFilter === 'all' || c.type === typeFilter)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {typeFilter === 'all' ? `${c.label} (${c.type === 'in' ? 'entrada' : 'saída'})` : c.label}
+                    </option>
+                  ))}
+              </Select>
+            </div>
           </div>
           {history.length ? (
             <GroupedTransactions items={history} onOpen={sheet.show} />
@@ -100,7 +129,7 @@ export function FinancePage() {
               compact
               icon={<ReceiptText size={22} />}
               title={data.transactions.length ? 'Nada encontrado' : 'Nenhuma movimentação ainda'}
-              text={data.transactions.length ? 'Tente outro período, filtro ou termo.' : 'Use os botões Adicionar e Retirar no card de saldo.'}
+              text={data.transactions.length ? 'Tente outro período, filtro, categoria ou termo.' : 'Use os botões Adicionar e Retirar no card de saldo.'}
             />
           )}
         </section>

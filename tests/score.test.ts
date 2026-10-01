@@ -42,7 +42,7 @@ describe('NÚCLEO Score v1', () => {
 
   it('treino não é contado duas vezes: hábito de treino e bloco de treino ficam só na área Treino', () => {
     const e = { createdAt: '', updatedAt: '' }
-    const d: DataState = { transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [] }
+    const d: DataState = { transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [] }
     d.habits = [
       { ...e, id: 'treino', name: 'Treinar', rule: { type: 'daily' }, time: '', goal: '', active: true, startDate: '2026-09-28', category: 'training' },
       { ...e, id: 'ler', name: 'Ler', rule: { type: 'daily' }, time: '', goal: '', active: true, startDate: '2026-09-28', category: 'reading' },

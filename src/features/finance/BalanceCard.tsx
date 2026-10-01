@@ -13,12 +13,15 @@ import { TransactionSheet } from './TransactionSheet'
 function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
   const [whole, decimals] = formatNumber(cents).split(',')
   const { symbol, suffix } = currencyInfo(currency)
-  const small = 'text-[26px] font-medium text-soft lg:text-[30px]'
+  // Very long balances (millions) step down so the figure never leaves the card on a phone.
+  const long = whole.length > 9 ? 2 : whole.length > 7 ? 1 : 0
+  const small = ['text-[26px] lg:text-[30px]', 'text-[22px] lg:text-[28px]', 'text-[18px] lg:text-[24px]'][long] + ' font-medium text-soft'
+  const big = ['text-[52px] lg:text-[64px]', 'text-[42px] lg:text-[56px]', 'text-[34px] lg:text-[48px]'][long]
   return (
     <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap" aria-label={formatMoney(cents, currency)}>
       {cents < 0 && <span className="text-[44px] leading-none font-semibold lg:text-[56px]">−</span>}
       {!suffix && <span className={small}>{symbol}</span>}
-      <span className="text-[52px] leading-none font-semibold tracking-[-0.045em] lg:text-[64px]">
+      <span className={`${big} leading-none font-semibold tracking-[-0.045em]`}>
         {whole}
         <span className={small}>,{decimals}</span>
       </span>

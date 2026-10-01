@@ -26,7 +26,7 @@ export function headline(f: FlatMetrics) {
   }
 }
 
-export function summarySentences(f: FlatMetrics, opts: { current: boolean; currency: Currency }): string[] {
+export function summarySentences(f: FlatMetrics, opts: { current: boolean; currency: Currency; skipFinance?: boolean }): string[] {
   const out: string[] = []
   const items = n(f, 'items.expected')
   if (items) out.push(`Você concluiu ${n(f, 'items.done')} de ${items} ${items === 1 ? 'item' : 'itens'} ${opts.current ? 'até agora' : 'nesta semana'}.`)
@@ -48,7 +48,8 @@ export function summarySentences(f: FlatMetrics, opts: { current: boolean; curre
   else if (n(f, 'study.days')) out.push(`Estudou em ${plural(n(f, 'study.days'), 'dia', 'dias')}.`)
   const events = n(f, 'events')
   if (events) out.push(`${plural(events, 'compromisso', 'compromissos')} na agenda.`)
-  if (f['finance.net'] !== null && f['finance.net'] !== undefined) {
+  // The Dinheiro card (Etapa 3) shows the details when it is on screen.
+  if (!opts.skipFinance && f['finance.net'] !== null && f['finance.net'] !== undefined) {
     out.push(`Entraram ${formatMoney(n(f, 'finance.income'), opts.currency)} e saíram ${formatMoney(n(f, 'finance.expense'), opts.currency)} (saldo da semana ${formatMoney(n(f, 'finance.net'), opts.currency, { sign: true })}).`)
   }
   return out

@@ -25,6 +25,10 @@ export interface Transaction extends Entity {
   /** Signed effect on the balance, in the base currency, fixed at creation time. */
   baseAmount: Cents
   reason: string
+  /** Optional category id (core/financeCategories.ts). Missing = "Sem categoria". */
+  category?: string
+  /** Expenses only: marked by the person as an unnecessary expense. Never set automatically. */
+  unnecessary?: boolean
 }
 
 export interface Goal extends Entity {
@@ -354,8 +358,24 @@ export interface Settings {
   hideScore?: boolean
   /** Sections already announced to this person, so new ones are announced once. */
   modulesSeen?: ModuleId[]
+  /** Personal finance categories and hidden default ones. Missing = defaults only. */
+  financeCategories?: FinanceCategorySettings
   /** Last change, used to resolve edits made on two devices. */
   updatedAt?: string
+}
+
+export interface FinanceCategory {
+  id: string
+  label: string
+  type: 'in' | 'out'
+  /** Fixed expense (housing, bills, subscriptions): not extrapolated in the month forecast. */
+  fixed?: boolean
+}
+
+export interface FinanceCategorySettings {
+  custom: FinanceCategory[]
+  /** Default or custom ids hidden from the pickers. Records keep using them. */
+  hidden: string[]
 }
 
 export type ModuleId =
@@ -441,6 +461,7 @@ export interface Collections {
   challenges: Challenge
   weekCheckins: WeekCheckin
   weekSnapshots: WeekSnapshot
+  financeGoals: FinanceGoal
 }
 
 export type CollectionName = keyof Collections
@@ -472,6 +493,7 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'challenges',
   'weekCheckins',
   'weekSnapshots',
+  'financeGoals',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
@@ -544,4 +566,26 @@ export interface WeekSnapshot extends Entity {
   /** Filled only once a Score formula is approved and versioned. */
   scoreVersion?: number
   score?: Record<string, number | null>
+  /** Metrics v2+: biggest expense category of the week (base currency cents). */
+  financeTop?: { category: string; amount: number } | null
+}
+
+/* ----------------------------- Finanças (Etapa 3) ----------------------------- */
+
+/**
+ * "Quero juntar R$ 5.000 até dezembro." The saved amount is updated by the
+ * person (never guessed from the balance). `history` keeps the saved value at
+ * the end of each day it changed, so progress over time and "guardado na
+ * semana" come from what was really registered.
+ */
+export interface FinanceGoal extends Entity {
+  name: string
+  target: Cents
+  saved: Cents
+  /** "YYYY-MM-DD" */
+  deadline: string
+  currency: Currency
+  note: string
+  status: 'active' | 'archived'
+  history: { date: string; saved: Cents }[]
 }

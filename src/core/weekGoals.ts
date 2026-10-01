@@ -45,6 +45,8 @@ export function metricOptions(habits: { id: string; name: string; active: boolea
     { key: 'habits.percent', label: 'Hábitos cumpridos', kind: 'percent', unit: '%' },
     { key: 'routine.percent', label: 'Rotina cumprida', kind: 'percent', unit: '%' },
     { key: 'items.percent', label: 'Itens da semana concluídos', kind: 'percent', unit: '%' },
+    // "Economizar" = what the person registered as saved in finance goals (not income − expense).
+    { key: 'finance.saved', label: 'Guardar (registrado nas metas com prazo)', kind: 'money', unit: '' },
     { key: 'finance.net', label: 'Saldo da semana (entradas − saídas)', kind: 'money', unit: '' },
   ]
   const cat: MetricOption[] = categories.map((c) => ({ key: `category:${c}`, label: `Dias com hábito de ${CATEGORY_LABEL[c].toLowerCase()}`, kind: 'frequency', unit: 'dias' }))

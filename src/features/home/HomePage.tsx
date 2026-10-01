@@ -162,7 +162,7 @@ export function HomePage() {
           )}
 
           {on('goals') && (
-          <Block title="Metas" action={goals.length ? 'Ver todas' : undefined} onAction={() => navigate('/goals')}>
+          <Block title="Metas de compra" action={goals.length ? 'Ver todas' : undefined} onAction={() => navigate('/goals')}>
             {goals.length ? (
               <div className="grid gap-3">
                 {goals.map((g) => (

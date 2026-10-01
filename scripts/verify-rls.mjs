@@ -78,6 +78,16 @@ const wRead = await b.from('records').select('*').eq('id', wid)
 check('B não lê check-ins de A', !wRead.error && wRead.data.length === 0)
 await a.from('records').delete().eq('id', wid)
 
+// Etapa 3: metas financeiras (exige a migração 20261004000000_etapa3_financas.sql)
+const fid = `rls-fg-${Date.now()}`
+const fIns = await a.from('records').insert({ user_id: aId, collection: 'financeGoals', id: fid, data: { name: 'privado' }, client_updated_at: now })
+check('servidor aceita as metas financeiras da Etapa 3 (migração executada)', !fIns.error, fIns.error?.message)
+const fRead = await b.from('records').select('*').eq('id', fid)
+check('B não lê metas financeiras de A', !fRead.error && fRead.data.length === 0)
+const fUpd = await b.from('records').update({ data: { name: 'invadido' } }).eq('id', fid).select()
+check('B não altera metas financeiras de A', (fUpd.data ?? []).length === 0)
+await a.from('records').delete().eq('id', fid)
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

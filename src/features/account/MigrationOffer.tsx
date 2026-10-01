@@ -15,7 +15,7 @@ import { useSession } from './session'
 
 export const COLLECTION_LABELS: Record<CollectionName, string> = {
   transactions: 'Movimentações',
-  goals: 'Metas',
+  goals: 'Metas de compra',
   clients: 'Clientes',
   projects: 'Projetos',
   tasks: 'Tarefas',
@@ -40,6 +40,7 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   challenges: 'Desafios',
   weekCheckins: 'Check-ins semanais',
   weekSnapshots: 'Resumos de semanas fechadas',
+  financeGoals: 'Metas financeiras',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

@@ -11,10 +11,13 @@ import { isEnabled } from '../app/modules'
 import type { DataState, HabitCategory, Settings, WeekId } from '../data/types'
 import { wallClock } from '../lib/zoned'
 import { buildAgenda, type AgendaItem } from './agenda'
+import { financeIndex, topCategory, totalsBetween } from './finance'
+import { savedBetween } from './financeGoals'
 import { addDaysToDate, todayIn, weekDates, zoneOf } from './period'
 import { toMinutes } from '../../supabase/functions/_shared/planner/time.ts'
 
-export const METRICS_VERSION = 1
+/** v2 (Etapa 3): adds finance count, unnecessary expenses, saved in goals and top category. */
+export const METRICS_VERSION = 2
 
 export interface Tally {
   /** Considered occurrences (excludes skipped). */
@@ -36,6 +39,9 @@ export interface DayFacts {
   routine: Tally
   /** Manual challenge marks done this day (challenge ids). */
   challengeMarks: string[]
+  /** Expenses registered this day, and how many the person marked as unnecessary (0 when Financeiro is off). */
+  expenses: number
+  unnecessary: number
 }
 
 export interface RangeMetrics {
@@ -56,7 +62,9 @@ export interface RangeMetrics {
   study: { minutes: number; days: number }
   events: number
   /** null when the finance section is off or there were no movements. Base currency cents. */
-  finance: { income: number; expense: number; net: number } | null
+  finance: { income: number; expense: number; net: number; count: number; unnecessaryCount: number; unnecessaryAmount: number; top: { category: string; amount: number } | null } | null
+  /** Registered as saved in finance goals of the main currency (withdrawals negative). null = no such goal. */
+  saved: number | null
   days: DayFacts[]
 }
 
@@ -93,15 +101,17 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
     study: { minutes: 0, days: 0 },
     events: 0,
     finance: null,
+    saved: null,
     days: [],
   }
+  const money = isEnabled(settings, 'finance') ? financeIndex(data.transactions, settings) : null
 
   const byDate = new Map<string, AgendaItem[]>()
   for (const i of items) byDate.set(i.date, [...(byDate.get(i.date) ?? []), i])
 
   for (let d = from, guard = 0; d <= to && guard < 400; d = addDaysToDate(d, 1), guard++) {
     const future = d > today
-    const fact: DayFacts = { date: d, counted: !future, habitsDone: [], categoriesDone: [], trainingPlanned: false, trainingDone: false, studyDone: false, studyMinutes: 0, routine: blank(), challengeMarks: [] }
+    const fact: DayFacts = { date: d, counted: !future, habitsDone: [], categoriesDone: [], trainingPlanned: false, trainingDone: false, studyDone: false, studyMinutes: 0, routine: blank(), challengeMarks: [], expenses: money?.days.get(d)?.expenseCount ?? 0, unnecessary: money?.days.get(d)?.unnecessaryCount ?? 0 }
     for (const i of byDate.get(d) ?? []) {
       // Today: pending is not a miss yet. Future: nothing counts.
       const counted = d < today || (d === today && i.status !== 'pending')
@@ -169,18 +179,10 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
   }
 
   // Money in/out of the period, base currency (adjustments are not income nor expense).
-  if (isEnabled(settings, 'finance')) {
-    let income = 0
-    let expense = 0
-    let any = false
-    for (const t of data.transactions) {
-      const day = wallClock(new Date(t.createdAt), tz).date
-      if (day < from || day > to || t.type === 'adjust') continue
-      any = true
-      if (t.type === 'in') income += t.baseAmount
-      else expense -= t.baseAmount
-    }
-    if (any) out.finance = { income, expense, net: income - expense }
+  if (money) {
+    const t = totalsBetween(money, from, to)
+    if (t.count) out.finance = { income: t.income, expense: t.expense, net: t.net, count: t.count, unnecessaryCount: t.unnecessaryCount, unnecessaryAmount: t.unnecessaryAmount, top: topCategory(t) }
+    out.saved = savedBetween(data.financeGoals ?? [], settings.baseCurrency, from, to < today ? to : today)
   }
   return out
 }
@@ -196,7 +198,7 @@ export const percent = (t: Tally): number | null => (t.expected ? Math.round((t.
  * Value of a metric key for goals and challenges. null = no data (never 0 by default).
  *   items.done · items.percent · tasks.completed · habits.done · habits.percent ·
  *   habit:<id> · category:<cat> · routine.percent · recurring:<id> ·
- *   training.days · study.minutes · study.days · finance.net (cents)
+ *   training.days · study.minutes · study.days · finance.net · finance.saved (cents)
  */
 export function metricValue(m: RangeMetrics, key: string): number | null {
   if (key.startsWith('habit:')) return m.habits.byHabit[key.slice(6)]?.done ?? 0
@@ -223,6 +225,8 @@ export function metricValue(m: RangeMetrics, key: string): number | null {
       return m.study.days
     case 'finance.net':
       return m.finance ? m.finance.net : null
+    case 'finance.saved':
+      return m.saved
     default:
       return null
   }

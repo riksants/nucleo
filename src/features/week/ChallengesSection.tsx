@@ -1,7 +1,8 @@
 import { Mountain } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useDailyActions } from '../../core/actions'
-import { challengeState, CHALLENGE_STATUS_LABEL, CHALLENGE_TEMPLATES, endDateOf, type ChallengeTemplate } from '../../core/challenges'
+import { isEnabled } from '../../app/modules'
+import { challengeState, CHALLENGE_STATUS_LABEL, CHALLENGE_TEMPLATES, endDateOf, FINANCE_NOSPEND, type ChallengeTemplate } from '../../core/challenges'
 import { statusOf, type CompletionIndex } from '../../core/completions'
 import { addDaysToDate, weekdayOfDate } from '../../core/period'
 import { CATEGORY_LABEL } from '../../core/weekGoals'
@@ -21,7 +22,7 @@ import { NumberInput } from '../planner/controls'
 const TONE = { not_started: 'neutral', active: 'accent', completed: 'positive', ended: 'neutral' } as const
 
 function ChallengeForm({ open, onClose, today }: { open: boolean; onClose(): void; today: string }) {
-  const { data, save } = useStore()
+  const { data, save, settings } = useStore()
   const { toast } = useFeedback()
   const categories = [...new Set(data.habits.map((h) => h.category).filter(Boolean))] as HabitCategory[]
   const [template, setTemplate] = useState<ChallengeTemplate | null>(null)
@@ -57,6 +58,7 @@ function ChallengeForm({ open, onClose, today }: { open: boolean; onClose(): voi
     d.mode === 'daily'
       ? [
           { value: 'manual', label: 'Eu marco cada dia' },
+          ...(isEnabled(settings, 'finance') ? [{ value: FINANCE_NOSPEND, label: 'Sem gasto desnecessário (Financeiro)' }] : []),
           { value: 'training', label: 'Treino feito no dia' },
           { value: 'routine:80', label: '80% da rotina no dia' },
           ...categories.map((c) => ({ value: `category:${c}`, label: `Hábito de ${CATEGORY_LABEL[c].toLowerCase()} feito` })),
@@ -117,7 +119,7 @@ function ChallengeForm({ open, onClose, today }: { open: boolean; onClose(): voi
             <TextInput type="date" min={today} value={d.startDate} onChange={(e) => set('startDate', e.target.value)} />
           </Field>
         </div>
-        {template?.rule === 'manual' && <p className="text-[13px] leading-relaxed text-faint">Por enquanto você marca cada dia. Quando a parte financeira tiver categorias (Etapa 3), este desafio poderá usar seus gastos reais.</p>}
+        {d.rule === FINANCE_NOSPEND && <p className="text-[13px] leading-relaxed text-faint">Usa suas saídas do Financeiro: o dia conta quando há saídas registradas e nenhuma marcada como desnecessária. Dia sem nenhum registro não é considerado automaticamente — você pode confirmar tocando nele.</p>}
       </FormGrid>
     </FormSheet>
   )
@@ -202,16 +204,20 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
             {open.c.mode === 'daily' && open.s.days.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {open.s.days.map((d) => {
-                  const manual = open.c.rule === 'manual'
+                  const finance = open.c.rule === FINANCE_NOSPEND
+                  // Finance rule: only days without any expense can be confirmed by hand.
+                  const manual = open.c.rule === 'manual' || (finance && !d.expenses)
                   const isMarked = manual && statusOf(index, 'challenge', open.c.id, d.date) === 'done'
+                  const label = finance ? (d.met ? (d.expenses ? 'saídas registradas, nenhuma desnecessária' : 'confirmado por você') : d.unnecessary ? 'com gasto marcado como desnecessário' : d.noData ? 'sem registro' : '') : ''
                   return (
                     <button
                       key={d.date}
                       type="button"
                       disabled={!manual || !d.counted || open.s.status === 'ended'}
                       onClick={() => setCompletion('challenge', open.c.id, d.date, isMarked ? null : 'done')}
-                      title={d.date}
-                      className={`grid h-10 min-w-10 place-items-center rounded-xl border px-1.5 text-[13px] font-medium ${d.met ? 'border-transparent bg-accent text-white' : d.counted ? 'border-line bg-raised text-soft' : 'border-dashed border-line text-faint'}`}
+                      title={label ? `${d.date} · ${label}` : d.date}
+                      aria-label={label ? `Dia ${d.date.slice(8, 10)}: ${label}` : undefined}
+                      className={`grid h-10 min-w-10 place-items-center rounded-xl border px-1.5 text-[13px] font-medium ${d.met ? 'border-transparent bg-accent text-white' : d.noData ? 'border-dashed border-line text-faint' : d.counted ? 'border-line bg-raised text-soft' : 'border-dashed border-line text-faint'}`}
                     >
                       {d.date.slice(8, 10)}
                     </button>
@@ -220,6 +226,12 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
               </div>
             )}
             {open.c.rule === 'manual' && open.s.status === 'active' && <p className="text-[13px] text-faint">Toque no dia para marcar.</p>}
+            {open.c.rule === FINANCE_NOSPEND && (
+              <p className="text-[13px] leading-relaxed text-faint">
+                Preenchido: saídas registradas e nenhuma marcada como desnecessária. Tracejado: dia sem registro — toque para confirmar que não houve gasto desnecessário.
+                {open.s.days.some((d) => d.unnecessary) ? ' Dias com gasto marcado como desnecessário ficam sem preenchimento.' : ''}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {open.s.status === 'active' && (
                 <Button variant="secondary" onClick={() => end(open.c)}>

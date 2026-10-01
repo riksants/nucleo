@@ -7,7 +7,9 @@ import { amountToInput, currencyInfo, formatMoney, parseAmount } from '../../lib
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { useDraft } from '../../ui/formHooks'
-import { CurrencyPicker } from '../../ui/Field'
+import { CurrencyPicker, Select } from '../../ui/Field'
+import { NO_CATEGORY, pickableCategories } from '../../core/financeCategories'
+import { ToggleRow } from '../planner/controls'
 import { Sheet } from '../../ui/Sheet'
 
 interface Props {
@@ -30,7 +32,10 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
     amount: editing ? amountToInput(editing.amount) : '',
     currency: editing?.currency ?? (convert(100, displayCurrency, settings.baseCurrency) !== null ? displayCurrency : settings.baseCurrency),
     reason: editing?.reason ?? '',
+    category: editing?.category ?? '',
+    unnecessary: editing?.unnecessary ?? false,
   }))
+  const categories = kind === 'adjust' ? [] : pickableCategories(settings, kind, editing?.category)
   useEffect(() => {
     if (open) setTried(false)
   }, [open])
@@ -55,7 +60,12 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
     setTried(true)
     if (amountError || reasonError || cents === null) return
     try {
-      const input = { amount: cents, currency: draft.currency, reason: draft.reason.trim() }
+      // Optional details: only sent when there is something to keep or change, so old records stay as they were.
+      const extras = {
+        ...(draft.category || editing?.category ? { category: draft.category || null } : {}),
+        ...(draft.unnecessary || editing?.unnecessary ? { unnecessary: kind === 'out' && draft.unnecessary } : {}),
+      }
+      const input = { amount: cents, currency: draft.currency, reason: draft.reason.trim(), ...extras }
       if (editing) await updateTransaction(editing, input)
       else await addTransaction({ ...input, type: kind as 'in' | 'out' })
       if ('vibrate' in navigator) navigator.vibrate?.(10)
@@ -181,6 +191,28 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
             </div>
           )}
         </div>
+        {kind !== 'adjust' && (
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="tx-category" className="mb-2 block text-[13px] font-medium tracking-wide text-soft uppercase">
+                Categoria <span className="font-normal tracking-normal normal-case text-faint">· opcional</span>
+              </label>
+              <Select id="tx-category" value={draft.category} onChange={(e) => set('category', e.target.value)}>
+                <option value="">{NO_CATEGORY}</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {kind === 'out' && (
+              <ToggleRow checked={draft.unnecessary} onChange={(v) => set('unnecessary', v)} hint="Opcional — só você decide. Aparece na revisão da semana e no mês.">
+                Gasto desnecessário
+              </ToggleRow>
+            )}
+          </div>
+        )}
         <button type="submit" hidden />
       </form>
     </Sheet>

@@ -52,7 +52,7 @@ export function SearchPage() {
         })),
         group('/notes', 'Anotações', data.notes, (n) => [n.title, n.body], (n) => ({ title: n.title || n.body.slice(0, 60), subtitle: n.title ? n.body.slice(0, 80) : undefined })),
         group('/accounts', 'Contas', data.accounts, (a) => [a.name, a.link, a.email, a.username, a.notes], (a) => ({ title: a.name, subtitle: a.email || a.username })),
-        group('/goals', 'Metas', data.goals, (g) => [g.name, g.note], (g) => ({ title: g.name, subtitle: formatMoney(g.price, g.currency) })),
+        group('/goals', 'Metas de compra', data.goals, (g) => [g.name, g.note], (g) => ({ title: g.name, subtitle: formatMoney(g.price, g.currency) })),
         group('/portfolio', 'Portfólio', data.portfolio, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
         group('/agenda', 'Compromissos', data.events, (ev) => [ev.title, ev.notes], (ev) => ({ title: ev.title, subtitle: `${formatDateValue(ev.date)} · ${ev.start}` })),
         group('/habits', 'Hábitos', data.habits, (h) => [h.name, h.goal], (h) => ({ title: h.name, subtitle: h.goal || undefined })),

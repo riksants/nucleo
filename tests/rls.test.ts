@@ -135,7 +135,7 @@ describe('regras de escrita', () => {
 })
 
 describe('Etapas 1 e 2: coleções novas', () => {
-  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots']
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals']
 
   it('a migração mantém registros antigos e aceita as coleções novas', async () => {
     expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
@@ -156,6 +156,25 @@ describe('Etapas 1 e 2: coleções novas', () => {
     await as(B, `insert into records (collection, id, data, client_updated_at) values ('completions', 'habit:h1:2026-10-01', '{"status":"skipped"}', $1)`, [now()])
     expect((await as(A, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'done' })
     expect((await as(B, `select data from records where id = 'habit:h1:2026-10-01'`)).rows[0].data).toEqual({ status: 'skipped' })
+  })
+})
+
+describe('Etapa 3: finanças', () => {
+  it('B não lê, altera nem apaga movimentações e metas financeiras de A', async () => {
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('financeGoals', 'fg1', '{"name":"Reserva","target":500000,"saved":200000}', $1)`, [now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'tx-cat', '{"type":"out","amount":1000,"category":"food","unnecessary":true}', $1)`, [now()])
+    for (const c of ['financeGoals', 'transactions']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = '{"saved":0}' where id = 'fg1'`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection in ('financeGoals', 'transactions')`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'financeGoals', 'fgB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    expect((await as(A, `select data from records where id = 'fg1'`)).rows[0].data.saved).toBe(200000)
+    expect((await as(A, `select data from records where id = 'tx-cat'`)).rows[0].data).toMatchObject({ category: 'food', unnecessary: true })
+  })
+
+  it('mesmo id de meta em contas diferentes não colide', async () => {
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('financeGoals', 'fg1', '{"saved":1}', $1)`, [now()])
+    expect((await as(A, `select data from records where id = 'fg1'`)).rows[0].data.saved).toBe(200000)
+    expect((await as(B, `select data from records where id = 'fg1'`)).rows[0].data.saved).toBe(1)
   })
 })
 

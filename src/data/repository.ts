@@ -29,7 +29,7 @@ export interface Repository {
 }
 
 export const LOCAL_DB = 'nucleo'
-export const DB_VERSION = 4
+export const DB_VERSION = 5
 export const META = 'meta'
 export const OUTBOX = 'outbox'
 const SETTINGS_KEY = 'settings'

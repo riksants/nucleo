@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ArrowDownLeft, ArrowUpRight, SlidersHorizontal } from 'lucide-react'
+import { categoryLabel } from '../../core/financeCategories'
 import { useStore } from '../../data/store'
 import type { Transaction } from '../../data/types'
 import { formatDateTime, formatDay } from '../../lib/dates'
@@ -18,6 +19,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
   const signed = positive ? tx.amount : -tx.amount
   const converted = tx.currency !== displayCurrency ? convert(Math.abs(tx.baseAmount), settings.baseCurrency, displayCurrency) : null
   const when = showDay ? formatDateTime(tx.createdAt) : formatDateTime(tx.createdAt).split(' • ')[1]
+  const details = [when, tx.category && tx.type !== 'adjust' ? categoryLabel(settings, tx.category) : null, tx.unnecessary && tx.type === 'out' ? 'desnecessário' : null].filter(Boolean).join(' · ')
 
   return (
     <button type="button" onClick={() => onOpen(tx)} className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-3 text-left transition-colors hover:bg-white/[0.03] active:bg-white/[0.04]">
@@ -26,7 +28,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{tx.reason}</span>
-        <span className="mt-0.5 block text-[13px] text-faint">{when}</span>
+        <span className="mt-0.5 block truncate text-[13px] text-faint">{details}</span>
       </span>
       <span className="shrink-0 text-right">
         <span className={`num block text-[16px] font-semibold ${tx.type === 'adjust' ? 'text-soft' : positive ? 'text-income' : 'text-ink'}`}>

@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Gauge, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Gauge, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
@@ -15,6 +15,7 @@ import { Badge, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
+import { CategoriesSheet } from '../finance/CategoriesSheet'
 import { useDraft } from '../../ui/formHooks'
 import { CurrencySheet, quickCurrencies } from '../../ui/CurrencySheet'
 import { Segmented } from '../../ui/Segmented'
@@ -183,7 +184,7 @@ export function SettingsPage() {
   const { settings, data, balance, refreshRates, ratesLoading, updateSettings, setDisplayCurrency } = useStore()
   const { toast } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | null>(null)
+  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | 'categories' | null>(null)
   const { configured, email } = useSession()
   const vault = useVault()
   const display = settings.displayCurrency ?? settings.baseCurrency
@@ -272,6 +273,7 @@ export function SettingsPage() {
           <Row label="Saldo inicial" value={formatMoney(settings.initialBalance, settings.baseCurrency)} />
           <Row label="Saldo atual" value={formatMoney(balance, settings.baseCurrency)} />
           <Row label="Corrigir saldo" icon={<Scale size={18} />} onClick={() => setSheet('adjust')} />
+          {isEnabled(settings, 'finance') && <Row label="Categorias financeiras" icon={<Tags size={18} />} onClick={() => setSheet('categories')} />}
         </Group>
 
         <Group
@@ -323,6 +325,7 @@ export function SettingsPage() {
       <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} />
       <AdjustSheet open={sheet === 'adjust'} onClose={() => setSheet(null)} />
       <RatesSheet open={sheet === 'rates'} onClose={() => setSheet(null)} />
+      <CategoriesSheet open={sheet === 'categories'} onClose={() => setSheet(null)} />
       <ImportSheet backup={backup} onClose={() => setBackup(null)} />
       <CurrencySheet open={sheet === 'currency'} onClose={() => setSheet(null)} value={display} onPick={pickMain} title="Moeda principal" />
       <ModulesSheet open={sheet === 'modules'} onClose={() => setSheet(null)} />

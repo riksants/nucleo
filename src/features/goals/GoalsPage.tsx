@@ -22,7 +22,7 @@ export function GoalsPage() {
   return (
     <>
       <PageHeader
-        title="Metas"
+        title="Metas de compra"
         subtitle="Compare o que quer comprar com seu saldo"
         actions={
           <Button icon={<Plus size={18} />} onClick={() => sheet.show()}>
