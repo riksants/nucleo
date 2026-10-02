@@ -101,3 +101,17 @@ Só faça isto se quiser ativar — gera custo por uso na Anthropic:
 
 O que é enviado: só a frase digitada e a data de hoje. O que fica gravado em `ai_usage`: tipo da intenção, modelo e número de tokens — nunca o texto.
 Para estimar custo: some `input_tokens` e `output_tokens` de `kind = 'assistant'` e multiplique pelos preços atuais do modelo `claude-haiku-4-5` na página de preços da Anthropic.
+
+## Antes do lançamento — decisões pendentes (nada foi alterado nem contratado)
+
+Estas duas decisões ficaram registradas na auditoria pré-lançamento para serem tomadas separadamente:
+
+1. **E-mail (SMTP).** Hoje os e-mails de confirmação e de recuperação saem por uma conta Gmail com senha de app.
+   Uma conta Gmail comum envia cerca de 500 e-mails por dia — com milhares de usuários (cadastros + recuperações),
+   isso não basta. Opções: um serviço de e-mail transacional (há planos gratuitos, por exemplo Resend ou Brevo),
+   configurado em Supabase → Authentication → SMTP Settings. Também revisar o limite de envio de e-mails do Auth
+   (Authentication → Rate Limits). Nenhuma mudança no código do app é necessária.
+2. **Plano do Supabase.** No plano gratuito o banco tem 500 MB e o projeto é pausado após 1 semana sem uso.
+   Com ~5.000 usuários (estimativa ~1 MB por pessoa, mais imagens do portfólio, até 3 MB cada) o espaço não basta,
+   e não há backup diário com restauração por data. O plano Pro (pago) resolve espaço, pausa e backups.
+   Decidir antes de abrir o cadastro ao público.

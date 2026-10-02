@@ -120,11 +120,13 @@ export function dayBusy(data: DataState, settings: Settings, date: string, now: 
 }
 
 /** Free starting minutes for `duration` on a day: inside the window, never in the past. */
-export function freeStarts(data: DataState, settings: Settings, date: string, duration: number, now: Date, ignore: string[] = [], extraBusy: { start: number; end: number }[] = []): number[] {
+export function freeStarts(data: DataState, settings: Settings, date: string, duration: number, now: Date, ignore: string[] = [], extraBusy: { start: number; end: number }[] = [], dayBusyList?: Busy[]): number[] {
   const n = nowIn(zoneOf(settings), now)
   if (date < n.date) return []
   const w = activeWindow(data, settings, date)
-  const busy = [...dayBusy(data, settings, date, now, ignore), ...extraBusy]
+  // Callers placing many items on the same day pass the day's busy list once (no agenda rebuild per item).
+  const base = dayBusyList ? dayBusyList.filter((b) => !ignore.includes(b.key)) : dayBusy(data, settings, date, now, ignore)
+  const busy = [...base, ...extraBusy]
   // Today: from now + 15 min, rounded up to the next step.
   const earliest = date === n.date ? Math.ceil((toMinutes(n.time) + STEP) / STEP) * STEP : w.start
   const out: number[] = []

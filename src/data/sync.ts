@@ -40,6 +40,23 @@ interface OutboxEntry {
   data: Entity | null
   deleted: boolean
   updatedAt: string
+  /**
+   * Set when the server refused this exact version for good (too large,
+   * invalid). It stays on the device, never blocks the rest of the sync and is
+   * sent again as soon as the record changes (a new entry replaces this one).
+   */
+  rejected?: { reason: string; at: string }
+}
+
+/** A refusal about the data itself (not the network): retrying the same rows won't help. */
+export class RejectedRowError extends Error {}
+
+/** Postgres data errors (22xxx/23xxx) and "payload too large" are about the rows, not the connection. */
+export function isRowRejection(error: { code?: string | null; message?: string } | null | undefined, status?: number): boolean {
+  if (!error) return false
+  if (status === 413) return true
+  const code = error.code ?? ''
+  return /^2[23]/.test(code) || /payload too large|request entity too large/i.test(error.message ?? '')
 }
 
 /** The app is newer than the database: some sections stay queued on the device until the SQL migration runs. */
@@ -59,6 +76,8 @@ const EPOCH = '1970-01-01T00:00:00.000Z'
 /** Re-reads a few seconds back so rows committed slightly out of order are not missed. */
 const CURSOR_OVERLAP_MS = 5000
 const BATCH = 200
+/** Rows per download request. */
+export const PAGE = 1000
 
 export function cacheDbName(uid: string) {
   return `nucleo-u-${uid}`
@@ -67,7 +86,7 @@ export function cacheDbName(uid: string) {
 export function createSupabaseRemote(client: SupabaseClient, uid: string): RemoteApi {
   return {
     async upsert(rows) {
-      const { error } = await client.from('records').upsert(
+      const { error, status } = await client.from('records').upsert(
         rows.map((r) => ({
           user_id: uid,
           collection: r.collection,
@@ -78,7 +97,7 @@ export function createSupabaseRemote(client: SupabaseClient, uid: string): Remot
         })),
         { onConflict: 'user_id,collection,id' },
       )
-      if (error) throw new Error(error.message)
+      if (error) throw isRowRejection(error, status) && !error.message.includes('records_collection_check') ? new RejectedRowError(error.message) : new Error(error.message)
     },
     async fetch(collection, ids) {
       const { data, error } = await client
@@ -154,6 +173,10 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
     return n
   }
 
+  async function rejectedCount() {
+    return (await outbox()).filter((e) => e.rejected).length
+  }
+
   async function enqueue(collection: CollectionName, id: string, data: Entity | null) {
     const db = await dbPromise
     const tx = db.transaction([collection, OUTBOX], 'readwrite')
@@ -180,8 +203,10 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   /** Pushes queued changes. Entries edited again while sending stay queued. */
   async function flush() {
     const db = await dbPromise
-    const entries = await outbox()
+    // Versions the server refused for good wait until the record changes again.
+    const entries = (await outbox()).filter((e) => !e.rejected)
     const rejected: string[] = []
+    const refused: { entry: OutboxEntry; reason: string }[] = []
     for (let i = 0; i < entries.length; i += BATCH) {
       const all = entries.slice(i, i + BATCH)
       // Sent per collection: if the server doesn't accept one collection yet
@@ -190,13 +215,27 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       for (const e of all) byCollection.set(e.collection, [...(byCollection.get(e.collection) ?? []), e])
       const batch: OutboxEntry[] = []
       for (const [collection, group] of byCollection) {
+        const send = (list: OutboxEntry[]) => remote.upsert(list.map((e) => ({ collection: e.collection, id: e.id, data: e.data, deleted: e.deleted, client_updated_at: e.updatedAt })))
         try {
-          await remote.upsert(group.map((e) => ({ collection: e.collection, id: e.id, data: e.data, deleted: e.deleted, client_updated_at: e.updatedAt })))
+          await send(group)
           batch.push(...group)
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
-          if (!message.includes('records_collection_check')) throw err
-          rejected.push(collection)
+          if (message.includes('records_collection_check')) {
+            rejected.push(collection)
+            continue
+          }
+          if (!(err instanceof RejectedRowError)) throw err // network / server down: try again later, nothing lost
+          // One bad row must not block the others: send them one by one and set aside only the refused ones.
+          for (const e of group) {
+            try {
+              await send([e])
+              batch.push(e)
+            } catch (one) {
+              if (!(one instanceof RejectedRowError)) throw one
+              refused.push({ entry: e, reason: one.message })
+            }
+          }
         }
       }
       // Read back what the server kept: a newer edit from another device wins over a late one.
@@ -209,6 +248,11 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       for (const e of batch) {
         const now = current.get(e.key)
         if (now && now.updatedAt === e.updatedAt) tx.objectStore(OUTBOX).delete(e.key)
+      }
+      // Refused versions stay in the outbox (so a download never overwrites them) but are marked.
+      for (const { entry, reason } of refused.splice(0)) {
+        const now = current.get(entry.key)
+        if (now && now.updatedAt === entry.updatedAt) tx.objectStore(OUTBOX).put({ ...now, rejected: { reason: reason.slice(0, 200), at: new Date().toISOString() } } satisfies OutboxEntry)
       }
       for (const row of serverRows) {
         const sent = batch.find((e) => e.collection === row.collection && e.id === row.id)
@@ -235,11 +279,16 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
     const db = await dbPromise
     let changed = false
     let cursor = (await readMeta<string>(db, 'cursor')) ?? null
+    // The 5 s overlap (clock skew, slow commits) is applied once, at the start of this pull.
+    // Next pages continue from the last row received, so a burst of more than one page of
+    // rows written within a few seconds can never make the same page come back forever.
+    let since = cursor ? new Date(new Date(cursor).getTime() - CURSOR_OVERLAP_MS).toISOString() : null
+    const seen = new Set<string>()
     for (;;) {
-      const since = cursor ? new Date(new Date(cursor).getTime() - CURSOR_OVERLAP_MS).toISOString() : null
-      const rows = await remote.pullSince(since, 1000)
+      const rows = await remote.pullSince(since, PAGE)
       const pending = new Set((await outbox()).map((e) => e.key))
-      const fresh = rows.filter((r) => !cursor || (r.server_updated_at ?? EPOCH) > since!)
+      const fresh = rows.filter((r) => !seen.has(`${r.collection}:${r.id}:${r.server_updated_at}`))
+      for (const r of rows) seen.add(`${r.collection}:${r.id}:${r.server_updated_at}`)
       if (fresh.length) {
         const readTx = db.transaction([...COLLECTION_NAMES], 'readonly')
         const existing = await Promise.all(fresh.map((r) => request(readTx.objectStore(r.collection).get(r.id)) as Promise<Entity | undefined>))
@@ -266,7 +315,10 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         cursor = last
         await writeMeta(db, 'cursor', cursor)
       }
-      if (rows.length < 1000) break
+      // Done when the page wasn't full — or when it brought nothing new (never loop on the same rows).
+      if (rows.length < PAGE || !fresh.length || !last) break
+      // 1 ms back so rows sharing the boundary timestamp are not skipped (they are deduplicated above).
+      since = new Date(new Date(last).getTime() - 1).toISOString()
     }
 
     if (!(await readMeta<boolean>(db, 'settingsDirty'))) {
@@ -295,8 +347,10 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         await flush()
         const changed = await pull()
         const pending = await pendingCount()
-        if (outdated) setStatus({ state: 'error', error: new ServerOutdatedError().message, lastSyncAt: new Date().toISOString(), pending })
-        else setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending })
+        const refusedNow = await rejectedCount()
+        if (refusedNow) setStatus({ state: 'error', error: `${refusedNow} ${refusedNow === 1 ? 'item não pôde ser enviado' : 'itens não puderam ser enviados'} ao servidor. ${refusedNow === 1 ? 'Ele continua' : 'Eles continuam'} salvo${refusedNow === 1 ? '' : 's'} neste aparelho; o restante sincronizou normalmente.`, lastSyncAt: new Date().toISOString(), pending, rejected: refusedNow })
+        else if (outdated) setStatus({ state: 'error', error: new ServerOutdatedError().message, lastSyncAt: new Date().toISOString(), pending })
+        else setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending, rejected: 0 })
         if (changed && !disposed) emit({ type: 'data' })
       } catch (err) {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false

@@ -7,7 +7,7 @@ export function syncLabel(status: SyncStatus | null): string {
   if (!status) return 'Sincronizado'
   if (status.state === 'syncing') return 'Sincronizando…'
   if (status.state === 'offline') return status.pending ? `Offline · ${status.pending} pendente${status.pending > 1 ? 's' : ''}` : 'Offline'
-  if (status.state === 'error') return 'Falha ao sincronizar'
+  if (status.state === 'error') return status.rejected ? `${status.rejected} ${status.rejected === 1 ? 'item não enviado' : 'itens não enviados'}` : 'Falha ao sincronizar'
   return status.pending ? `${status.pending} alteração${status.pending > 1 ? 'ões' : ''} a enviar` : 'Sincronizado'
 }
 

@@ -15,6 +15,7 @@ import { isPaidTool, nextChargeDate, balanceOf } from '../data/selectors'
 import { fromDateInput } from '../lib/dates'
 import { wallClock } from '../lib/zoned'
 import { fixedCategoryIds } from './financeCategories'
+import { dayOf } from './indexes'
 import { addDaysToDate, todayIn, zoneOf } from './period'
 
 /** Bump when a finance formula changes (stored with weekly snapshots through METRICS_VERSION). */
@@ -52,7 +53,8 @@ export interface FinanceIndex {
 const blankDay = (): DayMoney => ({ income: 0, expense: 0, count: 0, expenseCount: 0, unnecessaryCount: 0, unnecessaryAmount: 0, byCategory: {}, fixedExpense: 0, otherCurrency: 0, balanceDelta: 0 })
 
 export function dayOfTransaction(t: Pick<Transaction, 'createdAt'>, tz: string): string {
-  return wallClock(new Date(t.createdAt), tz).date
+  // Remembered per instant: editing one movement doesn't convert the whole history again.
+  return dayOf(t.createdAt, tz)
 }
 
 const cache = new WeakMap<Transaction[], Map<string, FinanceIndex>>()

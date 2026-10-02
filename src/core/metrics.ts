@@ -9,8 +9,8 @@
  */
 import { isEnabled } from '../app/modules'
 import type { DataState, HabitCategory, Settings, WeekId } from '../data/types'
-import { wallClock } from '../lib/zoned'
 import { buildAgenda, type AgendaItem } from './agenda'
+import { completionsByDate, dayOf, tasksCompletedByDay } from './indexes'
 import { financeIndex, topCategory, totalsBetween } from './finance'
 import { savedBetween } from './financeGoals'
 import { stepDoneAt, taskMap } from './plans'
@@ -169,7 +169,7 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
       }
     }
     // Manual challenge marks of the day.
-    for (const c of data.completions) if (c.source === 'challenge' && c.date === d && c.status === 'done') fact.challengeMarks.push(c.sourceId)
+    for (const c of completionsByDate(data.completions).get(d) ?? []) if (c.source === 'challenge' && c.status === 'done') fact.challengeMarks.push(c.sourceId)
     // Training counts at most once per day, whatever the source (routine + habit).
     // A planned training day counts once it is over, or today once it is done (pending today is not a miss; skipped is a pause).
     if (fact.trainingPlanned && (d < today || fact.trainingDone)) out.training.planned++
@@ -181,11 +181,9 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
 
   // Tasks completed in the period (by completion date in the person's zone).
   if (isEnabled(settings, 'tasks')) {
-    for (const t of data.tasks) {
-      if (t.status !== 'done' || !t.completedAt) continue
-      const day = wallClock(new Date(t.completedAt), tz).date
-      if (day >= from && day <= to) out.tasks.completed++
-    }
+    // Counted per day once per version of the task list (no full scan per period).
+    const byDay = tasksCompletedByDay(data.tasks, tz)
+    for (let d = from, guard = 0; d <= to && guard < 400; d = addDaysToDate(d, 1), guard++) out.tasks.completed += byDay.get(d) ?? 0
   }
 
   // Money in/out of the period, base currency (adjustments are not income nor expense).
@@ -200,7 +198,7 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
     for (const s of data.planSteps ?? []) {
       const at = stepDoneAt(s, tasks)
       if (!at) continue
-      const day = wallClock(new Date(at), tz).date
+      const day = dayOf(at, tz)
       if (day >= from && day <= to) done++
     }
     out.steps = { done }

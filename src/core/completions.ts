@@ -9,8 +9,14 @@ export function completionId(source: CompletionSource, sourceId: string, date: s
 
 export type CompletionIndex = Map<string, Completion>
 
+const indexCache = new WeakMap<Completion[], { n: number; index: CompletionIndex }>()
+/** Built once per version of the list (the store replaces the array on every change). */
 export function indexCompletions(list: Completion[]): CompletionIndex {
-  return new Map(list.map((c) => [c.id, c]))
+  const hit = indexCache.get(list)
+  if (hit && hit.n === list.length) return hit.index
+  const index: CompletionIndex = new Map(list.map((c) => [c.id, c]))
+  indexCache.set(list, { n: list.length, index })
+  return index
 }
 
 export function statusOf(index: CompletionIndex, source: CompletionSource, sourceId: string, date: string): OccurrenceStatus {

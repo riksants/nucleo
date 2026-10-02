@@ -10,6 +10,7 @@ import { indexCompletions, routineStatus, statusOf, type CompletionIndex } from 
 import { habitsDue, recurringDue } from './habits'
 import { addDaysToDate, nowIn, weekdayOfDate, weekStart, zoneOf } from './period'
 import { mealTitle, weeksWithMeals } from './meals'
+import { eventsByDate, mealsByDate, tasksByDate } from './indexes'
 import { wallClock } from '../lib/zoned'
 
 export type AgendaKind = 'event' | 'task' | 'routine' | 'habit' | 'recurring' | 'meal'
@@ -96,16 +97,14 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
   const weekday = weekdayOfDate(date)
 
   if (on('agenda')) {
-    for (const event of data.events) {
-      if (event.date !== date) continue
+    for (const event of eventsByDate(data.events).get(date) ?? []) {
       const over = date < ctx.today || (date === ctx.today && isTime(event.end) && event.end <= ctx.nowTime)
       out.push({ key: `event:${event.id}`, kind: 'event', date, start: event.start, end: event.end, title: event.title, status: over ? 'ended' : 'pending', checkable: false, source: { kind: 'event', event } })
     }
   }
 
   if (on('tasks')) {
-    for (const task of data.tasks) {
-      if (task.dueDate !== date) continue
+    for (const task of tasksByDate(data.tasks).get(date) ?? []) {
       const start = task.dueTime && isTime(task.dueTime) ? task.dueTime : ''
       out.push({ key: `task:${task.id}`, kind: 'task', date, start, end: '', title: task.title, status: task.status === 'done' ? 'done' : 'pending', checkable: true, source: { kind: 'task', task } })
     }
@@ -134,8 +133,7 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
 
   const real = on('meals') && ctx.realWeeks.has(weekStart(date))
   if (real) {
-    for (const meal of data.meals) {
-      if (meal.date !== date) continue
+    for (const meal of mealsByDate(data.meals).get(date) ?? []) {
       out.push({ key: `mealEntry:${meal.id}`, kind: 'meal', date, start: isTime(meal.time) ? meal.time : '', end: '', title: mealTitle(settings, meal), status: meal.done ? 'done' : 'pending', checkable: false, markable: true, source: { kind: 'mealEntry', meal } })
     }
   }

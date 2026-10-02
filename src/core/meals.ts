@@ -53,8 +53,14 @@ export function mealsOn(meals: MealEntry[], date: string): MealEntry[] {
 }
 
 /** Weeks (Monday ids) that have real meals — those don't show the AI model. */
+const weeksCache = new WeakMap<MealEntry[], { n: number; weeks: Set<WeekId> }>()
 export function weeksWithMeals(meals: MealEntry[]): Set<WeekId> {
-  return new Set(meals.map((m) => weekStart(m.date)))
+  // Once per version of the list (the agenda asks for it on every build).
+  const hit = weeksCache.get(meals)
+  if (hit && hit.n === meals.length) return hit.weeks
+  const weeks = new Set(meals.map((m) => weekStart(m.date)))
+  weeksCache.set(meals, { n: meals.length, weeks })
+  return weeks
 }
 
 type NewMeal = Omit<MealEntry, 'id' | 'createdAt' | 'updatedAt'>

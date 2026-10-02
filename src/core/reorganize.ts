@@ -9,7 +9,7 @@ import type { Completion, DataState, RoutineBlock, RoutinePlan, Settings, Task }
 import { buildAgenda } from './agenda'
 import { completionId } from './completions'
 import { addDaysToDate, nowIn, weekStart, weekdayOfDate, zoneOf } from './period'
-import { activeWindow, busyMinutes, DURATION, findSlot, freeStarts, toTime, WINDOW_LABEL, type Busy } from './timeline'
+import { activeWindow, busyMinutes, dayBusy, DURATION, findSlot, freeStarts, toTime, WINDOW_LABEL, type Busy } from './timeline'
 import { proposalId, type Change, type Proposal } from './assistant/proposal'
 
 const WEEKDAY = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -74,12 +74,14 @@ export function reorganizeDay(data: DataState, settings: Settings, now = new Dat
     ...pending.filter((t) => !t.dueDate && t.priority === 'high').slice(0, 3),
   ].sort(sortTasks(today))
   const ignore = candidates.map((t) => `task:${t.id}`)
+  // The day's agenda is built once; each task only checks the free gaps.
+  const busyToday = dayBusy(data, settings, today, now, ignore)
   const placed: { start: number; end: number }[] = []
   const changes: Change[] = []
   const left: string[] = []
   const nowMin = toMinutes(n.time)
   for (const t of candidates) {
-    const taken = freeStarts(data, settings, today, DURATION.task, now, ignore, placed)
+    const taken = freeStarts(data, settings, today, DURATION.task, now, [], placed, busyToday)
     // Keep its own time when it is still ahead and free.
     if (t.dueDate === today && isTime(t.dueTime ?? '') && toMinutes(t.dueTime!) > nowMin && taken.includes(toMinutes(t.dueTime!))) {
       placed.push({ start: toMinutes(t.dueTime!), end: toMinutes(t.dueTime!) + DURATION.task })

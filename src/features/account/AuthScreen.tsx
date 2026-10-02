@@ -259,7 +259,7 @@ export function AuthScreen() {
               title="Digite o código"
               text={
                 <>
-                  Se existir uma conta com <span className="text-ink">{email}</span>, o código chega em instantes.
+                  Se existir uma conta com <span className="text-ink">{email}</span>, o e-mail chega em instantes. Digite aqui o código de 6 dígitos do e-mail — não é preciso abrir o link.
                 </>
               }
               onBack={() => go('forgot')}

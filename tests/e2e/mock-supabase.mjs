@@ -88,6 +88,8 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/auth/v1/user') {
     const id = sub(req)
     const u = [...users.values()].find((x) => x.id === id)
+    // updateUser (new password after recovery) really changes it, so the next sign-in can be tested.
+    if (u && req.method === 'PUT' && json?.password) u.password = json.password
     return u ? send(200, session(u).user) : send(401, { msg: 'invalid' })
   }
   if (url.pathname === '/auth/v1/logout') return send(204)
@@ -98,6 +100,8 @@ const server = createServer(async (req, res) => {
   if (url.pathname.startsWith('/rest/v1/') && !uid) return send(401, { message: 'JWT required' })
   if (url.pathname === '/rest/v1/records') {
     if (req.method === 'POST') {
+      // Like Postgres: one bad row fails the whole statement (records_data_size; 200 KB stands in for 3 MB here).
+      if (json.some((r) => JSON.stringify(r.data ?? {}).length > 200_000)) return send(400, { code: '23514', message: 'new row for relation "records" violates check constraint "records_data_size"', details: null, hint: null })
       for (const r of json) {
         if (r.user_id !== uid) return send(403, { message: 'new row violates row-level security policy' })
         if (r.collection === 'accounts' && r.data?.password) return send(400, { message: 'violates check constraint "records_no_plain_password"' })

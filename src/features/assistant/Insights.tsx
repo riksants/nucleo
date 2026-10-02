@@ -1,5 +1,5 @@
 import { ChevronRight, Sparkles } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { navigate } from '../../app/router'
 import { computeInsights, HOME_LIMIT, markInsight, visibleInsights, type Insight, type InsightPriority } from '../../core/insights'
 import { addDaysToDate, useToday, weekStart, zoneOf } from '../../core/period'
@@ -13,7 +13,12 @@ const LABEL: Record<InsightPriority, string> = { high: 'alta', medium: 'média',
 export function useInsights() {
   const { data, settings } = useStore()
   const today = useToday(zoneOf(settings))
-  const all = useMemo(() => computeInsights(data, settings), [data, settings, today]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Computed just after the screen shows (never blocks the first paint); dismiss/snooze still apply instantly.
+  const [all, setAll] = useState<Insight[]>([])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAll(computeInsights(data, settings)), 0)
+    return () => window.clearTimeout(timer)
+  }, [data, settings, today])
   return { all: visibleInsights(all, settings.insightState, today), today }
 }
 

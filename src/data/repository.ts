@@ -7,6 +7,8 @@ export interface SyncStatus {
   pending: number
   lastSyncAt: string | null
   error: string | null
+  /** Changes the server refused for good (kept on this device; retried when edited). */
+  rejected?: number
 }
 
 /**

@@ -7,7 +7,7 @@
 import { isEnabled } from '../app/modules'
 import type { DataState, Settings } from '../data/types'
 import { formatMoney } from '../lib/money'
-import { wallClock } from '../lib/zoned'
+import { dayOf } from './indexes'
 import { financeIndex, monthBounds, monthLabel, monthOf, startDay, totalsBetween } from './finance'
 import { savedBetween } from './financeGoals'
 import { percent, rangeMetrics, type RangeMetrics, type Tally } from './metrics'
@@ -122,13 +122,13 @@ export function computeChanges(data: DataState, settings: Settings, period: Chan
 
   if (isEnabled(settings, 'life')) {
     const tasks = taskMap(data.tasks)
-    const dayOf = (iso: string) => wallClock(new Date(iso), tz).date
+    const dayOfStep = (iso: string) => dayOf(iso, tz)
     const count = (from: string, to: string) => {
       const byPlan = new Map<string, number>()
       for (const s of data.planSteps) {
         const at = stepDoneAt(s, tasks)
         if (!at) continue
-        const d = dayOf(at)
+        const d = dayOfStep(at)
         if (d >= from && d <= to) byPlan.set(s.planId, (byPlan.get(s.planId) ?? 0) + 1)
       }
       return byPlan
