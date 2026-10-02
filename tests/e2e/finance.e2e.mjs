@@ -34,7 +34,7 @@ try {
   let text = await b.text()
   r.check('Financeiro abre com histórico antigo e saldo, como antes', text.includes('Pagamento antigo') && text.includes('Mercado antigo') && text.includes('Adicionar') && text.includes('Retirar'))
   const v = await b.eval(`new Promise(r => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const v = q.result.version; const has = q.result.objectStoreNames.contains('financeGoals'); q.result.close(); r(v + ':' + has) } })`)
-  r.check('banco do aparelho atualizado para v5 com metas financeiras', v === '5:true')
+  r.check('banco do aparelho atualizado (v5 ou mais) com metas financeiras', Number(v.split(':')[0]) >= 5 && v.endsWith(':true'), v)
   const oldRec = await idb(b, 'transactions', 'old-out')
   r.check('movimentação antiga intacta (sem categoria criada sozinha)', oldRec && !('category' in oldRec) && !('unnecessary' in oldRec) && oldRec.baseAmount === -12000)
 

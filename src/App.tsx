@@ -40,6 +40,7 @@ import { Sheet } from './ui/Sheet'
 // Etapa 1 pages load on demand, outside the initial bundle.
 const InboxPage = lazy(() => import('./features/inbox/InboxPage').then((m) => ({ default: m.InboxPage })))
 const RecurringPage = lazy(() => import('./features/recurring/RecurringPage').then((m) => ({ default: m.RecurringPage })))
+const LifePage = lazy(() => import('./features/life/LifePage').then((m) => ({ default: m.LifePage })))
 const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })))
 const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))
 const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
@@ -73,6 +74,7 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/agenda': AgendaPage,
   '/focus': FocusPage,
   '/week': WeekPage,
+  '/life': LifePage,
 }
 
 function useSearchShortcut() {

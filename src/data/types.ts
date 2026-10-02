@@ -84,6 +84,9 @@ export interface Task extends Entity {
   dueTime?: string
   /** Optional free text. Older tasks simply don't have it. */
   notes?: string
+  /** Etapa 4: created from a step of a personal project / objective (optional). */
+  planId?: string
+  stepId?: string
 }
 
 /* ----------------------------- Uso diário (Etapa 1) ----------------------------- */
@@ -398,6 +401,7 @@ export type ModuleId =
   | 'recurring'
   | 'agenda'
   | 'week'
+  | 'life'
 
 export interface WrappedKey {
   salt: string
@@ -462,6 +466,8 @@ export interface Collections {
   weekCheckins: WeekCheckin
   weekSnapshots: WeekSnapshot
   financeGoals: FinanceGoal
+  lifePlans: LifePlan
+  planSteps: PlanStep
 }
 
 export type CollectionName = keyof Collections
@@ -494,6 +500,8 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'weekCheckins',
   'weekSnapshots',
   'financeGoals',
+  'lifePlans',
+  'planSteps',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
@@ -588,4 +596,54 @@ export interface FinanceGoal extends Entity {
   note: string
   status: 'active' | 'archived'
   history: { date: string; saved: Cents }[]
+}
+
+/* ----------------------------- Planejamento pessoal (Etapa 4) ----------------------------- */
+
+export type PlanKind = 'project' | 'objective'
+export type PlanStatus = 'planning' | 'active' | 'done' | 'paused' | 'archived'
+
+/**
+ * A personal project ("Viagem para Itália") or a big objective ("Aprender
+ * inglês"). Same shape, different use — `kind` tells them apart. Work projects
+ * (clients, values) stay in `projects`, untouched.
+ */
+export interface LifePlan extends Entity {
+  kind: PlanKind
+  title: string
+  description: string
+  /** Template id (travel, move, study…) or ''. */
+  category: string
+  /** "YYYY-MM-DD" or "" */
+  startDate: string
+  deadline: string
+  /** Objectives only (optional). */
+  priority?: 'low' | 'medium' | 'high'
+  status: PlanStatus
+  notes: string
+  /** 0–100, only used while the plan has no steps. */
+  manualProgress?: number | null
+  /** Set when an objective was turned into a personal project (same record). */
+  convertedFrom?: 'objective'
+  convertedAt?: string
+  /** Inbox item it came from (traceability). */
+  fromInbox?: string
+}
+
+/**
+ * One step of a plan, its own record so that finishing a step on one device
+ * and editing the plan on another never overwrite each other.
+ */
+export interface PlanStep extends Entity {
+  planId: string
+  title: string
+  /** "YYYY-MM-DD" or "" */
+  deadline: string
+  status: 'todo' | 'done'
+  /** When it was marked done (for "O que mudou?"). */
+  doneAt: string | null
+  order: number
+  notes: string
+  /** Task created from this step (the task's completion also completes the step). */
+  taskId?: string | null
 }

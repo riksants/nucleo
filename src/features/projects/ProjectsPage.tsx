@@ -48,7 +48,7 @@ export function ProjectsPage() {
   return (
     <>
       <PageHeader
-        title="Projetos"
+        title="Projetos de trabalho"
         actions={
           <Button icon={<Plus size={18} />} onClick={() => edit(null)}>
             Novo

@@ -1,4 +1,4 @@
-import { CalendarRange, ChevronLeft, ChevronRight, MessageCircleHeart, Sparkles } from 'lucide-react'
+import { CalendarRange, ChevronLeft, ChevronRight, GitCompareArrows, MessageCircleHeart, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -161,6 +161,19 @@ export function WeekPage() {
               <ChevronRight size={18} className="text-faint" />
             </button>
           </section>
+
+          {isEnabled(settings, 'life') && (
+            <button type="button" onClick={() => navigate('/life', { view: 'changes' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+                <GitCompareArrows size={19} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium">O que mudou?</span>
+                <span className="text-[13px] text-faint">Você em relação à semana e ao mês anteriores</span>
+              </span>
+              <ChevronRight size={18} className="text-faint" />
+            </button>
+          )}
 
           {w.isCurrent && (
             <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">

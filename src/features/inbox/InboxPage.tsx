@@ -1,4 +1,4 @@
-import { Archive, CalendarClock, FolderKanban, Inbox, ListTodo, NotebookPen, Plus, Trash2 } from 'lucide-react'
+import { Archive, CalendarClock, Compass, FolderHeart, FolderKanban, Inbox, ListTodo, NotebookPen, Plus, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { PageHeader } from '../../app/Shell'
@@ -15,12 +15,13 @@ import { EventForm } from '../agenda/EventForm'
 import { NoteEditor } from '../notes/NotesPage'
 import { ProjectForm } from '../projects/ProjectForm'
 import { TaskForm } from '../tasks/TaskForm'
+import { PlanForm } from '../life/Plans'
 import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useOpenParam } from '../useOpenParam'
 import { markOrganized, splitCapture, suggestedDate } from './inbox'
 import { CaptureSheet } from './QuickCapture'
 
-type Target = 'task' | 'event' | 'note' | 'project'
+type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective'
 
 function Choice({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint: string; onClick(): void }) {
   return (
@@ -76,6 +77,11 @@ export function InboxPage() {
     toast('Item excluído')
   }
 
+  const convertedLabel = (to: { collection: CollectionName; id: string }) => {
+    if (to.collection !== 'lifePlans') return COLLECTION_LABELS[to.collection].toLowerCase()
+    const plan = data.lifePlans.find((p) => p.id === to.id)
+    return plan?.kind === 'objective' ? 'objetivo' : 'projeto pessoal'
+  }
   const split = target ? splitCapture(target.item.text) : { title: '', notes: '' }
   const date = target ? suggestedDate(target.item.text, today) : ''
   const close = () => setTarget(null)
@@ -119,7 +125,7 @@ export function InboxPage() {
               {done.slice(0, 30).map((item) => (
                 <div key={item.id} className="px-4 py-3">
                   <p className="truncate text-[15px] text-soft">{item.text}</p>
-                  <p className="text-[13px] text-faint">{item.convertedTo ? `Virou ${COLLECTION_LABELS[item.convertedTo.collection].toLowerCase()}` : 'Organizado'} · {item.processedAt ? formatDateTime(item.processedAt).toLowerCase() : ''}</p>
+                  <p className="text-[13px] text-faint">{item.convertedTo ? `Virou ${convertedLabel(item.convertedTo)}` : 'Organizado'} · {item.processedAt ? formatDateTime(item.processedAt).toLowerCase() : ''}</p>
                 </div>
               ))}
             </div>
@@ -133,7 +139,9 @@ export function InboxPage() {
           {isEnabled(settings, 'tasks') && <Choice icon={<ListTodo size={18} />} label="Tarefa" hint="Vai para Tarefas, com prazo se quiser" onClick={() => start('task')} />}
           <Choice icon={<CalendarClock size={18} />} label="Compromisso" hint="Com data e horário" onClick={() => start('event')} />
           {isEnabled(settings, 'notes') && <Choice icon={<NotebookPen size={18} />} label="Anotação" hint="Vai para Anotações" onClick={() => start('note')} />}
-          {isEnabled(settings, 'projects') && <Choice icon={<FolderKanban size={18} />} label="Projeto" hint="Abre o formulário de Projetos" onClick={() => start('project')} />}
+          {isEnabled(settings, 'projects') && <Choice icon={<FolderKanban size={18} />} label="Projeto de trabalho" hint="Abre o formulário de Projetos de trabalho" onClick={() => start('project')} />}
+          {isEnabled(settings, 'life') && <Choice icon={<FolderHeart size={18} />} label="Projeto pessoal" hint="Viagem, mudança, reforma… com etapas" onClick={() => start('lifeProject')} />}
+          {isEnabled(settings, 'life') && <Choice icon={<Compass size={18} />} label="Objetivo" hint="Algo maior, de médio ou longo prazo" onClick={() => start('objective')} />}
           <Choice icon={<Archive size={18} />} label="Já resolvi" hint="Marca como organizado, sem criar nada" onClick={archive} />
         </div>
         <button type="button" onClick={del} className="mt-4 flex items-center gap-2 px-1 text-[15px] text-expense hover:opacity-80">
@@ -145,6 +153,8 @@ export function InboxPage() {
       <EventForm open={target?.type === 'event'} onClose={close} event={null} initial={{ title: split.title, notes: split.notes, date }} onSaved={converted('events')} />
       <NoteEditor open={target?.type === 'note'} onClose={close} note={null} initial={{ title: split.notes ? split.title : '', body: split.notes || split.title }} onSaved={converted('notes')} />
       <ProjectForm open={target?.type === 'project'} onClose={close} project={null} initial={{ name: split.title, notes: split.notes }} onSaved={converted('projects')} />
+      <PlanForm open={target?.type === 'lifeProject'} onClose={close} kind="project" plan={null} initial={{ title: split.title, notes: split.notes, fromInbox: target?.item.id }} onSaved={converted('lifePlans')} />
+      <PlanForm open={target?.type === 'objective'} onClose={close} kind="objective" plan={null} initial={{ title: split.title, notes: split.notes, fromInbox: target?.item.id }} onSaved={converted('lifePlans')} />
       <CaptureSheet open={capturing} onClose={() => setCapturing(false)} />
     </>
   )

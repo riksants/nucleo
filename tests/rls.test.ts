@@ -135,7 +135,7 @@ describe('regras de escrita', () => {
 })
 
 describe('Etapas 1 e 2: coleções novas', () => {
-  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals']
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals', 'lifePlans', 'planSteps']
 
   it('a migração mantém registros antigos e aceita as coleções novas', async () => {
     expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
@@ -175,6 +175,19 @@ describe('Etapa 3: finanças', () => {
     await as(B, `insert into records (collection, id, data, client_updated_at) values ('financeGoals', 'fg1', '{"saved":1}', $1)`, [now()])
     expect((await as(A, `select data from records where id = 'fg1'`)).rows[0].data.saved).toBe(200000)
     expect((await as(B, `select data from records where id = 'fg1'`)).rows[0].data.saved).toBe(1)
+  })
+})
+
+describe('Etapa 4: planejamento pessoal', () => {
+  it('B não lê, altera nem apaga projetos pessoais, objetivos e etapas de A', async () => {
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('lifePlans', 'p1', '{"kind":"objective","title":"Aprender inglês"}', $1)`, [now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('planSteps', 's1', '{"planId":"p1","title":"Curso A","status":"todo"}', $1)`, [now()])
+    for (const c of ['lifePlans', 'planSteps']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = '{"status":"done"}' where id in ('p1', 's1')`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection in ('lifePlans', 'planSteps')`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'planSteps', 'sB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    expect((await as(A, `select data from records where id = 's1'`)).rows[0].data.status).toBe('todo')
+    expect((await as(A, `select data from records where id = 'p1'`)).rows[0].data.title).toBe('Aprender inglês')
   })
 })
 

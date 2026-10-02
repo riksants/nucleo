@@ -17,7 +17,7 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   transactions: 'Movimentações',
   goals: 'Metas de compra',
   clients: 'Clientes',
-  projects: 'Projetos',
+  projects: 'Projetos de trabalho',
   tasks: 'Tarefas',
   tools: 'Ferramentas',
   accounts: 'Contas',
@@ -41,6 +41,8 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   weekCheckins: 'Check-ins semanais',
   weekSnapshots: 'Resumos de semanas fechadas',
   financeGoals: 'Metas financeiras',
+  lifePlans: 'Projetos pessoais e objetivos',
+  planSteps: 'Etapas de projetos e objetivos',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

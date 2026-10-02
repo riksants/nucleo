@@ -139,7 +139,7 @@ export function HomePage() {
           )}
 
           {on('projects') && (
-          <Block title={activeProjects.length ? `Projetos ativos · ${activeProjects.length}` : 'Projetos'} action={activeProjects.length ? 'Ver todos' : undefined} onAction={() => navigate('/projects')}>
+          <Block title={activeProjects.length ? `Projetos de trabalho ativos · ${activeProjects.length}` : 'Projetos de trabalho'} action={activeProjects.length ? 'Ver todos' : undefined} onAction={() => navigate('/projects')}>
             {activeProjects.length ? (
               <div className="card p-1.5">
                 {activeProjects.slice(0, 3).map((p: Project) => {

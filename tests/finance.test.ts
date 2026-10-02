@@ -12,7 +12,7 @@ import { goalProgress } from '../src/core/weekGoals'
 import { withExtras } from '../src/data/store'
 import type { Challenge, DataState, FinanceGoal, Settings, Tool, Transaction, WeeklyGoal } from '../src/data/types'
 
-const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [] })
+const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [] })
 const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 100000, startedAt: '2026-07-01T12:00:00Z', rates: null, manualRates: {}, lastBackupAt: null, timeZone: 'America/Sao_Paulo', modules: { finance: true } } as Settings
 let seq = 0
 /** Movement registered at `at` (UTC instant). amount in cents, base currency unless said otherwise. */
@@ -122,9 +122,9 @@ describe('revisão semanal', () => {
     const d = data()
     const m = weekMetrics(d, settings, WEEK, NOW)
     expect(m.finance).toMatchObject({ income: 300000, expense: 34000, count: 4, unnecessaryCount: 1, top: { category: 'food', amount: 18000 } })
-    expect(METRICS_VERSION).toBe(2)
+    expect(METRICS_VERSION).toBeGreaterThanOrEqual(2)
     const snap = buildSnapshot(d, settings, WEEK, new Date('2026-10-06T12:00:00Z'))
-    expect(snap.metricsVersion).toBe(2)
+    expect(snap.metricsVersion).toBe(METRICS_VERSION)
     expect(snap.metrics['finance.unnecessaryCount']).toBe(1)
     expect(snap.metrics['finance.count']).toBe(4)
     expect(snap.financeTop).toEqual({ category: 'food', amount: 18000 })

@@ -13,11 +13,13 @@ import { wallClock } from '../lib/zoned'
 import { buildAgenda, type AgendaItem } from './agenda'
 import { financeIndex, topCategory, totalsBetween } from './finance'
 import { savedBetween } from './financeGoals'
+import { stepDoneAt, taskMap } from './plans'
 import { addDaysToDate, todayIn, weekDates, zoneOf } from './period'
 import { toMinutes } from '../../supabase/functions/_shared/planner/time.ts'
 
 /** v2 (Etapa 3): adds finance count, unnecessary expenses, saved in goals and top category. */
-export const METRICS_VERSION = 2
+/** v3 (Etapa 4): adds steps of personal projects/objectives done. */
+export const METRICS_VERSION = 3
 
 export interface Tally {
   /** Considered occurrences (excludes skipped). */
@@ -65,6 +67,8 @@ export interface RangeMetrics {
   finance: { income: number; expense: number; net: number; count: number; unnecessaryCount: number; unnecessaryAmount: number; top: { category: string; amount: number } | null } | null
   /** Registered as saved in finance goals of the main currency (withdrawals negative). null = no such goal. */
   saved: number | null
+  /** Steps of personal projects/objectives completed in the range. null when Vida is off. */
+  steps: { done: number } | null
   days: DayFacts[]
 }
 
@@ -102,6 +106,7 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
     events: 0,
     finance: null,
     saved: null,
+    steps: null,
     days: [],
   }
   const money = isEnabled(settings, 'finance') ? financeIndex(data.transactions, settings) : null
@@ -184,6 +189,17 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
     if (t.count) out.finance = { income: t.income, expense: t.expense, net: t.net, count: t.count, unnecessaryCount: t.unnecessaryCount, unnecessaryAmount: t.unnecessaryAmount, top: topCategory(t) }
     out.saved = savedBetween(data.financeGoals ?? [], settings.baseCurrency, from, to < today ? to : today)
   }
+  if (isEnabled(settings, 'life')) {
+    const tasks = taskMap(data.tasks)
+    let done = 0
+    for (const s of data.planSteps ?? []) {
+      const at = stepDoneAt(s, tasks)
+      if (!at) continue
+      const day = wallClock(new Date(at), tz).date
+      if (day >= from && day <= to) done++
+    }
+    out.steps = { done }
+  }
   return out
 }
 
@@ -227,6 +243,8 @@ export function metricValue(m: RangeMetrics, key: string): number | null {
       return m.finance ? m.finance.net : null
     case 'finance.saved':
       return m.saved
+    case 'steps.done':
+      return m.steps ? m.steps.done : null
     default:
       return null
   }

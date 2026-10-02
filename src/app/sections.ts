@@ -6,6 +6,7 @@ import type { RoutePath } from './router'
 export interface Section {
   path: RoutePath
   label: string
+  shortLabel?: string
   icon: LucideIcon
 }
 

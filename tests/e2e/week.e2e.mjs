@@ -48,7 +48,7 @@ try {
 
   // Snapshot of last week: created once, with versions
   let snap = await idb(b, 'weekSnapshots', lastWeek)
-  r.check('semana anterior fechada automaticamente (foto com versões)', snap?.week === lastWeek && snap.metricsVersion === 2 && snap.scoreVersion === 1 && snap.metrics['training.done'] >= 1)
+  r.check('semana anterior fechada automaticamente (foto com versões)', snap?.week === lastWeek && snap.metricsVersion === 3 && snap.scoreVersion === 1 && snap.metrics['training.done'] >= 1)
   const closedAt = snap?.closedAt
   await b.send('Page.reload', { ignoreCache: true })
   await b.sleep(3000)

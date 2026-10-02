@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarDays,
   CalendarRange,
+  Compass,
   FolderKanban,
   Inbox,
   KeyRound,
@@ -27,6 +28,8 @@ export interface ModuleDef {
   id: ModuleId
   path: RoutePath
   label: string
+  /** Tab bar label when the full one does not fit. */
+  shortLabel?: string
   icon: LucideIcon
   description: string
   /** Existed before sections could be hidden: stays on for current users. */
@@ -36,7 +39,7 @@ export interface ModuleDef {
 export const MODULES: ModuleDef[] = [
   { id: 'today', path: '/today', label: 'Hoje', icon: CalendarCheck, description: 'Tarefas, rotina, refeições e prazos do dia', legacy: false },
   { id: 'finance', path: '/finance', label: 'Financeiro', icon: Wallet, description: 'Saldo, entradas e saídas', legacy: true },
-  { id: 'projects', path: '/projects', label: 'Projetos', icon: FolderKanban, description: 'Trabalhos, prazos e valores', legacy: true },
+  { id: 'projects', path: '/projects', label: 'Projetos de trabalho', shortLabel: 'Projetos', icon: FolderKanban, description: 'Trabalhos, prazos e valores', legacy: true },
   { id: 'tasks', path: '/tasks', label: 'Tarefas', icon: ListTodo, description: 'O que fazer e compromissos', legacy: true },
   { id: 'clients', path: '/clients', label: 'Clientes', icon: Users, description: 'Contatos e histórico', legacy: true },
   { id: 'goals', path: '/goals', label: 'Metas de compra', icon: Target, description: 'Compras que você quer fazer', legacy: true },
@@ -48,6 +51,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'subscribers', path: '/subscribers', label: 'Assinantes', icon: Repeat, description: 'Planos e assinantes dos seus projetos', legacy: false },
   { id: 'routine', path: '/routine', label: 'Rotina', icon: CalendarClock, description: 'Agenda semanal montada com IA', legacy: false },
   { id: 'meals', path: '/meals', label: 'Alimentação', icon: Salad, description: 'Planejamento de refeições com IA', legacy: false },
+  { id: 'life', path: '/life', label: 'Vida', icon: Compass, description: 'Calendário, projetos pessoais, objetivos e o que mudou', legacy: false },
   { id: 'week', path: '/week', label: 'Semana', icon: CalendarRange, description: 'Resumo, metas, sequências, desafios e Score', legacy: false },
   { id: 'agenda', path: '/agenda', label: 'Agenda', icon: CalendarDays, description: 'Hoje e semana: compromissos, tarefas, rotina e hábitos', legacy: false },
   { id: 'inbox', path: '/inbox', label: 'Caixa de entrada', icon: Inbox, description: 'Capture rápido, organize depois', legacy: false },

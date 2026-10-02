@@ -35,7 +35,7 @@ export interface MetricOption {
   unit: string
 }
 
-export function metricOptions(habits: { id: string; name: string; active: boolean }[], recurring: { id: string; title: string; active: boolean }[], categories: HabitCategory[]): MetricOption[] {
+export function metricOptions(habits: { id: string; name: string; active: boolean }[], recurring: { id: string; title: string; active: boolean }[], categories: HabitCategory[], opts: { life?: boolean } = {}): MetricOption[] {
   const base: MetricOption[] = [
     { key: 'training.days', label: 'Dias de treino', kind: 'quantity', unit: 'treinos' },
     { key: 'study.minutes', label: 'Minutos de estudo (rotina)', kind: 'quantity', unit: 'min' },
@@ -48,6 +48,7 @@ export function metricOptions(habits: { id: string; name: string; active: boolea
     // "Economizar" = what the person registered as saved in finance goals (not income − expense).
     { key: 'finance.saved', label: 'Guardar (registrado nas metas com prazo)', kind: 'money', unit: '' },
     { key: 'finance.net', label: 'Saldo da semana (entradas − saídas)', kind: 'money', unit: '' },
+    ...(opts.life ? [{ key: 'steps.done', label: 'Etapas concluídas (projetos e objetivos)', kind: 'quantity' as const, unit: 'etapas' }] : []),
   ]
   const cat: MetricOption[] = categories.map((c) => ({ key: `category:${c}`, label: `Dias com hábito de ${CATEGORY_LABEL[c].toLowerCase()}`, kind: 'frequency', unit: 'dias' }))
   const perHabit: MetricOption[] = habits.filter((h) => h.active).map((h) => ({ key: `habit:${h.id}`, label: `Hábito: ${h.name}`, kind: 'frequency', unit: 'vezes' }))

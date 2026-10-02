@@ -44,7 +44,7 @@ function BottomNav({ path }: { path: RoutePath }) {
                 )}
                 <Icon size={21} strokeWidth={active ? 2.2 : 1.8} className={`relative ${active ? 'text-accent-hi' : ''}`} />
               </span>
-              {s.label}
+              {s.shortLabel ?? s.label}
             </a>
           )
         })}

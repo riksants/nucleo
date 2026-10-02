@@ -88,6 +88,14 @@ const fUpd = await b.from('records').update({ data: { name: 'invadido' } }).eq('
 check('B não altera metas financeiras de A', (fUpd.data ?? []).length === 0)
 await a.from('records').delete().eq('id', fid)
 
+// Etapa 4: projetos pessoais, objetivos e etapas (exige a migração 20261005000000_etapa4_vida.sql)
+const lid = `rls-life-${Date.now()}`
+const lIns = await a.from('records').insert({ user_id: aId, collection: 'planSteps', id: lid, data: { title: 'privado' }, client_updated_at: now })
+check('servidor aceita as coleções da Etapa 4 (migração executada)', !lIns.error, lIns.error?.message)
+const lRead = await b.from('records').select('*').eq('id', lid)
+check('B não lê etapas de A', !lRead.error && lRead.data.length === 0)
+await a.from('records').delete().eq('id', lid)
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

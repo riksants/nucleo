@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { isEnabled } from '../../app/modules'
 import { addDaysToDate, weekStart } from '../../core/period'
 import { metricOptions } from '../../core/weekGoals'
 import { newId, useStore } from '../../data/store'
@@ -27,7 +28,7 @@ export function GoalForm({ open, onClose, goal, defaultWeek, currentWeek }: { op
   const { toast } = useFeedback()
   const del = useDelete()
   const categories = useMemo(() => [...new Set(data.habits.map((h) => h.category).filter(Boolean))] as HabitCategory[], [data.habits])
-  const options = useMemo(() => metricOptions(data.habits, data.recurring, categories), [data.habits, data.recurring, categories])
+  const options = useMemo(() => metricOptions(data.habits, data.recurring, categories, { life: isEnabled(settings, 'life') }), [data.habits, data.recurring, categories, settings])
   const [d, set, setAll] = useDraft(open, () => ({
     title: goal?.title ?? '',
     kind: (goal?.kind ?? 'quantity') as WeeklyGoalKind,

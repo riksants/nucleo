@@ -43,6 +43,7 @@ export function flattenMetrics(m: RangeMetrics): Record<string, number | null> {
     'finance.unnecessaryCount': m.finance?.unnecessaryCount ?? null,
     'finance.unnecessaryAmount': m.finance?.unnecessaryAmount ?? null,
     'finance.saved': m.saved,
+    'steps.done': m.steps ? m.steps.done : null,
   }
 }
 

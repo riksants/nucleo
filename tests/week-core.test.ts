@@ -8,7 +8,7 @@ import { occurrenceStreak, weekStreak } from '../src/core/streaks'
 import { goalProgress } from '../src/core/weekGoals'
 import type { Challenge, Completion, DataState, Settings, WeeklyGoal } from '../src/data/types'
 
-const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [] })
+const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [] })
 const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 0, startedAt: '2026-01-01T00:00:00Z', rates: null, manualRates: {}, lastBackupAt: null, timeZone: 'America/Sao_Paulo', modules: { habits: true, routine: true, recurring: true, agenda: true } } as Settings
 const e = { createdAt: '', updatedAt: '' }
 const done = (source: Completion['source'], id: string, date: string, status: Completion['status'] = 'done'): Completion => ({ ...e, id: completionId(source, id, date), source, sourceId: id, date, status })
@@ -145,7 +145,7 @@ describe('fotos semanais', () => {
   })
   it('foto guarda métricas, Score histórico e as versões das fórmulas', () => {
     const snap = buildSnapshot(trainingData(), settings, WEEK, new Date('2026-10-06T12:00:00Z'))
-    expect(snap).toMatchObject({ id: WEEK, week: WEEK, metricsVersion: 2, timeZone: 'America/Sao_Paulo' })
+    expect(snap).toMatchObject({ id: WEEK, week: WEEK, metricsVersion: 3, timeZone: 'America/Sao_Paulo' })
     expect(snap.metrics['training.done']).toBe(2)
     expect(snap.scoreVersion).toBe(1)
     expect(snap.score).toHaveProperty('overall')

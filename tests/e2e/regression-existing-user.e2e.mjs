@@ -47,7 +47,7 @@ try {
   await b.click('Pronto')
   await b.shot('t1-home')
   const db = await b.eval(`new Promise(r => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const db = q.result; const v = db.version; const names = [...db.objectStoreNames]; const tx = db.transaction(['tasks','accounts','transactions'], 'readonly'); const out = { v, names: names.length }; let n = 0; for (const s of ['tasks','accounts','transactions']) { const g = tx.objectStore(s).count(); g.onsuccess = () => { out[s] = g.result; if (++n === 3) { db.close(); r(out) } } } } })`)
-  check('IndexedDB atualizado (v5) sem perder registros', db.v === 5 && db.tasks === 2 && db.accounts === 1 && db.transactions === 1, JSON.stringify(db))
+  check('IndexedDB atualizado (v6) sem perder registros', db.v === 6 && db.tasks === 2 && db.accounts === 1 && db.transactions === 1, JSON.stringify(db))
 
   // Currency picker in the balance card: old quick list kept (EUR/BRL/AED) + search button.
   const seg = await b.eval(`[...document.querySelectorAll('[aria-label="Moeda de exibição"] [role=radio]')].map(x => x.textContent)`)
