@@ -36,6 +36,11 @@ export function newId(): string {
 
 export type Draft<T extends Entity> = Omit<T, keyof Entity> & Partial<Entity>
 
+export interface SaveOptions {
+  by?: 'assistant'
+  keepMark?: boolean
+}
+
 /** Optional details (Etapa 3). Left out = the record keeps exactly what it had. */
 export interface TransactionExtras {
   category?: string | null
@@ -79,7 +84,11 @@ interface Store {
   hasRates: boolean
   ratesLoading: boolean
   setDisplayCurrency(c: Currency): void
-  save<K extends CollectionName>(collection: K, draft: Draft<Collections[K]>): Promise<Collections[K]>
+  /**
+   * Saves a record. A normal save clears the "Alterado pelo Assistente" mark;
+   * the Assistant passes { by: 'assistant' }; undo passes { keepMark: true }.
+   */
+  save<K extends CollectionName>(collection: K, draft: Draft<Collections[K]>, opts?: SaveOptions): Promise<Collections[K]>
   remove(collection: CollectionName, id: string): Promise<void>
   addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
@@ -200,9 +209,11 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   )
 
   const save = useCallback(
-    async <K extends CollectionName>(collection: K, draft: Draft<Collections[K]>) => {
+    async <K extends CollectionName>(collection: K, draft: Draft<Collections[K]>, opts: SaveOptions = {}) => {
       const now = new Date().toISOString()
-      const item = { ...draft, id: draft.id ?? newId(), createdAt: draft.createdAt ?? now, updatedAt: now } as Collections[K]
+      const { changedBy, ...rest } = draft
+      const mark = opts.by ?? (opts.keepMark ? changedBy : undefined)
+      const item = { ...rest, ...(mark ? { changedBy: mark } : {}), id: draft.id ?? newId(), createdAt: draft.createdAt ?? now, updatedAt: now } as Collections[K]
       setData((prev) => {
         const list = prev[collection] as Collections[K][]
         const exists = list.some((x) => x.id === item.id)

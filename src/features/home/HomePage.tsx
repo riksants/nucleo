@@ -1,6 +1,6 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, Search, Settings } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { CalendarCheck, ChevronRight, Search, Settings, Sparkles } from 'lucide-react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
 import { optionOf, PROJECT_STATUS } from '../../data/labels'
@@ -10,6 +10,9 @@ import type { Goal, Project, Task, Transaction } from '../../data/types'
 import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { IconButton } from '../../ui/Button'
+
+/** Up to 3 suggestions; its code loads after the screen (startup stays light). */
+const AttentionCard = lazy(() => import('../assistant/Insights').then((m) => ({ default: m.AttentionCard })))
 import { Badge, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { BalanceCard } from '../finance/BalanceCard'
@@ -76,6 +79,9 @@ export function HomePage() {
           <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em] lg:text-[34px]">{greeting(today)}</h1>
         </div>
         <div className="flex gap-1">
+          <IconButton label="Assistente" onClick={() => navigate('/assistant')}>
+            <Sparkles size={20} className="text-accent-hi" />
+          </IconButton>
           {on('today') && (
             <IconButton label="Hoje" onClick={() => navigate('/today')}>
               <CalendarCheck size={21} />
@@ -89,6 +95,10 @@ export function HomePage() {
           </IconButton>
         </div>
       </header>
+
+      <Suspense fallback={null}>
+        <AttentionCard />
+      </Suspense>
 
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
         {on('finance') && (

@@ -29,6 +29,7 @@ export type RoutePath =
   | '/focus'
   | '/week'
   | '/life'
+  | '/assistant'
 
 export interface Route {
   path: RoutePath

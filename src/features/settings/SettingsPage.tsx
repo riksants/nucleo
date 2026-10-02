@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Gauge, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Gauge, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
@@ -182,7 +182,7 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
 
 export function SettingsPage() {
   const { settings, data, balance, refreshRates, ratesLoading, updateSettings, setDisplayCurrency } = useStore()
-  const { toast } = useFeedback()
+  const { toast, confirm } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
   const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | 'categories' | null>(null)
   const { configured, email } = useSession()
@@ -265,6 +265,45 @@ export function SettingsPage() {
               <Switch checked={Boolean(settings.morningAutoOpen)} />
             </button>
           )}
+        </Group>
+
+        <Group title="Assistente" note={settings.activeHours ? undefined : 'Sem faixa definida, uso os horários da sua rotina; sem rotina, 07:00–22:00.'}>
+          <div className="flex min-h-14 flex-wrap items-center gap-3 px-4 py-2.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+              <Clock size={18} />
+            </span>
+            <span className="min-w-0 flex-1 text-[15px]">Horários para sugestões</span>
+            <span className="flex items-center gap-1.5">
+              <input type="time" aria-label="Início da faixa de horário" value={settings.activeHours?.start ?? '07:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: e.target.value, end: settings.activeHours?.end ?? '22:00' } })} className="h-10 rounded-xl border border-line bg-raised px-2 text-[15px] text-ink" />
+              <span className="text-faint">–</span>
+              <input type="time" aria-label="Fim da faixa de horário" value={settings.activeHours?.end ?? '22:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: settings.activeHours?.start ?? '07:00', end: e.target.value } })} className="h-10 rounded-xl border border-line bg-raised px-2 text-[15px] text-ink" />
+            </span>
+          </div>
+          {settings.activeHours && <Row label="Voltar a usar os horários da rotina" onClick={() => updateSettings({ activeHours: undefined })} />}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(settings.assistantAi?.enabled)}
+            onClick={async () => {
+              if (settings.assistantAi?.enabled) return updateSettings({ assistantAi: { enabled: false, consentAt: null } })
+              const ok = await confirm({
+                title: 'Usar IA para frases livres?',
+                message: 'Quando os comandos do Assistente não entenderem uma frase, só essa frase e a data de hoje serão enviadas ao servidor do NÚCLEO, que pede à IA da Anthropic para transformá-la em um comando. Nenhum registro seu (tarefas, finanças, alimentação, anotações, senhas) é enviado. Nada é executado sem a sua confirmação. Precisa de conexão e tem limite diário. Você pode desligar quando quiser.',
+                confirmLabel: 'Concordo, ligar',
+              })
+              if (ok) await updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString() } })
+            }}
+            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+              <Sparkles size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px]">Entender frases livres com IA</span>
+              <span className="block text-[13px] text-faint">Opcional · desligado: nada é enviado</span>
+            </span>
+            <Switch checked={Boolean(settings.assistantAi?.enabled)} />
+          </button>
         </Group>
 
         <Group title="Saldo" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>

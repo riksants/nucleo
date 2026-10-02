@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { isEnabled } from '../../app/modules'
+import { useRoute } from '../../app/router'
 import { useStore } from '../../data/store'
 import { Button } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
@@ -58,8 +59,10 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
 /** Round button above the tab bar (phone) — only when the inbox section is on. */
 export function QuickCaptureButton() {
   const { settings, ready } = useStore()
+  const { path } = useRoute()
   const [open, setOpen] = useState(false)
-  if (!ready || !isEnabled(settings, 'inbox')) return null
+  // The Assistant has its own input in that spot.
+  if (!ready || !isEnabled(settings, 'inbox') || path === '/assistant') return null
   return (
     <>
       <button

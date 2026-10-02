@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
-import { SEARCH, secondarySections, SETTINGS, type Section } from '../../app/sections'
+import { ASSISTANT, SEARCH, secondarySections, SETTINGS, type Section } from '../../app/sections'
 import { useStore } from '../../data/store'
 import type { CollectionName } from '../../data/types'
 
@@ -42,7 +42,7 @@ export function MorePage() {
         })}
       </div>
       <div className="card mt-6 divide-y divide-line overflow-hidden">
-        {[SEARCH, SETTINGS].map((s) => (
+        {[ASSISTANT, SEARCH, SETTINGS].map((s) => (
           <a key={s.path} href={`#${s.path}`} className="flex min-h-14 items-center gap-3 px-4 transition-colors hover:bg-white/[0.03]">
             <s.icon size={20} className="text-soft" />
             <span className="flex-1 text-[15px]">{s.label}</span>

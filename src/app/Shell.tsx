@@ -5,7 +5,7 @@ import { useStore } from '../data/store'
 import { isEnabled } from './modules'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
-import { MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
+import { ASSISTANT, MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
 
 function isActive(section: Section, path: RoutePath, primary: Section[]) {
   if (section.path === '/more') return !primary.some((s) => s.path === path)
@@ -91,6 +91,7 @@ function Sidebar({ path }: { path: RoutePath }) {
       </button>
       <SidebarCapture />
       <nav className="flex flex-col gap-0.5">
+        <SideLink section={ASSISTANT} path={path} />
         {primarySections(settings).map((s) => (
           <SideLink key={s.path} section={s} path={path} />
         ))}

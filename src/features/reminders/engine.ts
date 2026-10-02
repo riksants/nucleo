@@ -13,6 +13,7 @@ import { nextChargeOf } from '../../data/subscriptions'
 import type { DataState, MealPlan, ReminderKind, ReminderPrefs, ReminderRule, RoutinePlan, Settings } from '../../data/types'
 import { addDaysToDate, deviceTimeZone, isTime, wallClock, weekdayOfDate, zonedToInstant } from '../../lib/zoned'
 import { typeLabel, weeksWithMeals } from '../../core/meals'
+import { stepDone, taskMap } from '../../core/plans'
 import { weekStart } from '../../core/period'
 
 export const DEFAULT_REMINDERS: ReminderPrefs = {
@@ -137,6 +138,24 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
     for (const p of data.projects) {
       if (!p.dueDate || !ACTIVE_PROJECT_STATUSES.has(p.status)) continue
       add(ctx, 'deadlines', `project:${p.id}:${p.dueDate}:${rule.daysBefore}:${rule.at}`, atDayBefore(ctx, rule, p.dueDate), `Prazo: ${p.name}`, `Prazo do projeto ${p.name}`, `#/projects?open=${p.id}`)
+    }
+  }
+
+  // Etapa 6: deadlines of personal projects, objectives and their steps (same "Prazos" rule).
+  if (on('deadlines') && isEnabled(settings, 'life')) {
+    const rule = prefs.rules.deadlines
+    const tasks = taskMap(data.tasks)
+    const open = (p: { status: string }) => p.status === 'active' || p.status === 'planning'
+    for (const p of data.lifePlans ?? []) {
+      if (!p.deadline || !open(p)) continue
+      const what = p.kind === 'objective' ? 'objetivo' : 'projeto'
+      add(ctx, 'deadlines', `plan:${p.id}:${p.deadline}:${rule.daysBefore}:${rule.at}`, atDayBefore(ctx, rule, p.deadline), `Prazo: ${p.title}`, `Prazo do ${what} ${p.title}`, `#/life?open=${p.id}`)
+    }
+    const plans = new Map((data.lifePlans ?? []).map((p) => [p.id, p]))
+    for (const s of data.planSteps ?? []) {
+      const p = plans.get(s.planId)
+      if (!s.deadline || !p || !open(p) || stepDone(s, tasks)) continue
+      add(ctx, 'deadlines', `step:${s.id}:${s.deadline}:${rule.daysBefore}:${rule.at}`, atDayBefore(ctx, rule, s.deadline), `Etapa: ${s.title}`, `Etapa de ${p.title}`, `#/life?open=${p.id}`)
     }
   }
 

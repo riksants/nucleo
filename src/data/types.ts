@@ -13,6 +13,8 @@ export interface Entity {
   id: string
   createdAt: string
   updatedAt: string
+  /** Etapa 6: last change made by the Assistant (cleared by the next manual change). */
+  changedBy?: 'assistant'
 }
 
 export type TransactionType = 'in' | 'out' | 'adjust'
@@ -87,6 +89,8 @@ export interface Task extends Entity {
   /** Etapa 4: created from a step of a personal project / objective (optional). */
   planId?: string
   stepId?: string
+  /** Etapa 6: created to replace a routine block on one day (that day is marked skipped). */
+  fromRoutine?: { blockId: string; date: string }
 }
 
 /* ----------------------------- Uso diário (Etapa 1) ----------------------------- */
@@ -361,6 +365,12 @@ export interface Settings {
   hideScore?: boolean
   /** Sections already announced to this person, so new ones are announced once. */
   modulesSeen?: ModuleId[]
+  /** Etapa 6: what the person did with each suggestion (key → state). Pruned after 30 days, max 200. */
+  insightState?: Record<string, InsightMark>
+  /** Etapa 6: hours used to suggest times ("HH:MM"). Missing = routine wake/sleep, else 07:00–22:00. */
+  activeHours?: { start: string; end: string }
+  /** Etapa 6: optional AI interpreter for free sentences. Off by default; needs consent. */
+  assistantAi?: { enabled: boolean; consentAt: string | null }
   /** Meal types in the person's order (on/off, renamed, personal). Missing = defaults. */
   mealTypes?: MealType[]
   /** Personal finance categories and hidden default ones. Missing = defaults only. */
@@ -704,4 +714,15 @@ export interface ShoppingEntry extends Entity {
   note: string
   /** Where a manual item came from ('inbox', 'plan'), for traceability. */
   origin?: string
+}
+
+/* ----------------------------- Inteligência (Etapa 6) ----------------------------- */
+
+/** State of one suggestion: dismissed, snoozed until a date, or accepted. */
+export interface InsightMark {
+  s: 'dismissed' | 'snoozed' | 'accepted'
+  /** snoozed: hidden until this date ("YYYY-MM-DD"). */
+  until?: string
+  /** When it was set (for pruning). */
+  at: string
 }

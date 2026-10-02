@@ -206,6 +206,21 @@ describe('Etapa 5: alimentação', () => {
   })
 })
 
+describe('Etapa 6: uso do interpretador do Assistente (ai_usage)', () => {
+  it('aceita o tipo assistant com contagem de tokens; cada conta só lê o próprio uso; o app não grava', async () => {
+    await db.exec('reset role')
+    await db.exec('set role service_role')
+    await db.query("insert into ai_usage (user_id, kind, request_id, status, input_tokens, output_tokens) values ($1, 'assistant', 'req-assist-0001', 'ok', 1400, 120)", [A])
+    await db.exec('reset role')
+    expect((await as(A, "select kind, input_tokens, output_tokens from ai_usage where kind = 'assistant'")).rows).toEqual([{ kind: 'assistant', input_tokens: 1400, output_tokens: 120 }])
+    expect((await as(B, "select * from ai_usage where kind = 'assistant'")).rows).toHaveLength(0)
+    await expect(as(A, "insert into ai_usage (user_id, kind, request_id) values ($1, 'assistant', 'req-assist-0002')", [A])).rejects.toThrow()
+    await db.exec('set role service_role')
+    await expect(db.query("insert into ai_usage (user_id, kind, request_id) values ($1, 'outro', 'req-assist-0003')", [A])).rejects.toThrow(/ai_usage_kind_check/)
+    await db.exec('reset role')
+  })
+})
+
 describe('Etapa 2: check-in e resumo por semana', () => {
   it('um check-in por semana (id = semana); B não lê nem sobrescreve o de A', async () => {
     await as(A, `insert into records (collection, id, data, client_updated_at) values ('weekCheckins', '2026-09-28', '{"note":"de A"}', $1)`, [now()])

@@ -87,3 +87,17 @@ Ele dispara o envio a cada minuto com `pg_cron` + `pg_net`.
   tokens (centavos de dólar). O limite padrão é 10 gerações por pessoa por dia. Defina um limite de
   gasto mensal no console da Anthropic.
 - **Notificações (Web Push)**: grátis (serviços da Apple/Google/Mozilla).
+
+## Assistente — interpretador opcional com IA (desligado por padrão)
+
+O Assistente funciona 100% sem IA: comandos, sugestões, reorganização e replanejamento rodam no aparelho, sem custo.
+O interpretador opcional só entende frases livres e devolve uma intenção; quem executa (com confirmação) é o app.
+
+Só faça isto se quiser ativar — gera custo por uso na Anthropic:
+
+1. Publicar a função: `supabase functions deploy assistant` (usa a mesma `ANTHROPIC_API_KEY` do planejador, como segredo da função).
+2. Opcional: `supabase secrets set ASSISTANT_DAILY_LIMIT=30` (padrão 30 por pessoa/dia).
+3. No app: Configurações → Assistente → "Entender frases livres com IA" (pede consentimento; desliga a qualquer momento).
+
+O que é enviado: só a frase digitada e a data de hoje. O que fica gravado em `ai_usage`: tipo da intenção, modelo e número de tokens — nunca o texto.
+Para estimar custo: some `input_tokens` e `output_tokens` de `kind = 'assistant'` e multiplique pelos preços atuais do modelo `claude-haiku-4-5` na página de preços da Anthropic.

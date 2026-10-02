@@ -81,6 +81,8 @@ try {
 
   await signIn(B, 'lia@teste.com')
   await B.goto(BASE + '#/week')
+  // The first sync after signing in can take a moment on a slow machine: wait for it (up to 8 s).
+  for (let i = 0; i < 16 && !(await B.text()).includes('1 / 4'); i++) await B.sleep(500)
   let text = await B.text()
   r.check('outro aparelho mostra a meta com o progresso real (1 / 4)', text.includes('1 / 4'))
 
