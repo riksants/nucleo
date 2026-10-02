@@ -2,7 +2,7 @@ import { AnimatePresence } from 'framer-motion'
 import { ChevronRight, Crosshair } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { navigate } from '../../app/router'
-import { morningSentence, type DayPlan } from '../../core/day'
+import { mealsMorningLine, morningSentence, type DayPlan } from '../../core/day'
 import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { Task } from '../../data/types'
@@ -47,6 +47,7 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_80%_at_0%_0%,rgb(91_108_255/0.16),transparent_60%)]" aria-hidden />
         <p className="relative text-[22px] font-semibold tracking-tight">{greeting}.</p>
         <p className="relative mt-1 text-[16px] leading-relaxed text-soft">{morningSentence(plan)}</p>
+        {mealsMorningLine(plan) && <p className="relative mt-1.5 text-[14px] leading-relaxed text-faint">{mealsMorningLine(plan)}</p>}
       </div>
 
       {plan.priorities.length > 0 && (

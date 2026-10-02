@@ -5,6 +5,7 @@ import { PageHeader } from '../../app/Shell'
 import { MODULE_BY_PATH } from '../../app/modules'
 import { matches } from '../../data/selectors'
 import { PLAN_STATUS_LABEL } from '../../core/plans'
+import { mealTitle, typeLabel } from '../../core/meals'
 import { useStore } from '../../data/store'
 import type { Entity } from '../../data/types'
 import { formatDateTime, formatDateValue } from '../../lib/dates'
@@ -32,7 +33,7 @@ function iconFor(path: RoutePath) {
 }
 
 export function SearchPage() {
-  const { data } = useStore()
+  const { data, settings } = useStore()
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const q = query.trim()
@@ -68,6 +69,8 @@ export function SearchPage() {
           label: 'Etapas',
           hits: data.planSteps.filter((s) => matches(q, s.title, s.notes) && data.lifePlans.some((p) => p.id === s.planId)).map((s) => ({ id: s.planId, key: s.id, title: s.title, subtitle: data.lifePlans.find((p) => p.id === s.planId)?.title })),
         },
+        // Meals by name/description (ingredients alone don't flood the results).
+        group('/meals', 'Refeições', data.meals, (m) => [m.name, m.description, typeLabel(settings, m.type)], (m) => ({ title: mealTitle(settings, m), subtitle: `${typeLabel(settings, m.type) && m.name ? `${typeLabel(settings, m.type)} · ` : ''}${formatDateValue(m.date)}` })),
         group('/inbox', 'Caixa de entrada', data.inbox, (i) => [i.text], (i) => ({ title: i.text.slice(0, 80), subtitle: i.status === 'done' ? 'Organizado' : 'Para organizar' })),
       ].filter((g) => g.hits.length > 0)
     : []

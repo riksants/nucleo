@@ -6,7 +6,7 @@ import { metricValue, weekMetrics } from '../src/core/metrics'
 import { convertToProject, moveStep, nextOrder, planProgress, stepDone, stepsOf, suggestSteps } from '../src/core/plans'
 import type { Completion, DataState, LifePlan, PlanStep, Settings, Task, Tool, Transaction } from '../src/data/types'
 
-const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [] })
+const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [], meals: [], shoppingItems: [] })
 const ALL = { tasks: true, agenda: true, habits: true, recurring: true, routine: true, finance: true, projects: true, tools: true, life: true, week: true }
 const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 0, startedAt: '2026-07-01T12:00:00Z', rates: null, manualRates: {}, lastBackupAt: null, timeZone: 'America/Sao_Paulo', modules: ALL } as Settings
 const e = { createdAt: '2026-08-01T12:00:00Z', updatedAt: '2026-08-01T12:00:00Z' }

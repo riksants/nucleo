@@ -16,7 +16,6 @@ import { HomePage } from './features/home/HomePage'
 import { MorePage } from './features/more/MorePage'
 import { NotesPage } from './features/notes/NotesPage'
 import { Onboarding } from './features/onboarding/Onboarding'
-import { MealsPage } from './features/planner/MealsPage'
 import { PlannerPage } from './features/planner/PlannerPage'
 import { RoutinePage } from './features/planner/RoutinePage'
 import { PortfolioPage } from './features/portfolio/PortfolioPage'
@@ -40,6 +39,7 @@ import { Sheet } from './ui/Sheet'
 // Etapa 1 pages load on demand, outside the initial bundle.
 const InboxPage = lazy(() => import('./features/inbox/InboxPage').then((m) => ({ default: m.InboxPage })))
 const RecurringPage = lazy(() => import('./features/recurring/RecurringPage').then((m) => ({ default: m.RecurringPage })))
+const MealsPage = lazy(() => import('./features/meals/MealsHome').then((m) => ({ default: m.MealsPage })))
 const LifePage = lazy(() => import('./features/life/LifePage').then((m) => ({ default: m.LifePage })))
 const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })))
 const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))

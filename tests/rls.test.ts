@@ -135,7 +135,7 @@ describe('regras de escrita', () => {
 })
 
 describe('Etapas 1 e 2: coleções novas', () => {
-  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals', 'lifePlans', 'planSteps']
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals', 'lifePlans', 'planSteps', 'meals', 'shoppingItems']
 
   it('a migração mantém registros antigos e aceita as coleções novas', async () => {
     expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
@@ -188,6 +188,21 @@ describe('Etapa 4: planejamento pessoal', () => {
     await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'planSteps', 'sB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
     expect((await as(A, `select data from records where id = 's1'`)).rows[0].data.status).toBe('todo')
     expect((await as(A, `select data from records where id = 'p1'`)).rows[0].data.title).toBe('Aprender inglês')
+  })
+})
+
+describe('Etapa 5: alimentação', () => {
+  it('B não lê, altera nem apaga refeições e lista de compras de A', async () => {
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('meals', 'm1', '{"date":"2026-10-05","name":"Almoço","done":false}', $1)`, [now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('shoppingItems', 'auto:2026-10-05:banana', '{"kind":"auto","checked":true}', $1)`, [now()])
+    for (const c of ['meals', 'shoppingItems']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = '{"done":true}' where collection in ('meals', 'shoppingItems')`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection in ('meals', 'shoppingItems')`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'meals', 'mB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    // mesmo id fixo de item automático em outra conta não colide
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('shoppingItems', 'auto:2026-10-05:banana', '{"kind":"auto","checked":false}', $1)`, [now()])
+    expect((await as(A, `select data from records where id = 'auto:2026-10-05:banana'`)).rows[0].data.checked).toBe(true)
+    expect((await as(A, `select data from records where id = 'm1'`)).rows[0].data.done).toBe(false)
   })
 })
 

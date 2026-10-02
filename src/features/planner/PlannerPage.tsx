@@ -301,7 +301,9 @@ export function PlannerPage() {
       const notes = [safe.notes, ...(res?.meals?.warnings ?? []).map((w) => `Atenção: ${w}`)].filter(Boolean).join('\n')
       await save('mealPlans', { id: MEALS_DRAFT, status: 'draft', source: res ? 'ai' : 'manual', meals: safe.meals, shopping: safe.shopping, notes, removed })
     }
-    navigate(usesRoutine ? '/routine' : '/meals')
+    // A new meal proposal is reviewed in the "Plano com IA" tab.
+    if (usesRoutine) navigate('/routine')
+    else navigate('/meals', { view: 'plan' })
   }
 
   const generate = async () => {

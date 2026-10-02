@@ -361,6 +361,8 @@ export interface Settings {
   hideScore?: boolean
   /** Sections already announced to this person, so new ones are announced once. */
   modulesSeen?: ModuleId[]
+  /** Meal types in the person's order (on/off, renamed, personal). Missing = defaults. */
+  mealTypes?: MealType[]
   /** Personal finance categories and hidden default ones. Missing = defaults only. */
   financeCategories?: FinanceCategorySettings
   /** Last change, used to resolve edits made on two devices. */
@@ -468,6 +470,8 @@ export interface Collections {
   financeGoals: FinanceGoal
   lifePlans: LifePlan
   planSteps: PlanStep
+  meals: MealEntry
+  shoppingItems: ShoppingEntry
 }
 
 export type CollectionName = keyof Collections
@@ -502,6 +506,8 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'financeGoals',
   'lifePlans',
   'planSteps',
+  'meals',
+  'shoppingItems',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
@@ -646,4 +652,56 @@ export interface PlanStep extends Entity {
   notes: string
   /** Task created from this step (the task's completion also completes the step). */
   taskId?: string | null
+}
+
+/* ----------------------------- Alimentação (Etapa 5) ----------------------------- */
+
+export interface MealType {
+  id: string
+  label: string
+  active: boolean
+}
+
+/**
+ * A meal on a real date ("segunda 05/10" ≠ "segunda 12/10"). Done is stored
+ * here only. Ingredients are kept as typed, one per line; the shopping list
+ * interprets them when it is built. Organisation only — no nutrition data.
+ */
+export interface MealEntry extends Entity {
+  /** "YYYY-MM-DD" in the person's time zone. */
+  date: string
+  /** Meal type id ('' = none). */
+  type: string
+  name: string
+  /** "HH:MM" or "". */
+  time: string
+  description: string
+  ingredients: string[]
+  notes: string
+  done: boolean
+  doneAt: string | null
+}
+
+/**
+ * Shopping list record, per week (Monday id):
+ * - manual: an item the person added (never touched by the automatic part);
+ * - auto: only the state (bought, category, note) of an item computed from
+ *   the meals; its id is fixed (`auto:<week>:<ingredient>`) so devices converge.
+ */
+export interface ShoppingEntry extends Entity {
+  week: WeekId
+  kind: 'manual' | 'auto'
+  /** auto: normalized ingredient key. */
+  key?: string
+  /** manual: what to buy. */
+  name: string
+  qty: string
+  unit: string
+  category: string
+  checked: boolean
+  /** auto only: bought and cleared with "Limpar comprados". */
+  cleared?: boolean
+  note: string
+  /** Where a manual item came from ('inbox', 'plan'), for traceability. */
+  origin?: string
 }

@@ -43,6 +43,8 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   financeGoals: 'Metas financeiras',
   lifePlans: 'Projetos pessoais e objetivos',
   planSteps: 'Etapas de projetos e objetivos',
+  meals: 'Refeições planejadas',
+  shoppingItems: 'Lista de compras',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

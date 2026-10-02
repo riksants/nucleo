@@ -12,6 +12,8 @@ import { saleRemaining } from '../../data/sales'
 import { nextChargeOf } from '../../data/subscriptions'
 import type { DataState, MealPlan, ReminderKind, ReminderPrefs, ReminderRule, RoutinePlan, Settings } from '../../data/types'
 import { addDaysToDate, deviceTimeZone, isTime, wallClock, weekdayOfDate, zonedToInstant } from '../../lib/zoned'
+import { typeLabel, weeksWithMeals } from '../../core/meals'
+import { weekStart } from '../../core/period'
 
 export const DEFAULT_REMINDERS: ReminderPrefs = {
   rules: {
@@ -107,11 +109,22 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
   }
 
   const meals = data.mealPlans.find((p) => p.id === 'meals-current') as MealPlan | undefined
-  if (on('meals') && meals && isEnabled(settings, 'meals')) {
+  const realWeeks = weeksWithMeals(data.meals ?? [])
+  if (on('meals') && isEnabled(settings, 'meals') && (meals || realWeeks.size)) {
     const rule = prefs.rules.meals
     for (const date of dates) {
       const day = weekdayOfDate(date)
-      for (const m of meals.meals) {
+      // A week with real meals uses them instead of the AI model (no duplicate reminders).
+      if (realWeeks.has(weekStart(date))) {
+        for (const m of data.meals) {
+          if (m.date !== date || !isTime(m.time)) continue
+          // Only the type ("Almoço"): what you eat is health data and stays inside the app.
+          const title = typeLabel(settings, m.type) || 'Refeição'
+          add(ctx, 'meals', `mealEntry:${m.id}:${date}T${m.time}:${rule.leadMin}`, minus(zonedToInstant(date, m.time, tz), rule.leadMin), title, `${m.time} · ${title}`, '#/meals')
+        }
+        continue
+      }
+      for (const m of meals?.meals ?? []) {
         if (m.day !== day || !isTime(m.time)) continue
         // Only the meal's name: what you eat is health data and stays inside the app.
         add(ctx, 'meals', `meal:${m.id}:${date}T${m.time}:${rule.leadMin}`, minus(zonedToInstant(date, m.time, tz), rule.leadMin), m.label, `${m.time} · ${m.label}`, '#/meals')

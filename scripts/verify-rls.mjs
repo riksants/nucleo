@@ -96,6 +96,14 @@ const lRead = await b.from('records').select('*').eq('id', lid)
 check('B não lê etapas de A', !lRead.error && lRead.data.length === 0)
 await a.from('records').delete().eq('id', lid)
 
+// Etapa 5: refeições e lista de compras (exige a migração 20261006000000_etapa5_alimentacao.sql)
+const mid = `rls-meal-${Date.now()}`
+const mIns = await a.from('records').insert({ user_id: aId, collection: 'meals', id: mid, data: { name: 'privado' }, client_updated_at: now })
+check('servidor aceita as coleções da Etapa 5 (migração executada)', !mIns.error, mIns.error?.message)
+const mRead = await b.from('records').select('*').eq('id', mid)
+check('B não lê refeições de A', !mRead.error && mRead.data.length === 0)
+await a.from('records').delete().eq('id', mid)
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

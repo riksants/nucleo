@@ -5,10 +5,11 @@
  */
 import { isTime, toMinutes } from '../../supabase/functions/_shared/planner/time.ts'
 import { isEnabled } from '../app/modules'
-import type { BlockKind, CalendarEvent, DataState, Habit, MealPlan, PlannedMeal, RecurringItem, RoutineBlock, RoutinePlan, Settings, Task } from '../data/types'
+import type { BlockKind, CalendarEvent, DataState, Habit, MealEntry, MealPlan, PlannedMeal, RecurringItem, RoutineBlock, RoutinePlan, Settings, Task } from '../data/types'
 import { indexCompletions, routineStatus, statusOf, type CompletionIndex } from './completions'
 import { habitsDue, recurringDue } from './habits'
-import { addDaysToDate, nowIn, weekdayOfDate, zoneOf } from './period'
+import { addDaysToDate, nowIn, weekdayOfDate, weekStart, zoneOf } from './period'
+import { mealTitle, weeksWithMeals } from './meals'
 import { wallClock } from '../lib/zoned'
 
 export type AgendaKind = 'event' | 'task' | 'routine' | 'habit' | 'recurring' | 'meal'
@@ -26,6 +27,7 @@ export type AgendaSource =
   | { kind: 'habit'; habit: Habit }
   | { kind: 'recurring'; item: RecurringItem }
   | { kind: 'meal'; meal: PlannedMeal }
+  | { kind: 'mealEntry'; meal: MealEntry }
 
 export interface AgendaItem {
   key: string
@@ -38,6 +40,12 @@ export interface AgendaItem {
   status: AgendaStatus
   /** Can be marked done from the agenda (appointments and meals can't). */
   checkable: boolean
+  /**
+   * Real meals (Etapa 5) can be marked done on their own record, but they are
+   * not "checkable": they stay out of "itens concluídos", the Score and the
+   * night list of pending things.
+   */
+  markable?: boolean
   /** For routine blocks: work, training, study… */
   blockKind?: BlockKind
   source: AgendaSource
@@ -77,6 +85,8 @@ interface Ctx {
   index: CompletionIndex
   today: string
   nowTime: string
+  /** Weeks with real meals: there they replace the AI weekly model (no duplicates). */
+  realWeeks: Set<string>
 }
 
 function dayItems(ctx: Ctx, date: string): AgendaItem[] {
@@ -106,7 +116,7 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
   if (on('routine') && plan && !beforeCreation(plan.createdAt, date, settings)) {
     for (const block of plan.blocks) {
       // Meals come from the meal plan when it exists, to avoid showing lunch twice.
-      if (block.day !== weekday || (block.kind === 'meal' && on('meals') && data.mealPlans.some((m) => m.id === 'meals-current'))) continue
+      if (block.day !== weekday || (block.kind === 'meal' && on('meals') && (data.mealPlans.some((m) => m.id === 'meals-current') || ctx.realWeeks.has(weekStart(date))))) continue
       out.push({
         key: `routine:${block.id}:${date}`,
         kind: 'routine',
@@ -122,8 +132,15 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
     }
   }
 
+  const real = on('meals') && ctx.realWeeks.has(weekStart(date))
+  if (real) {
+    for (const meal of data.meals) {
+      if (meal.date !== date) continue
+      out.push({ key: `mealEntry:${meal.id}`, kind: 'meal', date, start: isTime(meal.time) ? meal.time : '', end: '', title: mealTitle(settings, meal), status: meal.done ? 'done' : 'pending', checkable: false, markable: true, source: { kind: 'mealEntry', meal } })
+    }
+  }
   const meals = data.mealPlans.find((p) => p.id === 'meals-current') as MealPlan | undefined
-  if (on('meals') && meals && !beforeCreation(meals.createdAt, date, settings)) {
+  if (on('meals') && !real && meals && !beforeCreation(meals.createdAt, date, settings)) {
     for (const meal of meals.meals) {
       if (meal.day !== weekday) continue
       out.push({ key: `meal:${meal.id}:${date}`, kind: 'meal', date, start: meal.time, end: '', title: meal.label, status: 'pending', checkable: false, source: { kind: 'meal', meal } })
@@ -147,7 +164,7 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
 /** Items from `from` to `to` (inclusive), in the person's time zone. */
 export function buildAgenda(data: DataState, settings: Settings, from: string, to: string, now = new Date()): AgendaItem[] {
   const n = nowIn(zoneOf(settings), now)
-  const ctx: Ctx = { data, settings, index: indexCompletions(data.completions), today: n.date, nowTime: n.time }
+  const ctx: Ctx = { data, settings, index: indexCompletions(data.completions), today: n.date, nowTime: n.time, realWeeks: weeksWithMeals(data.meals ?? []) }
   const out: AgendaItem[] = []
   for (let d = from, i = 0; d <= to && i < 62; d = addDaysToDate(d, 1), i++) out.push(...dayItems(ctx, d))
   return sortAgenda(out)

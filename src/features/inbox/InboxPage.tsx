@@ -1,8 +1,8 @@
-import { Archive, CalendarClock, Compass, FolderHeart, FolderKanban, Inbox, ListTodo, NotebookPen, Plus, Trash2 } from 'lucide-react'
+import { Archive, CalendarClock, Compass, FolderHeart, FolderKanban, Salad, ShoppingBasket, Inbox, ListTodo, NotebookPen, Plus, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { PageHeader } from '../../app/Shell'
-import { zoneOf, todayIn } from '../../core/period'
+import { zoneOf, todayIn, weekStart } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { CollectionName, InboxItem } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
@@ -16,12 +16,13 @@ import { NoteEditor } from '../notes/NotesPage'
 import { ProjectForm } from '../projects/ProjectForm'
 import { TaskForm } from '../tasks/TaskForm'
 import { PlanForm } from '../life/Plans'
+import { MealForm } from '../meals/MealForm'
 import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useOpenParam } from '../useOpenParam'
 import { markOrganized, splitCapture, suggestedDate } from './inbox'
 import { CaptureSheet } from './QuickCapture'
 
-type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective'
+type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective' | 'meal'
 
 function Choice({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint: string; onClick(): void }) {
   return (
@@ -60,6 +61,16 @@ export function InboxPage() {
     void save('inbox', markOrganized(target.item, { collection, id: saved.id }))
   }
 
+  /** Straight to this week's shopping list; the inbox item stays, linked to it. */
+  const toShopping = async () => {
+    const item = organize.item
+    if (!item) return
+    const saved = await save('shoppingItems', { week: weekStart(today), kind: 'manual', name: splitCapture(item.text).title.slice(0, 120), qty: '', unit: '', category: 'Outros', checked: false, note: '', origin: 'inbox' })
+    await save('inbox', markOrganized(item, { collection: 'shoppingItems', id: saved.id }))
+    organize.close()
+    toast('Foi para a Lista de compras')
+  }
+
   const archive = async () => {
     if (!organize.item) return
     await save('inbox', markOrganized(organize.item, null))
@@ -78,6 +89,8 @@ export function InboxPage() {
   }
 
   const convertedLabel = (to: { collection: CollectionName; id: string }) => {
+    if (to.collection === 'meals') return 'refeição'
+    if (to.collection === 'shoppingItems') return 'item da lista de compras'
     if (to.collection !== 'lifePlans') return COLLECTION_LABELS[to.collection].toLowerCase()
     const plan = data.lifePlans.find((p) => p.id === to.id)
     return plan?.kind === 'objective' ? 'objetivo' : 'projeto pessoal'
@@ -140,6 +153,8 @@ export function InboxPage() {
           <Choice icon={<CalendarClock size={18} />} label="Compromisso" hint="Com data e horário" onClick={() => start('event')} />
           {isEnabled(settings, 'notes') && <Choice icon={<NotebookPen size={18} />} label="Anotação" hint="Vai para Anotações" onClick={() => start('note')} />}
           {isEnabled(settings, 'projects') && <Choice icon={<FolderKanban size={18} />} label="Projeto de trabalho" hint="Abre o formulário de Projetos de trabalho" onClick={() => start('project')} />}
+          {isEnabled(settings, 'meals') && <Choice icon={<ShoppingBasket size={18} />} label="Item da lista de compras" hint="Vai direto para a lista desta semana" onClick={toShopping} />}
+          {isEnabled(settings, 'meals') && <Choice icon={<Salad size={18} />} label="Refeição" hint="Abre o formulário rápido de refeição" onClick={() => start('meal')} />}
           {isEnabled(settings, 'life') && <Choice icon={<FolderHeart size={18} />} label="Projeto pessoal" hint="Viagem, mudança, reforma… com etapas" onClick={() => start('lifeProject')} />}
           {isEnabled(settings, 'life') && <Choice icon={<Compass size={18} />} label="Objetivo" hint="Algo maior, de médio ou longo prazo" onClick={() => start('objective')} />}
           <Choice icon={<Archive size={18} />} label="Já resolvi" hint="Marca como organizado, sem criar nada" onClick={archive} />
@@ -153,6 +168,7 @@ export function InboxPage() {
       <EventForm open={target?.type === 'event'} onClose={close} event={null} initial={{ title: split.title, notes: split.notes, date }} onSaved={converted('events')} />
       <NoteEditor open={target?.type === 'note'} onClose={close} note={null} initial={{ title: split.notes ? split.title : '', body: split.notes || split.title }} onSaved={converted('notes')} />
       <ProjectForm open={target?.type === 'project'} onClose={close} project={null} initial={{ name: split.title, notes: split.notes }} onSaved={converted('projects')} />
+      <MealForm open={target?.type === 'meal'} onClose={close} meal={null} initial={{ name: split.title, date: date || today }} onSaved={converted('meals')} />
       <PlanForm open={target?.type === 'lifeProject'} onClose={close} kind="project" plan={null} initial={{ title: split.title, notes: split.notes, fromInbox: target?.item.id }} onSaved={converted('lifePlans')} />
       <PlanForm open={target?.type === 'objective'} onClose={close} kind="objective" plan={null} initial={{ title: split.title, notes: split.notes, fromInbox: target?.item.id }} onSaved={converted('lifePlans')} />
       <CaptureSheet open={capturing} onClose={() => setCapturing(false)} />

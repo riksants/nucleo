@@ -57,6 +57,8 @@ export interface DayPlan {
   overdue: Task[]
   priorities: Task[]
   money: MoneyDue[]
+  /** Real meals of the day (Etapa 5): own counters, not part of "itens". */
+  meals: { planned: number; done: number; next: AgendaItem | null }
   counts: ReturnType<typeof tally> & { habits: number; habitsDone: number; habitsPending: number; tasks: number; tasksDone: number }
 }
 
@@ -81,11 +83,32 @@ export function planDay(data: DataState, settings: Settings, now = new Date(), d
     overdue,
     priorities,
     money: moneyDueOn(data, settings, day, now),
+    meals: mealsSummary(items, day === n.date ? n.time : ''),
     counts: { ...tally(items), habits: habits.length, habitsDone: habits.filter((h) => h.status === 'done').length, habitsPending: habits.filter((h) => h.status === 'pending').length, tasks: tasks.length, tasksDone: tasks.filter((t) => t.status === 'done').length },
   }
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+function mealsSummary(items: AgendaItem[], nowTime: string): DayPlan['meals'] {
+  const meals = items.filter((i) => i.source.kind === 'mealEntry')
+  const pending = meals.filter((i) => i.status !== 'done')
+  const next = pending.find((i) => i.start && (!nowTime || i.start >= nowTime)) ?? pending.find((i) => !i.start) ?? null
+  return { planned: meals.length, done: meals.length - pending.length, next }
+}
+
+/** "Hoje você tem 5 refeições planejadas." — null when none were planned. */
+export function mealsMorningLine(plan: DayPlan): string | null {
+  if (!plan.meals.planned) return null
+  const n = plan.meals.next
+  return `Hoje você tem ${plural(plan.meals.planned, 'refeição planejada', 'refeições planejadas')}${n ? ` · próxima: ${n.start ? `${n.start} ` : ''}${n.title}` : ''}.`
+}
+
+/** "4 de 5 refeições planejadas foram marcadas como realizadas." — neutral, no judgement. */
+export function mealsNightLine(plan: DayPlan): string | null {
+  if (!plan.meals.planned) return null
+  return `${plan.meals.done} de ${plural(plan.meals.planned, 'refeição planejada foi marcada como realizada', 'refeições planejadas foram marcadas como realizadas')}.`
+}
 
 /** "Hoje você tem 3 tarefas, 1 compromisso às 16h e 4 hábitos para concluir." */
 export function morningSentence(plan: DayPlan): string {

@@ -110,7 +110,7 @@ try {
   await signUp(A, 'noa@teste.com')
   await A.goto(BASE + '#/week')
   text = await A.text()
-  r.check('outra conta não vê metas nem check-ins de Lia', text.includes('Nenhuma meta para esta semana') && text.includes('Como foi sua semana?'))
+  r.check('outra conta não vê metas nem check-ins de Lia', text.includes('Nenhuma meta para esta semana') && text.includes('Como foi sua semana?'), text.includes('Nenhuma meta para esta semana') ? '' : text.slice(0, 300).replace(/\s+/g, ' '))
   const token = await A.eval(`JSON.parse(localStorage.getItem('nucleo:auth')).access_token`)
   const direct = await (await fetch(`${MOCK}/rest/v1/records?select=*&collection=eq.weeklyGoals`, { headers: { Authorization: `Bearer ${token}` } })).json()
   r.check('requisição direta de outra conta não traz metas de Lia (mock)', Array.isArray(direct) && direct.length === 0)

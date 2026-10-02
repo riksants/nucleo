@@ -14,12 +14,14 @@ import { buildAgenda, type AgendaItem } from './agenda'
 import { financeIndex, topCategory, totalsBetween } from './finance'
 import { savedBetween } from './financeGoals'
 import { stepDoneAt, taskMap } from './plans'
+import { mealCounts, type MealCounts } from './meals'
 import { addDaysToDate, todayIn, weekDates, zoneOf } from './period'
 import { toMinutes } from '../../supabase/functions/_shared/planner/time.ts'
 
 /** v2 (Etapa 3): adds finance count, unnecessary expenses, saved in goals and top category. */
 /** v3 (Etapa 4): adds steps of personal projects/objectives done. */
-export const METRICS_VERSION = 3
+/** v4 (Etapa 5): adds own counters for real meals (never in items or the Score). */
+export const METRICS_VERSION = 4
 
 export interface Tally {
   /** Considered occurrences (excludes skipped). */
@@ -69,6 +71,8 @@ export interface RangeMetrics {
   saved: number | null
   /** Steps of personal projects/objectives completed in the range. null when Vida is off. */
   steps: { done: number } | null
+  /** Real meals planned/done in the range. null when Alimentação is off or nothing was planned. */
+  meals: MealCounts | null
   days: DayFacts[]
 }
 
@@ -107,6 +111,7 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
     finance: null,
     saved: null,
     steps: null,
+    meals: null,
     days: [],
   }
   const money = isEnabled(settings, 'finance') ? financeIndex(data.transactions, settings) : null
@@ -199,6 +204,10 @@ export function rangeMetrics(data: DataState, settings: Settings, from: string, 
       if (day >= from && day <= to) done++
     }
     out.steps = { done }
+  }
+  if (isEnabled(settings, 'meals')) {
+    const c = mealCounts(data.meals ?? [], from, to)
+    if (c.planned) out.meals = c
   }
   return out
 }

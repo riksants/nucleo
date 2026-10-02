@@ -19,10 +19,11 @@ const DOT: Record<string, string> = {
 
 /** Toggles done on the original record (task, completion of the day, routine block). */
 export function useToggleItem() {
-  const { completeTask, setCompletion, setRoutine } = useDailyActions()
+  const { completeTask, setCompletion, setRoutine, setMealDone } = useDailyActions()
   return (item: AgendaItem, to: 'done' | 'pending' | 'skipped' = item.status === 'done' ? 'pending' : 'done') => {
     const src = item.source
     if (src.kind === 'task') return completeTask(src.task, to === 'done')
+    if (src.kind === 'mealEntry') return setMealDone(src.meal, to === 'done')
     if (src.kind === 'habit') return setCompletion('habit', src.habit.id, item.date, to === 'pending' ? null : to)
     if (src.kind === 'recurring') return setCompletion('recurring', src.item.id, item.date, to === 'pending' ? null : to)
     if (src.kind === 'routine') return to === 'skipped' ? setCompletion('routine', src.block.id, item.date, 'skipped') : setRoutine(src.plan, src.block.id, item.date, to === 'done')
@@ -35,7 +36,7 @@ export function AgendaRow({ item, onOpen, showLabel = true, readOnly }: { item: 
   const muted = item.status === 'done' || item.status === 'skipped'
   return (
     <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
-      {item.checkable && !readOnly ? (
+      {(item.checkable || item.markable) && !readOnly ? (
         <CheckButton status={item.status === 'ended' ? 'pending' : item.status} onClick={() => toggle(item)} label={item.status === 'done' ? `Desmarcar ${item.title}` : `Concluir ${item.title}`} />
       ) : (
         <span className="grid size-12 shrink-0 place-items-center">
@@ -48,7 +49,7 @@ export function AgendaRow({ item, onOpen, showLabel = true, readOnly }: { item: 
           <span className={`block truncate text-[15px] ${muted ? 'text-faint' : ''} ${item.status === 'done' ? 'line-through' : ''}`}>{item.title}</span>
           {showLabel && (
             <span className="flex items-center gap-1.5 text-[12.5px] text-faint">
-              {item.checkable && <span className={`size-1.5 rounded-full ${dot}`} />}
+              {(item.checkable || item.markable) && <span className={`size-1.5 rounded-full ${dot}`} />}
               {itemLabel(item)}
               {item.end && item.kind === 'event' ? ` · até ${item.end}` : ''}
               {item.status === 'ended' && ' · horário encerrado'}

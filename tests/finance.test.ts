@@ -12,7 +12,7 @@ import { goalProgress } from '../src/core/weekGoals'
 import { withExtras } from '../src/data/store'
 import type { Challenge, DataState, FinanceGoal, Settings, Tool, Transaction, WeeklyGoal } from '../src/data/types'
 
-const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [] })
+const empty = (): DataState => ({ transactions: [], goals: [], clients: [], projects: [], tasks: [], tools: [], accounts: [], notes: [], portfolio: [], sales: [], offerings: [], subPlans: [], subscribers: [], plannerProfiles: [], routinePlans: [], mealPlans: [], inbox: [], habits: [], recurring: [], completions: [], events: [], focusSessions: [], weeklyGoals: [], challenges: [], weekCheckins: [], weekSnapshots: [], financeGoals: [], lifePlans: [], planSteps: [], meals: [], shoppingItems: [] })
 const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 100000, startedAt: '2026-07-01T12:00:00Z', rates: null, manualRates: {}, lastBackupAt: null, timeZone: 'America/Sao_Paulo', modules: { finance: true } } as Settings
 let seq = 0
 /** Movement registered at `at` (UTC instant). amount in cents, base currency unless said otherwise. */

@@ -4,7 +4,6 @@ import { activeRules, emptyMealAnswers, violations } from '../../../supabase/fun
 import { DAY_LONG, DAY_SHORT, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { navigate } from '../../app/router'
-import { PageHeader } from '../../app/Shell'
 import { newId, useStore } from '../../data/store'
 import type { MealAnswers, MealPlan, PlannedMeal, Weekday } from '../../data/types'
 import { Button, IconButton } from '../../ui/Button'
@@ -15,6 +14,9 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDraft, useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
 import { MEALS_CURRENT, MEALS_DRAFT, usePlans } from './plans'
+import { mealsOfWeek } from '../../core/meals'
+import { todayIn, weekStart, zoneOf } from '../../core/period'
+import { buildList, guessCategory, keysOnList, normalizeName } from '../../core/shopping'
 
 const lines = (s: string) =>
   s
@@ -123,8 +125,20 @@ function MealDay({ plan, day, onEdit }: { plan: MealPlan; day: Weekday; onEdit(m
 }
 
 function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
-  const { save } = useStore()
-  const { toast } = useFeedback()
+  const { save, data, settings } = useStore()
+  const { toast, confirm } = useFeedback()
+  /** Copies the plan's list into this week's shopping list as manual items, skipping names already there. */
+  const copy = async () => {
+    const week = weekStart(todayIn(zoneOf(settings)))
+    const have = keysOnList(buildList(mealsOfWeek(data.meals, week), data.shoppingItems, week))
+    const fresh = plan.shopping.filter((s) => s.item.trim() && !have.has(normalizeName(s.item)))
+    const unique = [...new Map(fresh.map((s) => [normalizeName(s.item), s])).values()]
+    if (!unique.length) return toast('Esses itens já estão na Lista de compras desta semana')
+    const ok = await confirm({ title: 'Copiar para Lista de compras?', message: `${unique.length} ${unique.length === 1 ? 'item vai' : 'itens vão'} para a lista desta semana como itens seus. ${plan.shopping.length - unique.length ? `${plan.shopping.length - unique.length} já estavam lá. ` : ''}A lista do plano continua igual.`, confirmLabel: 'Copiar' })
+    if (!ok) return
+    for (const s of unique) await save('shoppingItems', { week, kind: 'manual', name: s.item.trim().slice(0, 120), qty: s.qty ?? '', unit: '', category: guessCategory(normalizeName(s.item)), checked: false, note: '', origin: 'plan' })
+    toast('Copiado para a Lista de compras')
+  }
   const [text, setText] = useState('')
   const add = async () => {
     const item = text.trim()
@@ -136,7 +150,9 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
   }
   return (
     <section>
-      <SectionTitle>Lista de compras</SectionTitle>
+      <SectionTitle action={plan.status === 'approved' && plan.shopping.length ? 'Copiar para Lista de compras' : undefined} onAction={copy}>
+        Lista sugerida pelo plano
+      </SectionTitle>
       <div className="card p-1.5">
         {plan.shopping.map((s, i) => (
           <div key={i} className="flex items-center gap-1 rounded-2xl px-1">
@@ -186,7 +202,7 @@ function PlanView({ plan, answers, onEdit }: { plan: MealPlan; answers: MealAnsw
   )
 }
 
-export function MealsPage() {
+export function AiPlanView() {
   const { save, remove } = useStore()
   const { confirm, toast } = useFeedback()
   const { meals, mealsDraft, profile } = usePlans()
@@ -213,15 +229,12 @@ export function MealsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Alimentação"
-        subtitle="Planejamento de refeições — não é prescrição"
-        actions={
-          <Button variant="secondary" icon={<Sparkles size={17} />} onClick={() => navigate('/planner')}>
-            {profile ? 'Refazer' : 'Montar'}
-          </Button>
-        }
-      />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[14px] text-soft">Modelo semanal montado com IA — não é prescrição.</p>
+        <Button variant="secondary" icon={<Sparkles size={17} />} onClick={() => navigate('/planner')}>
+          {profile ? 'Refazer' : 'Montar'}
+        </Button>
+      </div>
 
       {profile?.meals.clinical && (
         <div className="card mb-5 flex gap-3 border-warn/25 p-4 text-[14px] leading-relaxed">

@@ -1,6 +1,7 @@
 import { navigate } from '../../app/router'
 import type { AgendaItem } from '../../core/agenda'
-import type { CalendarEvent, Habit, RecurringItem, Task } from '../../data/types'
+import type { CalendarEvent, Habit, MealEntry, RecurringItem, Task } from '../../data/types'
+import { MealForm } from '../meals/MealForm'
 import { useSheet } from '../../ui/formHooks'
 import { HabitForm } from '../habits/HabitForm'
 import { RecurringForm } from '../recurring/RecurringForm'
@@ -13,12 +14,14 @@ export function useOpenItem() {
   const event = useSheet<CalendarEvent>()
   const habit = useSheet<Habit>()
   const recurring = useSheet<RecurringItem>()
+  const meal = useSheet<MealEntry>()
   const open = (item: AgendaItem) => {
     const src = item.source
     if (src.kind === 'task') task.show(src.task)
     else if (src.kind === 'event') event.show(src.event)
     else if (src.kind === 'habit') habit.show(src.habit)
     else if (src.kind === 'recurring') recurring.show(src.item)
+    else if (src.kind === 'mealEntry') meal.show(src.meal)
     else if (src.kind === 'routine') navigate('/routine')
     else navigate('/meals')
   }
@@ -28,6 +31,7 @@ export function useOpenItem() {
       <EventForm open={event.open} onClose={event.close} event={event.item} />
       <HabitForm open={habit.open} onClose={habit.close} habit={habit.item} />
       <RecurringForm open={recurring.open} onClose={recurring.close} item={recurring.item} />
+      <MealForm open={meal.open} onClose={meal.close} meal={meal.item} />
     </>
   )
   return { open, sheets }

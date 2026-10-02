@@ -5,7 +5,7 @@ import { useStore } from '../../data/store'
 import { useState, type ReactNode } from 'react'
 import { useDailyActions } from '../../core/actions'
 import type { AgendaItem } from '../../core/agenda'
-import { nightSentence, type DayPlan } from '../../core/day'
+import { mealsNightLine, nightSentence, type DayPlan } from '../../core/day'
 import { addDaysToDate, weekdayOfDate } from '../../core/period'
 import type { Task } from '../../data/types'
 import { formatDateValue } from '../../lib/dates'
@@ -121,6 +121,7 @@ export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan:
             {skipped.length ? ` · ${skipped.length} pulado${skipped.length > 1 ? 's' : ''}` : ''}
           </p>
         )}
+        {mealsNightLine(plan) && <p className="relative mt-1 text-[14px] text-faint">{mealsNightLine(plan)}</p>}
       </div>
 
       {pending.length > 0 && (

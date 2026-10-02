@@ -12,6 +12,7 @@ import { Badge, Progress, SectionTitle } from '../../ui/Display'
 import { isEnabled } from '../../app/modules'
 import { CheckinSheet } from './CheckinSheet'
 import { MoneyCard } from './MoneyCard'
+import { MealsCard } from './MealsCard'
 import { ChallengesSection } from './ChallengesSection'
 import { weekLabel } from './GoalForm'
 import { GoalsSection } from './GoalsSection'
@@ -136,6 +137,8 @@ export function WeekPage() {
               <p className="card px-5 py-4 text-[15px] text-faint">Quando você marcar tarefas, hábitos ou rotina, o resumo aparece aqui.</p>
             )}
           </section>
+
+          {isEnabled(settings, 'meals') && <MealsCard flat={w.flat} isCurrent={w.isCurrent} />}
 
           {money && <MoneyCard week={w.week} today={w.today} isCurrent={w.isCurrent} snapshot={w.snapshot} flat={w.flat} prevFlat={w.prevFlat} />}
 

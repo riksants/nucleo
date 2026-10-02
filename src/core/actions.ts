@@ -5,7 +5,7 @@
  */
 import { useCallback } from 'react'
 import { useStore } from '../data/store'
-import type { CompletionSource, RoutinePlan, Task } from '../data/types'
+import type { CompletionSource, MealEntry, RoutinePlan, Task } from '../data/types'
 import { completionId } from './completions'
 
 export function useDailyActions() {
@@ -49,5 +49,8 @@ export function useDailyActions() {
     [save, setCompletion],
   )
 
-  return { setCompletion, completeTask, moveTask, clearTaskDate, setRoutine }
+  /** A real meal is marked on its own record (one source of truth). */
+  const setMealDone = useCallback((meal: MealEntry, done: boolean) => save('meals', { ...meal, done, doneAt: done ? (meal.doneAt ?? new Date().toISOString()) : null }), [save])
+
+  return { setCompletion, completeTask, moveTask, clearTaskDate, setRoutine, setMealDone }
 }
