@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { MissingRateError, useStore } from '../../data/store'
 import { sortByNewest } from '../../data/selectors'
 import type { Currency, Transaction } from '../../data/types'
-import { amountToInput, currencyInfo, formatMoney, parseAmount } from '../../lib/money'
+import { appendOperator, CALC_ERROR, endsWithOperator, evaluate, isExpression, resultText, type CalcOp } from '../../lib/calc'
+import { amountToInput, currencyInfo, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { useDraft } from '../../ui/formHooks'
@@ -40,8 +41,16 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
     if (open) setTried(false)
   }, [open])
 
-  const cents = parseAmount(draft.amount)
-  const amountError = cents === null || cents === 0 ? 'Digite um valor' : null
+  // A plain number works as always; "2500 + 750 + 120" is calculated (no eval) and the final result is what gets saved.
+  const calc = evaluate(draft.amount)
+  const expression = isExpression(draft.amount)
+  const cents = calc.ok ? calc.cents : null
+  const amountError = calc.ok ? null : expression ? CALC_ERROR[calc.error] : 'Digite um valor'
+  const tapOperator = (op: CalcOp) => set('amount', appendOperator(draft.amount, op))
+  const equals = () => {
+    if (calc.ok) set('amount', resultText(calc.cents))
+    else setTried(true)
+  }
   const reasonError = draft.reason.trim() ? null : 'O motivo é obrigatório'
 
   const suggestions = useMemo(() => {
@@ -138,12 +147,52 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   reasonRef.current?.focus()
+                } else if (e.key === '=') {
+                  e.preventDefault()
+                  equals()
                 }
               }}
               className="num h-20 min-w-0 flex-1 bg-transparent text-[40px]! font-semibold tracking-tight placeholder:text-faint/60 focus:outline-none"
             />
           </div>
-          {tried && amountError && <p className="mt-1.5 text-sm text-expense">{amountError}</p>}
+          {expression ? (
+            <p aria-live="polite" data-testid="calc-result" className={`num mt-1.5 text-sm ${calc.ok ? 'text-soft' : 'text-expense'}`}>
+              {calc.ok ? `= ${resultText(calc.cents)}` : endsWithOperator(draft.amount) && !tried ? ' ' : amountError}
+            </p>
+          ) : (
+            tried && amountError && <p className="mt-1.5 text-sm text-expense">{amountError}</p>
+          )}
+          {/* Calculator keys. They keep the focus on the field, so the phone keyboard stays open. */}
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            {(
+              [
+                ['+', 'Somar', '+'],
+                ['-', 'Subtrair', '−'],
+                ['*', 'Multiplicar', '×'],
+                ['/', 'Dividir', '÷'],
+              ] as const
+            ).map(([op, label, symbol]) => (
+              <button
+                key={op}
+                type="button"
+                aria-label={label}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => tapOperator(op)}
+                className="press h-9 rounded-full border border-line bg-surface text-[17px] text-soft hover:text-ink"
+              >
+                {symbol}
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-label="Calcular"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={equals}
+              className="press h-9 rounded-full border border-line bg-surface text-[17px] text-soft hover:text-ink"
+            >
+              =
+            </button>
+          </div>
           {kind !== 'adjust' && (
             <div className="mt-3">
               <CurrencyPicker
