@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Published at the root of https://hellonucleo.app. The e2e builds still use NUCLEO_BASE=/nucleo/.
+const BASE = process.env.NUCLEO_BASE || '/'
+
 export default defineConfig({
-  base: '/nucleo/',
+  base: BASE,
   // Vitest: generous timeout, the first time-zone formatting can be slow on a busy machine.
   test: { testTimeout: 30_000 },
   plugins: [
@@ -18,9 +21,9 @@ export default defineConfig({
         short_name: 'Núcleo',
         description: 'Painel pessoal: dinheiro, projetos, clientes, tarefas e anotações.',
         lang: 'pt-BR',
-        id: '/nucleo/',
-        start_url: '/nucleo/',
-        scope: '/nucleo/',
+        id: BASE,
+        start_url: BASE,
+        scope: BASE,
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#09090b',
@@ -33,7 +36,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/nucleo/index.html',
+        navigateFallback: `${BASE}index.html`,
         // Push notifications (works with the app closed where the platform allows it).
         importScripts: ['push-sw.js'],
       },

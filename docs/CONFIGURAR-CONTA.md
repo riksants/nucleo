@@ -12,8 +12,8 @@ Precisam de configuração: **conta + sincronização**, **IA** e **notificaçõ
 2. **SQL Editor** → cole e rode `supabase/migrations/20261001000000_nucleo_init.sql`.
 3. **Authentication → Sign In / Providers → Email**: deixe “Confirm email” ligado.
 4. **Authentication → URL Configuration**:
-   - Site URL: `https://riksants.github.io/nucleo/`
-   - Redirect URLs: `https://riksants.github.io/nucleo/` e `http://localhost:5173/nucleo/`
+   - Site URL: `https://hellonucleo.app/`
+   - Redirect URLs: `https://hellonucleo.app/`, `https://www.hellonucleo.app/` e `http://localhost:5173/`
 5. **Authentication → Emails → Templates** — inclua o código nos e-mails (no iPhone o link do
    e-mail abre no Safari, fora do app instalado; com o código a pessoa confirma dentro do app):
    - *Confirm signup*: acrescente `Seu código: {{ .Token }}`
