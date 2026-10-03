@@ -1,8 +1,9 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, UserRound } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
 import { ASSISTANT, SEARCH, secondarySections, SETTINGS, type Section } from '../../app/sections'
 import { useStore } from '../../data/store'
 import type { CollectionName } from '../../data/types'
+import { useSession } from '../account/session'
 
 const COUNT_OF: Partial<Record<string, CollectionName>> = {
   '/clients': 'clients',
@@ -32,6 +33,7 @@ function Tile({ section, count }: { section: Section; count?: number }) {
 
 export function MorePage() {
   const { data, settings } = useStore()
+  const { configured, userId, email, openAuth } = useSession()
   return (
     <>
       <PageHeader title="Mais" />
@@ -42,6 +44,15 @@ export function MorePage() {
         })}
       </div>
       <div className="card mt-6 divide-y divide-line overflow-hidden">
+        {/* Conta: who is signed in (sign out lives in Configurações → Conta). */}
+        <a href={userId || !configured ? '#/settings' : undefined} onClick={!userId && configured ? (e) => (e.preventDefault(), openAuth('signin')) : undefined} className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 transition-colors hover:bg-white/[0.03]">
+          <UserRound size={20} className="text-soft" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px]">Conta</span>
+            <span className="block truncate text-[13px] text-faint">{userId ? (email ?? 'Conectado') : configured ? 'Usando somente neste aparelho · Entrar ou criar conta' : 'Usando somente neste aparelho'}</span>
+          </span>
+          <ChevronRight size={18} className="text-faint" />
+        </a>
         {[ASSISTANT, SEARCH, SETTINGS].map((s) => (
           <a key={s.path} href={`#${s.path}`} className="flex min-h-14 items-center gap-3 px-4 transition-colors hover:bg-white/[0.03]">
             <s.icon size={20} className="text-soft" />

@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Clock, Gauge, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Gauge, HardDrive, LogOut, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
@@ -16,6 +16,7 @@ import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { CategoriesSheet } from '../finance/CategoriesSheet'
+import { useSignOut } from '../account/useSignOut'
 import { useDraft } from '../../ui/formHooks'
 import { CurrencySheet, quickCurrencies } from '../../ui/CurrencySheet'
 import { Segmented } from '../../ui/Segmented'
@@ -185,7 +186,8 @@ export function SettingsPage() {
   const { toast, confirm } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
   const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | 'categories' | null>(null)
-  const { configured, email } = useSession()
+  const { configured, email, userId, openAuth } = useSession()
+  const { signOut, busy: signingOut } = useSignOut()
   const vault = useVault()
   const display = settings.displayCurrency ?? settings.baseCurrency
   const rateCodes = quickCurrencies(settings, [settings.baseCurrency, display]).filter((c) => c !== 'EUR')
@@ -225,8 +227,27 @@ export function SettingsPage() {
     <>
       <PageHeader title="Configurações" />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
-        <Group title="Conta e seções">
-          {configured && <Row label="Conta" icon={<UserRound size={18} />} value={email ?? 'Só neste aparelho'} onClick={() => navigate('/account')} />}
+        <Group title="Conta" note={configured && !userId ? 'Seus dados ficam só neste aparelho. Com uma conta, eles sincronizam entre aparelhos.' : undefined}>
+          {userId ? (
+            <>
+              <Row label="Conectado como" icon={<UserRound size={18} />} value={<span className="block max-w-[52vw] truncate lg:max-w-[16rem]">{email ?? 'conta'}</span>} />
+              <Row label="Sincronização e detalhes" icon={<RefreshCw size={18} />} onClick={() => navigate('/account')} />
+              <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] disabled:opacity-60">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-expense/10 text-expense">
+                  <LogOut size={18} />
+                </span>
+                <span className="min-w-0 flex-1 text-[15px] text-expense">Sair da conta</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Row label="Usando somente neste aparelho" icon={<HardDrive size={18} />} />
+              {configured && <Row label="Entrar ou criar conta" icon={<UserRound size={18} />} onClick={() => openAuth('signin')} />}
+            </>
+          )}
+        </Group>
+
+        <Group title="Seções e lembretes">
           <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
           <Row label="Lembretes e notificações" icon={<Bell size={18} />} onClick={() => navigate('/reminders')} />
           {isEnabled(settings, 'week') && (

@@ -3,15 +3,13 @@ import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearLocalData, localSummary, type LocalSummary } from '../../data/migration'
 import { useStore } from '../../data/store'
-import { deleteCache } from '../../data/sync'
 import { formatDateTime } from '../../lib/dates'
 import { Button } from '../../ui/Button'
 import { SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
-import { useVault } from '../accounts/vault'
-import { forgetPushOnThisDevice } from '../reminders/push'
 import { MigrationOffer } from './MigrationOffer'
 import { useSession } from './session'
+import { useSignOut } from './useSignOut'
 import { syncLabel } from './SyncBadge'
 
 function Line({ label, value }: { label: string; value: string }) {
@@ -26,11 +24,11 @@ function Line({ label, value }: { label: string; value: string }) {
 export function AccountPage() {
   const auth = useSession()
   const { syncStatus, repository } = useStore()
-  const vault = useVault()
+  // Same sign-out everywhere (also in Configurações → Conta).
+  const { signOut, busy: signingOut } = useSignOut()
   const { toast, confirm } = useFeedback()
   const [local, setLocal] = useState<LocalSummary | null>(null)
   const [offer, setOffer] = useState(false)
-  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     localSummary().then(setLocal, () => setLocal(null))
@@ -78,29 +76,6 @@ export function AccountPage() {
     toast(s?.state === 'idle' ? 'Sincronizado' : 'Não foi possível sincronizar agora', s?.state === 'idle' ? 'success' : 'error')
   }
 
-  const signOut = async () => {
-    setBusy(true)
-    try {
-      await repository.syncNow?.()
-      const pending = repository.status?.().pending ?? 0
-      const ok = await confirm({
-        title: 'Sair da conta?',
-        message: pending
-          ? `${pending} alteração(ões) ainda não chegaram ao servidor e serão perdidas neste aparelho. Conecte-se à internet e sincronize antes, se puder.`
-          : 'Seus dados continuam na conta. A cópia desta conta é removida deste aparelho e o cofre é fechado.',
-        confirmLabel: 'Sair',
-        danger: pending > 0,
-      })
-      if (!ok) return
-      vault.lock()
-      await forgetPushOnThisDevice().catch(() => {})
-      const uid = auth.userId!
-      await auth.signOut()
-      await deleteCache(uid).catch(() => {})
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const migrated = Boolean(local && auth.userId && local.migratedTo.includes(auth.userId))
   const hasLocal = Boolean(local && (local.total > 0 || local.settings))
@@ -163,7 +138,7 @@ export function AccountPage() {
         <section>
           <SectionTitle>Sessão</SectionTitle>
           <div className="card overflow-hidden">
-            <button type="button" disabled={busy} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03]">
+            <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03]">
               <LogOut size={18} className="text-soft" />
               <span className="text-[15px]">Sair desta conta</span>
             </button>
