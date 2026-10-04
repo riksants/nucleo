@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronRight, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { navigate } from '../../app/router'
@@ -9,16 +10,26 @@ import { Badge } from '../../ui/Display'
 const TONE: Record<InsightPriority, 'warn' | 'accent' | 'neutral'> = { high: 'warn', medium: 'accent', low: 'neutral' }
 const LABEL: Record<InsightPriority, string> = { high: 'alta', medium: 'média', low: 'baixa' }
 
+/** Last computed suggestions, reused while the records and the day are the same. */
+let lastInsights: { data: unknown; settings: unknown; today: string; all: Insight[] } | null = null
+
 /** Suggestions to show now (computed from the records; memoized per data/day). */
 export function useInsights() {
   const { data, settings } = useStore()
   const today = useToday(zoneOf(settings))
+  const cached = lastInsights && lastInsights.data === data && lastInsights.settings === settings && lastInsights.today === today ? lastInsights.all : null
   // Computed just after the screen shows (never blocks the first paint); dismiss/snooze still apply instantly.
-  const [all, setAll] = useState<Insight[]>([])
+  // Coming back to a screen, the last result is shown right away — the card doesn't pop in and push the page again.
+  const [all, setAll] = useState<Insight[]>(() => cached ?? [])
   useEffect(() => {
-    const timer = window.setTimeout(() => setAll(computeInsights(data, settings)), 0)
+    if (cached) return
+    const timer = window.setTimeout(() => {
+      const next = computeInsights(data, settings)
+      lastInsights = { data, settings, today, all: next }
+      setAll(next)
+    }, 0)
     return () => window.clearTimeout(timer)
-  }, [data, settings, today])
+  }, [data, settings, today, cached])
   return { all: visibleInsights(all, settings.insightState, today), today }
 }
 
@@ -76,7 +87,27 @@ export function InsightCard({ insight, onAction }: { insight: Insight; onAction(
 export function AttentionCard() {
   const { all } = useInsights()
   const top = all.slice(0, HOME_LIMIT)
-  if (!top.length) return null
+  // Already known when the screen opens: shown in place. Arriving a moment later: opens smoothly (200 ms)
+  // instead of shoving the page down. Reduced motion: appears without animating.
+  return (
+    <AnimatePresence initial={false}>
+      {top.length > 0 && (
+        <motion.div
+          key="attention"
+          className="overflow-hidden"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <AttentionButton all={all} top={top} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+function AttentionButton({ all, top }: { all: Insight[]; top: Insight[] }) {
   return (
     <button type="button" onClick={() => navigate('/assistant')} className="card mb-5 block w-full p-4 text-left hover:border-line-strong">
       <span className="flex items-center gap-2">

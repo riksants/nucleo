@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { MODULES } from '../../app/modules'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import type { ModuleId } from '../../data/types'
 
 /** Suggested starting set for someone new. Everything else is one tap away. */
@@ -7,14 +8,19 @@ export const starterModules: Partial<Record<ModuleId, boolean>> = Object.fromEnt
   MODULES.map((m) => [m.id, ['today', 'finance', 'tasks', 'projects', 'notes', 'inbox', 'habits', 'agenda', 'week'].includes(m.id)]),
 )
 
+/** Critically damped (damping ratio ≈ 1): the knob settles in ~0.2 s without bouncing. */
+const KNOB_SPRING = { type: 'spring', stiffness: 600, damping: 49 } as const
+
 export function Switch({ checked, label }: { checked: boolean; label?: string }) {
+  // Moved with transform (GPU), not "left" (layout). Reduced motion: jumps straight to the new side.
+  const reduce = usePrefersReducedMotion()
   return (
     <span role="presentation" aria-label={label} className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-white/[0.12]'}`}>
       <motion.span
-        className="absolute top-0.5 size-6 rounded-full bg-white shadow-sm shadow-black/40"
+        className="absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm shadow-black/40"
         initial={false}
-        animate={{ left: checked ? 22 : 2 }}
-        transition={{ type: 'spring', stiffness: 600, damping: 38 }}
+        animate={{ transform: checked ? 'translateX(20px)' : 'translateX(0px)' }}
+        transition={reduce ? { duration: 0 } : KNOB_SPRING}
       />
     </span>
   )
