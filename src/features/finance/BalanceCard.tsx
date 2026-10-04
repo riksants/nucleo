@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Minus, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../data/store'
@@ -31,7 +32,7 @@ function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
 }
 
 function useCountTo(target: Cents) {
-  const reduce = useReducedMotion()
+  const reduce = usePrefersReducedMotion()
   const mv = useMotionValue(target)
   const [shown, setShown] = useState(target)
   const first = useRef(true)
@@ -52,6 +53,7 @@ export function BalanceCard() {
   const { balance, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
   const sheet = useSheet<'in' | 'out'>()
   const [delta, setDelta] = useState<{ id: number; cents: Cents } | null>(null)
+  const reduce = usePrefersReducedMotion()
 
   const converted = convert(balance, settings.baseCurrency, displayCurrency)
   const currency = converted === null ? settings.baseCurrency : displayCurrency
@@ -113,8 +115,8 @@ export function BalanceCard() {
             {delta ? (
               <motion.span
                 key={delta.id}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(-4px)' }}
+                animate={{ opacity: 1, transform: 'translateY(0px)' }}
                 exit={{ opacity: 0 }}
                 className={`num text-[15px] font-medium ${delta.cents > 0 ? 'text-income' : 'text-expense'}`}
               >

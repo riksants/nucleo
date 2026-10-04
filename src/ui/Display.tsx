@@ -1,4 +1,5 @@
-import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
+import { animate, motion, useMotionValue } from 'framer-motion'
+import { usePrefersReducedMotion } from '../lib/hooks'
 import { Search, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { TONE_BADGE, type Tone } from '../data/labels'
@@ -14,15 +15,18 @@ export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: R
   )
 }
 
+/**
+ * Progress bar. It shows the value right away (data being read shouldn't move on every visit) and only
+ * animates when the value changes: 300 ms, revealed with clip-path (no layout work, rounded tip kept).
+ */
 export function Progress({ value, tone = 'goal' }: { value: number; tone?: 'goal' | 'accent' | 'positive' }) {
   const color = { goal: 'bg-goal', accent: 'bg-accent', positive: 'bg-income' }[tone]
+  const pct = Math.max(0, Math.min(100, value))
   return (
     <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
-      <motion.div
-        className={`h-full rounded-full ${color}`}
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      <div
+        className={`h-full w-full rounded-full transition-[clip-path] duration-300 ease-(--ease-out-soft) motion-reduce:transition-none ${color}`}
+        style={{ clipPath: `inset(0 ${100 - pct}% 0 0 round 999px)` }}
       />
     </div>
   )
@@ -30,7 +34,7 @@ export function Progress({ value, tone = 'goal' }: { value: number; tone?: 'goal
 
 /** Money value that counts smoothly from its previous value to the new one. */
 export function AnimatedMoney({ cents, currency, className }: { cents: Cents; currency: Currency; className?: string }) {
-  const reduce = useReducedMotion()
+  const reduce = usePrefersReducedMotion()
   const mv = useMotionValue(cents)
   const [shown, setShown] = useState(cents)
   const first = useRef(true)
@@ -68,10 +72,12 @@ export function EmptyState({
   onAction?(): void
   compact?: boolean
 }) {
+  const reduce = usePrefersReducedMotion()
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }}
+      animate={{ opacity: 1, transform: 'translateY(0px)' }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       className={`card flex flex-col items-center border-dashed text-center ${compact ? 'px-5 py-7' : 'px-6 py-12'}`}
     >
       <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">{icon}</div>

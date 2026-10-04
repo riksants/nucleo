@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import { ArrowDownLeft, ArrowUpRight, SlidersHorizontal } from 'lucide-react'
 import { categoryLabel } from '../../core/financeCategories'
 import { useStore } from '../../data/store'
@@ -42,6 +43,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
 
 /** History grouped under day headings ("Hoje", "Ontem", "12 set"). */
 export function GroupedTransactions({ items, onOpen }: { items: Transaction[]; onOpen(tx: Transaction): void }) {
+  const reduce = usePrefersReducedMotion()
   const groups: { day: string; items: Transaction[] }[] = []
   for (const tx of items) {
     const day = formatDay(new Date(tx.createdAt))
@@ -52,7 +54,7 @@ export function GroupedTransactions({ items, onOpen }: { items: Transaction[]; o
   return (
     <div className="space-y-5">
       {groups.map((g) => (
-        <motion.section key={g.day} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+        <motion.section key={g.day} initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
           <h3 className="mb-1 px-2 text-[13px] font-medium text-faint">{g.day}</h3>
           <div className="card p-1.5">
             {g.items.map((tx) => (

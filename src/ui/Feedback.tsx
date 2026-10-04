@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { usePrefersReducedMotion } from '../lib/hooks'
 import { AlertCircle, Check } from 'lucide-react'
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -25,6 +26,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ id: number; message: string; tone: ToastTone } | null>(null)
   const timer = useRef<number>(0)
   const [pending, setPending] = useState<(ConfirmOptions & { resolve(ok: boolean): void }) | null>(null)
+  const reduceMotion = usePrefersReducedMotion()
 
   const showToast = useCallback((message: string, tone: ToastTone = 'success') => {
     window.clearTimeout(timer.current)
@@ -54,9 +56,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               <motion.div
                 key={toast.id}
                 role="status"
-                initial={{ opacity: 0, y: 14, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(14px) scale(0.96)' }}
+                animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }}
+                exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(10px) scale(0.98)' }}
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 className="flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pr-5 pl-3 text-[15px] font-medium shadow-xl shadow-black/50 backdrop-blur-md"
               >

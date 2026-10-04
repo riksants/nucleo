@@ -13,6 +13,9 @@ export function useMediaQuery(query: string): boolean {
 
 export const useIsDesktop = () => useMediaQuery('(min-width: 1024px)')
 
+/** "Reduzir movimento" on the device — live (Framer's useReducedMotion only reads it once, at mount). */
+export const usePrefersReducedMotion = () => useMediaQuery('(prefers-reduced-motion: reduce)')
+
 /**
  * Height of the on-screen keyboard on iOS, where fixed elements are not pushed
  * up automatically. Used to keep bottom sheets' buttons visible while typing.
