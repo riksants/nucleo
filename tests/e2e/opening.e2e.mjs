@@ -1,6 +1,6 @@
-// Abertura: logo parada → faixa roxa arredondada sobe e cobre a tela → sai pelo topo revelando o app real.
-// Sem fitas/peças soltas e sem logo no final. App carrega por baixo, nada sobra depois, não repete ao trocar de seção,
-// "reduzir movimento" e sem flash branco. Modo local.
+// Abertura (referência em vídeo): logo parada → cápsula roxa estreita sobe (cabeça com mini logo) → coluna →
+// alarga até a tela inteira → o roxo sobe e sai revelando o app real. App carrega por baixo, nada sobra depois,
+// não repete ao trocar de seção, toque pula, "reduzir movimento" e sem flash branco. Modo local.
 import { writeFileSync } from 'node:fs'
 import { launch, OUT } from './cdp.mjs'
 import { BASE, reporter, seedExistingUser } from './helpers.mjs'
@@ -14,22 +14,31 @@ const shot = async (name) => {
 }
 /** Records inside the page what was on screen and when. */
 const RECORDER = `(() => {
-  const o = window.__open = { seen: false, canvas: null, band: null, bandFull: null, end: null, white: false, appUnder: false };
+  const o = window.__open = { seen: false, end: null, leave: null, white: false, appUnder: false, canvas: false, narrowWhileRising: null, logoMoves: false };
   const look = () => {
     try {
       if (document.documentElement && getComputedStyle(document.documentElement).backgroundColor === 'rgb(255, 255, 255)' && document.body) o.white = true;
       const splash = document.getElementById('splash');
       if (splash) o.seen = true;
-      if (o.canvas === null && document.querySelector('canvas')) o.canvas = performance.now();
-      const svg = splash && splash.querySelector('svg');
-      if (svg) o.logoTransform = o.logoTransform || getComputedStyle(svg).transform;
-      const band = [...(document.body ? document.body.children : [])].find((e) => e.style && e.style.zIndex === '2147483001');
-      if (band && o.band === null) o.band = performance.now();
-      if (band && o.bandFull === null && band.getAnimations().some((a) => a.effect.getTiming().duration === 680)) o.bandFull = performance.now();
+      if (document.querySelector('canvas')) o.canvas = true;
+      const logo = splash && splash.querySelector('.nl-logo');
+      if (logo && logo.getBoundingClientRect().width > 0) {
+        const r = logo.getBoundingClientRect();
+        const key = Math.round(r.left) + ',' + Math.round(r.top) + ',' + Math.round(r.width);
+        if (o.logoAt === undefined) o.logoAt = key;
+        else if (o.logoAt !== key) o.logoMoves = true;
+      }
+      const sheet = splash && splash.querySelector('.nl-sheet');
+      const head = splash && splash.querySelector('.nl-head');
+      if (sheet && head && o.narrowWhileRising === null) {
+        const hb = head.getBoundingClientRect();
+        if (hb.top > innerHeight * 0.3 && hb.top < innerHeight * 0.7) o.narrowWhileRising = { head: Math.round(hb.width), screen: innerWidth, clip: getComputedStyle(sheet).clipPath };
+      }
+      if (splash && splash.classList.contains('nl-leave') && o.leave === null) o.leave = performance.now();
       const root = document.getElementById('root');
       if (root && o.readyAt === undefined && [...root.children].some((c) => c.getBoundingClientRect().height > 0)) o.readyAt = performance.now();
-      if (splash && root && [...root.children].some((c) => c.getBoundingClientRect().height > 0)) o.appUnder = true;
-      if (o.seen && !splash && !band && o.end === null) o.end = performance.now();
+      if (splash && o.readyAt !== undefined) o.appUnder = true;
+      if (o.seen && !splash && o.end === null) o.end = performance.now();
     } catch (e) {}
     if (o.end === null) requestAnimationFrame(look);
   };
@@ -52,7 +61,7 @@ async function until(expr, timeout = 9000) {
   return false
 }
 const times = () => b.eval(`({ ...window.__open, splashAt: window.__splashAt })`)
-const overlays = () => b.eval(`[...document.body.children].filter((e) => e.id === 'splash' || (e.style && e.style.zIndex === '2147483001')).length`)
+const overlays = () => b.eval(`document.querySelectorAll('#splash').length`)
 const ALL = ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'life', 'week', 'agenda', 'inbox', 'recurring', 'habits']
 
 try {
@@ -62,29 +71,27 @@ try {
   await b.send('Network.setBypassServiceWorker', { bypass: true })
   await seedExistingUser(b, { notes: [{ id: 'n1', title: 'Nota guardada', body: '', pinned: false }] }, { baseCurrency: 'BRL', modulesSeen: ALL })
 
+  // ---------- First (cold) load
   await open('')
-  await until(`!!document.querySelector('#splash svg') || !!document.querySelector('#splash canvas')`)
-  const early = await b.eval(`({ bg: getComputedStyle(document.body).backgroundColor, logo: !!document.querySelector('#splash svg, #splash canvas') })`)
-  r.check('abre com a logo sobre o fundo escuro do app', early.bg === 'rgb(9, 9, 11)' && early.logo, JSON.stringify(early))
-  await sleep(300)
+  await until(`!!document.querySelector('#splash .nl-logo')`)
+  await sleep(350)
   await shot('intro-1-logo')
-  r.check('a faixa roxa sobe', await until(`window.__open.band !== null`))
-  r.check('a faixa cobre a tela e então sai revelando o app', await until(`window.__open.bandFull !== null`))
+  const early = await b.eval(`(() => { const l = document.querySelector('#splash .nl-logo'); const r = l.getBoundingClientRect(); return { bg: getComputedStyle(document.body).backgroundColor, logo: Math.round(r.width), pieces: document.querySelectorAll('#nl-mark path').length, vw: innerWidth } })()`)
+  r.check('abre com a logo inteira (4 peças) parada sobre o fundo escuro', early.bg === 'rgb(9, 9, 11)' && early.pieces === 4 && early.logo > early.vw * 0.18 && early.logo < early.vw * 0.27, JSON.stringify(early))
   await until(`window.__open.end !== null`)
   await sleep(150)
   await shot('intro-2-app')
   let t = await times()
+  const n = t.narrowWhileRising
+  r.check('a faixa sobe estreita (≈25% da largura, cabeça do mesmo tamanho) antes de alargar', !!n && n.head >= n.screen * 0.2 && n.head <= n.screen * 0.3 && /inset\(/.test(n.clip), JSON.stringify(n))
+  r.check('sem fitas nem peças se soltando (nenhum canvas) e logo sem movimento', !t.canvas && !t.logoMoves)
   r.check('o app carregou por baixo durante a animação', t.appUnder)
   r.check('sem flash branco', !t.white)
-  r.check('sem fitas nem peças se soltando (nenhum canvas) e logo parada (sem escala/movimento)', t.canvas === null && (!t.logoTransform || t.logoTransform === 'none'), String(t.logoTransform))
-  r.check('logo parada por ~0,7 s antes da faixa', t.band - t.splashAt >= 680 && t.band - t.splashAt <= 1100, `${Math.round(t.band - t.splashAt)} ms`)
-// The band covers in ~0.76 s; it only leaves once the app is ready (no half-loaded reveal, no extra wait).
-  const exitAt = Math.max(t.band + 760, t.readyAt)
-  r.check('faixa cobre em ~0,76 s e sai assim que o app está pronto, em ~0,68 s', t.bandFull - t.band >= 650 && t.bandFull - exitAt < 250 && t.end - t.bandFull >= 550 && t.end - t.bandFull <= 1000, `cobre/espera ${Math.round(t.bandFull - t.band)} ms (app pronto ${Math.round(t.readyAt - t.band)} ms após a faixa), sai ${Math.round(t.end - t.bandFull)} ms`)
-  const after = await b.eval(`(() => { const root = document.getElementById('root'); return { overlays: [...document.body.children].filter((e) => e.id === 'splash' || (e.style && e.style.zIndex === '2147483001')).length, canvas: document.querySelectorAll('canvas').length, rootStyle: root.getAttribute('style') || '' } })()`)
-  r.check('no fim: nenhuma logo ou camada sobrando e o app intacto', after.overlays === 0 && after.canvas === 0 && after.rootStyle === '', JSON.stringify(after))
-  const text = await b.text()
-  r.check('revela direto a tela principal real (Início)', /Início/.test(text) && /SALDO|Saldo/.test(text))
+  r.check('revelação só depois de alargar e com o app pronto (≥ 2,1 s, sem espera extra)', t.leave - t.splashAt >= 2050 && t.leave - Math.max(t.splashAt + 2100, t.readyAt) < 400, `revelou em ${Math.round(t.leave - t.splashAt)} ms (app pronto em ${Math.round(t.readyAt - t.splashAt)} ms)`)
+  r.check('o roxo sai pelo topo em ~0,56 s', t.end - t.leave >= 400 && t.end - t.leave <= 950, `${Math.round(t.end - t.leave)} ms`)
+  const after = await b.eval(`(() => { const root = document.getElementById('root'); return { splash: !!document.getElementById('splash'), rootStyle: root.getAttribute('style') || '' } })()`)
+  r.check('no fim: nenhuma logo ou camada sobrando e o app intacto', !after.splash && after.rootStyle === '', JSON.stringify(after))
+  r.check('revela direto a tela principal real (Início)', /Início/.test(await b.text()) && /SALDO|Saldo/.test(await b.text()))
   const clickable = await b.eval(`(() => { const a = document.querySelector('nav[aria-label="Navegação principal"] a'); const rect = a.getBoundingClientRect(); return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('a') === a })()`)
   r.check('navegação clicável', clickable)
 
@@ -106,23 +113,30 @@ try {
   await open('')
   await until(`window.__open && window.__open.end !== null`)
   t = await times()
-  r.check('com cache: abertura completa em ~2,2 s', t.end - t.splashAt >= 1900 && t.end - t.splashAt <= 2800, `${Math.round(t.end - t.splashAt)} ms`)
+  r.check('com cache: abertura completa em ~2,8 s', t.end - t.splashAt >= 2500 && t.end - t.splashAt <= 3400, `${Math.round(t.end - t.splashAt)} ms`)
+
+  // A tap skips the rest
+  await open('')
+  await until(`!!document.querySelector('#splash .nl-logo')`)
+  await sleep(500)
+  await b.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 400 }] })
+  await b.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await until(`window.__open && window.__open.end !== null`)
+  t = await times()
+  r.check('um toque pula a abertura', t.end - t.splashAt < 1700 && t.leave === null, `${Math.round(t.end - t.splashAt)} ms`)
 
   // Reduced motion
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   await open('')
   await until(`window.__open && window.__open.end !== null`)
   t = await times()
-  r.check('reduzir movimento: logo parada e fade, sem faixa', t.canvas === null && t.band === null && t.end - t.splashAt < 1500, `${Math.round(t.end - t.splashAt)} ms`)
+  r.check('reduzir movimento: logo parada e fade, sem cápsula', t.narrowWhileRising === null && t.leave === null && t.end - t.splashAt < 1500, `${Math.round(t.end - t.splashAt)} ms`)
   await b.send('Emulation.setEmulatedMedia', { features: [] })
 
   // Desktop
   await b.desktop()
   await open('')
-  await until(`window.__open && window.__open.band !== null`)
-  await sleep(250)
-  await shot('intro-desktop-faixa')
-  await until(`window.__open.end !== null`)
+  await until(`window.__open && window.__open.end !== null`)
   await sleep(100)
   r.check('navegador comum (1366px): termina limpo no app', (await overlays()) === 0 && /Início/.test(await b.text()))
 } catch (err) {
