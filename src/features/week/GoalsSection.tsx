@@ -65,7 +65,7 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
                 <span className="mt-2 block">
                   <Progress value={gp.percent} tone={gp.achieved ? 'positive' : 'accent'} />
                 </span>
-                <span className="mt-1.5 flex items-center gap-2 text-[12.5px] text-faint">
+                <span className="mt-1.5 flex items-center gap-2 text-[13px] text-faint">
                   {gp.auto ? 'Atualiza sozinha' : 'Manual'}
                   {(streaks[g.id] ?? 0) >= 2 && (
                     <span className="inline-flex items-center gap-1 text-warn">

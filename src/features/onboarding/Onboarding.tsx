@@ -41,7 +41,7 @@ export function Onboarding() {
           )}
           <div className="flex gap-1.5" aria-hidden>
             {Array.from({ length: steps }, (_, i) => i).map((i) => (
-              <span key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? 'w-6 bg-accent' : 'w-1.5 bg-white/15'}`} />
+              <span key={i} className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-(--ease-out-soft) ${i === step ? 'w-6 bg-accent' : 'w-1.5 bg-white/15'}`} />
             ))}
           </div>
         </div>

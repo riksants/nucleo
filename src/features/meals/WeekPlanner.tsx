@@ -178,13 +178,13 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
                         {mealTitle(settings, m)}
                       </span>
                       {(m.name && m.type) || m.ingredients.length ? (
-                        <span className="block truncate text-[12.5px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(', ')].filter(Boolean).join(' · ')}</span>
+                        <span className="block truncate text-[13px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(', ')].filter(Boolean).join(' · ')}</span>
                       ) : null}
                     </button>
                   </div>
                 ))
               ) : (
-                <p className="px-2 pt-1 pb-2 text-[13.5px] text-faint">Nada planejado</p>
+                <p className="px-2 pt-1 pb-2 text-[13px] text-faint">Nada planejado</p>
               )}
             </section>
           )

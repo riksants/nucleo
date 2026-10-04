@@ -25,7 +25,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <div className="min-w-0">
       <p className="num text-[20px] leading-tight font-semibold">{value}</p>
-      <p className="truncate text-[12.5px] text-faint">{label}</p>
+      <p className="truncate text-[13px] text-faint">{label}</p>
       {sub && <p className="text-[12px] text-faint">{sub}</p>}
     </div>
   )

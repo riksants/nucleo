@@ -76,7 +76,7 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
               <AgendaRow key={i.key} item={i} onOpen={open} />
             ))}
           </div>
-          {timeline.some((i) => i.start < nowTime) && <p className="mt-2 px-1 text-[12.5px] text-faint">Itens que já passaram continuam aqui até você marcar.</p>}
+          {timeline.some((i) => i.start < nowTime) && <p className="mt-2 px-1 text-[13px] text-faint">Itens que já passaram continuam aqui até você marcar.</p>}
         </Block>
       )}
 

@@ -119,7 +119,7 @@ export function InboxPage() {
             <button key={item.id} type="button" onClick={() => organize.show(item)} className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
               <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" aria-hidden />
               <span className="min-w-0 flex-1">
-                <span className="block text-[15.5px] leading-snug break-words whitespace-pre-wrap">{item.text}</span>
+                <span className="block text-[15px] leading-snug break-words whitespace-pre-wrap">{item.text}</span>
                 <span className="mt-0.5 block text-[13px] text-faint">{formatDateTime(item.createdAt)}</span>
               </span>
               <span className="shrink-0 pt-0.5 text-sm font-medium text-accent-hi">Organizar</span>

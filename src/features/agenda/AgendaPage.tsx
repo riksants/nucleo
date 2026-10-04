@@ -33,7 +33,7 @@ function DayList({ items, onOpen }: { items: AgendaItem[]; onOpen(i: AgendaItem)
       )}
       {anytime.length > 0 && (
         <div className="card p-1.5">
-          <p className="px-3.5 pt-2 pb-1 text-[12.5px] font-medium tracking-wide text-faint uppercase">Sem horário</p>
+          <p className="px-3.5 pt-2 pb-1 text-[13px] font-medium tracking-wide text-faint uppercase">Sem horário</p>
           {anytime.map((i) => (
             <AgendaRow key={i.key} item={i} onOpen={onOpen} />
           ))}

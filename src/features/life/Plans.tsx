@@ -173,7 +173,7 @@ function StepRow({ step, plan, index, count, done }: { step: PlanStep; plan: Lif
       <CheckButton status={done ? 'done' : 'pending'} onClick={toggle} label={done ? `Reabrir etapa ${step.title}` : `Concluir etapa ${step.title}`} />
       <div className="min-w-0 flex-1 py-2">
         <p className={`text-[15px] leading-snug break-words ${done ? 'text-faint line-through' : ''}`}>{step.title}</p>
-        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[12.5px] text-faint">
+        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[13px] text-faint">
           {step.deadline && <span>até {formatDateValue(step.deadline).toLowerCase()}</span>}
           {task && (
             <button type="button" onClick={() => navigate('/tasks', { open: task.id })} className="text-accent-hi hover:text-ink">

@@ -19,6 +19,7 @@ import type { Currency } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
 import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
+import { Celebrate } from '../../ui/Celebrate'
 import { Badge, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, Select, TextInput } from '../../ui/Field'
@@ -104,7 +105,11 @@ export function BuyerDetail({
   }
 
   return (
-    <Sheet open={open} onClose={close} title={buyer.name} size="lg" actions={<Badge tone={BUYER_TONE[buyer.status]}>{BUYER_STATUS_LABEL[buyer.status]}</Badge>}>
+    <Sheet open={open} onClose={close} title={buyer.name} size="lg" actions={
+        <Celebrate key={buyer.key} active={buyer.status === 'paid'}>
+          <Badge tone={BUYER_TONE[buyer.status]}>{BUYER_STATUS_LABEL[buyer.status]}</Badge>
+        </Celebrate>
+      }>
       <p className="pb-3 text-[14px] text-faint">
         {buyer.sales.length} {buyer.sales.length === 1 ? 'compra' : 'compras'}
         {buyer.clientId ? ' · cliente' : ''}

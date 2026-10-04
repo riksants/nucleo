@@ -1,6 +1,7 @@
 import { CloudOff } from 'lucide-react'
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type LazyExoticComponent } from 'react'
-import { ALL_MODULE_IDS, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
+import { Suspense, useEffect, useRef, useState, type ComponentType, type LazyExoticComponent } from 'react'
+import { lazyPage, whenIdle, type PreloadablePage } from './app/lazyPage'
+import { ALL_MODULE_IDS, enabledModules, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
 import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
 import { useStore } from './data/store'
@@ -34,17 +35,17 @@ import { readPref, writePref } from './lib/prefs'
 import { Button } from './ui/Button'
 import { Sheet } from './ui/Sheet'
 
-// Etapa 1 pages load on demand, outside the initial bundle.
-const InboxPage = lazy(() => import('./features/inbox/InboxPage').then((m) => ({ default: m.InboxPage })))
-const RecurringPage = lazy(() => import('./features/recurring/RecurringPage').then((m) => ({ default: m.RecurringPage })))
-const AssistantPage = lazy(() => import('./features/assistant/AssistantPage').then((m) => ({ default: m.AssistantPage })))
-const MealsPage = lazy(() => import('./features/meals/MealsHome').then((m) => ({ default: m.MealsPage })))
-const LifePage = lazy(() => import('./features/life/LifePage').then((m) => ({ default: m.LifePage })))
-const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })))
-const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))
-const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
-const SalesPage = lazy(() => import('./features/sales/SalesPage').then((m) => ({ default: m.SalesPage })))
-const HabitsPage = lazy(() => import('./features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+// These sections load on demand, outside the initial bundle; the enabled ones are preloaded when the phone is idle.
+const InboxPage = lazyPage(() => import('./features/inbox/InboxPage').then((m) => m.InboxPage))
+const RecurringPage = lazyPage(() => import('./features/recurring/RecurringPage').then((m) => m.RecurringPage))
+const AssistantPage = lazyPage(() => import('./features/assistant/AssistantPage').then((m) => m.AssistantPage))
+const MealsPage = lazyPage(() => import('./features/meals/MealsHome').then((m) => m.MealsPage))
+const LifePage = lazyPage(() => import('./features/life/LifePage').then((m) => m.LifePage))
+const WeekPage = lazyPage(() => import('./features/week/WeekPage').then((m) => m.WeekPage))
+const FocusPage = lazyPage(() => import('./features/focus/FocusPage').then((m) => m.FocusPage))
+const AgendaPage = lazyPage(() => import('./features/agenda/AgendaPage').then((m) => m.AgendaPage))
+const SalesPage = lazyPage(() => import('./features/sales/SalesPage').then((m) => m.SalesPage))
+const HabitsPage = lazyPage(() => import('./features/habits/HabitsPage').then((m) => m.HabitsPage))
 
 const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType>> = {
   '/': HomePage,
@@ -166,6 +167,26 @@ function useWeekCloser() {
   }, [on, day])
 }
 
+/**
+ * Once the app is ready, loads the code of the enabled sections in the background (idle time), so opening
+ * one for the first time is instant instead of a blank moment. Hidden sections are never loaded.
+ */
+function usePreloadSections() {
+  const { ready, settings } = useStore()
+  const modules = enabledModules(settings)
+    .map((m) => m.path)
+    .join()
+  useEffect(() => {
+    if (!ready) return
+    return whenIdle(() => {
+      for (const path of modules.split(',')) {
+        const page = PAGES[path as RoutePath] as Partial<PreloadablePage> | undefined
+        void page?.preload?.().catch(() => {})
+      }
+    })
+  }, [ready, modules])
+}
+
 export function App() {
   const { ready, settings, loadError, retryLoad } = useStore()
   const { userId, signOut } = useSession()
@@ -174,6 +195,7 @@ export function App() {
   useSearchShortcut()
   useMorningAutoOpen()
   useWeekCloser()
+  usePreloadSections()
 
   if (loadError) {
     return (

@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, Sparkles } from 'lucide-react'
+import { CalendarCheck, Check, ChevronRight, Sparkles } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { emptyRoutineAnswers } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
@@ -16,6 +16,7 @@ import { nextChargeOf } from '../../data/subscriptions'
 import type { Task, Weekday } from '../../data/types'
 import { daysBetween, formatDateValue, fromDateInput, relativeDays } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
+import { Celebrate } from '../../ui/Celebrate'
 import { SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { usePlans } from '../planner/plans'
@@ -68,6 +69,13 @@ function DayView({ today }: { today: string }) {
   const open = data.tasks.filter((t) => t.status !== 'done')
   const todayTasks = sortOpenTasks(open.filter((t) => t.dueDate === today)).sort((a, b) => (a.dueTime && b.dueTime ? toMinutes(a.dueTime) - toMinutes(b.dueTime) : a.dueTime ? -1 : b.dueTime ? 1 : 0))
   const overdue = sortOpenTasks(open.filter((t) => t.dueDate && t.dueDate < today))
+  // The last task of the day was just done here (not on load): keep the block and celebrate it.
+  const [prevCount, setPrevCount] = useState(todayTasks.length)
+  const [cleared, setCleared] = useState(false)
+  if (prevCount !== todayTasks.length) {
+    setPrevCount(todayTasks.length)
+    setCleared(todayTasks.length === 0 && prevCount > 0)
+  }
   const appointments = open
     .filter((t) => t.dueTime && t.dueDate > today && daysBetween(now, fromDateInput(t.dueDate)!) <= UPCOMING_DAYS)
     .sort((a, b) => (a.dueDate + a.dueTime < b.dueDate + b.dueTime ? -1 : 1))
@@ -132,7 +140,7 @@ function DayView({ today }: { today: string }) {
               </div>
             </Block>
           )}
-          {on('tasks') && (todayTasks.length > 0 || !nothing) && (
+          {on('tasks') && (todayTasks.length > 0 || !nothing || cleared) && (
             <Block title="Tarefas de hoje" action="Nova" onAction={() => taskSheet.show()}>
               {todayTasks.length ? (
                 <div className="card p-1.5">
@@ -142,6 +150,15 @@ function DayView({ today }: { today: string }) {
                     ))}
                   </AnimatePresence>
                 </div>
+              ) : cleared ? (
+                <p className="card flex items-center gap-3 px-5 py-4 text-[15px] font-medium">
+                  <Celebrate active onMount>
+                    <span className="grid size-7 place-items-center rounded-full bg-income/15 text-income">
+                      <Check size={16} strokeWidth={2.6} />
+                    </span>
+                  </Celebrate>
+                  Tudo feito por hoje
+                </p>
               ) : (
                 <p className="card px-5 py-4 text-[15px] text-faint">Nada com prazo para hoje.</p>
               )}

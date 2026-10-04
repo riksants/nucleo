@@ -69,7 +69,7 @@ function NoteCard({ note, onOpen }: { note: Note; onOpen(n: Note): void }) {
         <h3 className="min-w-0 flex-1 truncate text-[16px] font-semibold tracking-tight">{note.title || note.body.split('\n')[0]}</h3>
         {note.pinned && <Pin size={15} className="mt-1 shrink-0 text-accent-hi" fill="currentColor" />}
       </div>
-      {note.title && note.body && <p className="mt-1.5 line-clamp-3 text-[14.5px] leading-relaxed whitespace-pre-line text-soft">{note.body}</p>}
+      {note.title && note.body && <p className="mt-1.5 line-clamp-3 text-[15px] leading-relaxed whitespace-pre-line text-soft">{note.body}</p>}
       <p className="mt-3 text-xs text-faint">{formatDateTime(note.updatedAt)}</p>
     </button>
   )

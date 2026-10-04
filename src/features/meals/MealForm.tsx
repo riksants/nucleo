@@ -123,7 +123,7 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
                       )
                     })}
                 </div>
-                <p className="mt-2 text-[12.5px] text-faint">Cria uma cópia em cada dia escolhido (sem marcar como realizada).</p>
+                <p className="mt-2 text-[13px] text-faint">Cria uma cópia em cada dia escolhido (sem marcar como realizada).</p>
               </div>
             )}
           </>

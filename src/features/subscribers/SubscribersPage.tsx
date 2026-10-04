@@ -58,7 +58,7 @@ function Projection() {
             {converted.missing.length ? ` · sem cotação para ${converted.missing.join(', ')} (fora do total)` : ''}
           </p>
         )}
-        <p className="mt-3 text-[12.5px] leading-relaxed text-faint">Projeção, não dinheiro em caixa: planos anuais são cobrados uma vez por ano.</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-faint">Projeção, não dinheiro em caixa: planos anuais são cobrados uma vez por ano.</p>
       </div>
       <div className="card p-5">
         <p className="text-[13px] font-medium tracking-wide text-soft uppercase">Recebido de verdade</p>
@@ -81,7 +81,7 @@ function Projection() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[12.5px] leading-relaxed text-faint">Soma dos pagamentos registrados. Não entra no saldo do Financeiro automaticamente.</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-faint">Soma dos pagamentos registrados. Não entra no saldo do Financeiro automaticamente.</p>
       </div>
     </div>
   )

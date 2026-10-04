@@ -40,8 +40,8 @@ export function InsightCard({ insight, onAction }: { insight: Insight; onAction(
         <p className="min-w-0 flex-1 text-[15px] leading-snug">{insight.title}</p>
         <Badge tone={TONE[insight.priority]}>{LABEL[insight.priority]}</Badge>
       </div>
-      {why && <p className="mt-1.5 text-[13.5px] leading-relaxed text-soft">{insight.why}</p>}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13.5px]">
+      {why && <p className="mt-1.5 text-[13px] leading-relaxed text-soft">{insight.why}</p>}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
         {insight.action && (
           <button type="button" onClick={() => onAction(insight)} className="hit relative font-medium text-accent-hi hover:text-ink">
             {insight.action.label}
@@ -88,7 +88,7 @@ export function AttentionCard() {
       </span>
       <span className="mt-2 block space-y-1">
         {top.map((i) => (
-          <span key={i.key} className="flex items-start gap-2 text-[13.5px] leading-snug text-soft">
+          <span key={i.key} className="flex items-start gap-2 text-[13px] leading-snug text-soft">
             <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${i.priority === 'high' ? 'bg-warn' : i.priority === 'medium' ? 'bg-accent-hi' : 'bg-faint'}`} />
             <span className="min-w-0 flex-1">{i.title}</span>
           </span>

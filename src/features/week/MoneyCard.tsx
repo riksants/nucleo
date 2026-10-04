@@ -16,7 +16,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
   return (
     <div className="min-w-0">
       <p className={`num text-[clamp(16px,4.4vw,19px)] leading-tight font-semibold break-words ${tone ?? ''}`}>{value}</p>
-      <p className="truncate text-[12.5px] text-faint">{label}</p>
+      <p className="truncate text-[13px] text-faint">{label}</p>
     </div>
   )
 }
@@ -73,7 +73,7 @@ export function MoneyCard({ week, today, isCurrent, snapshot, flat, prevFlat }: 
           <p className="text-[15px] text-faint">Nenhuma movimentação registrada {isCurrent ? 'nesta semana ainda' : 'nesta semana'}.</p>
         )}
         {sentences.length > 0 && (
-          <div className="mt-4 space-y-1 text-[14.5px] leading-relaxed text-soft">
+          <div className="mt-4 space-y-1 text-[15px] leading-relaxed text-soft">
             {sentences.map((s) => (
               <p key={s}>{s}</p>
             ))}

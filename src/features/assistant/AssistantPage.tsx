@@ -43,13 +43,13 @@ function ReplyView({ reply, onFollow }: { reply: Reply; onFollow(text: string): 
           {reply.list.map((x, i) => (
             <li key={i}>
               {reply.lines[0]?.includes('Exemplos') || reply.lines[0]?.startsWith('Não entendi') ? (
-                <button type="button" onClick={() => onFollow(x.title)} className="block w-full px-4 py-2.5 text-left text-[14.5px] text-accent-hi hover:text-ink">
+                <button type="button" onClick={() => onFollow(x.title)} className="block w-full px-4 py-2.5 text-left text-[15px] text-accent-hi hover:text-ink">
                   {x.title}
                 </button>
               ) : (
                 <div className="px-4 py-2.5">
-                  <p className="text-[14.5px] leading-snug break-words">{x.title}</p>
-                  {x.meta && <p className="text-[12.5px] leading-snug text-faint">{x.meta}</p>}
+                  <p className="text-[15px] leading-snug break-words">{x.title}</p>
+                  {x.meta && <p className="text-[13px] leading-snug text-faint">{x.meta}</p>}
                 </div>
               )}
             </li>
@@ -153,7 +153,7 @@ export function AssistantPage() {
 
         <div className="space-y-4" aria-live="polite">
           {messages.length === 0 && (
-            <div className="card flex gap-3 p-4 text-[14.5px] leading-relaxed text-soft">
+            <div className="card flex gap-3 p-4 text-[15px] leading-relaxed text-soft">
               <Sparkles size={18} className="mt-0.5 shrink-0 text-accent-hi" />
               <p>Pergunte sobre o seu dia, semana, metas e gastos, ou peça para criar tarefas, metas e compromissos. Antes de mudar qualquer coisa, eu mostro a proposta para você confirmar.</p>
             </div>

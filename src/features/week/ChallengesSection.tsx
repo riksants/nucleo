@@ -161,7 +161,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
               <span className="mt-2 block">
                 <Progress value={s.percent} tone="accent" />
               </span>
-              <span className="mt-1.5 block text-[12.5px] text-faint">
+              <span className="mt-1.5 block text-[13px] text-faint">
                 {s.value} de {s.target} · {s.status === 'not_started' ? `começa ${formatDateValue(c.startDate).toLowerCase()}` : `até ${formatDateValue(s.endDate).toLowerCase()}`}
               </span>
             </button>

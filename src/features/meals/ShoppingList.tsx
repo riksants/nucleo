@@ -158,7 +158,7 @@ export function ShoppingList({ week, onWeek }: { week: WeekId; onWeek(w: WeekId)
               Limpar comprados ({bought.length})
             </Button>
           )}
-          <p className="px-1 text-[12.5px] leading-relaxed text-faint">Itens das refeições somam quantidades só quando as unidades combinam (g com kg, ml com l). Sem quantidade na refeição, a lista também fica sem. Itens que você adiciona nunca são alterados pelas refeições.</p>
+          <p className="px-1 text-[13px] leading-relaxed text-faint">Itens das refeições somam quantidades só quando as unidades combinam (g com kg, ml com l). Sem quantidade na refeição, a lista também fica sem. Itens que você adiciona nunca são alterados pelas refeições.</p>
         </>
       ) : (
         <EmptyState icon={<ShoppingBasket size={22} />} title="Lista vazia" text="Os ingredientes das refeições desta semana aparecem aqui sozinhos. Você também pode adicionar itens." />

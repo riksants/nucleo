@@ -55,7 +55,7 @@ function BottomNav({ path }: { path: RoutePath }) {
               key={s.path}
               href={`#${s.path}`}
               aria-current={active ? 'page' : undefined}
-              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[11.5px] font-medium ${active ? 'text-ink' : 'text-faint'}`}
+              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] font-medium ${active ? 'text-ink' : 'text-faint'}`}
             >
               <span className="relative grid h-8 w-14 place-items-center">
                 {active && (

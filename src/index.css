@@ -13,7 +13,7 @@
 
   --color-ink: #f4f4f1;
   --color-soft: #a3a3ad;
-  --color-faint: #6c6c77;
+  --color-faint: #80808b; /* 4.5–5.1:1 on the app surfaces (WCAG AA for small text) */
 
   --color-accent: #5b6cff;
   --color-accent-hi: #7584ff;

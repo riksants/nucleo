@@ -7,6 +7,7 @@ import type { FinanceGoal } from '../../data/types'
 import { formatDateValue } from '../../lib/dates'
 import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
 import { Button } from '../../ui/Button'
+import { Celebrate } from '../../ui/Celebrate'
 import { Badge, Progress, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, MoneyInput, TextArea, TextInput } from '../../ui/Field'
@@ -151,7 +152,7 @@ export function FinanceGoalCard({ goal, today, onOpen }: { goal: FinanceGoal; to
     <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03] tap">
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
-        {p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}
+        <Celebrate active={p.reached}>{p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}</Celebrate>
       </span>
       <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 text-[13px] text-faint">
         <span className="num">

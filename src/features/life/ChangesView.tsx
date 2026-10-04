@@ -14,7 +14,7 @@ export function ChangesView() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Segmented<ChangePeriod> block label="Período" value={period} onChange={setPeriod} options={[{ value: 'week', label: 'Semana × anterior' }, { value: 'month', label: 'Mês × anterior' }]} />
-      {c.partialNote && !c.notComparable && <p className="px-1 text-[13.5px] text-faint">{c.partialNote}</p>}
+      {c.partialNote && !c.notComparable && <p className="px-1 text-[13px] text-faint">{c.partialNote}</p>}
       {c.notComparable ? (
         <p className="card px-5 py-4 text-[15px] leading-relaxed text-soft">Dados insuficientes: você começou a usar o NÚCLEO depois do início do período anterior. A comparação aparece quando houver dois períodos completos para comparar.</p>
       ) : c.lines.length ? (
@@ -28,7 +28,7 @@ export function ChangesView() {
       ) : (
         <p className="card px-5 py-4 text-[15px] text-soft">Dados insuficientes para comparar. Quando houver registros nos dois períodos, as mudanças aparecem aqui.</p>
       )}
-      <p className="px-1 text-[12.5px] leading-relaxed text-faint">Só aparecem áreas com dados nos dois períodos. Nenhuma comparação com outras pessoas.</p>
+      <p className="px-1 text-[13px] leading-relaxed text-faint">Só aparecem áreas com dados nos dois períodos. Nenhuma comparação com outras pessoas.</p>
     </div>
   )
 }

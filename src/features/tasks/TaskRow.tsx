@@ -17,12 +17,12 @@ function CheckCircle({ checked }: { checked: boolean }) {
       animate={{
         backgroundColor: checked ? 'var(--color-accent)' : 'rgba(0,0,0,0)',
         borderColor: checked ? 'var(--color-accent)' : 'rgba(255,255,255,0.22)',
-        scale: checked ? [1, 1.15, 1] : 1,
+        scale: checked ? [1, 1.1, 1] : 1,
       }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
       <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="white" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
-        <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }} transition={{ duration: 0.28, delay: checked ? 0.08 : 0 }} />
+        <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }} transition={{ duration: 0.16, delay: checked ? 0.04 : 0 }} />
       </svg>
     </motion.span>
   )
@@ -53,7 +53,8 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
       layout
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.22 } }}
+      exit={{ opacity: 0, height: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
       className="overflow-hidden"
     >
       <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
@@ -63,16 +64,14 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
         <button type="button" onClick={() => onOpen(task)} className="min-w-0 flex-1 py-3 pr-2 text-left">
           <span className="flex items-center gap-2">
             {task.priority !== 'none' && <span className={`size-2 shrink-0 rounded-full ${PRIORITY_DOT[task.priority]}`} aria-label={`Prioridade ${optionOf(TASK_PRIORITY, task.priority).label}`} />}
-            <span className={`relative truncate text-[15.5px] transition-colors duration-300 ${checked ? 'text-faint' : ''}`}>
+            <span className={`relative truncate text-[15px] transition-colors duration-300 ${checked ? 'text-faint' : ''}`}>
               {task.title}
-              <motion.span
-                className="absolute top-1/2 left-0 h-px bg-current"
-                initial={false}
-                animate={{ width: checked ? '100%' : '0%' }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              <span
+                className="absolute top-1/2 left-0 h-px w-full origin-left bg-current transition-transform duration-200 ease-(--ease-out-soft) motion-reduce:transition-none"
+                style={{ transform: `scaleX(${checked ? 1 : 0})` }}
               />
             </span>
-            {task.status === 'doing' && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[11.5px] font-medium text-accent-hi">Fazendo</span>}
+            {task.status === 'doing' && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-medium text-accent-hi">Fazendo</span>}
           </span>
           {(project || (task.dueDate && !done) || task.changedBy) && (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-faint">

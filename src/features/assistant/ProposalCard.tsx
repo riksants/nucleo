@@ -69,14 +69,14 @@ export function ProposalCard({ proposal, onDone }: { proposal: Proposal; onDone?
               )}
               <span className={`min-w-0 flex-1 text-[15px] leading-snug break-words ${on ? '' : 'text-faint line-through'}`}>
                 {c.label}
-                {c.detail && <span className="block text-[12.5px] text-faint">{c.detail}</span>}
+                {c.detail && <span className="block text-[13px] text-faint">{c.detail}</span>}
               </span>
             </li>
           )
         })}
       </ul>
       {proposal.notes.map((n) => (
-        <p key={n} className="text-[12.5px] leading-relaxed text-faint">
+        <p key={n} className="text-[13px] leading-relaxed text-faint">
           {n}
         </p>
       ))}

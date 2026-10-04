@@ -285,7 +285,7 @@ export function AiPlanView() {
         )
       )}
 
-      <p className="mt-8 px-1 text-[12.5px] leading-relaxed text-faint">
+      <p className="mt-8 px-1 text-[13px] leading-relaxed text-faint">
         Sugestões de organização, não diagnóstico nem prescrição. A verificação de alergias e restrições é automática por palavras e pode falhar: confira rótulos e ingredientes. Para necessidades clínicas ou estratégias de desempenho, procure um nutricionista.
       </p>
       {sheetPlan && <MealSheet open={sheet.open} onClose={sheet.close} meal={sheet.item?.meal ?? null} plan={sheetPlan} answers={answers} />}

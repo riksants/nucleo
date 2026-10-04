@@ -16,7 +16,7 @@ export function HabitRow({ habit, date, status, onOpen, compact }: { habit: Habi
     <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
       <CheckButton status={status} onClick={toggle} label={status === 'done' ? `Desmarcar ${habit.name}` : `Concluir ${habit.name}`} />
       <button type="button" onClick={() => onOpen?.(habit)} disabled={!onOpen} className="min-w-0 flex-1 py-3 pr-1 text-left">
-        <span className={`block truncate text-[15.5px] ${status === 'done' ? 'text-faint line-through' : status === 'skipped' ? 'text-faint' : ''}`}>{habit.name}</span>
+        <span className={`block truncate text-[15px] ${status === 'done' ? 'text-faint line-through' : status === 'skipped' ? 'text-faint' : ''}`}>{habit.name}</span>
         {(meta || status === 'skipped') && !compact && (
           <span className="block truncate text-[13px] text-faint">{status === 'skipped' ? 'Pulado hoje' : meta}</span>
         )}

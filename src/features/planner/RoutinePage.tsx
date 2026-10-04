@@ -148,7 +148,7 @@ export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: Rout
               </span>
               <span className={`min-w-0 flex-1 truncate text-[15px] ${isDone ? 'text-faint line-through' : ''}`}>{b.title}</span>
               {conflictIds.has(b.id) && <AlertTriangle size={16} className="shrink-0 text-expense" />}
-              {b.fixed && <span className="shrink-0 text-[11.5px] text-faint">fixo</span>}
+              {b.fixed && <span className="shrink-0 text-[12px] text-faint">fixo</span>}
             </button>
           </div>
         )

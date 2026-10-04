@@ -31,7 +31,7 @@ export function StreaksSection({ today, index }: { today: string; index: Complet
           </div>
         ))}
       </div>
-      <p className="mt-2 px-1 text-[12.5px] text-faint">Contam só os dias em que o hábito estava programado. Dias pulados são pausa.</p>
+      <p className="mt-2 px-1 text-[13px] text-faint">Contam só os dias em que o hábito estava programado. Dias pulados são pausa.</p>
     </section>
   )
 }

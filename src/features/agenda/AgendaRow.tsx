@@ -48,7 +48,7 @@ export function AgendaRow({ item, onOpen, showLabel = true, readOnly }: { item: 
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-[15px] ${muted ? 'text-faint' : ''} ${item.status === 'done' ? 'line-through' : ''}`}>{item.title}</span>
           {showLabel && (
-            <span className="flex items-center gap-1.5 text-[12.5px] text-faint">
+            <span className="flex items-center gap-1.5 text-[13px] text-faint">
               {(item.checkable || item.markable) && <span className={`size-1.5 rounded-full ${dot}`} />}
               {itemLabel(item)}
               {item.end && item.kind === 'event' ? ` · até ${item.end}` : ''}

@@ -24,7 +24,7 @@ function History({ habit, dates, index }: { habit: Habit; dates: string[]; index
       {dates.map((d, i) => (
         <span key={d} className="flex w-6 flex-col items-center gap-1">
           <span className={`size-3 rounded-full ${DOT[marks[i]]}`} title={`${d}: ${marks[i] === 'done' ? 'feito' : marks[i] === 'skipped' ? 'pulado' : marks[i] === 'off' ? 'não programado' : 'não feito'}`} />
-          <span className="text-[10.5px] text-faint">{DAY_SHORT[weekdayOfDate(d)].slice(0, 1)}</span>
+          <span className="text-[11px] text-faint">{DAY_SHORT[weekdayOfDate(d)].slice(0, 1)}</span>
         </span>
       ))}
     </div>

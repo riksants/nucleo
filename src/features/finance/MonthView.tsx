@@ -131,7 +131,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
                 <p className="num mt-0.5 font-medium break-words">{formatMoney(s.closing, cur)}</p>
               </div>
             </div>
-            {t.otherCurrency > 0 && <p className="mt-4 text-[12.5px] leading-relaxed text-faint">Inclui {t.otherCurrency} {t.otherCurrency === 1 ? 'movimentação em outra moeda' : 'movimentações em outras moedas'}, pelo valor convertido no dia do registro.</p>}
+            {t.otherCurrency > 0 && <p className="mt-4 text-[13px] leading-relaxed text-faint">Inclui {t.otherCurrency} {t.otherCurrency === 1 ? 'movimentação em outra moeda' : 'movimentações em outras moedas'}, pelo valor convertido no dia do registro.</p>}
           </section>
 
           <section>
@@ -139,7 +139,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
             <div className="card space-y-1.5 px-5 py-4 text-[15px] leading-relaxed">
               <p>{comparison ?? (t.count ? 'Ainda não há um mês anterior para comparar.' : 'Sem movimentações neste mês.')}</p>
               {s.comparison && (
-                <p className="text-[13.5px] text-faint">
+                <p className="text-[13px] text-faint">
                   {s.comparison.partial ? `Mesmo período de ${monthLabel(addMonthsTo(month, -1))}` : cap(monthLabel(addMonthsTo(month, -1)))}: entradas {formatMoney(s.comparison.previous.income, cur)} · saídas {formatMoney(s.comparison.previous.expense, cur)} · resultado {formatMoney(s.comparison.previous.net, cur, { sign: true })}
                 </p>
               )}
@@ -154,7 +154,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
               <div className="card space-y-3.5 p-5">
                 {s.categories.slice(0, 6).map((c) => (
                   <div key={c.category}>
-                    <div className="flex items-baseline justify-between gap-3 text-[14.5px]">
+                    <div className="flex items-baseline justify-between gap-3 text-[15px]">
                       <span className={`min-w-0 truncate ${c.category ? '' : 'text-soft'}`}>{categoryLabel(settings, c.category || undefined)}</span>
                       <span className="num shrink-0 font-medium">{formatMoney(c.amount, cur)}</span>
                     </div>
@@ -180,11 +180,11 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
                 <p className="text-soft">Nenhum gasto marcado neste mês.</p>
               )}
               {prevUnnecessary && (prevUnnecessary.unnecessaryCount > 0 || t.unnecessaryCount > 0) && (
-                <p className="mt-1 text-[13.5px] text-faint">
+                <p className="mt-1 text-[13px] text-faint">
                   {s.comparison?.partial ? 'Mesmo período' : 'Mês'} anterior: {prevUnnecessary.unnecessaryCount} · {formatMoney(prevUnnecessary.unnecessaryAmount, cur)}
                 </p>
               )}
-              <p className="mt-2 text-[12.5px] text-faint">Só você marca um gasto como desnecessário, ao registrar ou editar uma saída.</p>
+              <p className="mt-2 text-[13px] text-faint">Só você marca um gasto como desnecessário, ao registrar ou editar uma saída.</p>
             </div>
           </section>
 
@@ -193,7 +193,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
               <SectionTitle>Metas com prazo no mês</SectionTitle>
               <div className="card divide-y divide-line">
                 {goals.map(({ g, start, end }) => (
-                  <div key={g.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-3 text-[14.5px]">
+                  <div key={g.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-3 text-[15px]">
                     <span className="min-w-0 truncate">{g.name}</span>
                     <span className="num text-soft">
                       {formatMoney(end, g.currency)} <span className={end - start >= 0 ? 'text-income' : 'text-soft'}>({formatMoney(end - start, g.currency, { sign: true })})</span>

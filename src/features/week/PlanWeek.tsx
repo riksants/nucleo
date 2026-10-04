@@ -56,7 +56,7 @@ export function PlanWeek({ week, currentWeek, today }: { week: WeekId; currentWe
                     <Star size={17} fill={t.priority === 'high' ? 'currentColor' : 'none'} />
                   </button>
                   <span className="min-w-0 flex-1 truncate text-[15px]">{t.title}</span>
-                  {t.dueDate && <span className="shrink-0 text-[12.5px] text-expense">atrasada</span>}
+                  {t.dueDate && <span className="shrink-0 text-[13px] text-expense">atrasada</span>}
                 </div>
                 <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto pl-10">
                   {days.map((d) => (

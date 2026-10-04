@@ -85,7 +85,7 @@ export function FocusPage() {
           {open.length ? (
             <div className="card divide-y divide-line">
               {open.map((t) => (
-                <button key={t.id} type="button" onClick={() => navigate('/focus', { task: t.id })} className="block w-full px-4 py-3.5 text-left text-[15.5px] hover:bg-white/[0.03] tap">
+                <button key={t.id} type="button" onClick={() => navigate('/focus', { task: t.id })} className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-white/[0.03] tap">
                   {t.title}
                 </button>
               ))}

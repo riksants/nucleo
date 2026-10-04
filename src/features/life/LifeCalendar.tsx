@@ -73,7 +73,7 @@ export function LifeCalendar() {
             <ChevronRight size={18} />
           </IconButton>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-[11.5px] font-medium text-faint" aria-hidden>
+        <div className="grid grid-cols-7 gap-1 text-center text-[12px] font-medium text-faint" aria-hidden>
           {WEEKDAYS.map((w, i) => (
             <span key={i} className="py-1">
               <span className="sm:hidden">{w}</span>
@@ -133,7 +133,7 @@ export function LifeCalendar() {
                 </span>
                 <span className="min-w-0 flex-1 py-2.5 pr-2">
                   <span className="block truncate text-[15px]">{m.title}</span>
-                  <span className="block truncate text-[12.5px] text-faint">{m.label}</span>
+                  <span className="block truncate text-[13px] text-faint">{m.label}</span>
                 </span>
               </button>
             ))}
