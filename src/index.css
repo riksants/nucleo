@@ -1,6 +1,9 @@
 @import '@fontsource-variable/geist';
 @import 'tailwindcss';
 
+/* "Reduzir transparência" on the device: glass surfaces become solid (same color, no blur). */
+@custom-variant reduce-transparency (@media (prefers-reduced-transparency: reduce));
+
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
 

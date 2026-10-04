@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, Eye, EyeOff, MailCheck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Logo } from '../../app/Shell'
 import { Button, IconButton } from '../../ui/Button'
 import { Field, TextInput } from '../../ui/Field'
@@ -54,6 +55,7 @@ function Frame({ title, text, onBack, children, footer }: { title: string; text?
 
 export function AuthScreen() {
   const auth = useSession()
+  const reduce = usePrefersReducedMotion()
   const [step, setStep] = useState<Step>(auth.screen === 'newPassword' ? 'newPassword' : auth.screen === 'signup' ? 'signup' : auth.screen === 'forgot' ? 'forgot' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -300,7 +302,12 @@ export function AuthScreen() {
 
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={step} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, transform: reduce ? 'translateX(0px)' : 'translateX(16px)' }}
+        animate={{ opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } }}
+        exit={{ opacity: 0, transform: reduce ? 'translateX(0px)' : 'translateX(-16px)', transition: { duration: 0.12, ease: [0.22, 1, 0.36, 1] } }}
+      >
         {content}
       </motion.div>
     </AnimatePresence>

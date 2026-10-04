@@ -45,7 +45,7 @@ function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
   const primary = primarySections(settings)
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/88 backdrop-blur-xl lg:hidden" aria-label="Navegação principal">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/88 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:hidden" aria-label="Navegação principal">
       <div className="mx-auto grid max-w-lg px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
         {[...primary, MORE].map((s) => {
           const active = isActive(s, path, primary)

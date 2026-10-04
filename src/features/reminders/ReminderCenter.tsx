@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bell, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import { useStore } from '../../data/store'
 import { readPref, writePref } from '../../lib/prefs'
 import { useSession } from '../account/session'
@@ -23,6 +24,7 @@ export function ReminderCenter() {
   const { data, settings, ready } = useStore()
   const { userId } = useSession()
   const [visible, setVisible] = useState<Occurrence[]>([])
+  const reduce = usePrefersReducedMotion()
   const occurrences = useMemo(() => (ready ? buildOccurrences(data, settings) : []), [data, settings, ready])
   const latest = useRef(occurrences)
   latest.current = occurrences
@@ -64,10 +66,11 @@ export function ReminderCenter() {
         {visible.map((o) => (
           <motion.div
             key={o.key}
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.25rem] border border-line-strong bg-elevated/95 py-2.5 pr-2 pl-3.5 shadow-xl shadow-black/50 backdrop-blur-md"
+            initial={{ opacity: 0, transform: reduce ? 'translateY(0px)' : 'translateY(-12px)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px)' }}
+            exit={{ opacity: 0, transform: reduce ? 'translateY(0px)' : 'translateY(-8px)' }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.25rem] border border-line-strong bg-elevated/95 py-2.5 pr-2 pl-3.5 shadow-xl shadow-black/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
             role="status"
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white">

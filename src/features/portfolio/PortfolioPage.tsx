@@ -62,7 +62,7 @@ function PortfolioForm({ open, onClose, item }: { open: boolean; onClose(): void
           {d.image ? (
             <div className="relative overflow-hidden rounded-2xl border border-line">
               <img src={d.image} alt="" className="aspect-[16/10] w-full object-cover" />
-              <button type="button" onClick={() => set('image', '')} aria-label="Remover imagem" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/60 text-white backdrop-blur">
+              <button type="button" onClick={() => set('image', '')} aria-label="Remover imagem" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/60 text-white backdrop-blur reduce-transparency:bg-black reduce-transparency:backdrop-blur-none">
                 <X size={18} />
               </button>
             </div>

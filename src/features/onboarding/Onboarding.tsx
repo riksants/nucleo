@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, Check } from 'lucide-react'
 import { useState } from 'react'
+import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Logo } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { STARTER_CURRENCIES, type Currency, type ModuleId } from '../../data/types'
@@ -10,10 +11,29 @@ import { CurrencySheet } from '../../ui/CurrencySheet'
 import { useSession } from '../account/session'
 import { ModulePicker, starterModules } from '../settings/ModulePicker'
 
+/** Step transitions on the GPU: the old step leaves quickly (120 ms), the new one settles in (220 ms). Reduced motion: fades only. */
+const STEP_EASE = [0.22, 1, 0.36, 1] as const
+function stepVariants(reduce: boolean) {
+  const shift = (px: number) => (reduce ? 'translateX(0px)' : `translateX(${px}px)`)
+  return {
+    enter: (d: number) => ({ opacity: 0, transform: shift(16 * d) }),
+    center: { opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.22, ease: STEP_EASE } },
+    exit: (d: number) => ({ opacity: 0, transform: shift(-16 * d), transition: { duration: 0.12, ease: STEP_EASE } }),
+  }
+}
+
 export function Onboarding() {
   const { completeOnboarding } = useStore()
   const auth = useSession()
   const [step, setStep] = useState(0)
+  // Direction of the last step change: forward slides in from the right, back from the left.
+  const [shown, setShown] = useState(0)
+  const [dir, setDir] = useState(1)
+  if (shown !== step) {
+    setDir(step > shown ? 1 : -1)
+    setShown(step)
+  }
+  const reduce = usePrefersReducedMotion()
   const [currency, setCurrency] = useState<Currency>('BRL')
   const [searching, setSearching] = useState(false)
   const [modules, setModules] = useState<Partial<Record<ModuleId, boolean>>>(starterModules)
@@ -46,14 +66,15 @@ export function Onboarding() {
           </div>
         </div>
 
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait" initial={false} custom={dir}>
           <motion.div
             key={step}
             className="flex flex-1 flex-col"
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            custom={dir}
+            variants={stepVariants(reduce)}
+            initial="enter"
+            animate="center"
+            exit="exit"
           >
             {step === 0 && (
               <>
