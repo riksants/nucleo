@@ -1,5 +1,6 @@
-// Abertura: logo no fundo do app, painel arredondado que sobe revelando a Home, tempos, nada sobrando
-// depois (#root volta ao normal), "reduzir movimento" e sem flash branco. Modo local.
+// Abertura: logo parada → faixa roxa arredondada sobe e cobre a tela → sai pelo topo revelando o app real.
+// Sem fitas/peças soltas e sem logo no final. App carrega por baixo, nada sobra depois, não repete ao trocar de seção,
+// "reduzir movimento" e sem flash branco. Modo local.
 import { writeFileSync } from 'node:fs'
 import { launch, OUT } from './cdp.mjs'
 import { BASE, reporter, seedExistingUser } from './helpers.mjs'
@@ -11,30 +12,36 @@ const shot = async (name) => {
   const res = await b.send('Page.captureScreenshot', { format: 'png' })
   writeFileSync(`${OUT}/${name}.png`, Buffer.from(res.result.data, 'base64'))
 }
-/** Records inside the page: when the first screen exists, when the reveal starts and when the splash is gone. */
+/** Records inside the page what was on screen and when. */
 const RECORDER = `(() => {
-  window.__open = { ready: null, start: null, end: null, white: false, sawEdge: false, seen: false };
+  const o = window.__open = { seen: false, canvas: null, band: null, bandFull: null, end: null, white: false, appUnder: false };
   const look = () => {
-    const o = window.__open;
     try {
-    if (getComputedStyle(document.documentElement).backgroundColor === 'rgb(255, 255, 255)' && document.body) o.white = true;
-    const root = document.getElementById('root');
-    if (root && o.ready === null && [...root.children].some((c) => c.getBoundingClientRect().height > 0)) o.ready = performance.now();
-    if (root && o.start === null && root.getAnimations().length) o.start = performance.now();
-    if ([...(document.body?.children ?? [])].some((e) => e.style && e.style.borderTop && e.style.position === 'fixed')) o.sawEdge = true;
-    if (document.getElementById('splash')) o.seen = true;
-    if (o.seen && !document.getElementById('splash') && o.end === null) o.end = performance.now();
-    } catch (e) { o.error = String(e) }
+      if (document.documentElement && getComputedStyle(document.documentElement).backgroundColor === 'rgb(255, 255, 255)' && document.body) o.white = true;
+      const splash = document.getElementById('splash');
+      if (splash) o.seen = true;
+      if (o.canvas === null && document.querySelector('canvas')) o.canvas = performance.now();
+      const svg = splash && splash.querySelector('svg');
+      if (svg) o.logoTransform = o.logoTransform || getComputedStyle(svg).transform;
+      const band = [...(document.body ? document.body.children : [])].find((e) => e.style && e.style.zIndex === '2147483001');
+      if (band && o.band === null) o.band = performance.now();
+      if (band && o.bandFull === null && band.getAnimations().some((a) => a.effect.getTiming().duration === 680)) o.bandFull = performance.now();
+      const root = document.getElementById('root');
+      if (root && o.readyAt === undefined && [...root.children].some((c) => c.getBoundingClientRect().height > 0)) o.readyAt = performance.now();
+      if (splash && root && [...root.children].some((c) => c.getBoundingClientRect().height > 0)) o.appUnder = true;
+      if (o.seen && !splash && !band && o.end === null) o.end = performance.now();
+    } catch (e) {}
     if (o.end === null) requestAnimationFrame(look);
   };
   look();
 })()`
-let recorder = null
+let added = false
 async function open(path) {
-  if (!recorder) recorder = await b.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORDER })
+  if (!added) await b.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORDER })
+  added = true
   await b.send('Page.navigate', { url: BASE + path })
 }
-async function until(expr, timeout = 6000) {
+async function until(expr, timeout = 9000) {
   const t0 = Date.now()
   while (Date.now() - t0 < timeout) {
     try {
@@ -45,72 +52,82 @@ async function until(expr, timeout = 6000) {
   return false
 }
 const times = () => b.eval(`({ ...window.__open, splashAt: window.__splashAt })`)
+const overlays = () => b.eval(`[...document.body.children].filter((e) => e.id === 'splash' || (e.style && e.style.zIndex === '2147483001')).length`)
+const ALL = ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'life', 'week', 'agenda', 'inbox', 'recurring', 'habits']
 
 try {
   await b.mobile()
   await b.send('Page.enable')
   await b.send('Network.enable')
   await b.send('Network.setBypassServiceWorker', { bypass: true })
-  await seedExistingUser(b, { notes: [{ id: 'n1', title: 'Nota', body: '', pinned: false }] }, { baseCurrency: 'BRL', modulesSeen: ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'life', 'week', 'agenda', 'inbox', 'recurring', 'habits'] })
+  await seedExistingUser(b, { notes: [{ id: 'n1', title: 'Nota guardada', body: '', pinned: false }] }, { baseCurrency: 'BRL', modulesSeen: ALL })
 
-  // ---------- First (cold) load
   await open('')
-  await until(`!!document.querySelector('#splash img')`)
-  await sleep(200)
-  await shot('abertura-1-logo')
-  const early = await b.eval(`({ bg: getComputedStyle(document.body).backgroundColor, logo: !!document.querySelector('#splash img').naturalWidth })`)
-  r.check('abre com o logo sobre o fundo escuro do app', early.bg === 'rgb(9, 9, 11)' && early.logo, JSON.stringify(early))
-  r.check('painel começa assim que a Home estiver pronta', await until(`window.__open.start !== null`))
+  await until(`!!document.querySelector('#splash svg') || !!document.querySelector('#splash canvas')`)
+  const early = await b.eval(`({ bg: getComputedStyle(document.body).backgroundColor, logo: !!document.querySelector('#splash svg, #splash canvas') })`)
+  r.check('abre com a logo sobre o fundo escuro do app', early.bg === 'rgb(9, 9, 11)' && early.logo, JSON.stringify(early))
   await sleep(300)
-  const mid = await b.eval(`({ clip: document.getElementById('root').style.clipPath, home: document.getElementById('root').innerText.length })`)
-  await shot('abertura-2-subindo')
-  r.check('no meio: painel arredondado subindo com a Home já carregada por trás', mid.home > 0 && mid.clip.includes('round'), JSON.stringify(mid).slice(0, 120))
+  await shot('intro-1-logo')
+  r.check('a faixa roxa sobe', await until(`window.__open.band !== null`))
+  r.check('a faixa cobre a tela e então sai revelando o app', await until(`window.__open.bandFull !== null`))
   await until(`window.__open.end !== null`)
   await sleep(150)
-  await shot('abertura-3-home')
+  await shot('intro-2-app')
   let t = await times()
-  r.check('logo fica pelo menos ~0,56 s antes de subir', t.start - t.splashAt >= 540, `${Math.round(t.start - t.splashAt)} ms`)
-  // Only the frames needed for the first screen to be painted (the app is still finishing its first render).
-  r.check('não atrasa: sobe logo depois que a Home ficou pronta (ou do tempo mínimo do logo)', t.start - Math.max(t.ready, t.splashAt + 560) < 300, `pronta ${Math.round(t.ready - t.splashAt)} ms, subiu ${Math.round(t.start - t.splashAt)} ms`)
-  r.check('subida dura ~0,78 s', t.end - t.start >= 700 && t.end - t.start <= 1000, `${Math.round(t.end - t.start)} ms`)
-  r.check('borda arredondada do painel apareceu', t.sawEdge)
+  r.check('o app carregou por baixo durante a animação', t.appUnder)
   r.check('sem flash branco', !t.white)
-  const after = await b.eval(`(() => { const root = document.getElementById('root'); return { splash: !!document.getElementById('splash'), style: root.getAttribute('style') || '', anims: root.getAnimations().length, extra: [...document.body.children].filter(e => e.style && e.style.borderTop).length } })()`)
-  r.check('depois: splash removido e #root exatamente como antes (sem estilos nem animações)', !after.splash && after.style === '' && after.anims === 0 && after.extra === 0, JSON.stringify(after))
-  r.check('Home funcionando normalmente depois da abertura', /Início|Financeiro/.test(await b.text()))
+  r.check('sem fitas nem peças se soltando (nenhum canvas) e logo parada (sem escala/movimento)', t.canvas === null && (!t.logoTransform || t.logoTransform === 'none'), String(t.logoTransform))
+  r.check('logo parada por ~0,7 s antes da faixa', t.band - t.splashAt >= 680 && t.band - t.splashAt <= 1100, `${Math.round(t.band - t.splashAt)} ms`)
+// The band covers in ~0.76 s; it only leaves once the app is ready (no half-loaded reveal, no extra wait).
+  const exitAt = Math.max(t.band + 760, t.readyAt)
+  r.check('faixa cobre em ~0,76 s e sai assim que o app está pronto, em ~0,68 s', t.bandFull - t.band >= 650 && t.bandFull - exitAt < 250 && t.end - t.bandFull >= 550 && t.end - t.bandFull <= 1000, `cobre/espera ${Math.round(t.bandFull - t.band)} ms (app pronto ${Math.round(t.readyAt - t.band)} ms após a faixa), sai ${Math.round(t.end - t.bandFull)} ms`)
+  const after = await b.eval(`(() => { const root = document.getElementById('root'); return { overlays: [...document.body.children].filter((e) => e.id === 'splash' || (e.style && e.style.zIndex === '2147483001')).length, canvas: document.querySelectorAll('canvas').length, rootStyle: root.getAttribute('style') || '' } })()`)
+  r.check('no fim: nenhuma logo ou camada sobrando e o app intacto', after.overlays === 0 && after.canvas === 0 && after.rootStyle === '', JSON.stringify(after))
+  const text = await b.text()
+  r.check('revela direto a tela principal real (Início)', /Início/.test(text) && /SALDO|Saldo/.test(text))
   const clickable = await b.eval(`(() => { const a = document.querySelector('nav[aria-label="Navegação principal"] a'); const rect = a.getBoundingClientRect(); return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('a') === a })()`)
-  r.check('navegação clicável (nada cobrindo a tela)', clickable)
+  r.check('navegação clicável', clickable)
 
-  // ---------- Warm load (installed app / cache): total time from the logo
-  await open('#/notes')
+  // Switching sections never replays the intro
+  let replays = 0
+  for (const path of ['#/finance', '#/notes', '#/settings', '#/']) {
+    await b.eval(`location.hash = ${JSON.stringify(path.slice(1))}`)
+    for (let i = 0; i < 12; i++) {
+      replays += await overlays()
+      await sleep(60)
+    }
+  }
+  r.check('trocar de seção não repete a intro', replays === 0)
+  await b.eval(`location.hash = '/notes'`)
+  await sleep(500)
+  r.check('seções funcionam normalmente depois da intro', (await b.text()).includes('Nota guardada'))
+
+  // Warm load (installed app): total from the logo
+  await open('')
   await until(`window.__open && window.__open.end !== null`)
   t = await times()
-  const total = t.end - t.splashAt
-  r.check('com cache (app instalado): abertura completa entre 1,3 e 1,8 s', total >= 1300 && total <= 1800, `${Math.round(total)} ms (Home pronta em ${Math.round(t.ready - t.splashAt)} ms)`)
-  await sleep(200)
-  r.check('abrindo direto numa seção: mesma abertura e depois a seção', (await b.text()).includes('Nota'))
+  r.check('com cache: abertura completa em ~2,2 s', t.end - t.splashAt >= 1900 && t.end - t.splashAt <= 2800, `${Math.round(t.end - t.splashAt)} ms`)
 
-  // ---------- Reduced motion: simple fade, no rising panel
+  // Reduced motion
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   await open('')
   await until(`window.__open && window.__open.end !== null`)
   t = await times()
-  r.check('reduzir movimento: sem painel nem borda, só um fade curto', !t.sawEdge && t.end - (t.start ?? t.end) < 400, `fade ${Math.round(t.end - (t.start ?? t.end))} ms`)
+  r.check('reduzir movimento: logo parada e fade, sem faixa', t.canvas === null && t.band === null && t.end - t.splashAt < 1500, `${Math.round(t.end - t.splashAt)} ms`)
   await b.send('Emulation.setEmulatedMedia', { features: [] })
 
-  // ---------- Desktop browser
+  // Desktop
   await b.desktop()
   await open('')
-  await until(`window.__open && window.__open.start !== null`)
-  await sleep(380)
-  await shot('abertura-desktop-subindo')
+  await until(`window.__open && window.__open.band !== null`)
+  await sleep(250)
+  await shot('intro-desktop-faixa')
   await until(`window.__open.end !== null`)
   await sleep(100)
-  const d = await b.eval(`({ splash: !!document.getElementById('splash'), style: document.getElementById('root').getAttribute('style') || '' })`)
-  r.check('navegador comum (1366px): termina limpo', !d.splash && d.style === '')
+  r.check('navegador comum (1366px): termina limpo no app', (await overlays()) === 0 && /Início/.test(await b.text()))
 } catch (err) {
   r.results.push('ERROR ' + err.message)
-  await b.shot('abertura-erro').catch(() => {})
+  await b.shot('intro-erro').catch(() => {})
 } finally {
   const failed = r.print(b)
   b.close()
