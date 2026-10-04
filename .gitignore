@@ -30,3 +30,8 @@ dist-cloud
 supabase/.temp
 dist-e2e
 dist-e2e-cloud
+
+# Skills de agentes instalados localmente (npx skills add)
+.agents/
+.claude/skills/
+skills-lock.json
