@@ -51,6 +51,9 @@ try {
   await b.fill('Já recebeu quanto?', '50')
   await b.click('Registrar venda', 'button[type=submit]')
   await b.sleep(600)
+  // "Pessoas" is now the default tab; the individual list (old flow) lives in the "Vendas" tab.
+  await b.click('Vendas', '[role=radio]')
+  await b.sleep(300)
   text = await b.text()
   check('venda com pagamento parcial: falta R$ 70', text.includes('falta R$ 70,00') && text.includes('R$ 70,00'))
   await b.click('Maria')

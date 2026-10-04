@@ -22,7 +22,6 @@ import { PortfolioPage } from './features/portfolio/PortfolioPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
 import { ReminderCenter } from './features/reminders/ReminderCenter'
 import { RemindersPage } from './features/reminders/RemindersPage'
-import { SalesPage } from './features/sales/SalesPage'
 import { SearchPage } from './features/search/SearchPage'
 import { ModulePicker } from './features/settings/ModulePicker'
 import { SettingsPage } from './features/settings/SettingsPage'
@@ -45,6 +44,7 @@ const LifePage = lazy(() => import('./features/life/LifePage').then((m) => ({ de
 const WeekPage = lazy(() => import('./features/week/WeekPage').then((m) => ({ default: m.WeekPage })))
 const FocusPage = lazy(() => import('./features/focus/FocusPage').then((m) => ({ default: m.FocusPage })))
 const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
+const SalesPage = lazy(() => import('./features/sales/SalesPage').then((m) => ({ default: m.SalesPage })))
 const HabitsPage = lazy(() => import('./features/habits/HabitsPage').then((m) => ({ default: m.HabitsPage })))
 
 const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType>> = {

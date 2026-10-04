@@ -47,7 +47,8 @@ beforeAll(async () => {
   await as(A, `insert into records (collection, id, data, client_updated_at) values ('notes', 'n1', '{"title":"segredo de A"}', $1)`, [now()])
   await as(A, `insert into user_settings (data, client_updated_at) values ('{"baseCurrency":"EUR"}', $1)`, [now()])
   await as(A, `insert into scheduled_notifications (key, fire_at, title, body) values ('k1', now(), 'Núcleo', 'Lembrete')`)
-})
+  // Starting Postgres (PGlite) and running every migration can take a while when all test files run at once.
+}, 60_000)
 
 describe('isolamento entre contas (RLS)', () => {
   it('B não lê registros, configurações nem lembretes de A', async () => {
@@ -227,5 +228,26 @@ describe('Etapa 2: check-in e resumo por semana', () => {
     await as(B, `insert into records (collection, id, data, client_updated_at) values ('weekCheckins', '2026-09-28', '{"note":"de B"}', $1)`, [now()])
     expect((await as(A, `select data from records where collection = 'weekCheckins' and id = '2026-09-28'`)).rows.map((r) => r.data)).toEqual([{ note: 'de A' }])
     expect((await as(B, `update records set data = '{}' where collection = 'weekSnapshots'`)).affectedRows).toBe(0)
+  })
+})
+
+describe('Vendas por pessoa: vendas, pessoas, pagamentos e valores', () => {
+  it('B não lê, altera, apaga nem cria vendas de A (com pagamentos gerais e específicos)', async () => {
+    const data = { clientId: null, clientName: 'Maria', product: 'Tênis', total: 30000, currency: 'BRL', payments: [{ id: 'p1', amount: 5000, date: '2026-10-01', note: '' }, { id: 'p2', amount: 10000, date: '2026-10-02', note: 'Pix', generalId: 'g1' }] }
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('sales', 'sale-a', $1, $2)`, [JSON.stringify(data), now()])
+    expect((await as(B, `select * from records where collection = 'sales'`)).rows).toHaveLength(0)
+    expect((await as(B, `select * from records where data->>'clientName' = 'Maria'`)).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = jsonb_set(data, '{payments}', '[]') where id = 'sale-a'`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection = 'sales'`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'sales', 'sale-b', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    const back = (await as(A, `select data from records where id = 'sale-a'`)).rows[0].data
+    expect(back.payments).toHaveLength(2)
+    expect(back.payments[1].generalId).toBe('g1')
+  })
+
+  it('a mesma pessoa/venda (mesmo id) em contas diferentes não colide', async () => {
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('sales', 'sale-a', '{"clientName":"Maria","total":1}', $1)`, [now()])
+    expect((await as(A, `select data from records where collection = 'sales' and id = 'sale-a'`)).rows[0].data.total).toBe(30000)
+    expect((await as(B, `select data from records where collection = 'sales' and id = 'sale-a'`)).rows[0].data.total).toBe(1)
   })
 })

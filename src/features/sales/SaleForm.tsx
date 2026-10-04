@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { newId, useStore } from '../../data/store'
-import { paymentProblem, saleRemaining, saleStatus, SALE_STATUS_LABEL, salePaid, totalProblem, withPayment } from '../../data/sales'
+import { buyers, OVERPAY, paymentProblem, personName, saleRemaining, saleStatus, SALE_STATUS_LABEL, salePaid, similarPeople, totalProblem, withoutGeneralPayment, withPayment } from '../../data/sales'
 import type { Currency, Payment, Sale } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
 import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
@@ -15,13 +15,19 @@ import { ClientSelect } from '../shared/RelationSelect'
 
 export const STATUS_TONE = { pending: 'warn', partial: 'accent', paid: 'positive' } as const
 
-export function SaleForm({ open, onClose, sale }: { open: boolean; onClose(): void; sale: Sale | null }) {
-  const { save, settings, displayCurrency } = useStore()
-  const { toast } = useFeedback()
+/** A new sale can start with the buyer already chosen (from the person's page). */
+export interface BuyerPreset {
+  clientId: string | null
+  clientName: string
+}
+
+export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClose(): void; sale: Sale | null; preset?: BuyerPreset | null }) {
+  const { save, remove, settings, displayCurrency, data } = useStore()
+  const { toast, confirm } = useFeedback()
   const del = useDelete()
   const [d, set] = useDraft(open, () => ({
-    clientId: sale?.clientId ?? null,
-    clientName: sale?.clientName ?? '',
+    clientId: sale?.clientId ?? preset?.clientId ?? null,
+    clientName: sale?.clientName ?? preset?.clientName ?? '',
     product: sale?.product ?? '',
     quantity: String(sale?.quantity ?? 1),
     date: sale?.date ?? toDateInput(),
@@ -65,6 +71,31 @@ export function SaleForm({ open, onClose, sale }: { open: boolean; onClose(): vo
     onClose()
   }
 
+  // Suggest people that already exist (Vendas or Clientes) so the same person isn't typed twice.
+  const typed = d.clientId ? '' : d.clientName
+  const known = buyers(data.sales, (s) => (s.clientId ? (data.clients.find((c) => c.id === s.clientId)?.name ?? '') : s.clientName)).filter((b) => !b.clientId && b.name)
+  const suggestions = [
+    ...similarPeople(data.clients, typed).map((c) => ({ key: `c:${c.id}`, label: `${c.name} · cliente`, pick: () => set('clientId', c.id) })),
+    ...similarPeople(known, typed)
+      .filter((b) => b.name !== typed)
+      .map((b) => ({ key: b.key, label: `${b.name} · ${b.sales.length} ${b.sales.length === 1 ? 'compra' : 'compras'}`, pick: () => set('clientName', b.name) })),
+  ].slice(0, 4)
+  const exact = typed.trim() ? known.find((b) => personName(b.name) === personName(typed)) : undefined
+
+  const deleteSale = async (s: Sale) => {
+    if (!s.payments.some((p) => p.generalId)) return del('sales', s.id, 'venda', { feminine: true, after: onClose })
+    const ok = await confirm({
+      title: 'Excluir venda?',
+      message: 'Parte de um pagamento geral foi aplicada nesta compra. Esse valor sai junto com a venda (o restante do pagamento geral continua nas outras compras).',
+      confirmLabel: 'Excluir',
+      danger: true,
+    })
+    if (!ok) return
+    await remove('sales', s.id)
+    onClose()
+    toast('Venda excluída')
+  }
+
   return (
     <FormSheet
       open={open}
@@ -73,7 +104,7 @@ export function SaleForm({ open, onClose, sale }: { open: boolean; onClose(): vo
       submitLabel={sale ? 'Salvar' : 'Registrar venda'}
       onSubmit={submit}
       size="lg"
-      onDelete={sale ? () => del('sales', sale.id, 'venda', { feminine: true, after: onClose }) : undefined}
+      onDelete={sale ? () => deleteSale(sale) : undefined}
     >
       <FormGrid>
         <div className="half">
@@ -85,6 +116,16 @@ export function SaleForm({ open, onClose, sale }: { open: boolean; onClose(): vo
           <Field label="Ou nome de quem comprou" hint={d.clientId ? 'usando cliente' : undefined}>
             <TextInput value={d.clientName} disabled={Boolean(d.clientId)} onChange={(e) => set('clientName', e.target.value)} placeholder="Ex.: Maria (vizinha)" />
           </Field>
+          {exact && exact.name !== typed.trim() && <p className="mt-1.5 text-[13px] text-faint">Vai para as compras de {exact.name}.</p>}
+          {suggestions.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2" aria-label="Pessoas que já existem">
+              {suggestions.map((x) => (
+                <button key={x.key} type="button" onClick={x.pick} className="press h-8 max-w-full truncate rounded-full border border-line bg-surface px-3 text-[13px] text-soft hover:text-ink">
+                  Usar {x.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="half">
           <Field label="Produto">
@@ -122,13 +163,38 @@ export function SaleForm({ open, onClose, sale }: { open: boolean; onClose(): vo
   )
 }
 
+/** Small label that tells general and specific payments apart everywhere. */
+export function PaymentKind({ general }: { general: boolean }) {
+  return general ? (
+    <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[12px] font-medium text-soft">Pagamento geral</span>
+  ) : (
+    <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[12px] font-medium text-accent-hi">Pagamento específico</span>
+  )
+}
+
+/** Amount field with the "too much" rule: blocks and offers to use exactly what is missing. */
+export function PaymentAmountError({ error, onUseRemaining }: { error: string | null; onUseRemaining(): void }) {
+  if (!error) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-expense" role="alert">
+      <span>{error}</span>
+      {error === OVERPAY && (
+        <button type="button" onClick={onUseRemaining} className="font-medium text-accent-hi underline-offset-2 hover:underline">
+          Usar o valor que falta
+        </button>
+      )}
+    </div>
+  )
+}
+
 /** Payment history of one sale, with add/remove. Totals always derive from this list. */
 export function SalePayments({ sale }: { sale: Sale }) {
-  const { save } = useStore()
+  const { save, data, repository } = useStore()
   const { toast, confirm } = useFeedback()
   const [adding, setAdding] = useState(false)
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(toDateInput())
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const status = saleStatus(sale)
 
@@ -136,22 +202,40 @@ export function SalePayments({ sale }: { sale: Sale }) {
     if (busy) return
     const p: Payment = { id: newId(), date, amount: parseAmount(amount) ?? 0, note: '' }
     const err = paymentProblem(sale, p)
-    if (err) return toast(err, 'error')
+    setError(err)
+    if (err) return
     setBusy(true)
     try {
       await save('sales', withPayment(sale, p))
+      void repository.syncNow?.()
       setAmount('')
       setAdding(false)
-      toast('Pagamento registrado')
+      toast('Pagamento específico registrado')
     } finally {
       setBusy(false)
     }
   }
 
   const removePayment = async (p: Payment) => {
+    if (p.generalId) {
+      // A piece of a general payment: the whole general payment goes, never just one piece.
+      const pieces = data.sales.flatMap((s) => s.payments.filter((x) => x.generalId === p.generalId))
+      const whole = pieces.reduce((sum, x) => sum + x.amount, 0)
+      const ok = await confirm({
+        title: 'Remover pagamento geral?',
+        message: `Este valor faz parte de um pagamento geral de ${formatMoney(whole, sale.currency)} (${formatDateValue(p.date).toLowerCase()}). O pagamento geral inteiro será removido de todas as compras.`,
+        confirmLabel: 'Remover',
+        danger: true,
+      })
+      if (!ok) return
+      for (const changed of withoutGeneralPayment(data.sales, p.generalId)) await save('sales', changed)
+      void repository.syncNow?.()
+      return
+    }
     const ok = await confirm({ title: 'Remover pagamento?', message: `${formatMoney(p.amount, sale.currency)} de ${formatDateValue(p.date).toLowerCase()}`, confirmLabel: 'Remover', danger: true })
     if (!ok) return
     await save('sales', { ...sale, payments: sale.payments.filter((x) => x.id !== p.id) })
+    void repository.syncNow?.()
   }
 
   return (
@@ -175,14 +259,32 @@ export function SalePayments({ sale }: { sale: Sale }) {
       </SectionTitle>
       {adding && (
         <div className="card mb-3 space-y-3 p-4">
+          <p className="text-[13px] text-faint">Pagamento específico desta compra.</p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Valor">
-              <TextInput inputMode="decimal" className="num" autoFocus placeholder={amountToInput(saleRemaining(sale))} value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <TextInput
+                inputMode="decimal"
+                className="num"
+                autoFocus
+                placeholder={amountToInput(saleRemaining(sale))}
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value)
+                  setError(null)
+                }}
+              />
             </Field>
             <Field label="Data">
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
           </div>
+          <PaymentAmountError
+            error={error}
+            onUseRemaining={() => {
+              setAmount(amountToInput(saleRemaining(sale)))
+              setError(null)
+            }}
+          />
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setAdding(false)}>
               Cancelar
@@ -196,8 +298,17 @@ export function SalePayments({ sale }: { sale: Sale }) {
       {sale.payments.length ? (
         <div className="card divide-y divide-line">
           {sale.payments.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 py-2 pr-2 pl-4">
-              <span className="flex-1 text-[15px]">{formatDateValue(p.date)}</span>
+            <div key={p.id} className="flex items-center gap-3 py-2.5 pr-2 pl-4">
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2 text-[15px]">
+                  {formatDateValue(p.date)} <PaymentKind general={Boolean(p.generalId)} />
+                </span>
+                {p.generalId ? (
+                  <span className="mt-0.5 block text-[12px] text-faint">Aplicado automaticamente pelo app (compras mais antigas primeiro){p.note ? ` · ${p.note}` : ''}</span>
+                ) : (
+                  p.note && <span className="mt-0.5 block text-[12px] text-faint">{p.note}</span>
+                )}
+              </span>
               <span className="num text-[15px] font-medium">{formatMoney(p.amount, sale.currency)}</span>
               <IconButton label="Remover pagamento" size="sm" onClick={() => removePayment(p)}>
                 <Trash2 size={16} />

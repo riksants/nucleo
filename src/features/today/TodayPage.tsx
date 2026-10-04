@@ -20,7 +20,7 @@ import { SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { usePlans } from '../planner/plans'
 import { DayAgenda } from '../planner/RoutinePage'
-import { useBuyerName } from '../sales/SalesPage'
+import { useBuyerName } from '../sales/useBuyerName'
 import { TaskForm } from '../tasks/TaskForm'
 
 /** Up to 3 suggestions; its code loads after the screen (startup stays light). */

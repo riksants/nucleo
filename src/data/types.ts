@@ -218,6 +218,11 @@ export interface Payment {
   date: string
   amount: Cents
   note: string
+  /**
+   * Set when this piece came from a "Pagamento geral" of the buyer, split by the
+   * app across their oldest open purchases. Absent = paid on this sale directly.
+   */
+  generalId?: string
 }
 
 export interface Sale extends Entity {
