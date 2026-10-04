@@ -1,6 +1,7 @@
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { playOpening } from './app/opening'
 import { createIndexedDbRepository, type Repository } from './data/repository'
 import { StoreProvider } from './data/store'
 import { createSupabaseRemote, createSyncedRepository } from './data/sync'
@@ -61,3 +62,6 @@ createRoot(document.getElementById('root')!).render(
     </SessionProvider>
   </StrictMode>,
 )
+
+// Opening animation: reveals the first screen once it has rendered behind the splash.
+void playOpening()

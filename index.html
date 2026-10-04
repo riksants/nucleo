@@ -13,9 +13,25 @@
     <link rel="icon" href="/favicon.ico?v=3" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+    <link rel="preload" as="image" href="/splash-logo.png" fetchpriority="high" />
     <title>Núcleo</title>
+    <style>
+      /* Opening screen: painted before any script, same dark background as the app (no white flash). */
+      html, body { background: #09090b; }
+      #splash { position: fixed; inset: 0; z-index: 0; display: grid; place-items: center; background: #09090b;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); pointer-events: none; }
+      #splash::before { content: ''; position: absolute; left: 50%; top: 50%; width: 520px; height: 520px; margin: -260px 0 0 -260px;
+        background: radial-gradient(closest-side, rgb(91 108 255 / 0.13), transparent); }
+      #splash img { position: relative; width: 88px; height: 88px; opacity: 0; transform: scale(0.86);
+        animation: nucleo-in 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards, nucleo-breathe 1600ms cubic-bezier(0.45, 0, 0.55, 1) 560ms infinite; }
+      @keyframes nucleo-in { to { opacity: 1; transform: scale(1); } }
+      @keyframes nucleo-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+      @media (prefers-reduced-motion: reduce) { #splash img { animation: none; opacity: 1; transform: none; } }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true"><img src="/splash-logo.png" alt="" decoding="sync" /></div>
+    <script>window.__splashAt = performance.now()</script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
