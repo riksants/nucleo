@@ -33,7 +33,7 @@ export function LifePage() {
   return (
     <>
       <PageHeader title="Vida" />
-      <div className="no-scrollbar -mx-5 mb-5 overflow-x-auto px-5 lg:mx-0 lg:px-0">
+      <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
         <Segmented<View> size="sm" label="Vida" value={view} onChange={setView} options={VIEWS} />
       </div>
       {view === 'calendar' && <LifeCalendar />}

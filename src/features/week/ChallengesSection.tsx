@@ -153,7 +153,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
       {live.length ? (
         <div className="card divide-y divide-line">
           {live.map(({ c, s }) => (
-            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03]">
+            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03] tap">
               <span className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.name}</span>
                 <Badge tone={TONE[s.status]}>{CHALLENGE_STATUS_LABEL[s.status]}</Badge>
@@ -172,7 +172,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
           <span className="flex items-center gap-2 text-[15px] text-faint">
             <Mountain size={17} /> Nenhum desafio em andamento
           </span>
-          <button type="button" onClick={() => setCreating(true)} className="shrink-0 text-sm font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={() => setCreating(true)} className="hit relative shrink-0 text-sm font-medium text-accent-hi hover:text-ink">
             Escolher
           </button>
         </div>
@@ -185,7 +185,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
       {showPast && (
         <div className="card mt-2 divide-y divide-line">
           {past.map(({ c, s }) => (
-            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-white/[0.03]">
+            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-white/[0.03] tap">
               <span className="min-w-0 flex-1 truncate text-[15px] text-soft">{c.name}</span>
               <Badge tone={TONE[s.status]}>{CHALLENGE_STATUS_LABEL[s.status]}</Badge>
             </button>

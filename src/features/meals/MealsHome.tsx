@@ -44,7 +44,7 @@ export function MealsPage() {
   return (
     <>
       <PageHeader title="Alimentação" subtitle="Organização das refeições — não é orientação nutricional" />
-      <div className="no-scrollbar -mx-5 mb-5 overflow-x-auto px-5 lg:mx-0 lg:px-0">
+      <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
         <Segmented<View> size="sm" label="Alimentação" value={view} onChange={setView} options={VIEWS} />
       </div>
       {view === 'week' && <WeekPlanner week={week} onWeek={setWeek} />}

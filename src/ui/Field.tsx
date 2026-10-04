@@ -112,7 +112,7 @@ export function CurrencyPicker({
         aria-label="Outras moedas"
         title="Outras moedas"
         onClick={() => setSearching(true)}
-        className={`press grid shrink-0 place-items-center rounded-[0.9rem] border border-line bg-raised text-soft hover:text-ink ${size === 'sm' ? 'size-10' : 'size-12'}`}
+        className={`press hit relative grid shrink-0 place-items-center rounded-[0.9rem] border border-line bg-raised text-soft hover:text-ink ${size === 'sm' ? 'size-10' : 'size-12'}`}
       >
         <Ellipsis size={18} />
       </button>

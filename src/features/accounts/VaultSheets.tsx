@@ -141,7 +141,7 @@ export function VaultUnlockSheet({ open, onClose, onUnlocked }: { open: boolean;
           <Field label="Senha do cofre">
             <TextInput type="password" autoComplete="current-password" value={d.password} onChange={(e) => set('password', e.target.value)} {...noAuto} autoFocus />
           </Field>
-          <button type="button" onClick={() => setMode('recover')} className="justify-self-start text-[15px] font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={() => setMode('recover')} className="hit relative justify-self-start text-[15px] font-medium text-accent-hi hover:text-ink">
             Esqueci a senha do cofre
           </button>
         </FormGrid>
@@ -163,7 +163,7 @@ export function VaultUnlockSheet({ open, onClose, onUnlocked }: { open: boolean;
             <ShieldAlert size={18} className="text-warn" /> Este cofre não tem código de recuperação.
           </p>
           <p>Sem a senha do cofre não há como descriptografar as senhas guardadas — nem pela recuperação da senha de login, nem pelo servidor. Os outros dados da conta não são afetados.</p>
-          <button type="button" onClick={() => setMode('unlock')} className="font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={() => setMode('unlock')} className="hit relative font-medium text-accent-hi hover:text-ink">
             Tentar a senha de novo
           </button>
         </div>

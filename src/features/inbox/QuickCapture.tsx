@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { isEnabled } from '../../app/modules'
 import { useRoute } from '../../app/router'
 import { useStore } from '../../data/store'
@@ -56,11 +56,43 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
   )
 }
 
+/**
+ * Hidden while the page scrolls down (so it never covers values or switches), shown again on scroll up,
+ * near the top or at the end of the page, and whenever the section changes.
+ */
+function useHideOnScroll(path: string) {
+  // Hidden only for the section where it was hidden: switching sections shows it again.
+  const [hiddenOn, setHiddenOn] = useState<string | null>(null)
+  useEffect(() => {
+    let last = window.scrollY
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const y = window.scrollY
+      const atEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 24
+      if (y < 64 || atEnd) setHiddenOn(null)
+      else if (y - last > 6) setHiddenOn(path)
+      else if (last - y > 6) setHiddenOn(null)
+      last = y
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [path])
+  return hiddenOn === path
+}
+
 /** Round button above the tab bar (phone) — only when the inbox section is on. */
 export function QuickCaptureButton() {
   const { settings, ready } = useStore()
   const { path } = useRoute()
   const [open, setOpen] = useState(false)
+  const hidden = useHideOnScroll(path)
   // The Assistant has its own input in that spot.
   if (!ready || !isEnabled(settings, 'inbox') || path === '/assistant') return null
   return (
@@ -70,7 +102,8 @@ export function QuickCaptureButton() {
         aria-label="Capturar na caixa de entrada"
         title="Capturar"
         onClick={() => setOpen(true)}
-        className="press fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-white shadow-xl shadow-black/50 hover:bg-accent-hi lg:hidden"
+        data-hidden={hidden}
+        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-white shadow-xl shadow-black/50 hover:bg-accent-hi lg:hidden"
         style={{ bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 84px)' }}
       >
         <Plus size={26} strokeWidth={2.4} />

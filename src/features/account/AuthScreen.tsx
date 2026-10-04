@@ -171,7 +171,7 @@ export function AuthScreen() {
               <Field label="Senha">
                 <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
               </Field>
-              <button type="button" onClick={() => go('forgot')} className="text-[15px] font-medium text-accent-hi hover:text-ink">
+              <button type="button" onClick={() => go('forgot')} className="hit relative text-[15px] font-medium text-accent-hi hover:text-ink">
                 Esqueci minha senha
               </button>
             </Frame>

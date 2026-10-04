@@ -61,7 +61,7 @@ export function RecurringPage() {
             <SectionTitle>Próximos</SectionTitle>
             <div className="card divide-y divide-line">
               {upcoming.map(({ item, next }) => (
-                <button key={item.id} type="button" onClick={() => form.show(item)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.03]">
+                <button key={item.id} type="button" onClick={() => form.show(item)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.03] tap">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{item.title}</span>
                     <span className="block truncate text-[13px] text-faint">{[describeRule(item.rule), item.time].filter(Boolean).join(' · ')}</span>
@@ -75,7 +75,7 @@ export function RecurringPage() {
                 <h3 className="mt-6 mb-2 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">Desativados</h3>
                 <div className="card divide-y divide-line">
                   {inactive.map((r) => (
-                    <button key={r.id} type="button" onClick={() => form.show(r)} className="flex w-full items-center px-4 py-3 text-left text-[15px] text-faint hover:bg-white/[0.03]">
+                    <button key={r.id} type="button" onClick={() => form.show(r)} className="flex w-full items-center px-4 py-3 text-left text-[15px] text-faint hover:bg-white/[0.03] tap">
                       {r.title}
                     </button>
                   ))}

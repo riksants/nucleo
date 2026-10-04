@@ -121,12 +121,12 @@ export function AccountPage() {
             <div className="card divide-y divide-line overflow-hidden">
               <Line label="Registros" value={String(local!.total)} />
               <Line label="Enviados para esta conta" value={migrated ? 'Sim, conferidos' : 'Não'} />
-              <button type="button" onClick={() => setOffer(true)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03]">
+              <button type="button" onClick={() => setOffer(true)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03] tap">
                 <HardDriveUpload size={18} className="text-accent-hi" />
                 <span className="text-[15px]">{migrated ? 'Enviar de novo (não duplica)' : 'Enviar para a conta'}</span>
               </button>
               {migrated && (
-                <button type="button" onClick={removeLocal} className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-expense hover:bg-white/[0.03]">
+                <button type="button" onClick={removeLocal} className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-expense hover:bg-white/[0.03] tap">
                   <Trash2 size={18} />
                   <span className="text-[15px]">Apagar cópia local</span>
                 </button>
@@ -138,7 +138,7 @@ export function AccountPage() {
         <section>
           <SectionTitle>Sessão</SectionTitle>
           <div className="card overflow-hidden">
-            <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03]">
+            <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.03] tap">
               <LogOut size={18} className="text-soft" />
               <span className="text-[15px]">Sair desta conta</span>
             </button>

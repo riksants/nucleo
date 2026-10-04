@@ -148,7 +148,7 @@ function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null;
 export function FinanceGoalCard({ goal, today, onOpen }: { goal: FinanceGoal; today: string; onOpen(g: FinanceGoal): void }) {
   const p = goalPlan(goal, today)
   return (
-    <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03]">
+    <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03] tap">
       <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
         {p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}

@@ -13,7 +13,7 @@ export function HabitRow({ habit, date, status, onOpen, compact }: { habit: Habi
   const skip = () => setCompletion('habit', habit.id, date, status === 'skipped' ? null : 'skipped')
   const meta = [habit.time, habit.goal].filter(Boolean).join(' · ')
   return (
-    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
+    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
       <CheckButton status={status} onClick={toggle} label={status === 'done' ? `Desmarcar ${habit.name}` : `Concluir ${habit.name}`} />
       <button type="button" onClick={() => onOpen?.(habit)} disabled={!onOpen} className="min-w-0 flex-1 py-3 pr-1 text-left">
         <span className={`block truncate text-[15.5px] ${status === 'done' ? 'text-faint line-through' : status === 'skipped' ? 'text-faint' : ''}`}>{habit.name}</span>
@@ -22,7 +22,7 @@ export function HabitRow({ habit, date, status, onOpen, compact }: { habit: Habi
         )}
       </button>
       {status !== 'done' && (
-        <button type="button" onClick={skip} className="shrink-0 rounded-xl px-2.5 py-2 text-[13px] font-medium text-faint hover:bg-white/[0.04] hover:text-soft">
+        <button type="button" onClick={skip} className="shrink-0 rounded-xl px-2.5 py-2 text-[13px] font-medium text-faint hover:bg-white/[0.04] tap hover:text-soft">
           {status === 'skipped' ? 'Desfazer' : 'Pular hoje'}
         </button>
       )}

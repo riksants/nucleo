@@ -60,7 +60,7 @@ function FinanceHome() {
           <BalanceCard />
 
           <div className="card p-5">
-            <div className="mb-5 overflow-x-auto no-scrollbar">
+            <div className="-mt-1.5 mb-3.5 overflow-x-auto py-1.5 no-scrollbar">
               <Segmented
                 block
                 size="sm"

@@ -143,7 +143,7 @@ export function AssistantPage() {
           </section>
         )}
 
-        <div className="no-scrollbar -mx-5 mb-5 flex gap-2 overflow-x-auto px-5 lg:mx-0 lg:flex-wrap lg:px-0">
+        <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 flex gap-2 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:flex-wrap lg:px-0">
           {QUICK.map((q) => (
             <button key={q} type="button" onClick={() => ask(q)} className="press h-10 shrink-0 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
               {q}

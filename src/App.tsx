@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { CloudOff } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type LazyExoticComponent } from 'react'
 import { ALL_MODULE_IDS, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
@@ -214,7 +213,8 @@ export function App() {
   const hiddenLabel = !allowed ? MODULE_BY_PATH[path]?.label : null
   return (
     <Shell>
-      <motion.div key={path} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>
+      {/* Switching sections is instant (core navigation, many times a day — no transition). */}
+      <div key={path}>
         {hiddenLabel && (
           <p className="mb-5 rounded-2xl bg-white/[0.04] px-4 py-3 text-[14px] text-soft">
             A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
@@ -223,7 +223,7 @@ export function App() {
         <Suspense fallback={null}>
           <Page />
         </Suspense>
-      </motion.div>
+      </div>
       {unseenModules(settings).length > 0 && <NewSectionsSheet />}
       <ReminderCenter />
     </Shell>

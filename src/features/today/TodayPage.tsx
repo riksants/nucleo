@@ -151,7 +151,7 @@ function DayView({ today }: { today: string }) {
             <Block title="Próximos compromissos">
               <div className="card p-1.5">
                 {appointments.map((t) => (
-                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03]">
+                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03] tap">
                     <span className="num w-24 shrink-0 text-[14px] text-soft">
                       {formatDateValue(t.dueDate)} {t.dueTime}
                     </span>
@@ -189,7 +189,7 @@ function DayView({ today }: { today: string }) {
                 {due.map((d) => {
                   const rel = relativeDays(d.date)
                   return (
-                    <button key={d.key} type="button" onClick={() => navigate(d.path, { open: d.open })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03]">
+                    <button key={d.key} type="button" onClick={() => navigate(d.path, { open: d.open })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{d.title}</span>
                         <span className={`text-[13px] ${rel && rel.days < 0 ? 'text-expense' : rel && rel.days <= 1 ? 'text-warn' : 'text-faint'}`}>
@@ -255,7 +255,7 @@ export function TodayPage() {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Segmented<DayMode> label="Modo do dia" value={mode} onChange={setMode} options={[{ value: 'morning', label: 'Manhã' }, { value: 'day', label: 'Dia' }, { value: 'night', label: 'Noite' }]} />
         {hint && (
-          <button type="button" onClick={() => setMode(hint.to)} className="flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={() => setMode(hint.to)} className="hit relative flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
             {hint.label} <ChevronRight size={16} />
           </button>
         )}

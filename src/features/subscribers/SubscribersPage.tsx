@@ -91,7 +91,7 @@ function SubscriberRow({ s, plan, offering, onOpen }: { s: Subscriber; plan?: Su
   const next = nextChargeOf(s, plan)
   const rel = next && s.status !== 'cancelled' ? relativeDays(next) : null
   return (
-    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]">
+    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{s.name}</span>
         <span className="block truncate text-[13px] text-faint">

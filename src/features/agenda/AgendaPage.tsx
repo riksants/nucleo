@@ -75,7 +75,7 @@ export function AgendaPage() {
           <IconButton label="Anterior" size="sm" onClick={() => setAnchor(addDaysToDate(base, -step))}>
             <ChevronLeft size={18} />
           </IconButton>
-          <button type="button" onClick={() => setAnchor(null)} className="min-w-24 px-1 text-center text-[14px] font-medium first-letter:uppercase">
+          <button type="button" onClick={() => setAnchor(null)} className="hit relative min-w-24 px-1 text-center text-[14px] font-medium first-letter:uppercase">
             {label}
           </button>
           <IconButton label="Próximo" size="sm" onClick={() => setAnchor(addDaysToDate(base, step))}>

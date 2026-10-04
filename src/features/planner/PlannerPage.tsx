@@ -631,7 +631,7 @@ export function PlannerPage() {
             <span key={s} className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-accent' : 'bg-white/10'}`} />
           ))}
         </div>
-        <button type="button" onClick={() => setChoosing(true)} className="shrink-0 px-2 text-[13px] font-medium text-accent-hi hover:text-ink">
+        <button type="button" onClick={() => setChoosing(true)} className="hit relative shrink-0 px-2 text-[13px] font-medium text-accent-hi hover:text-ink">
           {profile.mode === 'both' ? 'Rotina + alimentação' : profile.mode === 'routine' ? 'Só rotina' : 'Só alimentação'}
         </button>
       </div>

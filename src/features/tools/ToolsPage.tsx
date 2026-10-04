@@ -31,7 +31,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
   const next = isPaidTool(tool) && tool.nextCharge ? nextChargeDate(tool) : ''
   const rel = next ? relativeDays(next) : null
   return (
-    <div className="flex items-center gap-2 rounded-2xl px-1 transition-colors hover:bg-white/[0.03]">
+    <div className="flex items-center gap-2 rounded-2xl px-1 transition-colors hover:bg-white/[0.03] tap">
       <button type="button" onClick={() => onOpen(tool)} className="flex min-w-0 flex-1 items-center gap-3.5 px-1.5 py-3 text-left">
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-elevated text-[15px] font-semibold text-soft">{tool.name.slice(0, 1).toUpperCase()}</span>
         <span className="min-w-0 flex-1">
@@ -62,7 +62,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
         </span>
       </button>
       {tool.link && (
-        <a href={normalizeUrl(tool.link)} target="_blank" rel="noreferrer" aria-label={`Abrir ${displayUrl(tool.link)}`} className="grid size-10 shrink-0 place-items-center rounded-xl text-faint hover:bg-white/[0.05] hover:text-ink">
+        <a href={normalizeUrl(tool.link)} target="_blank" rel="noreferrer" aria-label={`Abrir ${displayUrl(tool.link)}`} className="grid size-10 shrink-0 place-items-center rounded-xl text-faint hover:bg-white/[0.05] tap hover:text-ink">
           <ExternalLink size={17} />
         </a>
       )}

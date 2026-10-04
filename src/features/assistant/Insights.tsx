@@ -43,7 +43,7 @@ export function InsightCard({ insight, onAction }: { insight: Insight; onAction(
       {why && <p className="mt-1.5 text-[13.5px] leading-relaxed text-soft">{insight.why}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13.5px]">
         {insight.action && (
-          <button type="button" onClick={() => onAction(insight)} className="font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={() => onAction(insight)} className="hit relative font-medium text-accent-hi hover:text-ink">
             {insight.action.label}
           </button>
         )}

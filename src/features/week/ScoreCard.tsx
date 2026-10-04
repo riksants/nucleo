@@ -19,7 +19,7 @@ export function ScoreCard({ overall, areas, previous, version, details }: { over
           {overall === null ? <p className="mt-1 text-[17px] font-semibold">Dados insuficientes</p> : <p className="num mt-0.5 text-[34px] leading-none font-semibold tracking-tight">{overall}</p>}
           <p className="mt-1 text-[13px] text-faint">{overall === null ? `Aparece quando pelo menos ${MIN_VALID_AREAS} áreas tiverem dados.` : (change ?? 'Sua pontuação pessoal da semana.')}</p>
         </div>
-        <button type="button" aria-label="Como é calculado" onClick={() => setExplain(true)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] hover:text-ink">
+        <button type="button" aria-label="Como é calculado" onClick={() => setExplain(true)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] tap hover:text-ink">
           <Info size={18} />
         </button>
       </div>

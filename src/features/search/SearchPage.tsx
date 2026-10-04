@@ -99,7 +99,7 @@ export function SearchPage() {
               </h2>
               <div className="card p-1.5">
                 {hits.map((h) => (
-                  <button key={h.key ?? h.id} type="button" onClick={() => navigate(g.path, { open: h.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]">
+                  <button key={h.key ?? h.id} type="button" onClick={() => navigate(g.path, { open: h.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-medium">{h.title}</span>
                       {h.subtitle && <span className="block truncate text-[13px] text-faint">{h.subtitle}</span>}

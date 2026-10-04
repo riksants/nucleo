@@ -56,7 +56,7 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
       exit={{ opacity: 0, height: 0, transition: { duration: 0.22 } }}
       className="overflow-hidden"
     >
-      <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
+      <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
         <button type="button" onClick={toggle} aria-label={done ? 'Marcar como não feita' : 'Concluir tarefa'} className="grid size-12 shrink-0 place-items-center">
           <CheckCircle checked={checked} />
         </button>

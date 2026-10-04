@@ -170,7 +170,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
               </div>
               {list.length ? (
                 list.map((m) => (
-                  <div key={m.id} className="flex items-start gap-1 rounded-2xl hover:bg-white/[0.03]">
+                  <div key={m.id} className="flex items-start gap-1 rounded-2xl hover:bg-white/[0.03] tap">
                     <CheckButton status={m.done ? 'done' : 'pending'} onClick={() => setMealDone(m, !m.done)} label={m.done ? `Desmarcar ${mealTitle(settings, m)}` : `Marcar ${mealTitle(settings, m)} como realizada`} />
                     <button type="button" onClick={() => form.show(m)} className="min-w-0 flex-1 py-2.5 pr-2 text-left">
                       <span className={`block truncate text-[15px] ${m.done ? 'text-faint line-through' : ''}`}>

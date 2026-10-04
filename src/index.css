@@ -102,3 +102,43 @@
     transform: scale(0.97);
   }
 }
+
+/* Touch feedback for full-width rows and cards (a scale would look odd there): a light tint the instant the
+   finger lands, fading out in 150 ms on release. An overlay, so each row keeps its own background. */
+@utility tap {
+  transition: box-shadow 150ms ease;
+  &:active {
+    box-shadow: inset 0 0 0 100vmax rgb(255 255 255 / 0.06);
+    transition-duration: 0ms;
+  }
+}
+
+/* Floating "+" (quick capture): slides away while scrolling down so it never sits on top of values and
+   switches, and comes back on scroll up. Press feedback kept. Reduced motion: fades only. */
+@utility fab {
+  transition: transform 200ms var(--ease-out-soft), opacity 200ms var(--ease-out-soft);
+  &:active {
+    transform: scale(0.97);
+    transition-duration: 120ms;
+  }
+  &[data-hidden='true'] {
+    transform: translateY(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &[data-hidden='true'] {
+      transform: none;
+    }
+  }
+}
+
+/* Touch area of at least 44×44 pt (Apple's minimum) without changing how the control looks.
+   The element must be positioned (relative/absolute). */
+@utility hit {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: min(0px, calc((100% - 44px) / 2));
+  }
+}

@@ -132,7 +132,7 @@ export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: Rout
       {blocks.map((b) => {
         const isDone = isDoneId(b.id)
         return (
-          <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
+          <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
             {!editable && date <= today ? (
               <button type="button" onClick={() => toggle(b)} aria-label={isDone ? 'Desmarcar' : 'Marcar como feito'} className="grid size-11 shrink-0 place-items-center">
                 <span className={`grid size-6 place-items-center rounded-full border-2 ${isDone ? 'border-accent bg-accent text-white' : 'border-white/20'}`}>{isDone && <Check size={14} strokeWidth={3} />}</span>

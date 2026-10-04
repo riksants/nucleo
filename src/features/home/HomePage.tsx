@@ -44,7 +44,7 @@ function EmptyLine({ text, action, onAction }: { text: string; action: string; o
   return (
     <div className="card flex items-center justify-between gap-3 px-5 py-4">
       <span className="text-[15px] text-faint">{text}</span>
-      <button type="button" onClick={onAction} className="shrink-0 text-sm font-medium text-accent-hi hover:text-ink">
+      <button type="button" onClick={onAction} className="hit relative shrink-0 text-sm font-medium text-accent-hi hover:text-ink">
         {action}
       </button>
     </div>
@@ -155,7 +155,7 @@ export function HomePage() {
                 {activeProjects.slice(0, 3).map((p: Project) => {
                   const s = optionOf(PROJECT_STATUS, p.status)
                   return (
-                    <button key={p.id} type="button" onClick={() => navigate('/projects', { open: p.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]">
+                    <button key={p.id} type="button" onClick={() => navigate('/projects', { open: p.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{p.name}</span>
                         {p.dueDate ? <DueLabel date={p.dueDate} /> : <span className="text-[13px] text-faint">Sem prazo</span>}
@@ -192,7 +192,7 @@ export function HomePage() {
                 {charges.map(({ tool, date }) => {
                   const rel = relativeDays(date)
                   return (
-                    <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03]">
+                    <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{tool.name}</span>
                         <span className={`text-[13px] ${rel && rel.days <= 3 ? 'text-warn' : 'text-faint'}`}>

@@ -45,7 +45,7 @@ export function ModulePicker({
             role="switch"
             aria-checked={on}
             onClick={() => onChange({ ...value, [m.id]: !on })}
-            className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+            className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
           >
             <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${on ? 'bg-accent/12 text-accent-hi' : 'bg-white/[0.05] text-faint'}`}>
               <Icon size={18} />

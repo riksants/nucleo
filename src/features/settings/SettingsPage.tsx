@@ -232,7 +232,7 @@ export function SettingsPage() {
             <>
               <Row label="Conectado como" icon={<UserRound size={18} />} value={<span className="block max-w-[52vw] truncate lg:max-w-[16rem]">{email ?? 'conta'}</span>} />
               <Row label="Sincronização e detalhes" icon={<RefreshCw size={18} />} onClick={() => navigate('/account')} />
-              <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] disabled:opacity-60">
+              <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap disabled:opacity-60">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-expense/10 text-expense">
                   <LogOut size={18} />
                 </span>
@@ -256,7 +256,7 @@ export function SettingsPage() {
               role="switch"
               aria-checked={!settings.hideScore}
               onClick={() => updateSettings({ hideScore: !settings.hideScore })}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
                 <Gauge size={18} />
@@ -274,7 +274,7 @@ export function SettingsPage() {
               role="switch"
               aria-checked={Boolean(settings.morningAutoOpen)}
               onClick={() => updateSettings({ morningAutoOpen: !settings.morningAutoOpen })}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
                 <Sunrise size={18} />
@@ -314,7 +314,7 @@ export function SettingsPage() {
               })
               if (ok) await updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString() } })
             }}
-            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
               <Sparkles size={18} />

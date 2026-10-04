@@ -114,7 +114,7 @@ export function SectionTitle({ children, action, onAction }: { children: ReactNo
     <div className="mb-3 flex items-center justify-between px-1">
       <h2 className="text-[13px] font-medium tracking-wide text-soft uppercase">{children}</h2>
       {action && (
-        <button type="button" onClick={onAction} className="text-sm font-medium text-accent-hi hover:text-ink">
+        <button type="button" onClick={onAction} className="hit relative text-sm font-medium text-accent-hi hover:text-ink">
           {action}
         </button>
       )}

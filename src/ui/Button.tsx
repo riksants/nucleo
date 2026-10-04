@@ -50,7 +50,7 @@ const ICON_TONES = {
 export function IconButton({ label, tone = 'plain', size = 'md', className = '', children, ...rest }: IconButtonProps) {
   const dims = size === 'sm' ? 'size-9 rounded-xl' : 'size-11 rounded-2xl'
   return (
-    <button type="button" aria-label={label} title={label} className={`press grid place-items-center shrink-0 ${dims} ${ICON_TONES[tone]} ${className}`} {...rest}>
+    <button type="button" aria-label={label} title={label} className={`press hit relative grid place-items-center shrink-0 ${dims} ${ICON_TONES[tone]} ${className}`} {...rest}>
       {children}
     </button>
   )

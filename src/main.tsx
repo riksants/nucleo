@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion'
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
@@ -55,11 +56,14 @@ function Root() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SessionProvider>
-      <FeedbackProvider>
-        <Root />
-      </FeedbackProvider>
-    </SessionProvider>
+    {/* "Reduzir movimento" on the device: sheets, lists and indicators keep only fades, no movement. */}
+    <MotionConfig reducedMotion="user">
+      <SessionProvider>
+        <FeedbackProvider>
+          <Root />
+        </FeedbackProvider>
+      </SessionProvider>
+    </MotionConfig>
   </StrictMode>,
 )
 

@@ -35,7 +35,7 @@ export function AgendaRow({ item, onOpen, showLabel = true, readOnly }: { item: 
   const dot = DOT[item.kind === 'routine' ? (item.blockKind ?? 'other') : item.kind]
   const muted = item.status === 'done' || item.status === 'skipped'
   return (
-    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03]">
+    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
       {(item.checkable || item.markable) && !readOnly ? (
         <CheckButton status={item.status === 'ended' ? 'pending' : item.status} onClick={() => toggle(item)} label={item.status === 'done' ? `Desmarcar ${item.title}` : `Concluir ${item.title}`} />
       ) : (

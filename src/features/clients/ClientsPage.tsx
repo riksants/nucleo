@@ -65,7 +65,7 @@ export function ClientsPage() {
               {list.map((c) => {
                 const s = optionOf(CLIENT_STATUS, c.status)
                 return (
-                  <button key={c.id} type="button" onClick={() => detail.show(c)} className="flex w-full items-center gap-3.5 rounded-2xl px-2.5 py-3 text-left transition-colors hover:bg-white/[0.03]">
+                  <button key={c.id} type="button" onClick={() => detail.show(c)} className="flex w-full items-center gap-3.5 rounded-2xl px-2.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
                     <span className="grid size-11 shrink-0 place-items-center rounded-full bg-elevated text-[15px] font-semibold text-soft">{initials(c.name)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-medium">{c.name}</span>

@@ -85,10 +85,10 @@ export function PlanWeek({ week, currentWeek, today }: { week: WeekId; currentWe
               <div key={d} className="card p-1.5">
                 <div className="flex items-center gap-1 px-3 pt-2 pb-1">
                   <p className={`min-w-0 flex-1 text-[14px] font-medium first-letter:uppercase ${d === today ? 'text-accent-hi' : ''}`}>{label(d)}</p>
-                  <button type="button" aria-label={`Nova tarefa em ${label(d)}`} title="Nova tarefa" onClick={() => newTask.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] hover:text-ink">
+                  <button type="button" aria-label={`Nova tarefa em ${label(d)}`} title="Nova tarefa" onClick={() => newTask.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] tap hover:text-ink">
                     <ListPlus size={17} />
                   </button>
-                  <button type="button" aria-label={`Novo compromisso em ${label(d)}`} title="Novo compromisso" onClick={() => newEvent.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] hover:text-ink">
+                  <button type="button" aria-label={`Novo compromisso em ${label(d)}`} title="Novo compromisso" onClick={() => newEvent.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-white/[0.04] tap hover:text-ink">
                     <CalendarPlus size={17} />
                   </button>
                 </div>

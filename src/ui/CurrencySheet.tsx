@@ -45,7 +45,7 @@ export function CurrencySheet({ open, onClose, value, onPick, title = 'Escolher 
                 setQuery('')
                 onClose()
               }}
-              className="flex min-h-14 w-full items-center gap-3 px-1 text-left transition-colors hover:bg-white/[0.03]"
+              className="flex min-h-14 w-full items-center gap-3 px-1 text-left transition-colors hover:bg-white/[0.03] tap"
             >
               <span className="grid h-9 min-w-11 place-items-center rounded-xl bg-elevated px-1.5 text-[13px] font-semibold">{info.symbol}</span>
               <span className="min-w-0 flex-1">

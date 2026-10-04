@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
+import { LOGO_PIECES } from './logoMark'
 import { isEnabled } from './modules'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
@@ -12,12 +13,30 @@ function isActive(section: Section, path: RoutePath, primary: Section[]) {
   return section.path === path
 }
 
+/** Active-tab indicator: critically damped (damping ratio ≈ 1), so it settles in ~0.2 s without overshooting. */
+const INDICATOR_SPRING = { type: 'spring', stiffness: 500, damping: 45 } as const
+
+/** The NÚCLEO mark — the same drawing as the app icon and the opening. */
 export function Logo() {
+  // Gradient ids must be unique on the page (the logo can appear more than once).
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   return (
-    <svg viewBox="0 0 64 64" className="size-8" aria-hidden>
-      <rect width="64" height="64" rx="16" fill="#18181d" />
-      <circle cx="32" cy="32" r="15" fill="none" stroke="var(--color-accent)" strokeWidth="5" />
-      <circle cx="32" cy="32" r="5.5" fill="var(--color-ink)" />
+    <svg viewBox="-500 -500 1000 1000" className="size-8" aria-hidden>
+      <defs>
+        <linearGradient id={`${id}p`} gradientUnits="userSpaceOnUse" x1="-800" y1="-700" x2="800" y2="800">
+          <stop offset="0" stopColor="#7565ff" />
+          <stop offset=".5" stopColor="#5c50ff" />
+          <stop offset="1" stopColor="#4d41ed" />
+        </linearGradient>
+        <linearGradient id={`${id}l`} gradientUnits="userSpaceOnUse" x1="-800" y1="-700" x2="800" y2="800">
+          <stop offset="0" stopColor="#d4ccff" />
+          <stop offset=".6" stopColor="#bcb2fc" />
+          <stop offset="1" stopColor="#a99aee" />
+        </linearGradient>
+      </defs>
+      {LOGO_PIECES.map((p, i) => (
+        <path key={i} d={p.d} fill={`url(#${id}${p.tone === 'purple' ? 'p' : 'l'})`} />
+      ))}
     </svg>
   )
 }
@@ -40,7 +59,7 @@ function BottomNav({ path }: { path: RoutePath }) {
             >
               <span className="relative grid h-8 w-14 place-items-center">
                 {active && (
-                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent/16" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />
+                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent/16" transition={INDICATOR_SPRING} />
                 )}
                 <Icon size={21} strokeWidth={active ? 2.2 : 1.8} className={`relative ${active ? 'text-accent-hi' : ''}`} />
               </span>
@@ -61,10 +80,10 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
       href={`#${section.path}`}
       aria-current={active ? 'page' : undefined}
       className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors ${
-        active ? 'text-ink' : 'text-soft hover:bg-white/[0.03] hover:text-ink'
+        active ? 'text-ink' : 'text-soft hover:bg-white/[0.03] tap hover:text-ink'
       }`}
     >
-      {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-white/[0.06]" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+      {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-white/[0.06]" transition={INDICATOR_SPRING} />}
       <Icon size={19} className={`relative ${active ? 'text-accent-hi' : ''}`} />
       <span className="relative">{section.label}</span>
     </a>
