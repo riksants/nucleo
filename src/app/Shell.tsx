@@ -3,7 +3,7 @@ import { useId, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
 import { LOGO_PIECES } from './logoMark'
-import { isEnabled } from './modules'
+import { isEnabled, MODULE_BY_ID, MODULE_GROUPS } from './modules'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
 import { ASSISTANT, MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
@@ -92,7 +92,9 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
 
 function Sidebar({ path }: { path: RoutePath }) {
   const { settings } = useStore()
-  const secondary = secondarySections(settings)
+  // Same groups as "Mais" (by what each section is for).
+  const here = new Set(secondarySections(settings).map((s) => s.path))
+  const groups = MODULE_GROUPS.map((g) => ({ title: g.title, sections: g.ids.map((id) => MODULE_BY_ID[id]).filter((m) => here.has(m.path)) })).filter((g) => g.sections.length > 0)
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg px-4 py-6 lg:flex" aria-label="Navegação">
       <div className="mb-6 flex items-center gap-3 px-2">
@@ -115,17 +117,19 @@ function Sidebar({ path }: { path: RoutePath }) {
           <SideLink key={s.path} section={s} path={path} />
         ))}
       </nav>
-      {secondary.length > 0 && (
-        <>
-          <div className="mt-6 mb-2 px-3 text-xs font-medium tracking-wide text-faint uppercase">Organização</div>
-          <nav className="flex flex-col gap-0.5">
-            {secondary.map((s) => (
-              <SideLink key={s.path} section={s} path={path} />
-            ))}
-          </nav>
-        </>
-      )}
-      <div className="mt-auto space-y-2 pt-6">
+      <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
+        {groups.map((g) => (
+          <div key={g.title}>
+            <div className="mt-5 mb-2 px-3 text-xs font-medium tracking-wide text-faint uppercase">{g.title}</div>
+            <nav className="flex flex-col gap-0.5" aria-label={g.title}>
+              {g.sections.map((s) => (
+                <SideLink key={s.path} section={s} path={path} />
+              ))}
+            </nav>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2 pt-4">
         <SyncBadge />
         <SideLink section={SETTINGS} path={path} />
       </div>

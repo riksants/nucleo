@@ -1,5 +1,5 @@
 /**
- * Vault for the passwords saved in "Contas". Standard Web Crypto only:
+ * Vault for the passwords saved in "Senhas". Standard Web Crypto only:
  *
  * - A random 256-bit data key (AES-GCM) encrypts each password with a fresh 96-bit IV.
  * - The data key is stored only wrapped (encrypted) by a key derived from the

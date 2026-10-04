@@ -45,7 +45,7 @@ try {
   await signUpAndConfirm(A, 'ana@teste.com')
   text = await A.text()
   check('após confirmar o e-mail, oferece migração (não automática) citando a conta', text.includes('Dados neste aparelho') && text.includes('ana@teste.com') && text.includes('Não enviar'))
-  check('migração avisa sobre senha sem criptografia', text.includes('senha(s) de Contas estão sem criptografia'))
+  check('migração avisa sobre senha sem criptografia', text.includes('senha(s) guardadas em Senhas estão sem criptografia'))
   await A.shot('t3-migracao')
   let s = await state()
   check('nada foi enviado antes da confirmação', s.records.length === 0)

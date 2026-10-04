@@ -20,7 +20,7 @@ const KINDS: { kind: ReminderKind; label: string; hint: string; timed: boolean; 
   { kind: 'routine', label: 'Rotina e treinos', hint: 'Antes de cada horário da rotina salva', timed: true, modules: ['routine'] },
   { kind: 'meals', label: 'Refeições', hint: 'Mostra só o nome da refeição, nunca o cardápio', timed: true, modules: ['meals'] },
   { kind: 'deadlines', label: 'Prazos de projetos', hint: 'Dias antes do prazo', timed: false, modules: ['projects'] },
-  { kind: 'payments', label: 'Pagamentos e cobranças', hint: 'Ferramentas, vendas a receber e assinantes — sem valores', timed: false, modules: ['tools', 'sales', 'subscribers'] },
+  { kind: 'payments', label: 'Pagamentos e cobranças', hint: 'Assinaturas, vendas a receber e assinantes — sem valores', timed: false, modules: ['tools', 'sales', 'subscribers'] },
 ]
 
 const REASONS: Record<string, string> = {

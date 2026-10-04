@@ -119,7 +119,7 @@ export function AccountsPage() {
   return (
     <>
       <PageHeader
-        title="Contas"
+        title="Senhas"
         subtitle="Acessos anotados para consulta rápida"
         actions={
           <Button icon={<Plus size={18} />} onClick={() => form.show()}>

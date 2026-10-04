@@ -34,7 +34,7 @@ export function VaultCreateSheet({ open, onClose }: { open: boolean; onClose(): 
     <>
       <FormSheet open={open && !code} onClose={onClose} title="Criar cofre de senhas" submitLabel="Criar cofre" onSubmit={submit}>
         <div className="space-y-3 pb-5 text-[15px] leading-relaxed text-soft">
-          <p>As senhas guardadas em Contas serão criptografadas no aparelho antes de serem salvas ou sincronizadas. Nem o servidor consegue lê-las.</p>
+          <p>As senhas guardadas em Senhas serão criptografadas no aparelho antes de serem salvas ou sincronizadas. Nem o servidor consegue lê-las.</p>
           <p>
             Use uma <span className="text-ink">senha do cofre diferente da senha de login</span>. Recuperar a senha de login <span className="text-ink">não</span> abre o cofre.
           </p>
@@ -172,7 +172,7 @@ export function VaultUnlockSheet({ open, onClose, onUnlocked }: { open: boolean;
   )
 }
 
-/** Status line at the top of "Contas". */
+/** Status line at the top of "Senhas". */
 export function VaultBar({ onCreate, onUnlock }: { onCreate(): void; onUnlock(): void }) {
   const vault = useVault()
   if (!vault.exists) {

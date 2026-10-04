@@ -1,7 +1,8 @@
-import { Bell, ChevronRight, Clock, Gauge, HardDrive, LogOut, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Gauge, HardDrive, LogOut, PanelBottom, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
-import { isEnabled } from '../../app/modules'
-import { navigate } from '../../app/router'
+import { enabledModules, isEnabled } from '../../app/modules'
+import { navigate, useRoute } from '../../app/router'
+import { MAX_TABS, primarySections } from '../../app/sections'
 import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { COLLECTION_NAMES, type Account, type Currency, type DataState, type ModuleId } from '../../data/types'
@@ -140,7 +141,7 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
       // Old backups may carry plain-text passwords: they are sealed before being stored.
       if (vault.unlocked) data = { ...data, accounts: await Promise.all((backup.data.accounts ?? []).map((a: Account) => vault.sealAccount(a))) }
       else if (userId) {
-        toast('Este backup tem senhas sem criptografia. Abra o cofre (em Contas) antes de importar.', 'error')
+        toast('Este backup tem senhas sem criptografia. Abra o cofre (em Senhas) antes de importar.', 'error')
         return
       }
     }
@@ -185,7 +186,11 @@ export function SettingsPage() {
   const { settings, data, balance, refreshRates, ratesLoading, updateSettings, setDisplayCurrency } = useStore()
   const { toast, confirm } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'vaultPassword' | 'categories' | null>(null)
+  // "Mais → Personalizar" opens a panel directly (#/settings?painel=secoes or barra).
+  const { params } = useRoute()
+  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'tabs' | 'vaultPassword' | 'categories' | null>(() =>
+    params.get('painel') === 'secoes' ? 'modules' : params.get('painel') === 'barra' ? 'tabs' : null,
+  )
   const { configured, email, userId, openAuth } = useSession()
   const { signOut, busy: signingOut } = useSignOut()
   const vault = useVault()
@@ -249,6 +254,19 @@ export function SettingsPage() {
 
         <Group title="Seções e lembretes">
           <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
+          <Row
+            label="Barra de navegação"
+            value={
+              <span className="block max-w-36 truncate text-[14px]">
+                {primarySections(settings)
+                  .slice(1)
+                  .map((s) => s.shortLabel ?? s.label)
+                  .join(' · ')}
+              </span>
+            }
+            icon={<PanelBottom size={18} />}
+            onClick={() => setSheet('tabs')}
+          />
           <Row label="Lembretes e notificações" icon={<Bell size={18} />} onClick={() => navigate('/reminders')} />
           {isEnabled(settings, 'week') && (
             <button
@@ -388,18 +406,82 @@ export function SettingsPage() {
       <CategoriesSheet open={sheet === 'categories'} onClose={() => setSheet(null)} />
       <ImportSheet backup={backup} onClose={() => setBackup(null)} />
       <CurrencySheet open={sheet === 'currency'} onClose={() => setSheet(null)} value={display} onPick={pickMain} title="Moeda principal" />
-      <ModulesSheet open={sheet === 'modules'} onClose={() => setSheet(null)} />
+      <ModulesSheet open={sheet === 'modules'} onClose={() => setSheet(null)} onTabs={() => setSheet('tabs')} />
+      <TabsSheet open={sheet === 'tabs'} onClose={() => setSheet(null)} />
       <VaultPasswordSheet open={sheet === 'vaultPassword'} onClose={() => setSheet(null)} />
     </>
   )
 }
 
-function ModulesSheet({ open, onClose }: { open: boolean; onClose(): void }) {
+/** Which sections sit in the tab bar after Início (up to 3, in the order picked). Saved with the account settings. */
+function TabsSheet({ open, onClose }: { open: boolean; onClose(): void }) {
+  const { settings, updateSettings } = useStore()
+  const { toast } = useFeedback()
+  const current = primarySections(settings)
+    .slice(1)
+    .map((s) => enabledModules(settings).find((m) => m.path === s.path)!.id)
+  const toggle = (id: ModuleId) => {
+    if (current.includes(id)) return updateSettings({ tabs: current.filter((x) => x !== id) })
+    if (current.length >= MAX_TABS) return toast(`Cabem ${MAX_TABS} seções. Tire uma antes de escolher outra.`, 'error')
+    void updateSettings({ tabs: [...current, id] })
+  }
+  return (
+    <Sheet open={open} onClose={onClose} title="Barra de navegação">
+      <p className="pb-4 text-[15px] leading-relaxed text-soft">
+        Escolha até {MAX_TABS} seções para ficar na barra de baixo, ao lado de Início e Mais. As outras continuam em Mais.
+      </p>
+      <div className="card mb-4 flex flex-wrap items-center justify-center gap-1.5 px-3 py-3 text-[13px] text-soft" aria-label="Prévia da barra">
+        {['Início', ...primarySections(settings).slice(1).map((s) => s.shortLabel ?? s.label), 'Mais'].map((l, i) => (
+          <span key={i} className={`rounded-full px-2.5 py-1 whitespace-nowrap ${i === 0 || l === 'Mais' ? 'text-faint' : 'bg-accent/12 text-accent-hi'}`}>
+            {l}
+          </span>
+        ))}
+      </div>
+      <div className="card divide-y divide-line overflow-hidden">
+        {enabledModules(settings).map((m) => {
+          const pos = current.indexOf(m.id)
+          const Icon = m.icon
+          return (
+            <button key={m.id} type="button" aria-pressed={pos >= 0} onClick={() => toggle(m.id)} className="tap flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
+              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${pos >= 0 ? 'bg-accent/12 text-accent-hi' : 'bg-white/[0.05] text-faint'}`}>
+                <Icon size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium">{m.label}</span>
+                <span className="block truncate text-[13px] text-faint">{m.description}</span>
+              </span>
+              {pos >= 0 ? (
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-semibold text-white" aria-label={`Posição ${pos + 1} na barra`}>
+                  {pos + 1}
+                </span>
+              ) : (
+                <span className="size-7 shrink-0 rounded-full border-2 border-white/15" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">Só aparecem aqui as seções ligadas em “Seções visíveis”.</p>
+    </Sheet>
+  )
+}
+
+function ModulesSheet({ open, onClose, onTabs }: { open: boolean; onClose(): void; onTabs(): void }) {
   const { settings, updateSettings } = useStore()
   const set = (next: Partial<Record<ModuleId, boolean>>) => updateSettings({ modules: next, modulesReviewed: true })
   return (
     <Sheet open={open} onClose={onClose} title="Seções visíveis">
       <p className="pb-4 text-[15px] leading-relaxed text-soft">Esconder uma seção não apaga nada: os dados voltam quando você liga de novo.</p>
+      <button type="button" onClick={onTabs} className="card tap mb-4 flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+          <PanelBottom size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-medium">Barra de navegação</span>
+          <span className="block truncate text-[13px] text-faint">Escolha quais seções ficam na barra de baixo</span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-faint" />
+      </button>
       <ModulePicker value={settings.modules ?? {}} onChange={set} isOn={(id) => isEnabled(settings, id)} />
     </Sheet>
   )

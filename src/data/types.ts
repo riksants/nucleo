@@ -370,6 +370,8 @@ export interface Settings {
   hideScore?: boolean
   /** Sections already announced to this person, so new ones are announced once. */
   modulesSeen?: ModuleId[]
+  /** The sections in the tab bar after Início, in order (up to 3), chosen by the person. Missing = default order. */
+  tabs?: ModuleId[]
   /** Etapa 6: what the person did with each suggestion (key → state). Pruned after 30 days, max 200. */
   insightState?: Record<string, InsightMark>
   /** Etapa 6: hours used to suggest times ("HH:MM"). Missing = routine wake/sleep, else 07:00–22:00. */

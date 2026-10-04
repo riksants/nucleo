@@ -43,8 +43,8 @@ export const MODULES: ModuleDef[] = [
   { id: 'tasks', path: '/tasks', label: 'Tarefas', icon: ListTodo, description: 'O que fazer e compromissos', legacy: true },
   { id: 'clients', path: '/clients', label: 'Clientes', icon: Users, description: 'Contatos e histórico', legacy: true },
   { id: 'goals', path: '/goals', label: 'Metas de compra', icon: Target, description: 'Compras que você quer fazer', legacy: true },
-  { id: 'tools', path: '/tools', label: 'Ferramentas', icon: Wrench, description: 'Assinaturas que você paga', legacy: true },
-  { id: 'accounts', path: '/accounts', label: 'Contas', icon: KeyRound, description: 'Acessos e senhas (cofre)', legacy: true },
+  { id: 'tools', path: '/tools', label: 'Assinaturas', icon: Wrench, description: 'O que você paga todo mês: apps, ferramentas e serviços', legacy: true },
+  { id: 'accounts', path: '/accounts', label: 'Senhas', icon: KeyRound, description: 'Acessos e senhas, protegidos pelo cofre', legacy: true },
   { id: 'notes', path: '/notes', label: 'Anotações', icon: NotebookPen, description: 'Notas rápidas', legacy: true },
   { id: 'portfolio', path: '/portfolio', label: 'Portfólio', icon: Briefcase, description: 'Trabalhos entregues', legacy: true },
   { id: 'sales', path: '/sales', label: 'Vendas', icon: BadgeDollarSign, description: 'Quem comprou, quanto pagou e quanto falta', legacy: false },
@@ -57,6 +57,18 @@ export const MODULES: ModuleDef[] = [
   { id: 'inbox', path: '/inbox', label: 'Caixa de entrada', icon: Inbox, description: 'Capture rápido, organize depois', legacy: false },
   { id: 'recurring', path: '/recurring', label: 'Recorrentes', icon: ListRestart, description: 'Checklist que se repete (contas, rotinas da casa…)', legacy: false },
   { id: 'habits', path: '/habits', label: 'Hábitos', icon: Sprout, description: 'Água, treino, leitura… um dia de cada vez', legacy: false },
+]
+
+/**
+ * How sections are grouped under "Mais" (by what they are for), so each one is easy to find and understand.
+ * Every section belongs to exactly one group.
+ */
+export const MODULE_GROUPS: { title: string; ids: ModuleId[] }[] = [
+  { title: 'Dia a dia', ids: ['today', 'agenda', 'tasks', 'habits', 'recurring', 'routine', 'meals', 'inbox'] },
+  { title: 'Dinheiro', ids: ['finance', 'sales', 'subscribers', 'tools', 'goals'] },
+  { title: 'Trabalho', ids: ['projects', 'clients', 'portfolio'] },
+  { title: 'Planejamento', ids: ['week', 'life'] },
+  { title: 'Guardados', ids: ['notes', 'accounts'] },
 ]
 
 /** Sections that existed before Etapa 1: already announced to anyone who reviewed sections then. */

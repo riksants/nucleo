@@ -83,7 +83,7 @@ export function ToolsPage() {
   return (
     <>
       <PageHeader
-        title="Ferramentas"
+        title="Assinaturas"
         actions={
           <Button icon={<Plus size={18} />} onClick={() => form.show()}>
             Nova

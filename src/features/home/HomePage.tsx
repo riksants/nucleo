@@ -73,20 +73,12 @@ export function HomePage() {
 
   return (
     <>
-      <header className="mb-5 flex items-center justify-between gap-3 lg:mb-8">
+      <header className="mb-4 flex items-center justify-between gap-3 lg:mb-5">
         <div>
           <p className="text-[13px] font-medium text-faint first-letter:uppercase">{formatWeekday(today)}</p>
           <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em] lg:text-[34px]">{greeting(today)}</h1>
         </div>
         <div className="flex gap-1">
-          <IconButton label="Assistente" onClick={() => navigate('/assistant')}>
-            <Sparkles size={20} className="text-accent-hi" />
-          </IconButton>
-          {on('today') && (
-            <IconButton label="Hoje" onClick={() => navigate('/today')}>
-              <CalendarCheck size={21} />
-            </IconButton>
-          )}
           <IconButton label="Buscar" className="lg:hidden" onClick={() => navigate('/search')}>
             <Search size={21} />
           </IconButton>
@@ -95,6 +87,19 @@ export function HomePage() {
           </IconButton>
         </div>
       </header>
+      {/* Shortcuts with names (they used to be icons only, easy to miss). */}
+      <div className="mb-5 flex gap-2 lg:mb-8">
+        {on('today') && (
+          <button type="button" onClick={() => navigate('/today')} className="press flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
+            <CalendarCheck size={17} className="text-accent-hi" />
+            Hoje
+          </button>
+        )}
+        <button type="button" onClick={() => navigate('/assistant')} className="press flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
+          <Sparkles size={17} className="text-accent-hi" />
+          Assistente
+        </button>
+      </div>
 
       <Suspense fallback={null}>
         <AttentionCard />
@@ -186,7 +191,7 @@ export function HomePage() {
           )}
 
           {on('tools') && (
-          <Block title="Próximas cobranças" action={charges.length ? 'Ferramentas' : undefined} onAction={() => navigate('/tools')}>
+          <Block title="Próximas cobranças" action={charges.length ? 'Assinaturas' : undefined} onAction={() => navigate('/tools')}>
             {charges.length ? (
               <div className="card p-1.5">
                 {charges.map(({ tool, date }) => {
@@ -206,7 +211,7 @@ export function HomePage() {
                 })}
               </div>
             ) : (
-              <EmptyLine text="Nada a pagar nos próximos 30 dias" action="Ferramentas" onAction={() => navigate('/tools')} />
+              <EmptyLine text="Nada a pagar nos próximos 30 dias" action="Assinaturas" onAction={() => navigate('/tools')} />
             )}
           </Block>
           )}

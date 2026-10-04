@@ -19,8 +19,8 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   clients: 'Clientes',
   projects: 'Projetos de trabalho',
   tasks: 'Tarefas',
-  tools: 'Ferramentas',
-  accounts: 'Contas',
+  tools: 'Assinaturas',
+  accounts: 'Senhas',
   notes: 'Anotações',
   portfolio: 'Portfólio',
   sales: 'Vendas',
@@ -167,7 +167,7 @@ export function MigrationOffer({ summary, onDone }: { summary: LocalSummary; onD
               <p className="flex items-start gap-2 text-[15px] leading-relaxed">
                 <ShieldAlert size={18} className="mt-0.5 shrink-0 text-warn" />
                 {summary.plainPasswords > 0
-                  ? `${summary.plainPasswords} senha(s) de Contas estão sem criptografia. Elas serão criptografadas pelo cofre antes de sair do aparelho.`
+                  ? `${summary.plainPasswords} senha(s) guardadas em Senhas estão sem criptografia. Elas serão criptografadas pelo cofre antes de sair do aparelho.`
                   : 'As senhas deste aparelho estão num cofre diferente do da conta. Elas serão abertas e criptografadas de novo com o cofre da conta.'}
               </p>
               {needsReseal && (

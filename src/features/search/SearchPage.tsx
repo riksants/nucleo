@@ -49,13 +49,13 @@ export function SearchPage() {
         group('/clients', 'Clientes', data.clients, (c) => [c.name, c.company, c.email, c.phone, c.location, c.notes], (c) => ({ title: c.name, subtitle: c.company })),
         group('/projects', 'Projetos de trabalho', data.projects, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
         group('/tasks', 'Tarefas', data.tasks, (t) => [t.title], (t) => ({ title: t.title, subtitle: t.status === 'done' ? 'Feita' : undefined })),
-        group('/tools', 'Ferramentas', data.tools, (t) => [t.name, t.plan, t.notes, t.link], (t) => ({ title: t.name, subtitle: t.price ? formatMoney(t.price, t.currency) : t.plan })),
+        group('/tools', 'Assinaturas', data.tools, (t) => [t.name, t.plan, t.notes, t.link], (t) => ({ title: t.name, subtitle: t.price ? formatMoney(t.price, t.currency) : t.plan })),
         group('/finance', 'Movimentações', data.transactions, (t) => [t.reason], (t) => ({
           title: t.reason,
           subtitle: `${formatMoney(t.baseAmount >= 0 ? t.amount : -t.amount, t.currency, { sign: true })} · ${formatDateTime(t.createdAt)}`,
         })),
         group('/notes', 'Anotações', data.notes, (n) => [n.title, n.body], (n) => ({ title: n.title || n.body.slice(0, 60), subtitle: n.title ? n.body.slice(0, 80) : undefined })),
-        group('/accounts', 'Contas', data.accounts, (a) => [a.name, a.link, a.email, a.username, a.notes], (a) => ({ title: a.name, subtitle: a.email || a.username })),
+        group('/accounts', 'Senhas', data.accounts, (a) => [a.name, a.link, a.email, a.username, a.notes], (a) => ({ title: a.name, subtitle: a.email || a.username })),
         group('/goals', 'Metas de compra', data.goals, (g) => [g.name, g.note], (g) => ({ title: g.name, subtitle: formatMoney(g.price, g.currency) })),
         group('/portfolio', 'Portfólio', data.portfolio, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
         group('/agenda', 'Compromissos', data.events, (ev) => [ev.title, ev.notes], (ev) => ({ title: ev.title, subtitle: `${formatDateValue(ev.date)} · ${ev.start}` })),
@@ -82,7 +82,7 @@ export function SearchPage() {
         <SearchField value={query} onChange={setQuery} placeholder="Clientes, projetos, notas, contas…" autoFocus />
       </div>
 
-      {!q && <p className="px-1 text-[15px] text-faint">Procure em clientes, projetos, tarefas, ferramentas, movimentações, anotações e contas.</p>}
+      {!q && <p className="px-1 text-[15px] text-faint">Procure em clientes, projetos, tarefas, assinaturas, movimentações, anotações e contas.</p>}
       {q && groups.length === 0 && <EmptyState compact icon={<Search size={22} />} title="Nada encontrado" text={`Nenhum resultado para “${q}”.`} />}
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
