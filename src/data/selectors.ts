@@ -1,4 +1,4 @@
-import { daysBetween, fromDateInput, toDateInput } from '../lib/dates'
+import { addMonths, daysBetween, fromDateInput, toDateInput } from '../lib/dates'
 import type { Converter } from '../lib/rates'
 import type { Cents, Currency, Goal, Project, Settings, Task, Tool, Transaction } from './types'
 
@@ -49,15 +49,17 @@ export function isPaidTool(t: Tool): boolean {
   return (t.status === 'active' || t.status === 'trial') && (t.billing === 'monthly' || t.billing === 'yearly') && t.price > 0
 }
 
-/** Moves a stored charge date forward by whole billing cycles until it is today or later. */
+/**
+ * Moves a stored charge date forward by whole billing cycles until it is today or later.
+ * Always counted from the stored date and its day of the month, so a charge on the 31st stays
+ * on the last day of short months (31 Jan → 28 Feb → 31 Mar), never drifting to the 3rd.
+ */
 export function nextChargeDate(t: Tool, today = new Date()): string {
   const d = fromDateInput(t.nextCharge)
   if (!d || !isPaidTool(t)) return t.nextCharge
-  const next = new Date(d)
-  while (daysBetween(today, next) < 0) {
-    if (t.billing === 'monthly') next.setMonth(next.getMonth() + 1)
-    else next.setFullYear(next.getFullYear() + 1)
-  }
+  const step = t.billing === 'monthly' ? 1 : 12
+  let next = d
+  for (let n = 1; daysBetween(today, next) < 0; n++) next = addMonths(d, n * step, d.getDate())
   return toDateInput(next)
 }
 

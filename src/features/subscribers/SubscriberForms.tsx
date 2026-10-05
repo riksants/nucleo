@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { newId, useStore } from '../../data/store'
-import { advanceCharge, INTERVAL_LABEL, PER_INTERVAL, SUBSCRIBER_STATUS_LABEL } from '../../data/subscriptions'
+import { chargeAfterPayment, INTERVAL_LABEL, PER_INTERVAL, SUBSCRIBER_STATUS_LABEL } from '../../data/subscriptions'
 import type { BillingInterval, Currency, Offering, SubPlan, Subscriber, SubscriberStatus } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
 import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
@@ -221,7 +221,7 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
       await save('subscribers', {
         ...subscriber,
         payments: [...subscriber.payments, payment].sort((a, b) => (a.date < b.date ? -1 : 1)),
-        nextCharge: advance && subscriber.nextCharge ? advanceCharge(subscriber.nextCharge, plan.interval) : subscriber.nextCharge,
+        nextCharge: advance && subscriber.nextCharge ? chargeAfterPayment(subscriber, plan) : subscriber.nextCharge,
       })
       setAdding(false)
       setAmount('')
@@ -254,7 +254,7 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
           {subscriber.nextCharge && (
             <label className="flex items-center gap-3 text-[15px]">
               <input type="checkbox" className="size-5 accent-[var(--color-accent)]" checked={advance} onChange={(e) => setAdvance(e.target.checked)} />
-              Avançar próxima cobrança ({formatDateValue(advanceCharge(subscriber.nextCharge, plan.interval)).toLowerCase()})
+              Avançar próxima cobrança ({formatDateValue(chargeAfterPayment(subscriber, plan)).toLowerCase()})
             </label>
           )}
           <div className="flex gap-2">

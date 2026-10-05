@@ -20,7 +20,12 @@ export interface Repository {
   load(): Promise<{ data: DataState; settings: Settings | null }>
   put<K extends CollectionName>(collection: K, item: Collections[K]): Promise<void>
   remove(collection: CollectionName, id: string): Promise<void>
-  saveSettings(settings: Settings): Promise<void>
+  /**
+   * `changed`: the settings this edit touched. Signed in, only those are sent over the account's
+   * settings; everything else keeps the newest value from the server (another device may have changed it).
+   * Left out = the whole object is this device's choice.
+   */
+  saveSettings(settings: Settings, changed?: (keyof Settings)[]): Promise<void>
   /** Writes every item in one transaction. With `replace`, existing records are cleared first. */
   bulkWrite(data: Partial<DataState>, settings: Settings | null, replace: boolean): Promise<void>
   /** Remote changes and sync status (synced repository only). */
@@ -51,18 +56,72 @@ export function done(tx: IDBTransaction): Promise<void> {
   })
 }
 
-/** Opens (and upgrades) a database with one store per collection plus meta and outbox. */
-export function openDatabase(name: string = LOCAL_DB): Promise<IDBDatabase> {
-  const req = indexedDB.open(name, DB_VERSION)
-  req.onupgradeneeded = () => {
-    const db = req.result
-    for (const store of COLLECTION_NAMES) {
-      if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' })
-    }
-    if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
-    if (!db.objectStoreNames.contains(OUTBOX)) db.createObjectStore(OUTBOX, { keyPath: 'key' })
+/** The device database can't be upgraded while an older version of the app keeps it open elsewhere. */
+export const DATABASE_BLOCKED = 'Uma versão anterior do NÚCLEO ainda está aberta em outra aba ou janela. Feche-a para concluir a atualização — esta tela continua sozinha quando ela fechar.'
+
+export class DatabaseBlockedError extends Error {
+  constructor() {
+    super(DATABASE_BLOCKED)
   }
-  return request(req)
+}
+
+const reload = () => {
+  if (typeof location !== 'undefined') location.reload()
+}
+
+/**
+ * Opens (and upgrades) a database with one store per collection plus meta and outbox.
+ *
+ * Updates: when a newer version of the app needs to upgrade the database, this connection closes
+ * and the page reloads into the new version (otherwise the new one would wait forever, blank).
+ * If an old version without this handler still holds the database, the open fails with
+ * DatabaseBlockedError (a message instead of a blank screen) and the page reloads by itself
+ * as soon as the database is free.
+ */
+export function openDatabase(name: string = LOCAL_DB): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, DB_VERSION)
+    let blocked = false
+    req.onupgradeneeded = () => {
+      const db = req.result
+      for (const store of COLLECTION_NAMES) {
+        if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(META)) db.createObjectStore(META)
+      if (!db.objectStoreNames.contains(OUTBOX)) db.createObjectStore(OUTBOX, { keyPath: 'key' })
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      db.onversionchange = (e) => {
+        db.close()
+        // A deletion (signing out removes that account's copy) only closes; an upgrade reloads.
+        if (e.newVersion !== null) reload()
+      }
+      if (!blocked) return resolve(db)
+      // The message was shown while waiting; the database is free now: start again normally.
+      db.close()
+      reload()
+    }
+    req.onerror = () => reject(req.error)
+    req.onblocked = () => {
+      blocked = true
+      reject(new DatabaseBlockedError())
+    }
+  })
+}
+
+/**
+ * The device database for a repository. An open that failed is tried again on the next use — except
+ * when blocked by an old version in another tab: a new attempt would only queue behind the waiting
+ * one, so that case waits for the automatic reload (or the reload button on the error screen).
+ */
+export function databaseHandle(name: string) {
+  let current = openDatabase(name)
+  current.catch(() => {})
+  return {
+    get: () => (current = current.catch((err) => (err instanceof DatabaseBlockedError ? Promise.reject(err) : openDatabase(name)))),
+    close: () => void current.then((db) => db.close(), () => {}),
+  }
 }
 
 export async function readAll(db: IDBDatabase): Promise<{ data: DataState; settings: Settings | null }> {
@@ -87,36 +146,36 @@ export async function writeMeta(db: IDBDatabase, key: string, value: unknown): P
 }
 
 export function createIndexedDbRepository(name: string = LOCAL_DB): Repository {
-  const dbPromise = openDatabase(name)
+  const database = databaseHandle(name)
 
   return {
     async load() {
-      return readAll(await dbPromise)
+      return readAll(await database.get())
     },
 
     async put(collection, item) {
-      const db = await dbPromise
+      const db = await database.get()
       const tx = db.transaction(collection, 'readwrite')
       tx.objectStore(collection).put(item)
       await done(tx)
     },
 
     async remove(collection, id) {
-      const db = await dbPromise
+      const db = await database.get()
       const tx = db.transaction(collection, 'readwrite')
       tx.objectStore(collection).delete(id)
       await done(tx)
     },
 
     async saveSettings(settings) {
-      const db = await dbPromise
+      const db = await database.get()
       const tx = db.transaction(META, 'readwrite')
       tx.objectStore(META).put(settings, SETTINGS_KEY)
       await done(tx)
     },
 
     async bulkWrite(data, settings, replace) {
-      const db = await dbPromise
+      const db = await database.get()
       const tx = db.transaction([...COLLECTION_NAMES, META], 'readwrite')
       for (const name of COLLECTION_NAMES) {
         const store = tx.objectStore(name)

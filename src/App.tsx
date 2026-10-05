@@ -4,6 +4,7 @@ import { lazyPage, whenIdle, type PreloadablePage } from './app/lazyPage'
 import { ALL_MODULE_IDS, enabledModules, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
 import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
+import { DATABASE_BLOCKED } from './data/repository'
 import { useStore } from './data/store'
 import { AccountPage } from './features/account/AccountPage'
 import { MigrationOffer, useMigrationCandidate } from './features/account/MigrationOffer'
@@ -203,10 +204,10 @@ export function App() {
         <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-white/[0.06] text-soft">
           <CloudOff size={22} />
         </div>
-        <p className="text-[17px] font-semibold tracking-tight">Não foi possível carregar seus dados</p>
-        <p className="mt-1.5 max-w-80 text-[15px] leading-relaxed text-soft">{userId ? 'Na primeira vez neste aparelho é preciso internet para baixar a conta.' : loadError}</p>
+        <p className="text-[17px] font-semibold tracking-tight">{loadError === DATABASE_BLOCKED ? 'Atualização esperando outra aba' : 'Não foi possível carregar seus dados'}</p>
+        <p className="mt-1.5 max-w-80 text-[15px] leading-relaxed text-soft">{userId && loadError !== DATABASE_BLOCKED ? 'Na primeira vez neste aparelho é preciso internet para baixar a conta.' : loadError}</p>
         <div className="mt-6 flex gap-3">
-          <Button onClick={retryLoad}>Tentar de novo</Button>
+          <Button onClick={loadError === DATABASE_BLOCKED ? () => location.reload() : retryLoad}>Tentar de novo</Button>
           {userId && (
             <Button variant="secondary" onClick={signOut}>
               Sair

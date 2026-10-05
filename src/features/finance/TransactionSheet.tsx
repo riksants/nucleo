@@ -27,6 +27,12 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const { toast, confirm } = useFeedback()
   const reasonRef = useRef<HTMLInputElement>(null)
   const [tried, setTried] = useState(false)
+  /**
+   * One save per opening: a second tap (also while the sheet slides away) must not record the
+   * movement twice. A ref, so even two taps in the same frame see it; released when it reopens or on error.
+   */
+  const sending = useRef(false)
+  const [busy, setBusy] = useState(false)
 
   const kind = editing?.type ?? type
   const [draft, set] = useDraft(open, () => ({
@@ -38,7 +44,10 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   }))
   const categories = kind === 'adjust' ? [] : pickableCategories(settings, kind, editing?.category)
   useEffect(() => {
-    if (open) setTried(false)
+    if (!open) return
+    setTried(false)
+    sending.current = false
+    setBusy(false)
   }, [open])
 
   // A plain number works as always; "2500 + 750 + 120" is calculated (no eval) and the final result is what gets saved.
@@ -67,7 +76,9 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const submit = async (e?: FormEvent) => {
     e?.preventDefault()
     setTried(true)
-    if (amountError || reasonError || cents === null) return
+    if (amountError || reasonError || cents === null || sending.current) return
+    sending.current = true
+    setBusy(true)
     try {
       // Optional details: only sent when there is something to keep or change, so old records stay as they were.
       const extras = {
@@ -81,6 +92,8 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
       toast(editing ? 'Movimentação atualizada' : 'Movimentação salva')
       onClose()
     } catch (err) {
+      sending.current = false
+      setBusy(false)
       toast(err instanceof MissingRateError ? err.message : 'Não foi possível salvar', 'error')
     }
   }
@@ -117,7 +130,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
         )
       }
       footer={
-        <Button size="lg" block onClick={() => submit()}>
+        <Button size="lg" block disabled={busy} onClick={() => submit()}>
           {confirmLabel}
         </Button>
       }

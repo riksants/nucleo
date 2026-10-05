@@ -90,9 +90,14 @@ export const MODULE_BY_PATH = Object.fromEntries(MODULES.map((m) => [m.path, m])
  * already existed stay on and the new ones stay off, so nothing changes for
  * someone who used the app before.
  */
+/**
+ * A section this version doesn't know (settings saved by a newer version on another device) is
+ * simply off here — never a crash.
+ */
 export function isEnabled(settings: Pick<Settings, 'modules'>, id: ModuleId): boolean {
-  const choice = settings.modules?.[id]
-  return choice ?? MODULE_BY_ID[id].legacy
+  const mod = MODULE_BY_ID[id]
+  if (!mod) return false
+  return settings.modules?.[id] ?? mod.legacy
 }
 
 export function enabledModules(settings: Pick<Settings, 'modules'>): ModuleDef[] {

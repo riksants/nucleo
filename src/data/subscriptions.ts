@@ -87,9 +87,21 @@ export function nextChargeOf(s: Subscriber, plan: SubPlan | undefined, today = n
   return toDateInput(next)
 }
 
-/** After recording a payment for the current cycle, the next charge moves one cycle ahead. */
-export function advanceCharge(nextCharge: string, interval: BillingInterval): string {
+/** One billing cycle after a date (`anchorDay`: the day of the month to keep, e.g. 31 after a 28 Feb). */
+export function advanceCharge(nextCharge: string, interval: BillingInterval, anchorDay?: number): string {
   const d = fromDateInput(nextCharge)
   if (!d) return nextCharge
-  return toDateInput(addMonths(d, interval === 'monthly' ? 1 : 12))
+  return toDateInput(addMonths(d, interval === 'monthly' ? 1 : 12, anchorDay ?? d.getDate()))
+}
+
+/**
+ * Where the next charge goes after recording a payment: one cycle after the charge that is due now.
+ * The stored date can be old (it is rolled forward on screen), so advancing the stored date itself
+ * would land in the past and the charge shown would not move.
+ */
+export function chargeAfterPayment(s: Subscriber, plan: SubPlan, today = new Date()): string {
+  const due = nextChargeOf(s, plan, today)
+  const stored = fromDateInput(s.nextCharge)
+  if (!due || !stored) return s.nextCharge
+  return advanceCharge(due, plan.interval, stored.getDate())
 }

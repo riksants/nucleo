@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { paymentProblem, salePaid, saleRemaining, saleStatus, totalProblem, withPayment } from '../src/data/sales'
-import { advanceCharge, convertTotals, nextChargeOf, projectRevenue, receivedByCurrency } from '../src/data/subscriptions'
+import { advanceCharge, chargeAfterPayment, convertTotals, nextChargeOf, projectRevenue, receivedByCurrency } from '../src/data/subscriptions'
+import { nextChargeDate } from '../src/data/selectors'
 import type { RoutineAnswers, Sale, SubPlan, Subscriber } from '../src/data/types'
 import { formatMoney } from '../src/lib/money'
 import { clean, effectiveRates, makeConverter } from '../src/lib/rates'
@@ -66,6 +67,37 @@ describe('assinantes', () => {
     expect(advanceCharge('2026-01-31', 'monthly')).toBe('2026-02-28')
     expect(nextChargeOf(sub('m', 'active'), plans[0], new Date(2026, 2, 5))).toBe('2026-03-31')
     expect(nextChargeOf(sub('m', 'cancelled'), plans[0])).toBe('')
+  })
+  it('registrar pagamento avança a partir da cobrança atual, mesmo com data guardada antiga', () => {
+    const today = new Date(2026, 9, 4)
+    // Stored 31 Jan, today 4 Oct: the charge due is 31 Oct; paying moves it to 30 Nov (not to 28 Feb).
+    expect(nextChargeOf(sub('m', 'active'), plans[0], today)).toBe('2026-10-31')
+    expect(chargeAfterPayment(sub('m', 'active'), plans[0], today)).toBe('2026-11-30')
+    expect(chargeAfterPayment({ ...sub('m', 'active'), nextCharge: '2026-01-10' }, plans[0], today)).toBe('2026-11-10')
+    // Date still ahead: one cycle after it, as before.
+    expect(chargeAfterPayment({ ...sub('m', 'active'), nextCharge: '2026-10-20' }, plans[0], today)).toBe('2026-11-20')
+    expect(chargeAfterPayment({ ...sub('y', 'active'), nextCharge: '2025-03-01' }, plans[1], today)).toBe('2028-03-01') // due 1 Mar 2027 → next one a year later
+    // The new date is what the screen then shows as the next charge.
+    const paid = { ...sub('m', 'active'), nextCharge: chargeAfterPayment({ ...sub('m', 'active'), nextCharge: '2026-01-10' }, plans[0], today) }
+    expect(nextChargeOf(paid, plans[0], today)).toBe('2026-11-10')
+  })
+})
+
+describe('assinaturas (o que você paga)', () => {
+  const tool = (nextCharge: string, billing: 'monthly' | 'yearly' = 'monthly') => ({ id: 't', createdAt: '', updatedAt: '', name: 'App', plan: '', price: 1000, currency: 'BRL', billing, nextCharge, status: 'active', link: '', notes: '' }) as never
+  it('cobrança no dia 31 fica no último dia dos meses curtos, sem escorregar para o dia 3', () => {
+    expect(nextChargeDate(tool('2026-01-31'), new Date(2026, 1, 10))).toBe('2026-02-28')
+    expect(nextChargeDate(tool('2026-01-31'), new Date(2026, 2, 1))).toBe('2026-03-31')
+    expect(nextChargeDate(tool('2026-01-31'), new Date(2026, 9, 4))).toBe('2026-10-31')
+    expect(nextChargeDate(tool('2026-01-30'), new Date(2026, 9, 31))).toBe('2026-11-30')
+  })
+  it('anual em 29 de fevereiro cai em 28 nos anos comuns e volta ao 29 no bissexto', () => {
+    expect(nextChargeDate(tool('2024-02-29', 'yearly'), new Date(2026, 0, 1))).toBe('2026-02-28')
+    expect(nextChargeDate(tool('2024-02-29', 'yearly'), new Date(2027, 5, 1))).toBe('2028-02-29')
+  })
+  it('data hoje ou futura não muda', () => {
+    expect(nextChargeDate(tool('2026-10-04'), new Date(2026, 9, 4))).toBe('2026-10-04')
+    expect(nextChargeDate(tool('2026-12-15'), new Date(2026, 9, 4))).toBe('2026-12-15')
   })
 })
 

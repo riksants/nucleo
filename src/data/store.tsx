@@ -64,6 +64,20 @@ export function withExtras<T extends Partial<Transaction>>(tx: T, type: Transact
   return out
 }
 
+/**
+ * A restore ("substituir tudo") is a deliberate choice made now: every restored record and the
+ * restored settings are stamped as the newest version. Signed in, the server keeps only the newest
+ * write, so with the backup's old dates the account's later edits would win and the restore would
+ * be silently undone at the next sync.
+ */
+export function restoreBackup(incoming: Partial<DataState>, settings: Settings | null, now = new Date().toISOString()): { data: DataState; settings: Settings | null } {
+  const data = { ...EMPTY_DATA }
+  for (const name of COLLECTION_NAMES) {
+    ;(data as Record<string, Entity[]>)[name] = ((incoming[name] ?? []) as Entity[]).map((x) => ({ ...x, updatedAt: now }))
+  }
+  return { data, settings: settings ? { ...DEFAULT_SETTINGS, ...settings, onboarded: true, updatedAt: now } : null }
+}
+
 export class MissingRateError extends Error {
   constructor() {
     super('Sem cotação disponível para converter esta moeda.')
@@ -167,7 +181,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
       const next = { ...settingsRef.current, ...patch, updatedAt: new Date().toISOString() }
       settingsRef.current = next
       setSettings(next)
-      await repo.saveSettings(next)
+      await repo.saveSettings(next, Object.keys(patch) as (keyof Settings)[])
     },
     [repo],
   )
@@ -303,10 +317,12 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   const importData = useCallback(
     async (incoming: Partial<DataState>, incomingSettings: Settings | null, mode: 'merge' | 'replace') => {
       let nextData: DataState
-      let nextSettings: Settings
+      /** Only a restore with settings in the file writes settings; a merge keeps the account's as they are. */
+      let writeSettings: Settings | null = null
       if (mode === 'replace') {
-        nextData = { ...EMPTY_DATA, ...incoming }
-        nextSettings = { ...DEFAULT_SETTINGS, ...(incomingSettings ?? settingsRef.current), onboarded: true }
+        const restored = restoreBackup(incoming, incomingSettings)
+        nextData = restored.data
+        writeSettings = restored.settings
       } else {
         nextData = { ...dataRef.current }
         for (const name of COLLECTION_NAMES) {
@@ -317,13 +333,16 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
           }
           ;(nextData as Record<string, Entity[]>)[name] = [...byId.values()]
         }
-        nextSettings = settingsRef.current
       }
-      await repo.bulkWrite(nextData, nextSettings, mode === 'replace')
+      await repo.bulkWrite(nextData, writeSettings, mode === 'replace')
+      dataRef.current = nextData
       setData(nextData)
-      setSettings(nextSettings)
+      if (writeSettings) {
+        settingsRef.current = writeSettings
+        setSettings(writeSettings)
+      } else if (mode === 'replace' && !settingsRef.current.onboarded) await updateSettings({ onboarded: true })
     },
-    [repo],
+    [repo, updateSettings],
   )
 
   const balance = useMemo(() => balanceOf(settings, data.transactions), [settings, data.transactions])

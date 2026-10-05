@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  databaseHandle,
   done,
   META,
-  openDatabase,
   OUTBOX,
   readAll,
   readMeta,
@@ -133,6 +133,43 @@ export function createSupabaseRemote(client: SupabaseClient, uid: string): Remot
   }
 }
 
+/** Settings this device changed and has not sent yet. Missing while dirty = all of them. */
+const DIRTY_KEYS = 'settingsDirtyKeys'
+
+/** Marks the settings as waiting to be sent, adding `changed` to the keys already waiting (null = everything). */
+function markSettingsDirty(store: IDBObjectStore, changed: readonly string[] | null) {
+  const wasDirty = store.get('settingsDirty')
+  const prevKeys = store.get(DIRTY_KEYS)
+  prevKeys.onsuccess = () => {
+    const was = wasDirty.result === true
+    const prev = prevKeys.result as string[] | undefined
+    store.put(true, 'settingsDirty')
+    // Already dirty without a key list (older app version, restore) stays "everything".
+    if (changed === null || (was && !prev)) store.delete(DIRTY_KEYS)
+    else store.put([...new Set([...(was ? prev! : []), ...changed])], DIRTY_KEYS)
+  }
+}
+
+/**
+ * What goes to the server: the account's current settings with only the keys this device changed
+ * on top. A device that was closed for a while (old settings in memory) can no longer erase what
+ * another device changed meanwhile — the vault, sections, tab bar... The stamp is always newer
+ * than the server's so the write is accepted.
+ */
+export function mergeSettings(local: Settings, keys: readonly string[] | null, server: { data: Settings; updatedAt: string } | null): Settings {
+  const stamp = local.updatedAt ?? new Date().toISOString()
+  if (!keys || !server) return { ...local, updatedAt: stamp }
+  const merged: Record<string, unknown> = { ...server.data }
+  const mine = local as unknown as Record<string, unknown>
+  for (const k of keys) {
+    if (k === 'updatedAt') continue
+    if (k in mine && mine[k] !== undefined) merged[k] = mine[k]
+    else delete merged[k]
+  }
+  const updatedAt = stamp > server.updatedAt ? stamp : new Date(new Date(server.updatedAt).getTime() + 1).toISOString()
+  return { ...merged, updatedAt } as unknown as Settings
+}
+
 function hasPlainPassword(collection: CollectionName, item: Entity): boolean {
   return collection === 'accounts' && Boolean((item as unknown as { password?: string }).password)
 }
@@ -148,13 +185,15 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   pendingCount(): Promise<number>
 } {
   const autoSync = opts.autoSync ?? true
-  const dbPromise = openDatabase(cacheDbName(uid))
+  const database = databaseHandle(cacheDbName(uid))
   const listeners = new Set<(e: RepoEvent) => void>()
   let status: SyncStatus = { state: 'idle', pending: 0, lastSyncAt: null, error: null }
   let flushTimer: ReturnType<typeof setTimeout> | undefined
   let running: Promise<void> | null = null
   /** Last flush hit collections the server doesn't accept yet (migration pending). */
   let outdated = false
+  /** The last flush merged settings from another device into this one (the screen must reload them). */
+  let settingsMerged = false
   let disposed = false
 
   const emit = (e: RepoEvent) => listeners.forEach((l) => l(e))
@@ -164,12 +203,12 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   }
 
   async function outbox(): Promise<OutboxEntry[]> {
-    const db = await dbPromise
+    const db = await database.get()
     return (await request(db.transaction(OUTBOX, 'readonly').objectStore(OUTBOX).getAll())) as OutboxEntry[]
   }
 
   async function pendingCount() {
-    const n = (await outbox()).length + ((await readMeta<boolean>(await dbPromise, 'settingsDirty')) ? 1 : 0)
+    const n = (await outbox()).length + ((await readMeta<boolean>(await database.get(), 'settingsDirty')) ? 1 : 0)
     return n
   }
 
@@ -178,7 +217,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   }
 
   async function enqueue(collection: CollectionName, id: string, data: Entity | null) {
-    const db = await dbPromise
+    const db = await database.get()
     const tx = db.transaction([collection, OUTBOX], 'readwrite')
     if (data) tx.objectStore(collection).put(data)
     else tx.objectStore(collection).delete(id)
@@ -202,7 +241,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
 
   /** Pushes queued changes. Entries edited again while sending stay queued. */
   async function flush() {
-    const db = await dbPromise
+    const db = await database.get()
     // Versions the server refused for good wait until the record changes again.
     const entries = (await outbox()).filter((e) => !e.rejected)
     const rejected: string[] = []
@@ -267,16 +306,30 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
     if (await readMeta<boolean>(db, 'settingsDirty')) {
       const { settings } = await readAll(db)
       if (settings) {
-        await remote.saveSettings(settings, settings.updatedAt ?? new Date().toISOString())
-        const latest = (await readAll(db)).settings
-        if (latest?.updatedAt === settings.updatedAt) await writeMeta(db, 'settingsDirty', false)
+        const keys = (await readMeta<string[]>(db, DIRTY_KEYS)) ?? null
+        const merged = mergeSettings(settings, keys, keys ? await remote.loadSettings() : null)
+        await remote.saveSettings(merged, merged.updatedAt!)
+        // Keeps the merged copy unless the settings changed again while sending (then they go next time).
+        const tx = db.transaction(META, 'readwrite')
+        const store = tx.objectStore(META)
+        const latest = store.get(SETTINGS_KEY)
+        let applied = false
+        latest.onsuccess = () => {
+          if ((latest.result as Settings | undefined)?.updatedAt !== settings.updatedAt) return
+          store.put(merged, SETTINGS_KEY)
+          store.put(false, 'settingsDirty')
+          store.delete(DIRTY_KEYS)
+          applied = true
+        }
+        await done(tx)
+        if (applied && JSON.stringify(merged) !== JSON.stringify(settings)) settingsMerged = true
       }
     }
   }
 
   /** Applies remote changes. Returns true when anything changed locally. */
   async function pull(): Promise<boolean> {
-    const db = await dbPromise
+    const db = await database.get()
     let changed = false
     let cursor = (await readMeta<string>(db, 'cursor')) ?? null
     // The 5 s overlap (clock skew, slow commits) is applied once, at the start of this pull.
@@ -323,12 +376,20 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
 
     if (!(await readMeta<boolean>(db, 'settingsDirty'))) {
       const remoteSettings = await remote.loadSettings()
-      const local = (await readAll(db)).settings
-      if (remoteSettings && (!local || (local.updatedAt ?? EPOCH) < remoteSettings.updatedAt)) {
+      if (remoteSettings) {
+        // Checked again in the writing transaction: a setting changed here during the download wins
+        // (it is merged and sent by the next flush).
         const tx = db.transaction(META, 'readwrite')
-        tx.objectStore(META).put({ ...remoteSettings.data, updatedAt: remoteSettings.updatedAt }, SETTINGS_KEY)
+        const store = tx.objectStore(META)
+        const dirty = store.get('settingsDirty')
+        const local = store.get(SETTINGS_KEY)
+        local.onsuccess = () => {
+          const current = local.result as Settings | undefined
+          if (dirty.result === true || (current && (current.updatedAt ?? EPOCH) >= remoteSettings.updatedAt)) return
+          store.put({ ...remoteSettings.data, updatedAt: remoteSettings.updatedAt }, SETTINGS_KEY)
+          changed = true
+        }
         await done(tx)
-        changed = true
       }
     }
     await writeMeta(db, 'syncedOnce', true)
@@ -344,8 +405,9 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       }
       setStatus({ state: 'syncing' })
       try {
+        settingsMerged = false
         await flush()
-        const changed = await pull()
+        const changed = (await pull()) || settingsMerged
         const pending = await pendingCount()
         const refusedNow = await rejectedCount()
         if (refusedNow) setStatus({ state: 'error', error: `${refusedNow} ${refusedNow === 1 ? 'item não pôde ser enviado' : 'itens não puderam ser enviados'} ao servidor. ${refusedNow === 1 ? 'Ele continua' : 'Eles continuam'} salvo${refusedNow === 1 ? '' : 's'} neste aparelho; o restante sincronizou normalmente.`, lastSyncAt: new Date().toISOString(), pending, rejected: refusedNow })
@@ -373,7 +435,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
 
   return {
     async load() {
-      const db = await dbPromise
+      const db = await database.get()
       // First time on this device: download everything before showing anything,
       // so an existing account is never mistaken for a new one.
       if (!(await readMeta<boolean>(db, 'syncedOnce'))) {
@@ -395,18 +457,18 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       await enqueue(collection, id, null)
     },
 
-    async saveSettings(settings) {
-      const db = await dbPromise
+    async saveSettings(settings, changed) {
+      const db = await database.get()
       const stamped = { ...settings, updatedAt: settings.updatedAt ?? new Date().toISOString() }
       const tx = db.transaction(META, 'readwrite')
       tx.objectStore(META).put(stamped, SETTINGS_KEY)
-      tx.objectStore(META).put(true, 'settingsDirty')
+      markSettingsDirty(tx.objectStore(META), changed ?? null)
       await done(tx)
       scheduleFlush()
     },
 
     async bulkWrite(data, settings, replace) {
-      const db = await dbPromise
+      const db = await database.get()
       const current = await readAll(db)
       const now = new Date().toISOString()
       for (const name of COLLECTION_NAMES) {
@@ -432,7 +494,8 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       }
       if (settings) {
         tx.objectStore(META).put({ ...settings, updatedAt: settings.updatedAt ?? now }, SETTINGS_KEY)
-        tx.objectStore(META).put(true, 'settingsDirty')
+        // A restore brings a whole set of settings: all of it is this device's choice.
+        markSettingsDirty(tx.objectStore(META), null)
       }
       await done(tx)
       scheduleFlush()
@@ -457,7 +520,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         window.removeEventListener('online', onOnline)
         document.removeEventListener('visibilitychange', onVisible)
       }
-      void dbPromise.then((db) => db.close())
+      database.close()
     },
   }
 }
