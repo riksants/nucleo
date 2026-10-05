@@ -18,7 +18,7 @@ export function forecastText(f: Forecast, currency: Currency): { title: string; 
     return { title: 'Ainda não há dados suficientes para uma previsão confiável.', detail: `A estimativa aparece com pelo menos ${missing.join(', ')}.` }
   }
   const parts = [`ritmo de gastos variáveis de cerca de ${money(f.dailyVariable, currency)} por dia nos ${plural(f.daysLeft, 'dia restante', 'dias restantes')}`]
-  if (f.upcomingCount) parts.push(`${plural(f.upcomingCount, 'cobrança prevista', 'cobranças previstas')} de ferramentas (${money(f.upcoming, currency)})`)
+  if (f.upcomingCount) parts.push(`${plural(f.upcomingCount, 'cobrança prevista', 'cobranças previstas')} de assinaturas (${money(f.upcoming, currency)})`)
   const other = f.upcomingOther.length ? ` ${plural(f.upcomingOther.length, 'cobrança em outra moeda não entrou', 'cobranças em outras moedas não entraram')} na conta.` : ''
   return {
     title: `Se o ritmo atual continuar, sua estimativa de saldo no fim do mês é de aproximadamente ${money(f.estimate, currency)}.`,

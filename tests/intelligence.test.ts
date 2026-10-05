@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { buildAgenda } from '../src/core/agenda'
 import { runIntent } from '../src/core/assistant/actions'
-import { parseIntent, readIntent } from '../src/core/assistant/intents'
+import { parseIntent, readDate, readIntent } from '../src/core/assistant/intents'
 import { isDestructive } from '../src/core/assistant/proposal'
 import { computeInsights, markInsight, pruneInsightState, visibleInsights } from '../src/core/insights'
 import { reorganizeDay, reorganizeWeek, replanItem } from '../src/core/reorganize'
@@ -176,6 +176,21 @@ describe('sugestões inteligentes', () => {
 
 describe('Assistente', () => {
   const ctx = (d: DataState) => ({ data: d, settings, now: NOW })
+
+  it('compromisso tarde da noite termina até 23:59, nunca com duração zero', () => {
+    expect(readIntent('Tenho reunião amanhã às 23h30', TODAY)).toMatchObject({ start: '23:30', end: '23:59' })
+    expect(readIntent('Tenho reunião amanhã às 23h', TODAY)).toMatchObject({ start: '23:00', end: '23:59' })
+    expect(readIntent('Tenho reunião amanhã às 22h15', TODAY)).toMatchObject({ start: '22:15', end: '23:15' })
+  })
+
+  it('"próxima terça" dito numa terça é a da semana que vem; "terça" é hoje', () => {
+    // TODAY is a Tuesday.
+    expect(readDate('proxima terca', TODAY)?.date).toBe('2026-10-13')
+    expect(readDate('proximo sabado', TODAY)?.date).toBe('2026-10-10')
+    expect(readDate('terca', TODAY)?.date).toBe(TODAY)
+    expect(readDate('nesta terca-feira', TODAY)?.date).toBe(TODAY)
+    expect(readDate('na sexta', TODAY)?.date).toBe('2026-10-09')
+  })
 
   it('entende comandos em português e valida intenções vindas de fora', () => {
     expect(readIntent('Tenho reunião amanhã às 18h', TODAY)).toEqual({ type: 'createEvent', title: 'Reunião', date: '2026-10-07', start: '18:00', end: '19:00' })

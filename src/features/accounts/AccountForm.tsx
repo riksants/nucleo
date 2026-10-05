@@ -52,7 +52,7 @@ export function AccountForm({ open, onClose, account, onVault }: { open: boolean
       base.password = ''
     }
     await save('accounts', { ...base, secret })
-    toast(account ? 'Conta atualizada' : 'Conta adicionada')
+    toast(account ? 'Acesso atualizado' : 'Acesso adicionado')
     onClose()
   }
 
@@ -62,11 +62,11 @@ export function AccountForm({ open, onClose, account, onVault }: { open: boolean
     <FormSheet
       open={open}
       onClose={onClose}
-      title={account ? 'Editar conta' : 'Nova conta'}
+      title={account ? 'Editar acesso' : 'Novo acesso'}
       submitLabel={account ? 'Salvar' : 'Adicionar'}
       onSubmit={submit}
       size="lg"
-      onDelete={account ? () => del('accounts', account.id, 'conta', { feminine: true, after: onClose }) : undefined}
+      onDelete={account ? () => del('accounts', account.id, 'acesso', { after: onClose }) : undefined}
     >
       <FormGrid>
         <div className="half">

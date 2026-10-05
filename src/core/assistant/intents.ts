@@ -43,11 +43,13 @@ export function readDate(t: string, today: string): { date: string; match: strin
       return { date, match: m[0] }
     }
   }
-  m = t.match(/\b(?:(?:na|no|nesta|neste|proxima|proximo)\s+)?(domingo|segunda|terca|quarta|quinta|sexta|sabado)(?:-feira)?\b/)
+  m = t.match(/\b(?:(na|no|nesta|neste|proxima|proximo)\s+)?(domingo|segunda|terca|quarta|quinta|sexta|sabado)(?:-feira)?\b/)
   if (m) {
-    const target = WEEKDAYS.indexOf(m[1])
+    const target = WEEKDAYS.indexOf(m[2])
     const diff = (target - weekdayOfDate(today) + 7) % 7
-    return { date: addDaysToDate(today, diff), match: m[0] }
+    // "Próxima sexta" said on a Friday is next week's; "sexta" / "nesta sexta" is today.
+    const ahead = diff === 0 && (m[1] === 'proxima' || m[1] === 'proximo') ? 7 : diff
+    return { date: addDaysToDate(today, ahead), match: m[0] }
   }
   m = t.match(/\bdia (\d{1,2})\b/)
   if (m) {
@@ -155,8 +157,11 @@ export function readIntent(text: string, today: string): Intent {
         .replace(/\s+/g, ' ')
         .trim()
       title = original(src, t, title) || title
-      const end = `${pad(Math.min(23, Number(tm.time.slice(0, 2)) + 1))}:${tm.time.slice(3)}`
-      return { type: 'createEvent', title: cap(title), date: d.date, start: tm.time, end }
+      // One hour by default, never past midnight (23:30 → 23:59); at 23:59 there is no end time.
+      const startMin = Number(tm.time.slice(0, 2)) * 60 + Number(tm.time.slice(3))
+      const endMin = Math.min(startMin + 60, 23 * 60 + 59)
+      const end = endMin > startMin ? `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}` : undefined
+      return { type: 'createEvent', title: cap(title), date: d.date, start: tm.time, ...(end ? { end } : {}) }
     }
   }
 

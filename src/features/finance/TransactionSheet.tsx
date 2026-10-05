@@ -229,7 +229,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
             ref={reasonRef}
             enterKeyHint="done"
             autoComplete="off"
-            placeholder={kind === 'in' ? 'Ex.: Pagamento de cliente' : 'Ex.: Assinatura de ferramenta'}
+            placeholder={kind === 'in' ? 'Ex.: Pagamento de cliente' : 'Ex.: Assinatura do Spotify'}
             value={draft.reason}
             maxLength={120}
             onChange={(e) => set('reason', e.target.value)}

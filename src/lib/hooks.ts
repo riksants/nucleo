@@ -51,3 +51,22 @@ export function useScrollLock(active: boolean) {
     }
   }, [active])
 }
+
+/**
+ * The current time, refreshed every minute and when the app comes back to the foreground — for
+ * text that depends on the hour or the day ("Bom dia" → "Boa tarde", the weekday, the month).
+ */
+export function useNow(everyMs = 60_000): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const tick = () => setNow(new Date())
+    const timer = window.setInterval(tick, everyMs)
+    const onVisible = () => document.visibilityState === 'visible' && tick()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [everyMs])
+  return now
+}

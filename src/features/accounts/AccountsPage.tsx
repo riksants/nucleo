@@ -129,7 +129,7 @@ export function AccountsPage() {
       />
       <VaultBar onCreate={() => setVaultSheet('create')} onUnlock={() => setVaultSheet('unlock')} />
       {data.accounts.length === 0 ? (
-        <EmptyState icon={<KeyRound size={22} />} title="Nenhuma conta ainda" text="Anote e-mails, usuários e senhas dos serviços que você usa." action="Adicionar conta" onAction={() => form.show()} />
+        <EmptyState icon={<KeyRound size={22} />} title="Nenhum acesso guardado ainda" text="Anote e-mails, usuários e senhas dos serviços que você usa." action="Adicionar acesso" onAction={() => form.show()} />
       ) : (
         <>
           <div className="mb-5">

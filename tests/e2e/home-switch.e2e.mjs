@@ -14,7 +14,8 @@ const card = `[...document.querySelectorAll('main button')].find((x) => /precisa
 try {
   await b.mobile()
   await b.send('Page.enable')
-  await seedExistingUser(b, { transactions: [{ id: 't1', type: 'out', amount: 900, currency: 'BRL', baseAmount: -900, reason: 'Café', createdAt: ago(0), updatedAt: ago(0) }] }, { baseCurrency: 'BRL', modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL })
+  // An overdue task guarantees a suggestion on any day of the week (the card used to rely on Sunday's "preparar a próxima semana").
+  await seedExistingUser(b, { transactions: [{ id: 't1', type: 'out', amount: 900, currency: 'BRL', baseAmount: -900, reason: 'Café', createdAt: ago(0), updatedAt: ago(0) }], tasks: [{ id: 'late', title: 'Tarefa antiga', projectId: null, dueDate: '2026-01-05', priority: 'none', status: 'todo', completedAt: null }] }, { baseCurrency: 'BRL', modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL })
   await b.send('Page.addScriptToEvaluateOnNewDocument', { source: SHIFTS + `; document.addEventListener('DOMContentLoaded', () => document.getElementById('splash')?.remove())` })
 
   // ---------- First open: the card arrives a moment later — it opens smoothly instead of jumping in

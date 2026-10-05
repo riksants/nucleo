@@ -46,7 +46,7 @@ try {
   const tabs = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
   let text = await b.text()
   r.check('sem aba nova: barra inferior igual', tabs.length === 5 && !tabs.includes('Assistente'), tabs.join(','))
-  r.check('Início mostra até 3 sugestões ("podem precisar da sua atenção") e o botão Assistente', /coisas? pode(m)? precisar da sua atenção/.test(text) && (await b.eval(`!!document.querySelector('[aria-label="Assistente"]')`)))
+  r.check('Início mostra até 3 sugestões ("podem precisar da sua atenção") e o botão Assistente', /coisas? pode(m)? precisar da sua atenção/.test(text) && (await b.eval(`[...document.querySelectorAll('main button')].some((x) => x.textContent.trim() === 'Assistente')`)))
   await b.goto(BASE + '#/today')
   await b.sleep(1200)
   r.check('Hoje tem o acesso ao Assistente', (await b.text()).includes('Assistente'))

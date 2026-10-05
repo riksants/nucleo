@@ -27,7 +27,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
   const recurring = d.billing === 'monthly' || d.billing === 'yearly'
 
   const submit = async () => {
-    if (!d.name.trim()) return 'Informe o nome da ferramenta'
+    if (!d.name.trim()) return 'Informe o nome da assinatura'
     const price = free || !d.price.trim() ? 0 : parseAmount(d.price)
     if (price === null) return 'Confira o preço'
     await save('tools', {
@@ -41,7 +41,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
       nextCharge: recurring ? d.nextCharge : '',
       status: free && d.status === 'active' ? 'free' : d.status,
     })
-    toast(tool ? 'Ferramenta atualizada' : 'Ferramenta adicionada')
+    toast(tool ? 'Assinatura atualizada' : 'Assinatura adicionada')
     onClose()
   }
 
@@ -49,11 +49,11 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
     <FormSheet
       open={open}
       onClose={onClose}
-      title={tool ? 'Editar ferramenta' : 'Nova ferramenta'}
+      title={tool ? 'Editar assinatura' : 'Nova assinatura'}
       submitLabel={tool ? 'Salvar' : 'Adicionar'}
       onSubmit={submit}
       size="lg"
-      onDelete={tool ? () => del('tools', tool.id, 'ferramenta', { feminine: true, after: onClose }) : undefined}
+      onDelete={tool ? () => del('tools', tool.id, 'assinatura', { feminine: true, after: onClose }) : undefined}
     >
       <FormGrid>
         <div className="half">

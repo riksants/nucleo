@@ -27,7 +27,7 @@ export function moneyDueOn(data: DataState, settings: Settings, date: string, no
   const out: MoneyDue[] = []
   if (on('tools')) {
     for (const t of data.tools) {
-      if (isPaidTool(t) && t.status === 'active' && t.nextCharge && nextChargeDate(t, now) === date) out.push({ key: `tool:${t.id}`, title: t.name, detail: 'Cobrança da ferramenta', cents: t.price, currency: t.currency, direction: 'pay', path: '/tools', id: t.id })
+      if (isPaidTool(t) && t.status === 'active' && t.nextCharge && nextChargeDate(t, now) === date) out.push({ key: `tool:${t.id}`, title: t.name, detail: 'Cobrança da assinatura', cents: t.price, currency: t.currency, direction: 'pay', path: '/tools', id: t.id })
     }
   }
   if (on('sales')) {

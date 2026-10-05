@@ -1,6 +1,6 @@
 import { AnimatePresence } from 'framer-motion'
 import { ListTodo, Plus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { sortOpenTasks } from '../../data/selectors'
@@ -20,6 +20,7 @@ export function TasksPage() {
   const { toast } = useFeedback()
   const [tab, setTab] = usePref<TaskStatus>('tasks.tab', 'todo')
   const [quick, setQuick] = useState('')
+  const adding = useRef(false)
   const form = useSheet<Task>()
   useOpenParam(data.tasks, form.show)
 
@@ -32,10 +33,16 @@ export function TasksPage() {
   const quickAdd = async (e: FormEvent) => {
     e.preventDefault()
     const title = quick.trim()
-    if (!title) return
-    await save('tasks', { title, projectId: null, dueDate: '', priority: 'none', status: tab === 'done' ? 'todo' : tab, completedAt: null })
-    setQuick('')
-    toast('Tarefa criada')
+    // A second Enter while the first is saving must not create the same task twice.
+    if (!title || adding.current) return
+    adding.current = true
+    try {
+      await save('tasks', { title, projectId: null, dueDate: '', priority: 'none', status: tab === 'done' ? 'todo' : tab, completedAt: null })
+      setQuick('')
+      toast('Tarefa criada')
+    } finally {
+      adding.current = false
+    }
   }
 
   return (

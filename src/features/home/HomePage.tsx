@@ -8,6 +8,7 @@ import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upco
 import { useStore } from '../../data/store'
 import type { Goal, Project, Task, Transaction } from '../../data/types'
 import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
+import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
 import { IconButton } from '../../ui/Button'
 
@@ -57,7 +58,9 @@ export function HomePage() {
   const taskSheet = useSheet<Task>()
   const goalSheet = useSheet<Goal>()
 
-  const month = totalsSince(data.transactions, periodStart('month'))
+  // Follows the clock: greeting, weekday and month update while the app stays open.
+  const today = useNow()
+  const month = totalsSince(data.transactions, periodStart('month', today))
   const show = (cents: number) => {
     const v = convert(cents, settings.baseCurrency, displayCurrency)
     return v === null ? formatMoney(cents, settings.baseCurrency) : formatMoney(v, displayCurrency)
@@ -67,8 +70,7 @@ export function HomePage() {
   const openTasks = sortOpenTasks(data.tasks.filter((t) => t.status !== 'done'))
   const activeProjects = sortByNewest(data.projects.filter((p) => ACTIVE_PROJECT_STATUSES.has(p.status)))
   const goals = sortByNewest(data.goals.filter((g) => !g.purchasedAt)).slice(0, 2)
-  const charges = upcomingCharges(data.tools, 30).slice(0, 4)
-  const today = new Date()
+  const charges = upcomingCharges(data.tools, 30, today).slice(0, 4)
   const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
 
   return (
@@ -195,7 +197,7 @@ export function HomePage() {
             {charges.length ? (
               <div className="card p-1.5">
                 {charges.map(({ tool, date }) => {
-                  const rel = relativeDays(date)
+                  const rel = relativeDays(date, today)
                   return (
                     <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
                       <span className="min-w-0 flex-1">

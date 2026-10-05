@@ -91,7 +91,7 @@ export function ToolsPage() {
         }
       />
       {data.tools.length === 0 ? (
-        <EmptyState icon={<Wrench size={22} />} title="Nenhuma ferramenta ainda" text="Registre o que você usa e paga, e veja quanto isso custa por mês." action="Adicionar ferramenta" onAction={() => form.show()} />
+        <EmptyState icon={<Wrench size={22} />} title="Nenhuma assinatura ainda" text="Registre o que você usa e paga, e veja quanto isso custa por mês." action="Adicionar assinatura" onAction={() => form.show()} />
       ) : (
         <>
           <section className="card mb-5 p-5">
