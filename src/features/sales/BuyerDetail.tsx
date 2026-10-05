@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { newId, useStore } from '../../data/store'
+import { useReceipts } from '../../data/useReceipts'
 import {
   applyGeneralPayment,
   BUYER_STATUS_LABEL,
@@ -40,7 +41,8 @@ export function BuyerDetail({
   onOpenSale(id: string): void
   onNewSale(preset: BuyerPreset): void
 }) {
-  const { save, data, repository } = useStore()
+  const { data, repository } = useStore()
+  const { saveSales } = useReceipts()
   const { toast, confirm } = useFeedback()
   const owing = buyer?.totals.filter((t) => t.remaining > 0) ?? []
   const [paying, setPaying] = useState(false)
@@ -76,7 +78,7 @@ export function BuyerDetail({
     if ('error' in result) return setError(result.error)
     setBusy(true)
     try {
-      for (const s of result.changed) await save('sales', s)
+      await saveSales(result.changed)
       void repository.syncNow?.()
       setPaying(false)
       setAmount('')
@@ -96,10 +98,10 @@ export function BuyerDetail({
     })
     if (!ok) return
     if (e.kind === 'general') {
-      for (const s of withoutGeneralPayment(data.sales, e.id)) await save('sales', s)
+      await saveSales(withoutGeneralPayment(data.sales, e.id))
     } else {
       const sale = buyer.sales.find((s) => s.id === e.parts[0].saleId)
-      if (sale) await save('sales', { ...sale, payments: sale.payments.filter((p) => p.id !== e.id) })
+      if (sale) await saveSales([{ ...sale, payments: sale.payments.filter((p) => p.id !== e.id) }])
     }
     void repository.syncNow?.()
   }

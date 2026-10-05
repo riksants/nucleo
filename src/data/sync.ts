@@ -467,6 +467,23 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
       scheduleFlush()
     },
 
+    async batch(ops) {
+      if (!ops.length) return
+      for (const o of ops) if (o.op === 'put' && hasPlainPassword(o.collection, o.item)) throw new PlainPasswordError()
+      const db = await database.get()
+      const tx = db.transaction([...new Set(ops.map((o) => o.collection)), OUTBOX], 'readwrite')
+      const now = new Date().toISOString()
+      for (const o of ops) {
+        const data = o.op === 'put' ? o.item : null
+        const id = o.op === 'put' ? o.item.id : o.id
+        if (data) tx.objectStore(o.collection).put(data)
+        else tx.objectStore(o.collection).delete(id)
+        tx.objectStore(OUTBOX).put({ key: `${o.collection}:${id}`, collection: o.collection, id, data, deleted: !data, updatedAt: data?.updatedAt ?? now } satisfies OutboxEntry)
+      }
+      await done(tx)
+      scheduleFlush()
+    },
+
     async bulkWrite(data, settings, replace) {
       const db = await database.get()
       const current = await readAll(db)

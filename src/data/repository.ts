@@ -1,6 +1,9 @@
-import { COLLECTION_NAMES, type CollectionName, type Collections, type DataState, type Settings } from './types'
+import { COLLECTION_NAMES, type CollectionName, type Collections, type DataState, type Entity, type Settings } from './types'
 
 export type RepoEvent = { type: 'data' } | { type: 'status' }
+
+/** One write of a batch: all of them are applied together, or none (used by received payments ↔ Financeiro). */
+export type BatchOp = { op: 'put'; collection: CollectionName; item: Entity } | { op: 'remove'; collection: CollectionName; id: string }
 
 export interface SyncStatus {
   state: 'idle' | 'syncing' | 'offline' | 'error'
@@ -26,6 +29,11 @@ export interface Repository {
    * Left out = the whole object is this device's choice.
    */
   saveSettings(settings: Settings, changed?: (keyof Settings)[]): Promise<void>
+  /**
+   * Several puts/removes in one device transaction: a payment and its income in Financeiro are
+   * saved together or not at all (signed in, they also enter the send queue together).
+   */
+  batch(ops: BatchOp[]): Promise<void>
   /** Writes every item in one transaction. With `replace`, existing records are cleared first. */
   bulkWrite(data: Partial<DataState>, settings: Settings | null, replace: boolean): Promise<void>
   /** Remote changes and sync status (synced repository only). */
@@ -171,6 +179,17 @@ export function createIndexedDbRepository(name: string = LOCAL_DB): Repository {
       const db = await database.get()
       const tx = db.transaction(META, 'readwrite')
       tx.objectStore(META).put(settings, SETTINGS_KEY)
+      await done(tx)
+    },
+
+    async batch(ops) {
+      if (!ops.length) return
+      const db = await database.get()
+      const tx = db.transaction([...new Set(ops.map((o) => o.collection))], 'readwrite')
+      for (const o of ops) {
+        if (o.op === 'put') tx.objectStore(o.collection).put(o.item)
+        else tx.objectStore(o.collection).delete(o.id)
+      }
       await done(tx)
     },
 

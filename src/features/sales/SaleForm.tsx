@@ -1,6 +1,8 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { belongsToSale } from '../../data/receipts'
 import { newId, useStore } from '../../data/store'
+import { useReceipts } from '../../data/useReceipts'
 import { buyers, OVERPAY, paymentProblem, personName, saleRemaining, saleStatus, SALE_STATUS_LABEL, salePaid, similarPeople, totalProblem, withoutGeneralPayment, withPayment } from '../../data/sales'
 import type { Currency, Payment, Sale } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
@@ -10,7 +12,7 @@ import { Badge, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, MoneyInput, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
-import { useDelete, useDraft } from '../../ui/formHooks'
+import { useDraft } from '../../ui/formHooks'
 import { ClientSelect } from '../shared/RelationSelect'
 
 export const STATUS_TONE = { pending: 'warn', partial: 'accent', paid: 'positive' } as const
@@ -22,9 +24,9 @@ export interface BuyerPreset {
 }
 
 export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClose(): void; sale: Sale | null; preset?: BuyerPreset | null }) {
-  const { save, remove, settings, displayCurrency, data } = useStore()
+  const { settings, displayCurrency, data } = useStore()
+  const { saveSales, removeSale, linkedCount } = useReceipts()
   const { toast, confirm } = useFeedback()
-  const del = useDelete()
   const [d, set] = useDraft(open, () => ({
     clientId: sale?.clientId ?? preset?.clientId ?? null,
     clientName: sale?.clientName ?? preset?.clientName ?? '',
@@ -61,12 +63,12 @@ export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClo
     } as Sale
     if (!sale && d.firstPayment.trim()) {
       const amount = parseAmount(d.firstPayment)
-      const p: Payment = { id: newId(), date: d.date, amount: amount ?? 0, note: 'Pago na venda' }
+      const p: Payment = { id: newId(), date: d.date, amount: amount ?? 0, note: 'Pago na venda', finance: true }
       const err = paymentProblem(next, p)
       if (err) return err
       next = withPayment(next, p)
     }
-    await save('sales', next)
+    await saveSales([next])
     toast(sale ? 'Venda atualizada' : 'Venda registrada')
     onClose()
   }
@@ -83,15 +85,15 @@ export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClo
   const exact = typed.trim() ? known.find((b) => personName(b.name) === personName(typed)) : undefined
 
   const deleteSale = async (s: Sale) => {
-    if (!s.payments.some((p) => p.generalId)) return del('sales', s.id, 'venda', { feminine: true, after: onClose })
-    const ok = await confirm({
-      title: 'Excluir venda?',
-      message: 'Parte de um pagamento geral foi aplicada nesta compra. Esse valor sai junto com a venda (o restante do pagamento geral continua nas outras compras).',
-      confirmLabel: 'Excluir',
-      danger: true,
-    })
+    const linked = linkedCount(belongsToSale(s))
+    const parts = [
+      s.payments.some((p) => p.generalId) ? 'Parte de um pagamento geral foi aplicada nesta compra. Esse valor sai junto com a venda (o restante do pagamento geral continua nas outras compras).' : '',
+      // The money was received: its incomes stay in Financeiro, only without the link.
+      linked ? `${linked === 1 ? 'A entrada do pagamento continua' : `As ${linked} entradas dos pagamentos continuam`} no Financeiro, sem vínculo com a venda.` : '',
+    ].filter(Boolean)
+    const ok = await confirm({ title: 'Excluir venda?', message: parts.join(' ') || 'Essa ação não pode ser desfeita.', confirmLabel: 'Excluir', danger: true })
     if (!ok) return
-    await remove('sales', s.id)
+    await removeSale(s)
     onClose()
     toast('Venda excluída')
   }
@@ -189,7 +191,8 @@ export function PaymentAmountError({ error, onUseRemaining }: { error: string | 
 
 /** Payment history of one sale, with add/remove. Totals always derive from this list. */
 export function SalePayments({ sale }: { sale: Sale }) {
-  const { save, data, repository } = useStore()
+  const { data, repository } = useStore()
+  const { saveSales } = useReceipts()
   const { toast, confirm } = useFeedback()
   const [adding, setAdding] = useState(false)
   const [amount, setAmount] = useState('')
@@ -200,13 +203,13 @@ export function SalePayments({ sale }: { sale: Sale }) {
 
   const add = async () => {
     if (busy) return
-    const p: Payment = { id: newId(), date, amount: parseAmount(amount) ?? 0, note: '' }
+    const p: Payment = { id: newId(), date, amount: parseAmount(amount) ?? 0, note: '', finance: true }
     const err = paymentProblem(sale, p)
     setError(err)
     if (err) return
     setBusy(true)
     try {
-      await save('sales', withPayment(sale, p))
+      await saveSales([withPayment(sale, p)])
       void repository.syncNow?.()
       setAmount('')
       setAdding(false)
@@ -228,13 +231,13 @@ export function SalePayments({ sale }: { sale: Sale }) {
         danger: true,
       })
       if (!ok) return
-      for (const changed of withoutGeneralPayment(data.sales, p.generalId)) await save('sales', changed)
+      await saveSales(withoutGeneralPayment(data.sales, p.generalId))
       void repository.syncNow?.()
       return
     }
     const ok = await confirm({ title: 'Remover pagamento?', message: `${formatMoney(p.amount, sale.currency)} de ${formatDateValue(p.date).toLowerCase()}`, confirmLabel: 'Remover', danger: true })
     if (!ok) return
-    await save('sales', { ...sale, payments: sale.payments.filter((x) => x.id !== p.id) })
+    await saveSales([{ ...sale, payments: sale.payments.filter((x) => x.id !== p.id) }])
     void repository.syncNow?.()
   }
 

@@ -6,6 +6,7 @@ import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
 import { DATABASE_BLOCKED } from './data/repository'
 import { useStore } from './data/store'
+import { useReceiptReconciler } from './data/useReceipts'
 import { AccountPage } from './features/account/AccountPage'
 import { MigrationOffer, useMigrationCandidate } from './features/account/MigrationOffer'
 import { useSession } from './features/account/session'
@@ -197,6 +198,8 @@ export function App() {
   useMorningAutoOpen()
   useWeekCloser()
   usePreloadSections()
+  // Payments saved without a rate get their income in Financeiro once the rate exists.
+  useReceiptReconciler()
 
   if (loadError) {
     return (

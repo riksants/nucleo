@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
-import { CalendarClock } from 'lucide-react'
+import { CalendarClock, Plus } from 'lucide-react'
 import { optionOf, PROJECT_KIND, PROJECT_STATUS } from '../../data/labels'
+import { projectReceived } from '../../data/receipts'
 import { projectOutstanding } from '../../data/selectors'
 import type { Project } from '../../data/types'
 import { formatDateValue, relativeDays } from '../../lib/dates'
@@ -21,53 +22,64 @@ export function DueLabel({ date, done }: { date: string; done?: boolean }) {
   )
 }
 
-export function ProjectCard({ project, onOpen }: { project: Project; onOpen(p: Project): void }) {
+export function ProjectCard({ project, onOpen, onReceive }: { project: Project; onOpen(p: Project): void; onReceive?(p: Project): void }) {
   const names = useNames()
   const status = optionOf(PROJECT_STATUS, project.status)
   const client = names.client(project.clientId)
   const outstanding = projectOutstanding(project)
+  const received = projectReceived(project)
   const done = project.status === 'done'
+  // Receiving is one tap from the card while something is missing (also for a finished project).
+  const canReceive = Boolean(onReceive) && project.charged > 0 && outstanding > 0
 
   return (
-    <motion.button
-      layout="position"
-      type="button"
-      onClick={() => onOpen(project)}
-      className="card press block w-full p-5 text-left hover:border-line-strong"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-[17px] font-semibold tracking-tight">{project.name}</h3>
-          <p className="mt-0.5 truncate text-sm text-soft">
-            {optionOf(PROJECT_KIND, project.kind).label}
-            {client && ` · ${client}`}
-          </p>
-        </div>
-        <Badge tone={status.tone}>{status.label}</Badge>
-      </div>
-
-      {project.charged > 0 && (
-        <div className="mt-4">
-          <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
-            <span className="text-soft">
-              Recebido <span className="num font-medium text-ink">{formatMoney(project.received, project.currency)}</span>
-            </span>
-            <span className="num text-faint">de {formatMoney(project.charged, project.currency)}</span>
+    <motion.div layout="position" className="card overflow-hidden hover:border-line-strong">
+      <button type="button" onClick={() => onOpen(project)} className="press block w-full p-5 text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-[17px] font-semibold tracking-tight">{project.name}</h3>
+            <p className="mt-0.5 truncate text-sm text-soft">
+              {optionOf(PROJECT_KIND, project.kind).label}
+              {client && ` · ${client}`}
+            </p>
           </div>
-          <Progress value={(project.received / project.charged) * 100} tone={outstanding === 0 ? 'positive' : 'accent'} />
+          <Badge tone={status.tone}>{status.label}</Badge>
         </div>
+  
+        {project.charged > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
+              <span className="text-soft">
+                Recebido <span className="num font-medium text-ink">{formatMoney(received, project.currency)}</span>
+              </span>
+              <span className="num text-faint">de {formatMoney(project.charged, project.currency)}</span>
+            </div>
+            <Progress value={(received / project.charged) * 100} tone={outstanding === 0 ? 'positive' : 'accent'} />
+          </div>
+        )}
+  
+        {(project.dueDate || done || outstanding > 0) && (
+          <div className="mt-4 flex items-center justify-between gap-2">
+            {done && project.endDate ? (
+              <span className="text-[13px] text-faint">Concluído {formatDateValue(project.endDate).toLowerCase()}</span>
+            ) : (
+              <DueLabel date={project.dueDate} />
+            )}
+            {outstanding > 0 && <span className="num text-[13px] font-medium text-warn">Falta {formatMoney(outstanding, project.currency)}</span>}
+          </div>
+        )}
+        {project.charged > 0 && outstanding === 0 && received > 0 && <p className="mt-3 text-right text-[13px] font-medium text-income">Quitado</p>}
+      </button>
+      {canReceive && (
+        <button
+          type="button"
+          onClick={() => onReceive!(project)}
+          className="tap flex h-12 w-full items-center justify-center gap-1.5 border-t border-line text-[15px] font-medium text-accent-hi hover:text-ink"
+        >
+          <Plus size={17} />
+          Registrar pagamento
+        </button>
       )}
-
-      {(project.dueDate || done || outstanding > 0) && (
-        <div className="mt-4 flex items-center justify-between gap-2">
-          {done && project.endDate ? (
-            <span className="text-[13px] text-faint">Concluído {formatDateValue(project.endDate).toLowerCase()}</span>
-          ) : (
-            <DueLabel date={project.dueDate} />
-          )}
-          {outstanding > 0 && <span className="num text-[13px] font-medium text-warn">Falta {formatMoney(outstanding, project.currency)}</span>}
-        </div>
-      )}
-    </motion.button>
+    </motion.div>
   )
 }

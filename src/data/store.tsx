@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { readPref, writePref } from '../lib/prefs'
 import { effectiveRates, fetchRates, makeConverter, RATES_MAX_AGE_MS, type Converter } from '../lib/rates'
-import { createIndexedDbRepository, type Repository, type SyncStatus } from './repository'
+import { createIndexedDbRepository, type BatchOp, type Repository, type SyncStatus } from './repository'
 import { balanceOf } from './selectors'
 import {
   COLLECTION_NAMES,
@@ -104,6 +104,8 @@ interface Store {
    */
   save<K extends CollectionName>(collection: K, draft: Draft<Collections[K]>, opts?: SaveOptions): Promise<Collections[K]>
   remove(collection: CollectionName, id: string): Promise<void>
+  /** Several saves/removals applied together (on screen and on the device), e.g. a payment and its income. */
+  commit(ops: BatchOp[]): Promise<void>
   addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   adjustBalance(target: Cents): Promise<Transaction | null>
@@ -250,6 +252,33 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
     [repo],
   )
 
+  const commit = useCallback(
+    async (ops: BatchOp[]) => {
+      if (!ops.length) return
+      const now = new Date().toISOString()
+      // Same stamping as save(): a normal change clears the Assistant mark.
+      const stamped: BatchOp[] = ops.map((o) => {
+        if (o.op !== 'put') return o
+        const { changedBy: _mark, ...rest } = o.item
+        void _mark
+        return { ...o, item: { ...rest, createdAt: rest.createdAt || now, updatedAt: now } }
+      })
+      setData((prev) => {
+        const next = { ...prev } as Record<CollectionName, Entity[]>
+        for (const o of stamped) {
+          const list = next[o.collection]
+          if (o.op === 'remove') next[o.collection] = list.filter((x) => x.id !== o.id)
+          else next[o.collection] = list.some((x) => x.id === o.item.id) ? list.map((x) => (x.id === o.item.id ? o.item : x)) : [o.item, ...list]
+        }
+        dataRef.current = next as unknown as DataState
+        return next as unknown as DataState
+      })
+      if (repo.batch) await repo.batch(stamped)
+      else for (const o of stamped) await (o.op === 'put' ? repo.put(o.collection, o.item as never) : repo.remove(o.collection, o.id))
+    },
+    [repo],
+  )
+
   const toBase = useCallback(
     (amount: Cents, currency: Currency) => {
       const value = convert(amount, currency, settingsRef.current.baseCurrency)
@@ -363,6 +392,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
     setDisplayCurrency,
     save,
     remove,
+    commit,
     addTransaction,
     updateTransaction,
     adjustBalance,

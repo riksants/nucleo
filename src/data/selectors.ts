@@ -39,8 +39,10 @@ export function goalProgress(goal: Goal, balanceBase: Cents, base: Currency, con
   return { balance, missing, percent, reached: missing === 0 }
 }
 
+/** Still to receive: value − (old "Recebido" + payments). Same rule as data/receipts.projectRemaining. */
 export function projectOutstanding(p: Project): Cents {
-  return Math.max(p.charged - p.received, 0)
+  const paid = p.received + (p.payments ?? []).reduce((sum, x) => sum + x.amount, 0)
+  return Math.max(p.charged - paid, 0)
 }
 
 export const ACTIVE_PROJECT_STATUSES = new Set<Project['status']>(['notStarted', 'inProgress', 'waitingClient', 'review'])

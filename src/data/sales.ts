@@ -221,7 +221,8 @@ export function applyGeneralPayment(
     if (left <= 0) break
     const piece = Math.min(saleRemaining(s), left)
     if (piece <= 0) continue
-    changed.push(withPayment(s, { id: newPaymentId(), date: input.date, amount: piece, note: input.note, generalId: input.generalId }))
+    // finance: the general payment becomes one income in Financeiro (data/receipts.ts).
+    changed.push(withPayment(s, { id: newPaymentId(), date: input.date, amount: piece, note: input.note, generalId: input.generalId, finance: true }))
     left -= piece
   }
   return { changed }

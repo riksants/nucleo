@@ -1,4 +1,7 @@
-import { Trash2 } from 'lucide-react'
+import { ArrowUpRight, Trash2 } from 'lucide-react'
+import { navigate } from '../../app/router'
+import { allReceipts } from '../../data/receipts'
+import { formatDateTime } from '../../lib/dates'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { MissingRateError, useStore } from '../../data/store'
 import { sortByNewest } from '../../data/selectors'
@@ -117,6 +120,44 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const confirmLabel = editing ? 'Salvar alterações' : cents ? `${verb} ${formatMoney(cents, draft.currency)}` : 'Confirmar'
   const symbol = currencyInfo(draft.currency).symbol
 
+  // An income created by a received payment is changed where the payment lives (project/sale),
+  // so the two never disagree. If that payment no longer exists, it is a normal movement again.
+  const receipt = editing?.source ? allReceipts(data).find((r) => r.txId === editing.id) : undefined
+  if (editing && receipt) {
+    const from = receipt.source.kind === 'project' ? 'projeto' : 'venda'
+    return (
+      <Sheet
+        open={open}
+        onClose={onClose}
+        title="Recebimento"
+        footer={
+          <Button
+            size="lg"
+            block
+            variant="secondary"
+            icon={<ArrowUpRight size={18} />}
+            onClick={() => {
+              onClose()
+              navigate(receipt.open.path, { open: receipt.open.id })
+            }}
+          >
+            {receipt.source.kind === 'project' ? 'Abrir projeto' : 'Abrir venda'}
+          </Button>
+        }
+      >
+        <div className="space-y-3 pt-1">
+          <p className="num text-[28px] font-semibold text-income">+ {formatMoney(editing.amount, editing.currency)}</p>
+          <p className="text-[15px]">{editing.reason}</p>
+          <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
+          <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">
+            Esta entrada veio de um pagamento registrado {receipt.source.kind === 'project' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — o Financeiro acompanha.
+          </p>
+        </div>
+      </Sheet>
+    )
+  }
+  const orphan = Boolean(editing?.source)
+
   return (
     <Sheet
       open={open}
@@ -136,6 +177,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
       }
     >
       <form onSubmit={submit} noValidate className="space-y-6 pt-2">
+        {orphan && <p className="rounded-2xl bg-raised p-4 text-[14px] leading-relaxed text-soft">Esta entrada veio de um pagamento que não existe mais (talvez excluído em outro aparelho). Ela pode ser editada ou excluída normalmente.</p>}
         <div>
           <label htmlFor="tx-amount" className="mb-2 block text-[13px] font-medium tracking-wide text-soft uppercase">
             Valor

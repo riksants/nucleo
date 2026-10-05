@@ -13,6 +13,7 @@ import { useOpenParam } from '../useOpenParam'
 import { ProjectCard } from './ProjectCard'
 import { ProjectDetail } from './ProjectDetail'
 import { ProjectForm } from './ProjectForm'
+import { ProjectPaymentSheet } from './ProjectPaymentSheet'
 
 type Filter = 'active' | 'idea' | 'paused' | 'done' | 'all'
 
@@ -29,6 +30,7 @@ export function ProjectsPage() {
   const [filter, setFilter] = usePref<Filter>('projects.filter', 'active')
   const detail = useSheet<Project>()
   const form = useSheet<Project>()
+  const receive = useSheet<Project>()
   useOpenParam(data.projects, detail.show)
 
   const test = FILTERS.find((f) => f.value === filter)?.test ?? (() => true)
@@ -84,7 +86,7 @@ export function ProjectsPage() {
           {list.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {list.map((p) => (
-                <ProjectCard key={p.id} project={p} onOpen={detail.show} />
+                <ProjectCard key={p.id} project={p} onOpen={detail.show} onReceive={receive.show} />
               ))}
             </div>
           ) : (
@@ -95,6 +97,7 @@ export function ProjectsPage() {
 
       <ProjectDetail project={detail.item} open={detail.open} onClose={detail.close} onEdit={edit} />
       <ProjectForm project={form.item} open={form.open} onClose={form.close} />
+      <ProjectPaymentSheet project={receive.item ? (data.projects.find((p) => p.id === receive.item!.id) ?? receive.item) : null} open={receive.open} onClose={receive.close} />
     </>
   )
 }

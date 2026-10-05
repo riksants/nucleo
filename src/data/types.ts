@@ -31,6 +31,23 @@ export interface Transaction extends Entity {
   category?: string
   /** Expenses only: marked by the person as an unnecessary expense. Never set automatically. */
   unnecessary?: boolean
+  /**
+   * Set on the income created automatically by a received payment (project or sale). The id of
+   * such a movement is fixed and derived from the payment (core: data/receipts.ts), so the same
+   * payment can never become two movements. Removed when the project/sale is deleted (the money
+   * stays in Financeiro, no longer linked).
+   */
+  source?: ReceiptSource
+}
+
+/** Where an automatic income came from. */
+export interface ReceiptSource {
+  /** project: one project payment · sale: one payment of a sale · saleGeneral: a "pagamento geral" (all its pieces). */
+  kind: 'project' | 'sale' | 'saleGeneral'
+  /** The project or sale id (for saleGeneral: the sale of its first piece). */
+  parentId: string
+  /** The payment id (for saleGeneral: the general payment id). */
+  paymentId: string
 }
 
 export interface Goal extends Entity {
@@ -66,10 +83,29 @@ export interface Project extends Entity {
   dueDate: string
   endDate: string
   charged: Cents
+  /**
+   * Amount received before the payment history existed (typed by hand in the old form). It is not
+   * in Financeiro unless the person launches it ("Lançar no Financeiro agora" turns it into a payment).
+   * Total received = this + the payments.
+   */
   received: Cents
   currency: Currency
   link: string
   notes: string
+  /** Each payment received. Every one has its own income in Financeiro (same id base). */
+  payments?: ProjectPayment[]
+  /** The person said the old "received" amount is already in Financeiro: nothing is created for it. */
+  legacyReceived?: 'inFinance'
+}
+
+export interface ProjectPayment {
+  id: string
+  /** "YYYY-MM-DD", the day the money arrived. */
+  date: string
+  amount: Cents
+  /** Always the project's currency. */
+  currency: Currency
+  note: string
 }
 
 export type TaskStatus = 'todo' | 'doing' | 'done'
@@ -223,6 +259,11 @@ export interface Payment {
    * app across their oldest open purchases. Absent = paid on this sale directly.
    */
   generalId?: string
+  /**
+   * Payments recorded since the Financeiro integration: their money is (or will be, when there is a
+   * rate) an income in Financeiro. Older payments don't have it and never create one by themselves.
+   */
+  finance?: true
 }
 
 export interface Sale extends Entity {

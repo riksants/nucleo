@@ -2,6 +2,7 @@ import { Mail, MessageCircle, Pencil, Phone } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigate } from '../../app/router'
 import { CLIENT_STATUS, optionOf, PROJECT_STATUS } from '../../data/labels'
+import { projectReceived } from '../../data/receipts'
 import { projectOutstanding, sumIn } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Client } from '../../data/types'
@@ -30,7 +31,7 @@ export function ClientDetail({ client, open, onClose, onEdit }: { client: Client
   const projectIds = new Set(projects.map((p) => p.id))
   const openTasks = data.tasks.filter((t) => t.projectId && projectIds.has(t.projectId) && t.status !== 'done')
   const accounts = data.accounts.filter((a) => a.clientId === current.id)
-  const received = sumIn(projects.map((p) => ({ cents: p.received, currency: p.currency })), displayCurrency, convert)
+  const received = sumIn(projects.map((p) => ({ cents: projectReceived(p), currency: p.currency })), displayCurrency, convert)
   const outstanding = sumIn(projects.map((p) => ({ cents: projectOutstanding(p), currency: p.currency })), displayCurrency, convert)
   const phone = current.phone.replace(/[^\d+]/g, '')
 
