@@ -8,39 +8,40 @@
 /*
  * Two themes, one language: dark (default values below) and light (:root[data-theme='light']).
  * index.html sets data-theme before the first paint (device setting, or the choice in Configurações).
- * - accent: the fill (lime) in both themes; text on it uses on-accent.
- * - accent-hi: accent as TEXT/lines — light lime on dark, deep green on light (lime text is unreadable on white).
+ * - accent: the fill (strong purple) in both themes; text on it uses on-accent (white).
+ * - accent-hi: accent as TEXT/lines — light lavender on dark, deep purple on light.
  * - tint: the color of hover/press overlays and soft fills — white on dark, ink on light.
  */
 @theme {
   --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --color-bg: #0b100d;
-  --color-surface: #121814;
-  --color-raised: #18201b;
-  --color-elevated: #1e2722;
+  --color-bg: #0b0a10;
+  --color-surface: #13121b;
+  --color-raised: #1a1924;
+  --color-elevated: #221f2e;
   --color-line: rgb(255 255 255 / 0.07);
   --color-line-strong: rgb(255 255 255 / 0.12);
   --color-card-border: rgb(255 255 255 / 0.06);
-  --color-nav: #0b100d;
+  --color-nav: #0b0a10;
   --color-check-line: rgb(255 255 255 / 0.24);
   --color-check-line-soft: rgb(255 255 255 / 0.12);
 
-  --color-ink: #eef2ea;
-  --color-soft: #a6b0a8;
-  --color-faint: #85918a; /* ≥4.5:1 on the app surfaces (WCAG AA for small text) */
+  --color-ink: #f2f1f8;
+  --color-soft: #aba8bc;
+  --color-faint: #8c899f; /* ≥4.5:1 on the app surfaces (WCAG AA for small text) */
 
-  --color-accent: #c6f36e;
-  --color-accent-hi: #d4f78c;
-  --color-accent-deep: #2a3a17;
-  --color-on-accent: #0b100d;
+  --color-accent: #6d3bff;
+  --color-accent-hi: #b9a3ff;
+  --color-accent-deep: #261a52;
+  --color-on-accent: #ffffff;
+  --color-accent-on-white: #5a2ee6;
   --color-tint: #ffffff;
   --color-shade: #000000;
-  --color-income: #6fdc9a;
-  --color-expense: #ff8a6b;
+  --color-income: #5fdc9c;
+  --color-expense: #ff8a7a;
   --color-warn: #ffc357;
-  --color-goal: #b9c6ff;
+  --color-goal: #67d4f0;
 
   --radius-card: 1.5rem;
   --radius-field: 1rem;
@@ -49,31 +50,32 @@
 }
 
 :root[data-theme='light'] {
-  --color-bg: #f3f4ef;
+  --color-bg: #f4f3f8;
   --color-surface: #ffffff;
-  --color-raised: #f0f2ea;
+  --color-raised: #efeef5;
   --color-elevated: #ffffff;
-  --color-line: rgb(19 36 26 / 0.09);
-  --color-line-strong: rgb(19 36 26 / 0.16);
+  --color-line: rgb(21 19 31 / 0.09);
+  --color-line-strong: rgb(21 19 31 / 0.16);
   --color-card-border: transparent;
   --color-nav: #ffffff;
-  --color-check-line: rgb(19 36 26 / 0.3);
-  --color-check-line-soft: rgb(19 36 26 / 0.14);
+  --color-check-line: rgb(21 19 31 / 0.3);
+  --color-check-line-soft: rgb(21 19 31 / 0.14);
 
-  --color-ink: #13241a;
-  --color-soft: #4b5b50;
-  --color-faint: #5f6c63;
+  --color-ink: #15131f;
+  --color-soft: #4e4b5e;
+  --color-faint: #625f73;
 
-  --color-accent: #c6f36e;
-  --color-accent-hi: #3c6e14;
-  --color-accent-deep: #e6f8c4;
-  --color-on-accent: #13241a;
-  --color-tint: #13241a;
-  --color-shade: rgb(19 36 26 / 0.35);
-  --color-income: #1f7a4d;
-  --color-expense: #b23b22;
+  --color-accent: #6d3bff;
+  --color-accent-hi: #5a2ee6;
+  --color-accent-deep: #ece5ff;
+  --color-on-accent: #ffffff;
+  --color-accent-on-white: #5a2ee6;
+  --color-tint: #15131f;
+  --color-shade: rgb(21 19 31 / 0.35);
+  --color-income: #157a4a;
+  --color-expense: #c0392b;
   --color-warn: #9a5b00;
-  --color-goal: #5a4bd1;
+  --color-goal: #0e7490;
 }
 
 @layer base {

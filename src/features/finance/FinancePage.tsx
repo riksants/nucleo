@@ -4,7 +4,7 @@ import { PageHeader } from '../../app/Shell'
 import { matches, sortByNewest, totalsSince } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Transaction } from '../../data/types'
-import { periodStart, PERIOD_LABELS, type Period } from '../../lib/dates'
+import { periodStart, PERIOD_LABELS, toDateInput, type Period } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { usePref } from '../../lib/prefs'
 import { EmptyState, SearchField, SectionTitle } from '../../ui/Display'
@@ -26,6 +26,21 @@ export function FinancePage() {
   const { params } = useRoute()
   if (params.get('view') === 'month') return <MonthSummaryView month={params.get('m')} />
   return <FinanceHome />
+}
+
+/** Spending of the last 7 days as small bars (today highlighted). Decorative summary; the list below has the details. */
+function WeekBars() {
+  const { data } = useStore()
+  const days = Array.from({ length: 7 }, (_, i) => toDateInput(new Date(Date.now() - (6 - i) * 86_400_000)))
+  const spent = days.map((d) => data.transactions.reduce((sum, t) => (t.type === 'out' && toDateInput(new Date(t.createdAt)) === d ? sum - t.baseAmount : sum), 0))
+  const max = Math.max(...spent, 1)
+  return (
+    <div className="flex h-14 shrink-0 items-end gap-1.5" aria-hidden>
+      {spent.map((v, i) => (
+        <span key={days[i]} className={`w-3 rounded-full ${i === 6 ? 'bg-accent' : v ? 'bg-tint/25' : 'bg-tint/10'}`} style={{ height: `${Math.max(10, (v / max) * 100)}%` }} />
+      ))}
+    </div>
+  )
 }
 
 function FinanceHome() {
@@ -59,35 +74,35 @@ function FinanceHome() {
         <div className="space-y-4">
           <BalanceCard />
 
-          <div className="card p-5">
-            <div className="-mt-1.5 mb-3.5 overflow-x-auto py-1.5 no-scrollbar">
-              <Segmented
-                block
-                size="sm"
-                label="Período"
-                value={period}
-                onChange={setPeriod}
-                options={(Object.keys(PERIOD_LABELS) as Period[]).map((p) => ({ value: p, label: PERIOD_LABELS[p] }))}
-              />
+          <section className="space-y-4 pt-2" aria-label="Resumo do período">
+            <Segmented
+              variant="underline"
+              label="Período"
+              value={period}
+              onChange={setPeriod}
+              options={(Object.keys(PERIOD_LABELS) as Period[]).map((p) => ({ value: p, label: PERIOD_LABELS[p] }))}
+            />
+            <div className="flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[14px] text-soft">Resultado do período</p>
+                <p className={`display-num mt-1 text-[30px] leading-tight font-bold ${totals.net < 0 ? 'text-expense' : totals.net > 0 ? 'text-income' : 'text-ink'}`}>
+                  {totals.net > 0 ? '+' : ''}
+                  {show(totals.net)}
+                </p>
+              </div>
+              <WeekBars />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card p-4">
                 <p className="text-[13px] text-soft">Entradas</p>
-                <p className={`num mt-1 text-[22px] font-semibold ${totals.income ? 'text-income' : 'text-soft'}`}>{show(totals.income)}</p>
+                <p className={`display-num mt-1 text-[20px] font-bold ${totals.income ? 'text-income' : 'text-soft'}`}>{show(totals.income)}</p>
               </div>
-              <div>
+              <div className="card p-4">
                 <p className="text-[13px] text-soft">Saídas</p>
-                <p className={`num mt-1 text-[22px] font-semibold ${totals.expense ? 'text-expense' : 'text-soft'}`}>{show(totals.expense)}</p>
+                <p className={`display-num mt-1 text-[20px] font-bold ${totals.expense ? 'text-expense' : 'text-soft'}`}>{show(totals.expense)}</p>
               </div>
             </div>
-            <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
-              <p className="text-[15px] text-soft">Resultado do período</p>
-              <p className={`num text-[17px] font-semibold ${totals.net < 0 ? 'text-expense' : 'text-ink'}`}>
-                {totals.net > 0 ? '+' : ''}
-                {show(totals.net)}
-              </p>
-            </div>
-          </div>
+          </section>
 
           <ThisMonthCard />
           <FinanceGoalsSection />

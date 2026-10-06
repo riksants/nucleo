@@ -14,7 +14,7 @@ export const THEME_OPTIONS: { value: ThemePref; label: string }[] = [
 ]
 
 /** Browser chrome color (status bar / tab) per theme: the page background. */
-const CHROME = { dark: '#0b100d', light: '#f3f4ef' } as const
+const CHROME = { dark: '#0b0a10', light: '#f4f3f8' } as const
 const QUERY = '(prefers-color-scheme: dark)'
 
 let current: ThemePref = readPref<ThemePref>('theme', 'auto')

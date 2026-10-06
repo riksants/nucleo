@@ -88,6 +88,7 @@ export function CurrencyPicker({
   label,
   isDisabled,
   format = (c) => c,
+  tone = 'default',
 }: {
   value: Currency
   onChange(c: Currency): void
@@ -96,6 +97,7 @@ export function CurrencyPicker({
   label?: string
   isDisabled?(c: Currency): boolean
   format?(c: Currency): string
+  tone?: 'default' | 'glass'
 }) {
   const { settings } = useStore()
   const [searching, setSearching] = useState(false)
@@ -105,14 +107,14 @@ export function CurrencyPicker({
   return (
     <div className={`flex items-center gap-1.5 ${block ? 'w-full' : ''}`}>
       <div className={block ? 'min-w-0 flex-1' : ''}>
-        <Segmented size={size} block={block} label={label} value={value} onChange={onChange} options={options} />
+        <Segmented size={size} block={block} label={label} value={value} onChange={onChange} options={options} tone={tone} />
       </div>
       <button
         type="button"
         aria-label="Outras moedas"
         title="Outras moedas"
         onClick={() => setSearching(true)}
-        className={`press hit relative grid shrink-0 place-items-center rounded-[0.9rem] border border-line bg-raised text-soft hover:text-ink ${size === 'sm' ? 'size-10' : 'size-12'}`}
+        className={`press hit relative grid shrink-0 place-items-center rounded-full border ${tone === 'glass' ? 'border-white/20 bg-white/12 text-white/85 hover:text-white' : 'border-line bg-raised text-soft hover:text-ink'} ${size === 'sm' ? 'size-10' : 'size-12'}`}
       >
         <Ellipsis size={18} />
       </button>

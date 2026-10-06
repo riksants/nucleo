@@ -2,12 +2,13 @@ import { AnimatePresence } from 'framer-motion'
 import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
+import { Logo } from '../../app/Shell'
 import { navigate } from '../../app/router'
 import { optionOf, PROJECT_STATUS } from '../../data/labels'
 import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upcomingCharges } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Goal, Project, Task, Transaction } from '../../data/types'
-import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
+import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays, toDateInput } from '../../lib/dates'
 import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
 import { IconButton } from '../../ui/Button'
@@ -79,6 +80,10 @@ export function HomePage() {
 
   const recent = sortByNewest(data.transactions).slice(0, 4)
   const openTasks = sortOpenTasks(data.tasks.filter((t) => t.status !== 'done'))
+  // "Para hoje": what is late or due today; otherwise the next pending tasks.
+  const todayKey = toDateInput(today)
+  const dueNow = openTasks.filter((t) => t.dueDate && t.dueDate <= todayKey)
+  const taskList = dueNow.length ? dueNow : openTasks
   const activeProjects = sortByNewest(data.projects.filter((p) => ACTIVE_PROJECT_STATUSES.has(p.status)))
   const goals = sortByNewest(data.goals.filter((g) => !g.purchasedAt)).slice(0, 2)
   const charges = upcomingCharges(data.tools, 30, today).slice(0, 4)
@@ -87,9 +92,14 @@ export function HomePage() {
   return (
     <>
       <header className="mb-6 flex items-center justify-between gap-3 lg:mb-7">
-        <div className="min-w-0">
-          <p className="text-[14px] font-medium text-soft first-letter:uppercase">{formatWeekday(today)}</p>
-          <h1 className="text-[28px] leading-tight font-bold tracking-[-0.03em] lg:text-[36px]">{greeting(today)}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full border border-card-border bg-surface lg:hidden">
+            <Logo />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[14px] font-medium text-soft first-letter:uppercase">{formatWeekday(today)}</p>
+            <h1 className="text-[26px] leading-tight font-bold tracking-[-0.03em] lg:text-[36px]">{greeting(today)}</h1>
+          </div>
         </div>
         <div className="flex gap-2">
           <IconButton label="Buscar" className="border border-card-border bg-surface lg:hidden" onClick={() => navigate('/search')}>
@@ -103,7 +113,12 @@ export function HomePage() {
 
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
         <div className="min-w-0 space-y-7">
-          {on('finance') && <BalanceCard variant="hero" />}
+          {on('finance') && (
+            <BalanceCard
+              variant="hero"
+              note={month.income || month.expense ? <span className={month.net < 0 ? 'text-expense' : 'text-income'}>{month.net > 0 ? '+' : ''}{show(month.net)} <span className="font-medium text-soft">em {monthName(today)}</span></span> : undefined}
+            />
+          )}
 
           {/* Quick actions: round, with names. Money first when Financeiro is on. */}
           <nav aria-label="Ações rápidas" className="grid grid-cols-4 gap-2">
@@ -133,7 +148,7 @@ export function HomePage() {
         {on('finance') && (
         <div className="space-y-7">
 
-          <Block title="Movimentações recentes" action={recent.length ? 'Ver tudo' : undefined} onAction={() => navigate('/finance')}>
+          <Block title="Movimentações" action={recent.length ? 'Ver tudo' : undefined} onAction={() => navigate('/finance')}>
             {recent.length ? (
               <div className="card p-1.5">
                 {recent.map((tx) => (
@@ -150,11 +165,11 @@ export function HomePage() {
 
         <div className="min-w-0 space-y-7">
           {on('tasks') && (
-          <Block title={openTasks.length ? `Tarefas pendentes · ${openTasks.length}` : 'Tarefas'} action={openTasks.length ? 'Ver todas' : undefined} onAction={() => navigate('/tasks')}>
+          <Block title={dueNow.length ? `Para hoje · ${dueNow.length}` : openTasks.length ? `Tarefas pendentes · ${openTasks.length}` : 'Tarefas'} action={openTasks.length ? 'Ver todas' : undefined} onAction={() => navigate('/tasks')}>
             {openTasks.length ? (
               <div className="card p-1.5">
                 <AnimatePresence initial={false}>
-                  {openTasks.slice(0, 4).map((t) => (
+                  {taskList.slice(0, 4).map((t) => (
                     <TaskRow key={t.id} task={t} onOpen={taskSheet.show} />
                   ))}
                 </AnimatePresence>

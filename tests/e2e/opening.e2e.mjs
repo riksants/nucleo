@@ -77,7 +77,7 @@ try {
   await sleep(350)
   await shot('intro-1-logo')
   const early = await b.eval(`(() => { const l = document.querySelector('#splash .nl-logo'); const r = l.getBoundingClientRect(); return { bg: getComputedStyle(document.body).backgroundColor, logo: Math.round(r.width), pieces: document.querySelectorAll('#nl-mark path').length, vw: innerWidth } })()`)
-  r.check('abre com a logo inteira (4 peças) parada sobre o fundo escuro', early.bg === 'rgb(11, 16, 13)' && early.pieces === 4 && early.logo > early.vw * 0.18 && early.logo < early.vw * 0.27, JSON.stringify(early))
+  r.check('abre com a logo inteira (4 peças) parada sobre o fundo escuro', early.bg === 'rgb(11, 10, 16)' && early.pieces === 4 && early.logo > early.vw * 0.18 && early.logo < early.vw * 0.27, JSON.stringify(early))
   await until(`window.__open.end !== null`)
   await sleep(150)
   await shot('intro-2-app')

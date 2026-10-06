@@ -38,7 +38,7 @@ try {
   await b.goto(BASE + '#/finance')
   await sleep(1200)
   const faint = await b.eval(`getComputedStyle(document.querySelector('.text-faint')).color`)
-  r.check('cinza claro com contraste AA (#85918a no tema escuro)', faint === 'rgb(133, 145, 138)', faint)
+  r.check('cinza claro com contraste AA (#8c899f no tema escuro)', faint === 'rgb(140, 137, 159)', faint)
 
   // ---------- 13a) Type scale: no half-pixel font sizes on screen
   const halves = []
