@@ -166,7 +166,7 @@ try {
   r.check('busca encontra projeto pessoal', text.includes('Viagem para Itália') && text.toUpperCase().includes('PROJETOS PESSOAIS'))
   await b.click('Viagem para Itália', 'button')
   await b.sleep(900)
-  r.check('resultado abre o projeto dentro de Vida', (await b.text()).includes('Etapas'.toUpperCase()) || (await b.text()).includes('ETAPAS'))
+  r.check('resultado abre o projeto dentro de Vida', (await b.text()).toUpperCase().includes('ETAPAS'))
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await b.sleep(300)
 

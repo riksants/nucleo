@@ -85,7 +85,7 @@ function AccountCard({ account, onEdit, onLocked }: { account: Account; onEdit(a
           {(account.link || related) && <p className="mt-0.5 truncate text-[13px] text-faint">{[account.link && displayUrl(account.link), related].filter(Boolean).join(' · ')}</p>}
         </div>
         {account.link && (
-          <a href={normalizeUrl(account.link)} target="_blank" rel="noreferrer" aria-label="Abrir site" title="Abrir site" className="press grid size-9 shrink-0 place-items-center rounded-xl text-soft hover:bg-white/[0.05] hover:text-ink">
+          <a href={normalizeUrl(account.link)} target="_blank" rel="noreferrer" aria-label="Abrir site" title="Abrir site" className="press grid size-9 shrink-0 place-items-center rounded-xl text-soft hover:bg-tint/[0.05] hover:text-ink">
             <ExternalLink size={18} />
           </a>
         )}

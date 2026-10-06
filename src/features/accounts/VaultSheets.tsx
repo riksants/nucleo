@@ -196,7 +196,7 @@ export function VaultBar({ onCreate, onUnlock }: { onCreate(): void; onUnlock():
   }
   return (
     <div className="card mb-5 flex items-center gap-3 p-3 pl-4">
-      <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${vault.unlocked ? 'bg-accent/12 text-accent-hi' : 'bg-white/[0.06] text-soft'}`}>
+      <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${vault.unlocked ? 'bg-accent/12 text-accent-hi' : 'bg-tint/[0.06] text-soft'}`}>
         {vault.unlocked ? <LockOpen size={18} /> : <ShieldCheck size={18} />}
       </span>
       <p className="min-w-0 flex-1 text-[14px] leading-snug text-soft">

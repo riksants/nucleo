@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Clock, Gauge, HardDrive, LogOut, PanelBottom, Sparkles, Tags, Sunrise, Coins, Download, KeyRound, LayoutGrid, RefreshCw, Scale, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sunrise, Tags, Upload, UserRound } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
 import { navigate, useRoute } from '../../app/router'
@@ -11,6 +11,7 @@ import { formatDateTime } from '../../lib/dates'
 import { amountToInput, currencyInfo, formatMoney, formatNumber, parseAmount } from '../../lib/money'
 import { vaultPasswordProblem } from '../../lib/vault'
 import { effectiveRates } from '../../lib/rates'
+import { setThemePref, THEME_OPTIONS, useThemePref } from '../../lib/theme'
 import { Button } from '../../ui/Button'
 import { Badge, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
@@ -49,7 +50,7 @@ function Row({ label, value, icon, onClick }: { label: string; value?: ReactNode
   )
   const cls = 'flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left'
   return onClick ? (
-    <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-white/[0.03] active:bg-white/[0.05]`}>
+    <button type="button" onClick={onClick} className={`${cls} transition-colors hover:bg-tint/[0.03] active:bg-tint/[0.05]`}>
       {content}
     </button>
   ) : (
@@ -184,6 +185,7 @@ function ImportSheet({ backup, onClose }: { backup: ParsedBackup | null; onClose
 
 export function SettingsPage() {
   const { settings, data, balance, refreshRates, ratesLoading, updateSettings, setDisplayCurrency } = useStore()
+  const theme = useThemePref()
   const { toast, confirm } = useFeedback()
   const fileRef = useRef<HTMLInputElement>(null)
   // "Mais → Personalizar" opens a panel directly (#/settings?painel=secoes or barra).
@@ -237,7 +239,7 @@ export function SettingsPage() {
             <>
               <Row label="Conectado como" icon={<UserRound size={18} />} value={<span className="block max-w-[52vw] truncate lg:max-w-[16rem]">{email ?? 'conta'}</span>} />
               <Row label="Sincronização e detalhes" icon={<RefreshCw size={18} />} onClick={() => navigate('/account')} />
-              <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap disabled:opacity-60">
+              <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap disabled:opacity-60">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-expense/10 text-expense">
                   <LogOut size={18} />
                 </span>
@@ -274,7 +276,7 @@ export function SettingsPage() {
               role="switch"
               aria-checked={!settings.hideScore}
               onClick={() => updateSettings({ hideScore: !settings.hideScore })}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
                 <Gauge size={18} />
@@ -292,7 +294,7 @@ export function SettingsPage() {
               role="switch"
               aria-checked={Boolean(settings.morningAutoOpen)}
               onClick={() => updateSettings({ morningAutoOpen: !settings.morningAutoOpen })}
-              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
                 <Sunrise size={18} />
@@ -332,10 +334,10 @@ export function SettingsPage() {
               })
               if (ok) await updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString() } })
             }}
-            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
+            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-              <Sparkles size={18} />
+              <MessageCircle size={18} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[15px]">Entender frases livres com IA</span>
@@ -343,6 +345,12 @@ export function SettingsPage() {
             </span>
             <Switch checked={Boolean(settings.assistantAi?.enabled)} />
           </button>
+        </Group>
+
+        <Group title="Aparência" note="Automático segue o modo claro/escuro do aparelho. Vale só para este aparelho.">
+          <div className="px-4 py-3">
+            <Segmented block label="Tema" value={theme} onChange={setThemePref} options={THEME_OPTIONS} />
+          </div>
         </Group>
 
         <Group title="Saldo" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
@@ -443,7 +451,7 @@ function TabsSheet({ open, onClose }: { open: boolean; onClose(): void }) {
           const Icon = m.icon
           return (
             <button key={m.id} type="button" aria-pressed={pos >= 0} onClick={() => toggle(m.id)} className="tap flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
-              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${pos >= 0 ? 'bg-accent/12 text-accent-hi' : 'bg-white/[0.05] text-faint'}`}>
+              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${pos >= 0 ? 'bg-accent/12 text-accent-hi' : 'bg-tint/[0.05] text-faint'}`}>
                 <Icon size={18} />
               </span>
               <span className="min-w-0 flex-1">
@@ -451,11 +459,11 @@ function TabsSheet({ open, onClose }: { open: boolean; onClose(): void }) {
                 <span className="block truncate text-[13px] text-faint">{m.description}</span>
               </span>
               {pos >= 0 ? (
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-semibold text-white" aria-label={`Posição ${pos + 1} na barra`}>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-semibold text-on-accent" aria-label={`Posição ${pos + 1} na barra`}>
                   {pos + 1}
                 </span>
               ) : (
-                <span className="size-7 shrink-0 rounded-full border-2 border-white/15" />
+                <span className="size-7 shrink-0 rounded-full border-2 border-tint/15" />
               )}
             </button>
           )

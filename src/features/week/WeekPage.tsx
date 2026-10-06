@@ -1,4 +1,4 @@
-import { CalendarRange, ChevronLeft, ChevronRight, GitCompareArrows, MessageCircleHeart, Sparkles } from 'lucide-react'
+import { CalendarRange, ChevronLeft, ChevronRight, GitCompareArrows, MessageCircle, MessageCircleHeart } from 'lucide-react'
 import { useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -82,9 +82,9 @@ export function WeekPage() {
       />
 
       {suggestPlan && (
-        <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card mb-5 flex w-full items-center gap-3 border-accent/30 p-4 text-left hover:border-accent/50">
+        <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card mb-5 flex w-full items-center gap-3 border-accent-hi/30 p-4 text-left hover:border-accent-hi/50">
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-            <Sparkles size={19} />
+            <MessageCircle size={19} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
@@ -97,10 +97,9 @@ export function WeekPage() {
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start">
         <div className="space-y-7">
           <section className="card relative overflow-hidden p-5">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_80%_at_0%_0%,rgb(91_108_255/0.16),transparent_60%)]" aria-hidden />
             <div className="relative">
               <div className="flex items-center gap-2">
-                <p className="text-[13px] font-medium tracking-wide text-soft uppercase">Sua semana</p>
+                <p className="text-[13px] font-semibold text-soft">Sua semana</p>
                 {w.snapshot ? <Badge>fechada {formatDateTime(w.snapshot.closedAt).toLowerCase()}</Badge> : !w.isCurrent && !w.closed ? <Badge tone="warn">fecha na terça</Badge> : null}
               </div>
               {h.itemsPercent !== null ? (

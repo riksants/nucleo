@@ -10,7 +10,7 @@ import { formatMoney } from '../../lib/money'
 const ICONS = {
   in: { icon: ArrowDownLeft, className: 'bg-income/12 text-income' },
   out: { icon: ArrowUpRight, className: 'bg-expense/12 text-expense' },
-  adjust: { icon: SlidersHorizontal, className: 'bg-white/[0.06] text-soft' },
+  adjust: { icon: SlidersHorizontal, className: 'bg-tint/[0.06] text-soft' },
 }
 
 export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction; onOpen(tx: Transaction): void; showDay?: boolean }) {
@@ -23,7 +23,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
   const details = [when, tx.category && tx.type !== 'adjust' ? categoryLabel(settings, tx.category) : null, tx.unnecessary && tx.type === 'out' ? 'desnecessário' : null].filter(Boolean).join(' · ')
 
   return (
-    <button type="button" onClick={() => onOpen(tx)} className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-3 text-left transition-colors hover:bg-white/[0.03] active:bg-white/[0.04]">
+    <button type="button" onClick={() => onOpen(tx)} className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-3 text-left transition-colors hover:bg-tint/[0.03] active:bg-tint/[0.04]">
       <span className={`grid size-11 shrink-0 place-items-center rounded-full ${className}`}>
         <Icon size={20} />
       </span>

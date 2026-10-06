@@ -7,6 +7,7 @@ import { Shell } from './app/Shell'
 import { DATABASE_BLOCKED } from './data/repository'
 import { useStore } from './data/store'
 import { useReceiptReconciler } from './data/useReceipts'
+import { useTheme } from './lib/theme'
 import { AccountPage } from './features/account/AccountPage'
 import { MigrationOffer, useMigrationCandidate } from './features/account/MigrationOffer'
 import { useSession } from './features/account/session'
@@ -200,11 +201,12 @@ export function App() {
   usePreloadSections()
   // Payments saved without a rate get their income in Financeiro once the rate exists.
   useReceiptReconciler()
+  useTheme()
 
   if (loadError) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-        <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-white/[0.06] text-soft">
+        <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-tint/[0.06] text-soft">
           <CloudOff size={22} />
         </div>
         <p className="text-[17px] font-semibold tracking-tight">{loadError === DATABASE_BLOCKED ? 'Atualização esperando outra aba' : 'Não foi possível carregar seus dados'}</p>
@@ -242,7 +244,7 @@ export function App() {
       {/* Switching sections is instant (core navigation, many times a day — no transition). */}
       <div key={path}>
         {hiddenLabel && (
-          <p className="mb-5 rounded-2xl bg-white/[0.04] px-4 py-3 text-[14px] text-soft">
+          <p className="mb-5 rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft">
             A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
           </p>
         )}

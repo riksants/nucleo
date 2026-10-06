@@ -85,7 +85,7 @@ export function FocusPage() {
           {open.length ? (
             <div className="card divide-y divide-line">
               {open.map((t) => (
-                <button key={t.id} type="button" onClick={() => navigate('/focus', { task: t.id })} className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-white/[0.03] tap">
+                <button key={t.id} type="button" onClick={() => navigate('/focus', { task: t.id })} className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-tint/[0.03] tap">
                   {t.title}
                 </button>
               ))}
@@ -103,7 +103,7 @@ export function FocusPage() {
     <div className="flex min-h-dvh flex-col px-6 pt-[calc(env(safe-area-inset-top)+20px)] pb-[calc(env(safe-area-inset-bottom)+24px)]">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex h-11 items-center justify-between">
-          <span className="text-[13px] font-medium tracking-[0.08em] text-faint uppercase">Modo foco</span>
+          <span className="text-[13px] font-semibold text-faint">Modo foco</span>
           <IconButton label="Sair do modo foco" onClick={exit}>
             <X size={22} />
           </IconButton>

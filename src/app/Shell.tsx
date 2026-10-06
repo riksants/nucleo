@@ -45,7 +45,7 @@ function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
   const primary = primarySections(settings)
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/88 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:hidden" aria-label="Navegação principal">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/90 backdrop-blur-xl reduce-transparency:bg-nav reduce-transparency:backdrop-blur-none lg:hidden" aria-label="Navegação principal">
       <div className="mx-auto grid max-w-lg px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
         {[...primary, MORE].map((s) => {
           const active = isActive(s, path, primary)
@@ -55,13 +55,13 @@ function BottomNav({ path }: { path: RoutePath }) {
               key={s.path}
               href={`#${s.path}`}
               aria-current={active ? 'page' : undefined}
-              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] font-medium ${active ? 'text-ink' : 'text-faint'}`}
+              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] ${active ? 'font-bold text-ink' : 'font-medium text-faint'}`}
             >
               <span className="relative grid h-8 w-14 place-items-center">
                 {active && (
-                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent/16" transition={INDICATOR_SPRING} />
+                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent" transition={INDICATOR_SPRING} />
                 )}
-                <Icon size={21} strokeWidth={active ? 2.2 : 1.8} className={`relative ${active ? 'text-accent-hi' : ''}`} />
+                <Icon size={21} strokeWidth={active ? 2.2 : 1.8} className={`relative ${active ? 'text-on-accent' : ''}`} />
               </span>
               {s.shortLabel ?? s.label}
             </a>
@@ -80,10 +80,10 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
       href={`#${section.path}`}
       aria-current={active ? 'page' : undefined}
       className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors ${
-        active ? 'text-ink' : 'text-soft hover:bg-white/[0.03] tap hover:text-ink'
+        active ? 'text-ink' : 'text-soft hover:bg-tint/[0.03] tap hover:text-ink'
       }`}
     >
-      {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-white/[0.06]" transition={INDICATOR_SPRING} />}
+      {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-tint/[0.06]" transition={INDICATOR_SPRING} />}
       <Icon size={19} className={`relative ${active ? 'text-accent-hi' : ''}`} />
       <span className="relative">{section.label}</span>
     </a>
@@ -99,7 +99,7 @@ function Sidebar({ path }: { path: RoutePath }) {
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg px-4 py-6 lg:flex" aria-label="Navegação">
       <div className="mb-6 flex items-center gap-3 px-2">
         <Logo />
-        <span className="text-lg font-semibold tracking-tight">Núcleo</span>
+        <span className="font-display text-[19px] font-bold tracking-[-0.02em]">Núcleo</span>
       </div>
       <button
         type="button"
@@ -120,7 +120,7 @@ function Sidebar({ path }: { path: RoutePath }) {
       <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
         {groups.map((g) => (
           <div key={g.title}>
-            <div className="mt-5 mb-2 px-3 text-xs font-medium tracking-wide text-faint uppercase">{g.title}</div>
+            <div className="mt-5 mb-2 px-3 text-[13px] font-semibold text-faint">{g.title}</div>
             <nav className="flex flex-col gap-0.5" aria-label={g.title}>
               {g.sections.map((s) => (
                 <SideLink key={s.path} section={s} path={path} />
@@ -162,7 +162,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <header className="mb-6 flex items-end justify-between gap-4 lg:mb-8">
       <div className="min-w-0">
-        <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em] lg:text-[34px]">{title}</h1>
+        <h1 className="text-[32px] leading-tight font-bold tracking-[-0.035em] lg:text-[36px]">{title}</h1>
         {subtitle && <p className="mt-1 text-[15px] text-soft">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

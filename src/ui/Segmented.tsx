@@ -30,7 +30,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
             {active && (
               <motion.span
                 layoutId={id}
-                className="absolute inset-0 rounded-[0.65rem] bg-elevated shadow-sm shadow-black/40 ring-1 ring-white/[0.06]"
+                className="absolute inset-0 rounded-[0.65rem] bg-elevated shadow-sm shadow-shade/40 ring-1 ring-tint/[0.06]"
                 transition={{ type: 'spring', stiffness: 500, damping: 45 }}
               />
             )}

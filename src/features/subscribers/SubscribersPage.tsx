@@ -32,7 +32,7 @@ function Projection() {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="card p-5">
-        <p className="text-[13px] font-medium tracking-wide text-soft uppercase">Previsto</p>
+        <p className="text-[13px] font-semibold text-soft">Previsto</p>
         <p className="mt-1 text-[14px] text-faint">
           {active} assinatura{active === 1 ? '' : 's'} ativa{active === 1 ? '' : 's'} · canceladas, pausadas e em teste não entram
         </p>
@@ -61,7 +61,7 @@ function Projection() {
         <p className="mt-3 text-[13px] leading-relaxed text-faint">Projeção, não dinheiro em caixa: planos anuais são cobrados uma vez por ano.</p>
       </div>
       <div className="card p-5">
-        <p className="text-[13px] font-medium tracking-wide text-soft uppercase">Recebido de verdade</p>
+        <p className="text-[13px] font-semibold text-soft">Recebido de verdade</p>
         <div className="mt-3 grid grid-cols-2 gap-4">
           {[
             { label: 'Este mês', map: monthReceived },
@@ -91,7 +91,7 @@ function SubscriberRow({ s, plan, offering, onOpen }: { s: Subscriber; plan?: Su
   const next = nextChargeOf(s, plan)
   const rel = next && s.status !== 'cancelled' ? relativeDays(next) : null
   return (
-    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{s.name}</span>
         <span className="block truncate text-[13px] text-faint">

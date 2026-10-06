@@ -60,9 +60,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 animate={{ opacity: 1, transform: 'translateY(0px) scale(1)' }}
                 exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(10px) scale(0.98)' }}
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pr-5 pl-3 text-[15px] font-medium shadow-xl shadow-black/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
+                className="flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pr-5 pl-3 text-[15px] font-medium shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
               >
-                <span className={`grid size-6 place-items-center rounded-full ${toast.tone === 'success' ? 'bg-accent text-white' : 'bg-expense/20 text-expense'}`}>
+                <span className={`grid size-6 place-items-center rounded-full ${toast.tone === 'success' ? 'bg-accent text-on-accent' : 'bg-expense/20 text-expense'}`}>
                   {toast.tone === 'success' ? <Check size={14} strokeWidth={3} /> : <AlertCircle size={15} />}
                 </span>
                 {toast.message}

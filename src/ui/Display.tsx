@@ -23,7 +23,7 @@ export function Progress({ value, tone = 'goal' }: { value: number; tone?: 'goal
   const color = { goal: 'bg-goal', accent: 'bg-accent', positive: 'bg-income' }[tone]
   const pct = Math.max(0, Math.min(100, value))
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
+    <div className="h-2 overflow-hidden rounded-full bg-tint/[0.06]" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
       <div
         className={`h-full w-full rounded-full transition-[clip-path] duration-300 ease-(--ease-out-soft) motion-reduce:transition-none ${color}`}
         style={{ clipPath: `inset(0 ${100 - pct}% 0 0 round 999px)` }}
@@ -103,7 +103,7 @@ export function SearchField({ value, onChange, placeholder = 'Buscar', autoFocus
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         enterKeyHint="search"
-        className="h-12 w-full rounded-2xl border border-line bg-surface pr-10 pl-10 text-ink placeholder:text-faint focus:border-accent/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+        className="h-12 w-full rounded-2xl border border-line bg-surface pr-10 pl-10 text-ink placeholder:text-faint focus:border-accent-hi/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
       />
       {value && (
         <button type="button" aria-label="Limpar busca" onClick={() => onChange('')} className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-faint hover:text-ink">
@@ -114,13 +114,13 @@ export function SearchField({ value, onChange, placeholder = 'Buscar', autoFocus
   )
 }
 
-/** Small uppercase label + optional right-side link, above a group of content. */
+/** Section heading (display face, sentence case) + optional right-side link, above a group of content. */
 export function SectionTitle({ children, action, onAction }: { children: ReactNode; action?: string; onAction?(): void }) {
   return (
-    <div className="mb-3 flex items-center justify-between px-1">
-      <h2 className="text-[13px] font-medium tracking-wide text-soft uppercase">{children}</h2>
+    <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+      <h2 className="text-[19px] leading-tight font-bold">{children}</h2>
       {action && (
-        <button type="button" onClick={onAction} className="hit relative text-sm font-medium text-accent-hi hover:text-ink">
+        <button type="button" onClick={onAction} className="hit relative shrink-0 text-[14px] font-semibold text-soft underline decoration-line-strong underline-offset-4 hover:text-ink">
           {action}
         </button>
       )}

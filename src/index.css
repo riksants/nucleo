@@ -1,35 +1,79 @@
-@import '@fontsource-variable/geist';
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/bricolage-grotesque';
 @import 'tailwindcss';
 
 /* "Reduzir transparência" on the device: glass surfaces become solid (same color, no blur). */
 @custom-variant reduce-transparency (@media (prefers-reduced-transparency: reduce));
 
+/*
+ * Two themes, one language: dark (default values below) and light (:root[data-theme='light']).
+ * index.html sets data-theme before the first paint (device setting, or the choice in Configurações).
+ * - accent: the fill (lime) in both themes; text on it uses on-accent.
+ * - accent-hi: accent as TEXT/lines — light lime on dark, deep green on light (lime text is unreadable on white).
+ * - tint: the color of hover/press overlays and soft fills — white on dark, ink on light.
+ */
 @theme {
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --color-bg: #09090b;
-  --color-surface: #121216;
-  --color-raised: #18181d;
-  --color-elevated: #202027;
+  --color-bg: #0b100d;
+  --color-surface: #121814;
+  --color-raised: #18201b;
+  --color-elevated: #1e2722;
   --color-line: rgb(255 255 255 / 0.07);
   --color-line-strong: rgb(255 255 255 / 0.12);
+  --color-card-border: rgb(255 255 255 / 0.06);
+  --color-nav: #0b100d;
+  --color-check-line: rgb(255 255 255 / 0.24);
+  --color-check-line-soft: rgb(255 255 255 / 0.12);
 
-  --color-ink: #f4f4f1;
-  --color-soft: #a3a3ad;
-  --color-faint: #80808b; /* 4.5–5.1:1 on the app surfaces (WCAG AA for small text) */
+  --color-ink: #eef2ea;
+  --color-soft: #a6b0a8;
+  --color-faint: #85918a; /* ≥4.5:1 on the app surfaces (WCAG AA for small text) */
 
-  --color-accent: #5b6cff;
-  --color-accent-hi: #7584ff;
-  --color-accent-deep: #2a2f7a;
-  --color-income: #4fd1a5;
-  --color-expense: #ff6b61;
-  --color-warn: #ffa94d;
-  --color-goal: #b391ff;
+  --color-accent: #c6f36e;
+  --color-accent-hi: #d4f78c;
+  --color-accent-deep: #2a3a17;
+  --color-on-accent: #0b100d;
+  --color-tint: #ffffff;
+  --color-shade: #000000;
+  --color-income: #6fdc9a;
+  --color-expense: #ff8a6b;
+  --color-warn: #ffc357;
+  --color-goal: #b9c6ff;
 
   --radius-card: 1.5rem;
   --radius-field: 1rem;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f3f4ef;
+  --color-surface: #ffffff;
+  --color-raised: #f0f2ea;
+  --color-elevated: #ffffff;
+  --color-line: rgb(19 36 26 / 0.09);
+  --color-line-strong: rgb(19 36 26 / 0.16);
+  --color-card-border: transparent;
+  --color-nav: #ffffff;
+  --color-check-line: rgb(19 36 26 / 0.3);
+  --color-check-line-soft: rgb(19 36 26 / 0.14);
+
+  --color-ink: #13241a;
+  --color-soft: #4b5b50;
+  --color-faint: #5f6c63;
+
+  --color-accent: #c6f36e;
+  --color-accent-hi: #3c6e14;
+  --color-accent-deep: #e6f8c4;
+  --color-on-accent: #13241a;
+  --color-tint: #13241a;
+  --color-shade: rgb(19 36 26 / 0.35);
+  --color-income: #1f7a4d;
+  --color-expense: #b23b22;
+  --color-warn: #9a5b00;
+  --color-goal: #5a4bd1;
 }
 
 @layer base {
@@ -39,7 +83,10 @@
     color-scheme: dark;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
   }
 
   body {
@@ -48,6 +95,14 @@
     background: var(--color-bg);
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Headings speak in the display face; the body stays in Figtree. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
   button {
@@ -64,13 +119,20 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-accent-hi);
     outline-offset: 2px;
   }
 
   ::selection {
-    background: rgb(91 108 255 / 0.4);
+    background: color-mix(in oklab, var(--color-accent) 45%, transparent);
   }
+}
+
+/* Big numbers (balances, totals): the display face, tight. */
+@utility display-num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
 }
 
 @utility num {
@@ -95,7 +157,7 @@
 
 @utility card {
   background: var(--color-surface);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
 }
 
@@ -111,7 +173,7 @@
 @utility tap {
   transition: box-shadow 150ms ease;
   &:active {
-    box-shadow: inset 0 0 0 100vmax rgb(255 255 255 / 0.06);
+    box-shadow: inset 0 0 0 100vmax color-mix(in oklab, var(--color-tint) 6%, transparent);
     transition-duration: 0ms;
   }
 }

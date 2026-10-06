@@ -138,7 +138,7 @@ export function RemindersPage() {
                   </Button>
                 )
               ) : (
-                <p className="flex items-start gap-2 rounded-2xl bg-white/[0.04] p-3 text-[14px] leading-relaxed text-soft">
+                <p className="flex items-start gap-2 rounded-2xl bg-tint/[0.04] p-3 text-[14px] leading-relaxed text-soft">
                   <Smartphone size={17} className="mt-0.5 shrink-0" />
                   {REASONS[support.reason]}
                 </p>

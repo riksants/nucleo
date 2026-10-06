@@ -70,10 +70,10 @@ export function ReminderCenter() {
             animate={{ opacity: 1, transform: 'translateY(0px)' }}
             exit={{ opacity: 0, transform: reduce ? 'translateY(0px)' : 'translateY(-8px)' }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.25rem] border border-line-strong bg-elevated/95 py-2.5 pr-2 pl-3.5 shadow-xl shadow-black/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
+            className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.25rem] border border-line-strong bg-elevated/95 py-2.5 pr-2 pl-3.5 shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
             role="status"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-white">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
               <Bell size={15} />
             </span>
             <a href={o.url} onClick={() => setVisible((v) => v.filter((x) => x.key !== o.key))} className="min-w-0 flex-1 text-[15px] leading-snug">

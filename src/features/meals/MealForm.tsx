@@ -110,7 +110,7 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
             </Field>
             {week && (
               <div>
-                <p className="mb-2 text-[13px] font-medium tracking-wide text-soft uppercase">Repetir também em</p>
+                <p className="mb-2 text-[13px] font-semibold text-soft">Repetir também em</p>
                 <div className="flex flex-wrap gap-2">
                   {weekDays(week)
                     .filter((x) => x !== d.date)

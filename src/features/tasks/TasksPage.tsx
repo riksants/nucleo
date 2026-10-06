@@ -62,7 +62,7 @@ export function TasksPage() {
           onChange={(e) => setQuick(e.target.value)}
           placeholder="Adicionar tarefa rápida…"
           enterKeyHint="done"
-          className="h-12 min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 text-ink placeholder:text-faint focus:border-accent/60 focus:outline-none"
+          className="h-12 min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 text-ink placeholder:text-faint focus:border-accent-hi/60 focus:outline-none"
         />
         <IconButton label="Adicionar" tone="accent" type="submit" className="size-12! rounded-2xl" disabled={!quick.trim()}>
           <Plus size={20} />

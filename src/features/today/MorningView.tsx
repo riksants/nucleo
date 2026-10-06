@@ -44,7 +44,6 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
   return (
     <div className="space-y-7">
       <div className="card relative overflow-hidden p-5">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_80%_at_0%_0%,rgb(91_108_255/0.16),transparent_60%)]" aria-hidden />
         <p className="relative text-[22px] font-semibold tracking-tight">{greeting}.</p>
         <p className="relative mt-1 text-[16px] leading-relaxed text-soft">{morningSentence(plan)}</p>
         {mealsMorningLine(plan) && <p className="relative mt-1.5 text-[14px] leading-relaxed text-faint">{mealsMorningLine(plan)}</p>}
@@ -59,7 +58,7 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
                   <div className="min-w-0 flex-1">
                     <TaskRow task={t} onOpen={taskSheet.show} />
                   </div>
-                  <button type="button" aria-label={`Focar em ${t.title}`} title="Modo foco" onClick={() => navigate('/focus', { task: t.id })} className="mr-1 grid size-10 shrink-0 place-items-center rounded-xl text-faint hover:bg-white/[0.04] tap hover:text-accent-hi">
+                  <button type="button" aria-label={`Focar em ${t.title}`} title="Modo foco" onClick={() => navigate('/focus', { task: t.id })} className="mr-1 grid size-10 shrink-0 place-items-center rounded-xl text-faint hover:bg-tint/[0.04] tap hover:text-accent-hi">
                     <Crosshair size={18} />
                   </button>
                 </div>
@@ -106,7 +105,7 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
         <Block title="Contas e cobranças de hoje">
           <div className="card p-1.5">
             {plan.money.map((m) => (
-              <button key={m.key} type="button" onClick={() => navigate(m.path, { open: m.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03] tap">
+              <button key={m.key} type="button" onClick={() => navigate(m.path, { open: m.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-tint/[0.03] tap">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{m.title}</span>
                   <span className="text-[13px] text-faint">{m.direction === 'pay' ? 'Você paga' : 'Você recebe'} · {m.detail}</span>

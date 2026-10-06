@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Compass, FolderHeart, ListTodo, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Compass, FolderHeart, ListTodo, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
 import { useDailyActions } from '../../core/actions'
@@ -271,7 +271,7 @@ export function PlanDetail({ plan, open, onClose, onEdit }: { plan: LifePlan | n
         </div>
 
         <section>
-          <p className="mb-1 text-[13px] font-medium tracking-wide text-soft uppercase">Etapas</p>
+          <p className="mb-1 text-[13px] font-semibold text-soft">Etapas</p>
           {steps.length ? (
             <div className="card divide-y divide-line px-1">
               {steps.map((s, i) => (
@@ -290,7 +290,7 @@ export function PlanDetail({ plan, open, onClose, onEdit }: { plan: LifePlan | n
           </div>
           {options.length > 0 && suggest === null && (
             <button type="button" onClick={() => setSuggest([])} className="mt-3 flex items-center gap-1.5 text-[14px] font-medium text-accent-hi hover:text-ink">
-              <Sparkles size={15} /> Sugerir etapas
+              <MessageCircle size={15} /> Sugerir etapas
             </button>
           )}
           {suggest !== null && (

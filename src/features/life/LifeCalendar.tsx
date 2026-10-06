@@ -95,9 +95,9 @@ export function LifeCalendar() {
                 aria-selected={isSel}
                 aria-label={`${formatDateValue(d)}${ind.length ? ': ' + ind.map((x) => x.label).join(', ') : ''}`}
                 onClick={() => setSelected(d)}
-                className={`flex min-h-14 min-w-0 flex-col items-stretch rounded-xl border p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 ${isSel ? 'border-accent/60 bg-accent/10' : 'border-transparent hover:bg-white/[0.04] tap'} ${inMonth ? '' : 'opacity-40'}`}
+                className={`flex min-h-14 min-w-0 flex-col items-stretch rounded-xl border p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 ${isSel ? 'border-accent-hi/60 bg-accent/10' : 'border-transparent hover:bg-tint/[0.04] tap'} ${inMonth ? '' : 'opacity-40'}`}
               >
-                <span className={`num grid size-6 place-items-center self-center rounded-full text-[13px] sm:self-start ${isToday ? 'bg-accent font-semibold text-white' : ''}`}>{Number(d.slice(8, 10))}</span>
+                <span className={`num grid size-6 place-items-center self-center rounded-full text-[13px] sm:self-start ${isToday ? 'bg-accent font-semibold text-on-accent' : ''}`}>{Number(d.slice(8, 10))}</span>
                 {/* Phone: dots. Wider screens: short labels. */}
                 <span className="mt-1 flex flex-wrap justify-center gap-0.5 sm:hidden">
                   {ind.slice(0, 4).map((x) => (
@@ -120,14 +120,14 @@ export function LifeCalendar() {
       </section>
 
       <section aria-live="polite">
-        <h3 className="mb-2 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">
+        <h3 className="mb-2 px-1 text-[13px] font-semibold text-soft">
           {selected === today ? 'Hoje · ' : ''}
           {WEEKDAYS_LONG[(weekdayOfDate(selected) + 6) % 7]}, {Number(selected.slice(8, 10))} de {monthLabel(selected.slice(0, 7))}
         </h3>
         {dayItems.length || dayMarks.length ? (
           <div className="card p-1.5">
             {dayMarks.map((m) => (
-              <button key={m.key} type="button" onClick={() => openMark(m)} className="flex w-full items-center gap-1 rounded-2xl px-1 text-left hover:bg-white/[0.03] tap">
+              <button key={m.key} type="button" onClick={() => openMark(m)} className="flex w-full items-center gap-1 rounded-2xl px-1 text-left hover:bg-tint/[0.03] tap">
                 <span className="grid size-12 shrink-0 place-items-center">
                   <span className={`size-2.5 rounded-full ${MARK_DOT[m.type]}`} />
                 </span>

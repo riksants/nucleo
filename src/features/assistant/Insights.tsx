@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronRight, Sparkles } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { navigate } from '../../app/router'
 import { computeInsights, HOME_LIMIT, markInsight, visibleInsights, type Insight, type InsightPriority } from '../../core/insights'
@@ -109,10 +109,10 @@ export function AttentionCard() {
 
 function AttentionButton({ all, top }: { all: Insight[]; top: Insight[] }) {
   return (
-    <button type="button" onClick={() => navigate('/assistant')} className="card mb-5 block w-full p-4 text-left hover:border-line-strong">
-      <span className="flex items-center gap-2">
-        <Sparkles size={17} className="shrink-0 text-accent-hi" />
-        <span className="min-w-0 flex-1 text-[15px] font-medium">
+    <button type="button" onClick={() => navigate('/assistant')} className="card block w-full p-4 text-left hover:border-line-strong">
+      <span className="flex items-center gap-2.5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warn/15 text-[13px] font-bold text-warn">{Math.min(all.length, 8)}</span>
+        <span className="min-w-0 flex-1 text-[15px] font-semibold">
           {all.length === 1 ? '1 coisa pode precisar da sua atenção' : `${Math.min(all.length, 8)} coisas podem precisar da sua atenção`}
         </span>
         <ChevronRight size={18} className="shrink-0 text-faint" />

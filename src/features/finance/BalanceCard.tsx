@@ -22,7 +22,7 @@ function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
     <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap" aria-label={formatMoney(cents, currency)}>
       {cents < 0 && <span className="text-[44px] leading-none font-semibold lg:text-[56px]">−</span>}
       {!suffix && <span className={small}>{symbol}</span>}
-      <span className={`${big} leading-none font-semibold tracking-[-0.045em]`}>
+      <span className={`${big} font-display leading-none font-bold tracking-[-0.05em]`}>
         {whole}
         <span className={small}>,{decimals}</span>
       </span>
@@ -49,7 +49,12 @@ function useCountTo(target: Cents) {
   return shown
 }
 
-export function BalanceCard() {
+/**
+ * The balance. "panel" (Financeiro): a card with Retirar / Adicionar. "hero" (Início): the figure on
+ * the page itself, without a box — the page puts the actions under it as round buttons.
+ */
+export function BalanceCard({ variant = 'panel' }: { variant?: 'panel' | 'hero' }) {
+  const hero = variant === 'hero'
   const { balance, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
   const sheet = useSheet<'in' | 'out'>()
   const [delta, setDelta] = useState<{ id: number; cents: Cents } | null>(null)
@@ -84,14 +89,10 @@ export function BalanceCard() {
   })()
 
   return (
-    <section className="card relative overflow-hidden p-5 lg:p-7">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_80%_at_0%_0%,rgb(91_108_255/0.20),transparent_60%)]"
-        aria-hidden
-      />
+    <section className={hero ? 'relative' : 'card relative overflow-hidden p-5 lg:p-7'} aria-label="Saldo">
       <div className="relative">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium tracking-[0.08em] text-soft uppercase">Saldo</span>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <span className="shrink-0 text-[14px] font-semibold text-soft">{hero ? 'Saldo total' : 'Saldo'}</span>
           <CurrencyPicker
             size="sm"
             label="Moeda de exibição"
@@ -103,7 +104,7 @@ export function BalanceCard() {
 
         <motion.div
           key={delta?.id ?? 'idle'}
-          className="mt-7 mb-2 lg:mt-9"
+          className={hero ? 'mt-3 mb-1' : 'mt-6 mb-1 lg:mt-8'}
           animate={delta ? { color: ['var(--color-ink)', delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', 'var(--color-ink)'] } : undefined}
           transition={{ duration: 1.1, times: [0, 0.25, 1] }}
         >
@@ -132,27 +133,29 @@ export function BalanceCard() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => sheet.show('out')}
-            className="press flex h-14 items-center justify-center gap-2 rounded-[1.1rem] border border-line-strong bg-white/[0.04] text-base font-medium hover:bg-white/[0.07]"
-          >
-            <Minus size={20} strokeWidth={2.4} />
-            Retirar
-          </button>
-          <button
-            type="button"
-            onClick={() => sheet.show('in')}
-            className="press flex h-14 items-center justify-center gap-2 rounded-[1.1rem] bg-accent text-base font-medium text-white hover:bg-accent-hi"
-          >
-            <Plus size={20} strokeWidth={2.4} />
-            Adicionar
-          </button>
-        </div>
+        {!hero && (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => sheet.show('out')}
+              className="press flex h-13 items-center justify-center gap-2 rounded-full border border-line-strong bg-raised text-base font-semibold hover:bg-elevated"
+            >
+              <Minus size={20} strokeWidth={2.4} />
+              Retirar
+            </button>
+            <button
+              type="button"
+              onClick={() => sheet.show('in')}
+              className="press flex h-13 items-center justify-center gap-2 rounded-full bg-accent text-base font-semibold text-on-accent hover:brightness-[0.96]"
+            >
+              <Plus size={20} strokeWidth={2.4} />
+              Adicionar
+            </button>
+          </div>
+        )}
       </div>
 
-      <TransactionSheet type={sheet.item ?? 'in'} open={sheet.open} onClose={sheet.close} />
+      {!hero && <TransactionSheet type={sheet.item ?? 'in'} open={sheet.open} onClose={sheet.close} />}
     </section>
   )
 }

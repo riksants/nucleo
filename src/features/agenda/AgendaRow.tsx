@@ -11,8 +11,8 @@ const DOT: Record<string, string> = {
   work: 'bg-accent',
   study: 'bg-goal',
   training: 'bg-income',
-  commute: 'bg-white/30',
-  rest: 'bg-white/30',
+  commute: 'bg-tint/30',
+  rest: 'bg-tint/30',
   activity: 'bg-accent-hi',
   other: 'bg-faint',
 }
@@ -35,7 +35,7 @@ export function AgendaRow({ item, onOpen, showLabel = true, readOnly }: { item: 
   const dot = DOT[item.kind === 'routine' ? (item.blockKind ?? 'other') : item.kind]
   const muted = item.status === 'done' || item.status === 'skipped'
   return (
-    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
+    <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
       {(item.checkable || item.markable) && !readOnly ? (
         <CheckButton status={item.status === 'ended' ? 'pending' : item.status} onClick={() => toggle(item)} label={item.status === 'done' ? `Desmarcar ${item.title}` : `Concluir ${item.title}`} />
       ) : (

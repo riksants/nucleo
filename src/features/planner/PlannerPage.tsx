@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, CalendarClock, Plus, Salad, ShieldCheck, Sparkles, Stethoscope, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CalendarClock, MessageCircle, Plus, Salad, ShieldCheck, Stethoscope, Trash2 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { ALLERGENS, INTOLERANCES, RESTRICTIONS, sanitizeMealPlan } from '../../../supabase/functions/_shared/planner/foodSafety.ts'
 import { feasibility, fixedBlocks, mergeProposal, newActivity, newCommitment, newTraining } from '../../../supabase/functions/_shared/planner/schedule.ts'
@@ -193,7 +193,7 @@ function ModeChoice({ onPick }: { onPick(mode: PlannerMode): void }) {
   const options: { mode: PlannerMode; title: string; text: string; icon: ReactNode }[] = [
     { mode: 'routine', title: 'Só rotina', text: 'Agenda semanal com seus horários e atividades', icon: <CalendarClock size={22} /> },
     { mode: 'meals', title: 'Só alimentação', text: 'Refeições da semana e lista de compras', icon: <Salad size={22} /> },
-    { mode: 'both', title: 'Rotina + alimentação', text: 'As refeições se encaixam na sua rotina', icon: <Sparkles size={22} /> },
+    { mode: 'both', title: 'Rotina + alimentação', text: 'As refeições se encaixam na sua rotina', icon: <MessageCircle size={22} /> },
   ]
   return (
     <div className="space-y-3">
@@ -600,14 +600,14 @@ export function PlannerPage() {
                 Concordo com o envio desses dados para gerar a proposta.
               </label>
             </div>
-            {!userId && <p className="rounded-2xl bg-white/[0.04] p-4 text-[14px] leading-relaxed text-soft">A IA funciona com uma conta conectada (a chave fica no servidor). Sem conta, monte o plano à mão.</p>}
+            {!userId && <p className="rounded-2xl bg-tint/[0.04] p-4 text-[14px] leading-relaxed text-soft">A IA funciona com uma conta conectada (a chave fica no servidor). Sem conta, monte o plano à mão.</p>}
             {error && (
               <p role="alert" className="rounded-2xl bg-expense/10 p-4 text-[15px] leading-relaxed text-expense">
                 {error}
               </p>
             )}
             <div className="space-y-2.5">
-              <Button size="lg" block icon={<Sparkles size={18} />} disabled={busy || blocked || !userId || (clinical && !usesRoutine)} onClick={generate}>
+              <Button size="lg" block icon={<MessageCircle size={18} />} disabled={busy || blocked || !userId || (clinical && !usesRoutine)} onClick={generate}>
                 {busy ? 'Gerando… pode levar um minuto' : 'Gerar proposta com IA'}
               </Button>
               <Button size="lg" variant="secondary" block disabled={busy || fit.fixedConflicts.length > 0} onClick={manual}>
@@ -628,7 +628,7 @@ export function PlannerPage() {
         </IconButton>
         <div className="flex flex-1 gap-1" aria-hidden>
           {steps.map((s, i) => (
-            <span key={s} className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-accent' : 'bg-white/10'}`} />
+            <span key={s} className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-accent' : 'bg-tint/10'}`} />
           ))}
         </div>
         <button type="button" onClick={() => setChoosing(true)} className="hit relative shrink-0 px-2 text-[13px] font-medium text-accent-hi hover:text-ink">

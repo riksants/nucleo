@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock, Check, Plus, Sparkles } from 'lucide-react'
+import { AlertTriangle, CalendarClock, Check, MessageCircle, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useDailyActions } from '../../core/actions'
 import { indexCompletions, routineStatus } from '../../core/completions'
@@ -26,7 +26,7 @@ export const KIND_DOT: Record<BlockKind, string> = {
   meal: 'bg-warn',
   training: 'bg-income',
   activity: 'bg-accent-hi',
-  rest: 'bg-white/30',
+  rest: 'bg-tint/30',
   other: 'bg-faint',
 }
 
@@ -132,10 +132,10 @@ export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: Rout
       {blocks.map((b) => {
         const isDone = isDoneId(b.id)
         return (
-          <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
+          <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
             {!editable && date <= today ? (
               <button type="button" onClick={() => toggle(b)} aria-label={isDone ? 'Desmarcar' : 'Marcar como feito'} className="grid size-11 shrink-0 place-items-center">
-                <span className={`grid size-6 place-items-center rounded-full border-2 ${isDone ? 'border-accent bg-accent text-white' : 'border-white/20'}`}>{isDone && <Check size={14} strokeWidth={3} />}</span>
+                <span className={`grid size-6 place-items-center rounded-full border-2 ${isDone ? 'border-accent-hi bg-accent text-on-accent' : 'border-tint/20'}`}>{isDone && <Check size={14} strokeWidth={3} />}</span>
               </button>
             ) : (
               <span className="grid size-11 shrink-0 place-items-center">
@@ -170,7 +170,7 @@ function WeekView({ plan, editable, answers, onEdit }: { plan: RoutinePlan; edit
       <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3">
         {WEEKDAYS.map((d) => (
           <section key={d}>
-            <h3 className="mb-2 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">{DAY_LONG[d]}</h3>
+            <h3 className="mb-2 px-1 text-[13px] font-semibold text-soft">{DAY_LONG[d]}</h3>
             <DayAgenda plan={plan} day={d} editable={editable} answers={answers} onEdit={onEdit} />
           </section>
         ))}
@@ -210,7 +210,7 @@ export function RoutinePage() {
         title="Rotina"
         subtitle={routine ? 'Sua semana' : undefined}
         actions={
-          <Button variant="secondary" icon={<Sparkles size={17} />} onClick={() => navigate('/planner')}>
+          <Button variant="secondary" icon={<MessageCircle size={17} />} onClick={() => navigate('/planner')}>
             {profile ? 'Refazer' : 'Montar'}
           </Button>
         }
@@ -218,7 +218,7 @@ export function RoutinePage() {
 
       {routineDraft && (
         <section className="mb-8">
-          <div className="card mb-3 space-y-3 border-accent/30 p-4">
+          <div className="card mb-3 space-y-3 border-accent-hi/30 p-4">
             <div className="flex items-center gap-2">
               <Badge tone="accent">{routineDraft.source === 'ai' ? 'Proposta da IA' : 'Rascunho'}</Badge>
               <span className="text-[14px] text-soft">Revise, edite e aprove</span>
@@ -249,7 +249,7 @@ export function RoutinePage() {
 
       {routine ? (
         <section>
-          {routineDraft && <h2 className="mb-3 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">Rotina salva</h2>}
+          {routineDraft && <h2 className="mb-3 px-1 text-[13px] font-semibold text-soft">Rotina salva</h2>}
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
             <p className="text-[13px] text-faint">Toque no círculo para marcar como feito</p>
             <IconButton label="Adicionar horário" size="sm" onClick={() => blockSheet.show({ block: null, plan: routine })}>

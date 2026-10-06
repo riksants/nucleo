@@ -62,7 +62,7 @@ function PortfolioForm({ open, onClose, item }: { open: boolean; onClose(): void
           {d.image ? (
             <div className="relative overflow-hidden rounded-2xl border border-line">
               <img src={d.image} alt="" className="aspect-[16/10] w-full object-cover" />
-              <button type="button" onClick={() => set('image', '')} aria-label="Remover imagem" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/60 text-white backdrop-blur reduce-transparency:bg-black reduce-transparency:backdrop-blur-none">
+              <button type="button" onClick={() => set('image', '')} aria-label="Remover imagem" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/60 text-on-accent backdrop-blur reduce-transparency:bg-black reduce-transparency:backdrop-blur-none">
                 <X size={18} />
               </button>
             </div>
@@ -133,7 +133,7 @@ export function PortfolioPage() {
                 {p.image ? (
                   <img src={p.image} alt="" loading="lazy" className="aspect-[16/10] w-full object-cover" />
                 ) : (
-                  <div className="grid aspect-[16/10] place-items-center bg-[linear-gradient(135deg,#1c1d2b,#121216)] text-4xl font-semibold text-white/15">{p.name.slice(0, 1).toUpperCase()}</div>
+                  <div className="grid aspect-[16/10] place-items-center bg-raised text-4xl font-semibold text-tint/15">{p.name.slice(0, 1).toUpperCase()}</div>
                 )}
                 <div className="p-4">
                   <h3 className="truncate text-[16px] font-semibold tracking-tight">{p.name}</h3>

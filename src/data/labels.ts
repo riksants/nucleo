@@ -73,7 +73,7 @@ export const TONE_TEXT: Record<Tone, string> = {
 }
 
 export const TONE_BADGE: Record<Tone, string> = {
-  neutral: 'bg-white/[0.06] text-soft',
+  neutral: 'bg-tint/[0.06] text-soft',
   accent: 'bg-accent/15 text-accent-hi',
   positive: 'bg-income/12 text-income',
   negative: 'bg-expense/12 text-expense',

@@ -4,15 +4,15 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'md' | 'lg'
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-hi disabled:bg-accent/40 disabled:text-white/60',
+  primary: 'bg-accent text-on-accent hover:brightness-[0.96] disabled:bg-accent/40 disabled:text-on-accent/60',
   secondary: 'bg-raised text-ink border border-line hover:bg-elevated',
-  ghost: 'text-soft hover:text-ink hover:bg-white/[0.04]',
+  ghost: 'text-soft hover:text-ink hover:bg-tint/[0.04]',
   danger: 'bg-expense/12 text-expense hover:bg-expense/20',
 }
 
 const SIZES: Record<Size, string> = {
-  md: 'h-11 px-4 text-[15px] rounded-2xl',
-  lg: 'h-14 px-6 text-base rounded-[1.1rem]',
+  md: 'h-11 px-5 text-[15px] rounded-full',
+  lg: 'h-14 px-6 text-base rounded-full',
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,7 +26,7 @@ export function Button({ variant = 'primary', size = 'md', icon, block, classNam
   return (
     <button
       type="button"
-      className={`press inline-flex items-center justify-center gap-2 font-medium select-none disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
+      className={`press inline-flex items-center justify-center gap-2 font-semibold select-none disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
       {...rest}
     >
       {icon}
@@ -42,13 +42,13 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const ICON_TONES = {
-  plain: 'text-soft hover:text-ink hover:bg-white/[0.05]',
+  plain: 'text-soft hover:text-ink hover:bg-tint/[0.05]',
   raised: 'bg-raised border border-line text-ink hover:bg-elevated',
-  accent: 'bg-accent text-white hover:bg-accent-hi',
+  accent: 'bg-accent text-on-accent hover:brightness-[0.96]',
 }
 
 export function IconButton({ label, tone = 'plain', size = 'md', className = '', children, ...rest }: IconButtonProps) {
-  const dims = size === 'sm' ? 'size-9 rounded-xl' : 'size-11 rounded-2xl'
+  const dims = size === 'sm' ? 'size-9 rounded-full' : 'size-11 rounded-full'
   return (
     <button type="button" aria-label={label} title={label} className={`press hit relative grid place-items-center shrink-0 ${dims} ${ICON_TONES[tone]} ${className}`} {...rest}>
       {children}

@@ -92,14 +92,14 @@ export function SearchPage() {
           const hits = all ? g.hits : g.hits.slice(0, MAX_PER_GROUP)
           return (
             <section key={g.label}>
-              <h2 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">
+              <h2 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold text-soft">
                 <Icon size={15} />
                 {g.label}
                 <span className="text-faint">{g.hits.length}</span>
               </h2>
               <div className="card p-1.5">
                 {hits.map((h) => (
-                  <button key={h.key ?? h.id} type="button" onClick={() => navigate(g.path, { open: h.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+                  <button key={h.key ?? h.id} type="button" onClick={() => navigate(g.path, { open: h.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-medium">{h.title}</span>
                       {h.subtitle && <span className="block truncate text-[13px] text-faint">{h.subtitle}</span>}

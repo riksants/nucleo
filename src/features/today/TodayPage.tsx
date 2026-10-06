@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, Check, ChevronRight, Sparkles } from 'lucide-react'
+import { CalendarCheck, Check, ChevronRight, MessageCircle } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { emptyRoutineAnswers } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
@@ -168,7 +168,7 @@ function DayView({ today }: { today: string }) {
             <Block title="Próximos compromissos">
               <div className="card p-1.5">
                 {appointments.map((t) => (
-                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03] tap">
+                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-tint/[0.03] tap">
                     <span className="num w-24 shrink-0 text-[14px] text-soft">
                       {formatDateValue(t.dueDate)} {t.dueTime}
                     </span>
@@ -206,7 +206,7 @@ function DayView({ today }: { today: string }) {
                 {due.map((d) => {
                   const rel = relativeDays(d.date)
                   return (
-                    <button key={d.key} type="button" onClick={() => navigate(d.path, { open: d.open })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-white/[0.03] tap">
+                    <button key={d.key} type="button" onClick={() => navigate(d.path, { open: d.open })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-tint/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{d.title}</span>
                         <span className={`text-[13px] ${rel && rel.days < 0 ? 'text-expense' : rel && rel.days <= 1 ? 'text-warn' : 'text-faint'}`}>
@@ -262,7 +262,7 @@ export function TodayPage() {
         subtitle={<span className="first-letter:uppercase">{LONG_DATE.format(new Date(`${today}T12:00:00Z`))}</span>}
         actions={
           <button type="button" onClick={() => navigate('/assistant')} className="press flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-            <Sparkles size={16} className="text-accent-hi" /> Assistente
+            <MessageCircle size={16} className="text-accent-hi" /> Assistente
           </button>
         }
       />

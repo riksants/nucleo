@@ -16,12 +16,12 @@ function CheckCircle({ checked }: { checked: boolean }) {
       initial={false}
       animate={{
         backgroundColor: checked ? 'var(--color-accent)' : 'rgba(0,0,0,0)',
-        borderColor: checked ? 'var(--color-accent)' : 'rgba(255,255,255,0.22)',
+        borderColor: checked ? 'var(--color-accent)' : 'var(--color-check-line)',
         scale: checked ? [1, 1.1, 1] : 1,
       }}
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
-      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="white" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 24 24" className="size-4 stroke-on-accent" fill="none" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
         <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }} transition={{ duration: 0.16, delay: checked ? 0.04 : 0 }} />
       </svg>
     </motion.span>
@@ -57,7 +57,7 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
       className="overflow-hidden"
     >
-      <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-white/[0.03] tap">
+      <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
         <button type="button" onClick={toggle} aria-label={done ? 'Marcar como não feita' : 'Concluir tarefa'} className="grid size-12 shrink-0 place-items-center">
           <CheckCircle checked={checked} />
         </button>

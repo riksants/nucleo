@@ -87,7 +87,7 @@ function Overview({ totals, owing }: { totals: MoneyTotals[]; owing: number }) {
 function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
   const owing = buyer.totals.filter((t) => t.remaining > 0)
   return (
-    <button type="button" onClick={() => onOpen(buyer)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+    <button type="button" onClick={() => onOpen(buyer)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{buyer.name}</span>
         <span className="mt-0.5 flex items-center gap-2 text-[13px] text-faint">
@@ -118,7 +118,7 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen(s: Sale): void }) {
   const overdue = isOverdue(sale)
   const rel = sale.dueDate && status !== 'paid' ? relativeDays(sale.dueDate) : null
   return (
-    <button type="button" onClick={() => onOpen(sale)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+    <button type="button" onClick={() => onOpen(sale)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{buyer(sale)}</span>
         <span className="block truncate text-[13px] text-faint">

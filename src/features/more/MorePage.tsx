@@ -67,7 +67,7 @@ export function MorePage() {
       </div>
       <div className="card mt-6 divide-y divide-line overflow-hidden">
         {/* Conta: who is signed in (sign out lives in Configurações → Conta). */}
-        <a href={userId || !configured ? '#/settings' : undefined} onClick={!userId && configured ? (e) => (e.preventDefault(), openAuth('signin')) : undefined} className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 transition-colors hover:bg-white/[0.03] tap">
+        <a href={userId || !configured ? '#/settings' : undefined} onClick={!userId && configured ? (e) => (e.preventDefault(), openAuth('signin')) : undefined} className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 transition-colors hover:bg-tint/[0.03] tap">
           <UserRound size={20} className="text-soft" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px]">Conta</span>
@@ -76,13 +76,13 @@ export function MorePage() {
           <ChevronRight size={18} className="text-faint" />
         </a>
         {[ASSISTANT, SETTINGS].map((s) => (
-          <a key={s.path} href={`#${s.path}`} className="flex min-h-14 items-center gap-3 px-4 transition-colors hover:bg-white/[0.03] tap">
+          <a key={s.path} href={`#${s.path}`} className="flex min-h-14 items-center gap-3 px-4 transition-colors hover:bg-tint/[0.03] tap">
             <s.icon size={20} className="text-soft" />
             <span className="flex-1 text-[15px]">{s.label}</span>
             <ChevronRight size={18} className="text-faint" />
           </a>
         ))}
-        <a href="#/settings?painel=secoes" className="flex min-h-14 items-center gap-3 px-4 py-2 transition-colors hover:bg-white/[0.03] tap">
+        <a href="#/settings?painel=secoes" className="flex min-h-14 items-center gap-3 px-4 py-2 transition-colors hover:bg-tint/[0.03] tap">
           <SlidersHorizontal size={20} className="text-soft" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px]">Personalizar seções</span>

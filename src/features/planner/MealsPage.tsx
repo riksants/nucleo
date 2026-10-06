@@ -1,4 +1,4 @@
-import { Plus, Salad, ShieldAlert, Sparkles, Stethoscope, Trash2 } from 'lucide-react'
+import { MessageCircle, Plus, Salad, ShieldAlert, Stethoscope, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { activeRules, emptyMealAnswers, violations } from '../../../supabase/functions/_shared/planner/foodSafety.ts'
 import { DAY_LONG, DAY_SHORT, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
@@ -231,7 +231,7 @@ export function AiPlanView() {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] text-soft">Modelo semanal montado com IA — não é prescrição.</p>
-        <Button variant="secondary" icon={<Sparkles size={17} />} onClick={() => navigate('/planner')}>
+        <Button variant="secondary" icon={<MessageCircle size={17} />} onClick={() => navigate('/planner')}>
           {profile ? 'Refazer' : 'Montar'}
         </Button>
       </div>
@@ -245,7 +245,7 @@ export function AiPlanView() {
 
       {mealsDraft && (
         <section className="mb-8">
-          <div className="card mb-3 space-y-3 border-accent/30 p-4">
+          <div className="card mb-3 space-y-3 border-accent-hi/30 p-4">
             <div className="flex items-center gap-2">
               <Badge tone="accent">{mealsDraft.source === 'ai' ? 'Proposta da IA' : 'Rascunho'}</Badge>
               <span className="text-[14px] text-soft">Revise, edite e aprove</span>
@@ -276,7 +276,7 @@ export function AiPlanView() {
 
       {meals ? (
         <section>
-          {mealsDraft && <h2 className="mb-3 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">Planejamento salvo</h2>}
+          {mealsDraft && <h2 className="mb-3 px-1 text-[13px] font-semibold text-soft">Planejamento salvo</h2>}
           <PlanView plan={meals} answers={answers} onEdit={(m) => sheet.show({ meal: m, planId: MEALS_CURRENT })} />
         </section>
       ) : (

@@ -16,7 +16,7 @@ export function DayPicker({ value, onChange }: { value: Weekday[]; onChange(days
             type="button"
             aria-pressed={on}
             onClick={() => onChange(on ? value.filter((x) => x !== d) : [...value, d])}
-            className={`press h-10 min-w-11 rounded-xl border px-2 text-[14px] font-medium ${on ? 'border-transparent bg-accent text-white' : 'border-line bg-raised text-soft hover:text-ink'}`}
+            className={`press h-10 min-w-11 rounded-xl border px-2 text-[14px] font-medium ${on ? 'border-transparent bg-accent text-on-accent' : 'border-line bg-raised text-soft hover:text-ink'}`}
           >
             {DAY_SHORT[d]}
           </button>

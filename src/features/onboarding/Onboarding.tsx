@@ -61,7 +61,7 @@ export function Onboarding() {
           )}
           <div className="flex gap-1.5" aria-hidden>
             {Array.from({ length: steps }, (_, i) => i).map((i) => (
-              <span key={i} className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-(--ease-out-soft) ${i === step ? 'w-6 bg-accent' : 'w-1.5 bg-white/15'}`} />
+              <span key={i} className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-(--ease-out-soft) ${i === step ? 'w-6 bg-accent' : 'w-1.5 bg-tint/15'}`} />
             ))}
           </div>
         </div>
@@ -124,7 +124,7 @@ export function Onboarding() {
                           aria-checked={active}
                           onClick={() => setCurrency(c)}
                           className={`press flex h-18 w-full items-center gap-4 rounded-[1.25rem] border px-5 text-left transition-colors ${
-                            active ? 'border-accent bg-accent/10' : 'border-line bg-surface hover:border-line-strong'
+                            active ? 'border-accent-hi bg-accent/10' : 'border-line bg-surface hover:border-line-strong'
                           }`}
                         >
                           <span className="grid h-11 min-w-11 place-items-center rounded-2xl bg-elevated px-1.5 text-[15px] font-semibold">{currencyInfo(c).symbol}</span>
@@ -132,7 +132,7 @@ export function Onboarding() {
                             <span className="block text-[17px] font-semibold">{currencyInfo(c).label}</span>
                             <span className="text-sm text-faint">{c}</span>
                           </span>
-                          <span className={`grid size-6 place-items-center rounded-full border-2 ${active ? 'border-accent bg-accent text-white' : 'border-white/20'}`}>
+                          <span className={`grid size-6 place-items-center rounded-full border-2 ${active ? 'border-accent-hi bg-accent text-on-accent' : 'border-tint/20'}`}>
                             {active && <Check size={14} strokeWidth={3} />}
                           </span>
                         </button>
@@ -170,7 +170,7 @@ export function Onboarding() {
                 <div className="flex-1 pt-10">
                   <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">Quanto você tem hoje?</h1>
                   <p className="mt-2 text-[16px] text-soft">Esse é o seu saldo inicial. Não conta como entrada.</p>
-                  <label className="mt-8 flex items-center gap-3 rounded-[1.25rem] border border-line bg-raised px-5 focus-within:border-accent/70">
+                  <label className="mt-8 flex items-center gap-3 rounded-[1.25rem] border border-line bg-raised px-5 focus-within:border-accent-hi/70">
                     <span className="text-2xl font-medium text-soft">{currencyInfo(currency).symbol}</span>
                     <input
                       inputMode="decimal"

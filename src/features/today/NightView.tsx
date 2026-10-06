@@ -110,7 +110,6 @@ export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan:
   return (
     <div className="space-y-7">
       <div className="card relative overflow-hidden p-5">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_80%_at_100%_0%,rgb(179_145_255/0.14),transparent_60%)]" aria-hidden />
         <p className="relative flex items-center gap-2 text-[22px] font-semibold tracking-tight">
           <MoonStar size={20} className="text-goal" /> Fechando o dia
         </p>
@@ -171,7 +170,7 @@ export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan:
       )}
 
       {weekday === 0 && isEnabled(settings, 'week') && (
-        <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 border-accent/30 p-4 text-left hover:border-accent/50">
+        <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 border-accent-hi/30 p-4 text-left hover:border-accent-hi/50">
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
             <span className="text-[13px] text-faint">Opcional — tarefas, compromissos e metas.</span>

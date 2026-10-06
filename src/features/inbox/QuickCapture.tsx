@@ -103,7 +103,7 @@ export function QuickCaptureButton() {
         title="Capturar"
         onClick={() => setOpen(true)}
         data-hidden={hidden}
-        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-white shadow-xl shadow-black/50 hover:bg-accent-hi lg:hidden"
+        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:brightness-[0.96] lg:hidden"
         style={{ bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 84px)' }}
       >
         <Plus size={26} strokeWidth={2.4} />

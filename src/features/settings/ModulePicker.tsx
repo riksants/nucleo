@@ -15,9 +15,9 @@ export function Switch({ checked, label }: { checked: boolean; label?: string })
   // Moved with transform (GPU), not "left" (layout). Reduced motion: jumps straight to the new side.
   const reduce = usePrefersReducedMotion()
   return (
-    <span role="presentation" aria-label={label} className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-white/[0.12]'}`}>
+    <span role="presentation" aria-label={label} className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-tint/[0.12]'}`}>
       <motion.span
-        className="absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm shadow-black/40"
+        className="absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-sm shadow-shade/40"
         initial={false}
         animate={{ transform: checked ? 'translateX(20px)' : 'translateX(0px)' }}
         transition={reduce ? { duration: 0 } : KNOB_SPRING}
@@ -51,9 +51,9 @@ export function ModulePicker({
             role="switch"
             aria-checked={on}
             onClick={() => onChange({ ...value, [m.id]: !on })}
-            className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap"
+            className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
           >
-            <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${on ? 'bg-accent/12 text-accent-hi' : 'bg-white/[0.05] text-faint'}`}>
+            <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${on ? 'bg-accent/12 text-accent-hi' : 'bg-tint/[0.05] text-faint'}`}>
               <Icon size={18} />
             </span>
             <span className="min-w-0 flex-1">

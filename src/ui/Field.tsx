@@ -7,12 +7,12 @@ import { CurrencySheet, quickCurrencies } from './CurrencySheet'
 import { Segmented } from './Segmented'
 
 const CONTROL =
-  'w-full rounded-[var(--radius-field)] border border-line bg-raised px-4 text-ink placeholder:text-faint transition-colors focus:border-accent/70 focus:bg-elevated focus:outline-none'
+  'w-full rounded-[var(--radius-field)] border border-line bg-raised px-4 text-ink placeholder:text-faint transition-colors focus:border-accent-hi/70 focus:bg-elevated focus:outline-none'
 
 export function Field({ label, hint, error, children }: { label: string; hint?: ReactNode; error?: string | null; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-baseline justify-between gap-2 text-[13px] font-medium tracking-wide text-soft uppercase">
+      <span className="mb-2 flex items-baseline justify-between gap-2 text-[13px] font-semibold text-soft">
         {label}
         {hint && <span className="text-xs font-normal tracking-normal text-faint normal-case">{hint}</span>}
       </span>

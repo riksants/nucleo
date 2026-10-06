@@ -1,4 +1,4 @@
-import { CircleEllipsis, House, Search, Settings as SettingsIcon, Sparkles, type LucideIcon } from 'lucide-react'
+import { CircleEllipsis, House, MessageCircle, Search, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
 import type { ModuleId, Settings } from '../data/types'
 import { enabledModules, isEnabled } from './modules'
 import type { RoutePath } from './router'
@@ -14,7 +14,7 @@ export const HOME: Section = { path: '/', label: 'Início', icon: House }
 export const MORE: Section = { path: '/more', label: 'Mais', icon: CircleEllipsis }
 export const SEARCH: Section = { path: '/search', label: 'Buscar', icon: Search }
 /** Always available (not a hideable section): Hoje, Início, Mais and the sidebar link to it. */
-export const ASSISTANT: Section = { path: '/assistant', label: 'Assistente', icon: Sparkles }
+export const ASSISTANT: Section = { path: '/assistant', label: 'Assistente', icon: MessageCircle }
 export const SETTINGS: Section = { path: '/settings', label: 'Configurações', icon: SettingsIcon }
 
 /** Preferred order for the three tab-bar slots after Início. The original three come first. */

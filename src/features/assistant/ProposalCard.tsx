@@ -53,15 +53,15 @@ export function ProposalCard({ proposal, onDone }: { proposal: Proposal; onDone?
   }
 
   return (
-    <div data-proposal={proposal.id} className="card mt-2 space-y-3 border-accent/30 p-4">
-      <p className="text-[13px] font-medium tracking-wide text-soft uppercase">{proposal.title}</p>
+    <div data-proposal={proposal.id} className="card mt-2 space-y-3 border-accent-hi/30 p-4">
+      <p className="text-[13px] font-semibold text-soft">{proposal.title}</p>
       <ul className="space-y-1.5">
         {proposal.changes.map((c) => {
           const on = chosen.has(c.id)
           return (
             <li key={c.id} className="flex items-start gap-2.5">
               {adjusting ? (
-                <button type="button" role="checkbox" aria-checked={on} aria-label={`Incluir: ${c.label}`} onClick={() => setChosen((s) => (on ? new Set([...s].filter((x) => x !== c.id)) : new Set([...s, c.id])))} className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 ${on ? 'border-accent bg-accent text-white' : 'border-line-strong'}`}>
+                <button type="button" role="checkbox" aria-checked={on} aria-label={`Incluir: ${c.label}`} onClick={() => setChosen((s) => (on ? new Set([...s].filter((x) => x !== c.id)) : new Set([...s, c.id])))} className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 ${on ? 'border-accent-hi bg-accent text-on-accent' : 'border-line-strong'}`}>
                   {on && <Check size={14} strokeWidth={3} />}
                 </button>
               ) : (

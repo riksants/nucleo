@@ -70,7 +70,7 @@ export function CheckinSheet({ open, onClose, week }: { open: boolean; onClose()
                     aria-checked={on}
                     aria-label={`${v}`}
                     onClick={() => setAnswers((a) => ({ ...a, [t.id]: on ? undefined : v }))}
-                    className={`press num grid h-11 flex-1 place-items-center rounded-xl border text-[16px] font-semibold ${on ? 'border-transparent bg-accent text-white' : 'border-line bg-raised text-soft hover:text-ink'}`}
+                    className={`press num grid h-11 flex-1 place-items-center rounded-xl border text-[16px] font-semibold ${on ? 'border-transparent bg-accent text-on-accent' : 'border-line bg-raised text-soft hover:text-ink'}`}
                   >
                     {v}
                   </button>

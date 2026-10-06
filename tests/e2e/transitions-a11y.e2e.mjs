@@ -65,7 +65,7 @@ try {
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] })
   await sleep(200)
   const solid = await nav()
-  r.check('reduzir transparência: barra de abas sólida (sem desfoque)', solid.blur === 'none' && solid.bg === 'rgb(9, 9, 11)', JSON.stringify(solid))
+  r.check('reduzir transparência: barra de abas sólida (sem desfoque)', solid.blur === 'none' && solid.bg === 'rgb(11, 16, 13)', JSON.stringify(solid))
   // Toast too
   await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Retirar').click()`)
   await sleep(600)
@@ -73,7 +73,7 @@ try {
   await b.eval(`[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Retirar R$')).click()`)
   await sleep(400)
   const toast = await b.eval(`(() => { const t = document.querySelector('[role=status]'); if (!t) return null; const cs = getComputedStyle(t); return { blur: cs.backdropFilter, bg: cs.backgroundColor } })()`)
-  r.check('reduzir transparência: aviso (toast) sólido', !!toast && toast.blur === 'none' && toast.bg === 'rgb(32, 32, 39)', JSON.stringify(toast))
+  r.check('reduzir transparência: aviso (toast) sólido', !!toast && toast.blur === 'none' && toast.bg === 'rgb(30, 39, 34)', JSON.stringify(toast))
   await b.send('Emulation.setEmulatedMedia', { features: [] })
 } catch (err) {
   r.results.push('ERROR ' + err.message)

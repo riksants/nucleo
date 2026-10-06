@@ -153,7 +153,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
       {live.length ? (
         <div className="card divide-y divide-line">
           {live.map(({ c, s }) => (
-            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03] tap">
+            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
               <span className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.name}</span>
                 <Badge tone={TONE[s.status]}>{CHALLENGE_STATUS_LABEL[s.status]}</Badge>
@@ -185,7 +185,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
       {showPast && (
         <div className="card mt-2 divide-y divide-line">
           {past.map(({ c, s }) => (
-            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-white/[0.03] tap">
+            <button key={c.id} type="button" onClick={() => detail.show(c.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-tint/[0.03] tap">
               <span className="min-w-0 flex-1 truncate text-[15px] text-soft">{c.name}</span>
               <Badge tone={TONE[s.status]}>{CHALLENGE_STATUS_LABEL[s.status]}</Badge>
             </button>
@@ -217,7 +217,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
                       onClick={() => setCompletion('challenge', open.c.id, d.date, isMarked ? null : 'done')}
                       title={label ? `${d.date} · ${label}` : d.date}
                       aria-label={label ? `Dia ${d.date.slice(8, 10)}: ${label}` : undefined}
-                      className={`grid h-10 min-w-10 place-items-center rounded-xl border px-1.5 text-[13px] font-medium ${d.met ? 'border-transparent bg-accent text-white' : d.noData ? 'border-dashed border-line text-faint' : d.counted ? 'border-line bg-raised text-soft' : 'border-dashed border-line text-faint'}`}
+                      className={`grid h-10 min-w-10 place-items-center rounded-xl border px-1.5 text-[13px] font-medium ${d.met ? 'border-transparent bg-accent text-on-accent' : d.noData ? 'border-dashed border-line text-faint' : d.counted ? 'border-line bg-raised text-soft' : 'border-dashed border-line text-faint'}`}
                     >
                       {d.date.slice(8, 10)}
                     </button>

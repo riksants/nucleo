@@ -39,7 +39,7 @@ export function ThisMonthCard() {
     <div className="card p-5">
       <div className="flex items-center gap-2">
         <TrendingUp size={17} className="shrink-0 text-accent-hi" />
-        <p className="min-w-0 flex-1 text-[13px] font-medium tracking-wide text-soft uppercase">Este mês · {monthLabel(month)}</p>
+        <p className="min-w-0 flex-1 text-[13px] font-semibold text-soft">Este mês · {monthLabel(month)}</p>
       </div>
       <p className={`mt-3 text-[15px] leading-relaxed ${forecast.ready ? 'font-medium' : 'text-soft'}`}>{f.title}</p>
       <p className="mt-1 text-[13px] leading-relaxed text-faint">{f.detail}</p>
@@ -158,7 +158,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
                       <span className={`min-w-0 truncate ${c.category ? '' : 'text-soft'}`}>{categoryLabel(settings, c.category || undefined)}</span>
                       <span className="num shrink-0 font-medium">{formatMoney(c.amount, cur)}</span>
                     </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-tint/[0.06]">
                       <div className="h-full rounded-full bg-accent/70" style={{ width: `${max ? Math.max(3, Math.round((c.amount / max) * 100)) : 0}%` }} />
                     </div>
                   </div>

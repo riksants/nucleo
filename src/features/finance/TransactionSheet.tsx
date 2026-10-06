@@ -179,11 +179,11 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
       <form onSubmit={submit} noValidate className="space-y-6 pt-2">
         {orphan && <p className="rounded-2xl bg-raised p-4 text-[14px] leading-relaxed text-soft">Esta entrada veio de um pagamento que não existe mais (talvez excluído em outro aparelho). Ela pode ser editada ou excluída normalmente.</p>}
         <div>
-          <label htmlFor="tx-amount" className="mb-2 block text-[13px] font-medium tracking-wide text-soft uppercase">
+          <label htmlFor="tx-amount" className="mb-2 block text-[13px] font-semibold text-soft">
             Valor
           </label>
           <div
-            className={`flex items-center gap-2 rounded-[1.25rem] border bg-raised px-5 transition-colors focus-within:border-accent/70 ${
+            className={`flex items-center gap-2 rounded-[1.25rem] border bg-raised px-5 transition-colors focus-within:border-accent-hi/70 ${
               tried && amountError ? 'border-expense/60' : 'border-line'
             }`}
           >
@@ -263,7 +263,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
         </div>
 
         <div>
-          <label htmlFor="tx-reason" className="mb-2 block text-[13px] font-medium tracking-wide text-soft uppercase">
+          <label htmlFor="tx-reason" className="mb-2 block text-[13px] font-semibold text-soft">
             Motivo
           </label>
           <input
@@ -275,7 +275,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
             value={draft.reason}
             maxLength={120}
             onChange={(e) => set('reason', e.target.value)}
-            className={`h-14 w-full rounded-[var(--radius-field)] border bg-raised px-4 text-[17px]! text-ink placeholder:text-faint focus:border-accent/70 focus:outline-none ${
+            className={`h-14 w-full rounded-[var(--radius-field)] border bg-raised px-4 text-[17px]! text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none ${
               tried && reasonError ? 'border-expense/60' : 'border-line'
             }`}
           />
@@ -298,7 +298,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
         {kind !== 'adjust' && (
           <div className="space-y-3">
             <div>
-              <label htmlFor="tx-category" className="mb-2 block text-[13px] font-medium tracking-wide text-soft uppercase">
+              <label htmlFor="tx-category" className="mb-2 block text-[13px] font-semibold text-soft">
                 Categoria <span className="font-normal tracking-normal normal-case text-faint">· opcional</span>
               </label>
               <Select id="tx-category" value={draft.category} onChange={(e) => set('category', e.target.value)}>

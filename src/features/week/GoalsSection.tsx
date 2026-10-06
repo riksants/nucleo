@@ -57,7 +57,7 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
           {goals.map((g) => {
             const gp = goalProgress(g, metrics)
             return (
-              <button key={g.id} type="button" onClick={() => actions.show(g)} className="block w-full px-4 py-3.5 text-left hover:bg-white/[0.03] tap">
+              <button key={g.id} type="button" onClick={() => actions.show(g)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{g.title}</span>
                   {gp.achieved ? <Badge tone="positive">Cumprida</Badge> : <span className="num shrink-0 text-[14px] text-soft">{gp.noData ? 'sem dados ainda' : `${formatGoalValue(g, gp.value, cur)} / ${formatGoalValue(g, gp.target, cur)}`}</span>}
@@ -97,7 +97,7 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
       {showArchived && (
         <div className="card mt-2 divide-y divide-line">
           {archived.map((g) => (
-            <button key={g.id} type="button" onClick={() => actions.show(g)} className="block w-full px-4 py-3 text-left text-[15px] text-faint hover:bg-white/[0.03] tap">
+            <button key={g.id} type="button" onClick={() => actions.show(g)} className="block w-full px-4 py-3 text-left text-[15px] text-faint hover:bg-tint/[0.03] tap">
               {g.title}
             </button>
           ))}
@@ -126,17 +126,17 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
             )}
             <div className="card divide-y divide-line overflow-hidden">
               {item.status !== 'archived' && (
-                <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-white/[0.03] tap" onClick={async () => (await save('weeklyGoals', { ...item, status: item.status === 'done' ? 'active' : 'done' }), actions.close(), toast(item.status === 'done' ? 'Meta reaberta' : 'Meta concluída'))}>
+                <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-tint/[0.03] tap" onClick={async () => (await save('weeklyGoals', { ...item, status: item.status === 'done' ? 'active' : 'done' }), actions.close(), toast(item.status === 'done' ? 'Meta reaberta' : 'Meta concluída'))}>
                   {item.status === 'done' ? 'Reabrir' : 'Marcar como concluída'}
                 </button>
               )}
-              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-white/[0.03] tap" onClick={async () => (await repeat(item), actions.close())}>
+              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-tint/[0.03] tap" onClick={async () => (await repeat(item), actions.close())}>
                 Repetir na próxima semana
               </button>
-              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-white/[0.03] tap" onClick={() => (actions.close(), form.show(item))}>
+              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] hover:bg-tint/[0.03] tap" onClick={() => (actions.close(), form.show(item))}>
                 Editar ou excluir
               </button>
-              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] text-soft hover:bg-white/[0.03] tap" onClick={async () => (await save('weeklyGoals', { ...item, status: item.status === 'archived' ? 'active' : 'archived' }), actions.close(), toast(item.status === 'archived' ? 'Meta restaurada' : 'Meta arquivada'))}>
+              <button type="button" className="block w-full px-4 py-3.5 text-left text-[15px] text-soft hover:bg-tint/[0.03] tap" onClick={async () => (await save('weeklyGoals', { ...item, status: item.status === 'archived' ? 'active' : 'archived' }), actions.close(), toast(item.status === 'archived' ? 'Meta restaurada' : 'Meta arquivada'))}>
                 {item.status === 'archived' ? 'Restaurar' : 'Arquivar'}
               </button>
             </div>

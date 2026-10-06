@@ -15,7 +15,7 @@ import { useOpenParam } from '../useOpenParam'
 import { HabitForm } from './HabitForm'
 import { HabitRow } from './HabitRow'
 
-const DOT = { done: 'bg-accent', skipped: 'bg-white/25', pending: 'border border-white/20', off: 'bg-transparent' }
+const DOT = { done: 'bg-accent', skipped: 'bg-tint/25', pending: 'border border-tint/20', off: 'bg-transparent' }
 
 function History({ habit, dates, index }: { habit: Habit; dates: string[]; index: ReturnType<typeof indexCompletions> }) {
   const marks = habitHistory(habit, dates, index)
@@ -74,7 +74,7 @@ export function HabitsPage() {
             <SectionTitle>Últimos 7 dias</SectionTitle>
             <div className="card divide-y divide-line">
               {active.map((h) => (
-                <button key={h.id} type="button" onClick={() => form.show(h)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.03] tap">
+                <button key={h.id} type="button" onClick={() => form.show(h)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-tint/[0.03] tap">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-medium">{h.name}</span>
                     <span className="block truncate text-[13px] text-faint">{[describeRule(h.rule), h.time, h.goal].filter(Boolean).join(' · ')}</span>
@@ -85,10 +85,10 @@ export function HabitsPage() {
             </div>
             {inactive.length > 0 && (
               <>
-                <h3 className="mt-6 mb-2 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">Desativados</h3>
+                <h3 className="mt-6 mb-2 px-1 text-[13px] font-semibold text-soft">Desativados</h3>
                 <div className="card divide-y divide-line">
                   {inactive.map((h) => (
-                    <button key={h.id} type="button" onClick={() => form.show(h)} className="flex w-full items-center px-4 py-3 text-left text-[15px] text-faint hover:bg-white/[0.03] tap">
+                    <button key={h.id} type="button" onClick={() => form.show(h)} className="flex w-full items-center px-4 py-3 text-left text-[15px] text-faint hover:bg-tint/[0.03] tap">
                       {h.name}
                     </button>
                   ))}

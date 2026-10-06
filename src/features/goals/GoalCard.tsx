@@ -71,7 +71,7 @@ export function GoalCard({ goal, onOpen, compact }: { goal: Goal; onOpen(g: Goal
         <button
           type="button"
           onClick={togglePurchased}
-          className="press mt-4 flex h-10 items-center gap-2 rounded-xl px-3 -ml-1 text-sm font-medium text-soft hover:bg-white/[0.04] hover:text-ink"
+          className="press mt-4 flex h-10 items-center gap-2 rounded-xl px-3 -ml-1 text-sm font-medium text-soft hover:bg-tint/[0.04] hover:text-ink"
         >
           {purchased ? <RotateCcw size={16} /> : <Check size={16} />}
           {purchased ? 'Voltar para metas' : 'Marcar como comprado'}

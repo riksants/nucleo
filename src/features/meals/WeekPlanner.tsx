@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, Plus, Settings2, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, MessageCircle, Plus, Settings2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DEFAULT_MEAL_TYPES, copyWeek, fromTemplate, mealsOfWeek, mealTitle, mealTypes, sortMeals, typeLabel, weekDays } from '../../core/meals'
 import { addDaysToDate, useToday, weekStart, zoneOf } from '../../core/period'
@@ -146,7 +146,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
             </Button>
           )}
           {template && !meals.length && (
-            <Button variant="secondary" icon={<Sparkles size={16} />} onClick={useTemplate}>
+            <Button variant="secondary" icon={<MessageCircle size={16} />} onClick={useTemplate}>
               Usar plano da IA
             </Button>
           )}
@@ -158,7 +158,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
           const list = meals.filter((m) => m.date === date)
           const wd = new Date(`${date}T12:00:00Z`).getUTCDay()
           return (
-            <section key={date} className={`card p-2 ${date === today ? 'border-accent/40' : ''}`} aria-label={`${DAY_NAME[wd]} ${date.slice(8, 10)}/${date.slice(5, 7)}`}>
+            <section key={date} className={`card p-2 ${date === today ? 'border-accent-hi/40' : ''}`} aria-label={`${DAY_NAME[wd]} ${date.slice(8, 10)}/${date.slice(5, 7)}`}>
               <div className="flex items-center gap-2 px-2 pt-1">
                 <p className="min-w-0 flex-1 text-[14px] font-semibold">
                   {DAY_NAME[wd]} <span className="font-normal text-faint">{date.slice(8, 10)}/{date.slice(5, 7)}</span>
@@ -170,7 +170,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
               </div>
               {list.length ? (
                 list.map((m) => (
-                  <div key={m.id} className="flex items-start gap-1 rounded-2xl hover:bg-white/[0.03] tap">
+                  <div key={m.id} className="flex items-start gap-1 rounded-2xl hover:bg-tint/[0.03] tap">
                     <CheckButton status={m.done ? 'done' : 'pending'} onClick={() => setMealDone(m, !m.done)} label={m.done ? `Desmarcar ${mealTitle(settings, m)}` : `Marcar ${mealTitle(settings, m)} como realizada`} />
                     <button type="button" onClick={() => form.show(m)} className="min-w-0 flex-1 py-2.5 pr-2 text-left">
                       <span className={`block truncate text-[15px] ${m.done ? 'text-faint line-through' : ''}`}>

@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowUp, ChevronRight, MessageCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -154,7 +154,7 @@ export function AssistantPage() {
         <div className="space-y-4" aria-live="polite">
           {messages.length === 0 && (
             <div className="card flex gap-3 p-4 text-[15px] leading-relaxed text-soft">
-              <Sparkles size={18} className="mt-0.5 shrink-0 text-accent-hi" />
+              <MessageCircle size={18} className="mt-0.5 shrink-0 text-accent-hi" />
               <p>Pergunte sobre o seu dia, semana, metas e gastos, ou peça para criar tarefas, metas e compromissos. Antes de mudar qualquer coisa, eu mostro a proposta para você confirmar.</p>
             </div>
           )}
@@ -181,7 +181,7 @@ export function AssistantPage() {
         className="fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+66px)] z-30 border-t border-line bg-bg/92 px-4 py-2.5 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:bottom-0 lg:left-64 lg:pb-[max(10px,env(safe-area-inset-bottom))]"
       >
         <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <input aria-label="Pergunte ao NÚCLEO" placeholder="Pergunte ao NÚCLEO…" value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent/70 focus:outline-none" />
+          <input aria-label="Pergunte ao NÚCLEO" placeholder="Pergunte ao NÚCLEO…" value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none" />
           <IconButton label="Enviar" tone="accent" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
             <ArrowUp size={19} />
           </IconButton>

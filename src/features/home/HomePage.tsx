@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, Search, Settings, Sparkles } from 'lucide-react'
+import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { navigate } from '../../app/router'
@@ -30,6 +30,16 @@ function greeting(d = new Date()) {
   return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
+/** Round quick action with its name under it (bank-app style). */
+function QuickAction({ label, icon, primary, onClick }: { label: string; icon: ReactNode; primary?: boolean; onClick(): void }) {
+  return (
+    <button type="button" onClick={onClick} className="press flex min-w-0 flex-col items-center gap-2 text-[13px] font-semibold">
+      <span className={`grid size-[58px] place-items-center rounded-full ${primary ? 'bg-accent text-on-accent' : 'border border-card-border bg-surface text-ink'}`}>{icon}</span>
+      <span className="max-w-full truncate">{label}</span>
+    </button>
+  )
+}
+
 function Block({ title, action, onAction, children }: { title: string; action?: string; onAction?(): void; children: ReactNode }) {
   return (
     <section>
@@ -55,6 +65,7 @@ function EmptyLine({ text, action, onAction }: { text: string; action: string; o
 export function HomePage() {
   const { data, settings, displayCurrency, convert } = useStore()
   const txSheet = useSheet<Transaction>()
+  const newTx = useSheet<'in' | 'out'>()
   const taskSheet = useSheet<Task>()
   const goalSheet = useSheet<Goal>()
 
@@ -75,54 +86,52 @@ export function HomePage() {
 
   return (
     <>
-      <header className="mb-4 flex items-center justify-between gap-3 lg:mb-5">
-        <div>
-          <p className="text-[13px] font-medium text-faint first-letter:uppercase">{formatWeekday(today)}</p>
-          <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em] lg:text-[34px]">{greeting(today)}</h1>
+      <header className="mb-6 flex items-center justify-between gap-3 lg:mb-7">
+        <div className="min-w-0">
+          <p className="text-[14px] font-medium text-soft first-letter:uppercase">{formatWeekday(today)}</p>
+          <h1 className="text-[28px] leading-tight font-bold tracking-[-0.03em] lg:text-[36px]">{greeting(today)}</h1>
         </div>
-        <div className="flex gap-1">
-          <IconButton label="Buscar" className="lg:hidden" onClick={() => navigate('/search')}>
-            <Search size={21} />
+        <div className="flex gap-2">
+          <IconButton label="Buscar" className="border border-card-border bg-surface lg:hidden" onClick={() => navigate('/search')}>
+            <Search size={20} />
           </IconButton>
-          <IconButton label="Configurações" className="lg:hidden" onClick={() => navigate('/settings')}>
-            <Settings size={21} />
+          <IconButton label="Configurações" className="border border-card-border bg-surface lg:hidden" onClick={() => navigate('/settings')}>
+            <Settings size={20} />
           </IconButton>
         </div>
       </header>
-      {/* Shortcuts with names (they used to be icons only, easy to miss). */}
-      <div className="mb-5 flex gap-2 lg:mb-8">
-        {on('today') && (
-          <button type="button" onClick={() => navigate('/today')} className="press flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
-            <CalendarCheck size={17} className="text-accent-hi" />
-            Hoje
-          </button>
-        )}
-        <button type="button" onClick={() => navigate('/assistant')} className="press flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
-          <Sparkles size={17} className="text-accent-hi" />
-          Assistente
-        </button>
-      </div>
 
-      <Suspense fallback={null}>
-        <AttentionCard />
-      </Suspense>
+      <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <div className="min-w-0 space-y-7">
+          {on('finance') && <BalanceCard variant="hero" />}
 
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
-        {on('finance') && (
-        <div className="space-y-7">
-          <div className="space-y-3">
-            <BalanceCard />
-            <div className="card grid grid-cols-2 divide-x divide-line">
-              <div className="p-4 pl-5">
+          {/* Quick actions: round, with names. Money first when Financeiro is on. */}
+          <nav aria-label="Ações rápidas" className="grid grid-cols-4 gap-2">
+            {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.3} />} primary onClick={() => newTx.show('in')} />}
+            {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.3} />} onClick={() => newTx.show('out')} />}
+            {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={22} />} primary={!on('finance')} onClick={() => navigate('/today')} />}
+            <QuickAction label="Assistente" icon={<MessageCircle size={22} />} onClick={() => navigate('/assistant')} />
+          </nav>
+
+          {on('finance') && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card p-4">
                 <p className="text-[13px] text-soft first-letter:uppercase">Entrou em {monthName(today)}</p>
-                <p className={`num mt-1 text-[20px] font-semibold ${month.income ? 'text-income' : 'text-soft'}`}>{show(month.income)}</p>
+                <p className={`display-num mt-1 text-[22px] font-bold ${month.income ? 'text-income' : 'text-soft'}`}>{show(month.income)}</p>
               </div>
-              <div className="p-4 pl-5">
+              <div className="card p-4">
                 <p className="text-[13px] text-soft first-letter:uppercase">Saiu em {monthName(today)}</p>
-                <p className={`num mt-1 text-[20px] font-semibold ${month.expense ? 'text-expense' : 'text-soft'}`}>{show(month.expense)}</p>
+                <p className={`display-num mt-1 text-[22px] font-bold ${month.expense ? 'text-expense' : 'text-soft'}`}>{show(month.expense)}</p>
               </div>
             </div>
-          </div>
+          )}
+
+          <Suspense fallback={null}>
+            <AttentionCard />
+          </Suspense>
+
+        {on('finance') && (
+        <div className="space-y-7">
 
           <Block title="Movimentações recentes" action={recent.length ? 'Ver tudo' : undefined} onAction={() => navigate('/finance')}>
             {recent.length ? (
@@ -137,8 +146,9 @@ export function HomePage() {
           </Block>
         </div>
         )}
+        </div>
 
-        <div className="space-y-7">
+        <div className="min-w-0 space-y-7">
           {on('tasks') && (
           <Block title={openTasks.length ? `Tarefas pendentes · ${openTasks.length}` : 'Tarefas'} action={openTasks.length ? 'Ver todas' : undefined} onAction={() => navigate('/tasks')}>
             {openTasks.length ? (
@@ -162,7 +172,7 @@ export function HomePage() {
                 {activeProjects.slice(0, 3).map((p: Project) => {
                   const s = optionOf(PROJECT_STATUS, p.status)
                   return (
-                    <button key={p.id} type="button" onClick={() => navigate('/projects', { open: p.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+                    <button key={p.id} type="button" onClick={() => navigate('/projects', { open: p.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{p.name}</span>
                         {p.dueDate ? <DueLabel date={p.dueDate} /> : <span className="text-[13px] text-faint">Sem prazo</span>}
@@ -199,7 +209,7 @@ export function HomePage() {
                 {charges.map(({ tool, date }) => {
                   const rel = relativeDays(date, today)
                   return (
-                    <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+                    <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{tool.name}</span>
                         <span className={`text-[13px] ${rel && rel.days <= 3 ? 'text-warn' : 'text-faint'}`}>
@@ -221,6 +231,7 @@ export function HomePage() {
       </div>
 
       <TransactionSheet type="in" open={txSheet.open} editing={txSheet.item} onClose={txSheet.close} />
+      <TransactionSheet type={newTx.item ?? 'in'} open={newTx.open} onClose={newTx.close} />
       <TaskForm open={taskSheet.open} onClose={taskSheet.close} task={taskSheet.item} />
       <GoalForm open={goalSheet.open} onClose={goalSheet.close} goal={goalSheet.item} />
     </>

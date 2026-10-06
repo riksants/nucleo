@@ -26,7 +26,7 @@ type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective
 
 function Choice({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint: string; onClick(): void }) {
   return (
-    <button type="button" onClick={onClick} className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03] tap">
+    <button type="button" onClick={onClick} className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-medium">{label}</span>
@@ -116,7 +116,7 @@ export function InboxPage() {
       ) : (
         <div className="card p-1.5">
           {open.map((item) => (
-            <button key={item.id} type="button" onClick={() => organize.show(item)} className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-white/[0.03] tap">
+            <button key={item.id} type="button" onClick={() => organize.show(item)} className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
               <span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] leading-snug break-words whitespace-pre-wrap">{item.text}</span>

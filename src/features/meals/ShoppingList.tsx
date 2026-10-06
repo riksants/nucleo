@@ -134,7 +134,7 @@ export function ShoppingList({ week, onWeek }: { week: WeekId; onWeek(w: WeekId)
         <>
           {groups.map((g) => (
             <section key={g.category}>
-              <h3 className="mb-1.5 px-1 text-[13px] font-medium tracking-wide text-soft uppercase">{g.category}</h3>
+              <h3 className="mb-1.5 px-1 text-[13px] font-semibold text-soft">{g.category}</h3>
               <div className="card divide-y divide-line">
                 {g.rows.map((r) => (
                   <div key={r.id} className="flex items-center gap-1 pr-1">
