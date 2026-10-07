@@ -42,7 +42,7 @@ try {
   r.check('"Vida" fica em Mais e não vira aba nova na barra inferior', text.includes('Vida') && !tabs.includes('Vida') && tabs.length === 5, tabs.join(','))
   await b.goto(BASE + '#/projects')
   await b.sleep(500)
-  r.check('seção atual aparece como "Projetos de trabalho" (barra inferior continua curta)', (await b.text()).includes('Projetos de trabalho') && tabs.includes('Projetos'))
+  r.check('Projetos (de trabalho) com título curto e o "de trabalho" no subtítulo', (await b.text()).includes('De trabalho') && (await b.eval(`document.querySelector('main h1')?.textContent.trim()`)) === 'Projetos' && tabs.includes('Projetos'))
 
   // Calendar: month view, indicators, tap a day, edit the ORIGINAL task
   await b.goto(BASE + '#/life')

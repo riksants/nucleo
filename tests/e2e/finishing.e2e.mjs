@@ -6,7 +6,8 @@ import { BASE, reporter, seedExistingUser, setValue } from './helpers.mjs'
 const r = reporter()
 const b = await launch(9404)
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms))
-const today = new Date().toISOString().slice(0, 10)
+// The seeded account uses São Paulo time (helpers.seedExistingUser): "today" there, not in UTC (they differ after 21h).
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 const ALL = ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'life', 'week', 'agenda', 'inbox', 'recurring', 'habits']
 const fillIn = (label, value) =>
   b.eval(`(() => { const d = [...document.querySelectorAll('[role=dialog]')].at(-1); const l = [...d.querySelectorAll('label')].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})); const el = l && l.querySelector('input, textarea'); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)

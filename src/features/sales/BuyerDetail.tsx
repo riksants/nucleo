@@ -129,7 +129,7 @@ export function BuyerDetail({
             </div>
             <div className="p-3.5">
               <p className="text-[12px] text-faint">Falta pagar</p>
-              <p className={`num mt-0.5 text-[15px] font-semibold ${t.remaining ? 'text-warn' : 'text-soft'}`}>{formatMoney(t.remaining, t.currency)}</p>
+              <p className={`num mt-0.5 text-[15px] font-semibold ${t.remaining ? 'text-ink' : 'text-soft'}`}>{formatMoney(t.remaining, t.currency)}</p>
             </div>
           </div>
         ))}

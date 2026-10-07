@@ -9,7 +9,8 @@ import { optionOf, PROJECT_STATUS } from '../../data/labels'
 import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upcomingCharges } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Goal, Project, Task, Transaction } from '../../data/types'
-import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays, toDateInput } from '../../lib/dates'
+import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
+import { todayIn, zoneOf } from '../../core/period'
 import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
 import { IconButton } from '../../ui/Button'
@@ -84,7 +85,8 @@ export function HomePage() {
   const recent = sortByNewest(data.transactions).slice(0, 4)
   const openTasks = sortOpenTasks(data.tasks.filter((t) => t.status !== 'done'))
   // "Para hoje": what is late or due today; otherwise the next pending tasks.
-  const todayKey = toDateInput(today)
+  // The day in the person's time zone (Configurações), the same rule Hoje uses.
+  const todayKey = todayIn(zoneOf(settings), today)
   const dueNow = openTasks.filter((t) => t.dueDate && t.dueDate <= todayKey)
   const taskList = dueNow.length ? dueNow : openTasks
   const late = openTasks.filter((t) => t.dueDate && t.dueDate < todayKey).length
@@ -253,7 +255,7 @@ export function HomePage() {
                     <button key={tool.id} type="button" onClick={() => navigate('/tools', { open: tool.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium">{tool.name}</span>
-                        <span className={`text-[13px] ${rel && rel.days <= 3 ? 'text-warn' : 'text-faint'}`}>
+                        <span className={`text-[13px] ${rel && rel.days <= 1 ? 'text-warn' : 'text-faint'}`}>
                           {formatDateValue(date)} · {rel?.label}
                         </span>
                       </span>

@@ -74,7 +74,7 @@ function Overview({ totals, owing }: { totals: MoneyTotals[]; owing: number }) {
       </div>
       <div className="min-w-0">
         <p className="text-[12px] text-faint">Total a receber</p>
-        <MoneyLines list={totals} pick={(t) => t.remaining} className="text-[17px] font-semibold text-warn" />
+        <MoneyLines list={totals} pick={(t) => t.remaining} className="text-[17px] font-semibold text-accent-hi" />
       </div>
       <div className="min-w-0">
         <p className="text-[12px] text-faint">Pessoas com valor pendente</p>
@@ -97,7 +97,7 @@ function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
       <span className="shrink-0 text-right">
         {owing.length ? (
           owing.map((t) => (
-            <span key={t.currency} className="num block text-[15px] font-semibold text-warn">
+            <span key={t.currency} className="num block text-[15px] font-semibold text-ink">
               {formatMoney(t.remaining, t.currency)}
             </span>
           ))
@@ -124,7 +124,7 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen(s: Sale): void }) {
         <span className="block truncate text-[13px] text-faint">
           {sale.product}
           {sale.quantity !== 1 ? ` × ${sale.quantity.toLocaleString('pt-BR')}` : ''} · {formatDateValue(sale.date)}
-          {rel && <span className={overdue ? 'text-expense' : rel.days <= 3 ? 'text-warn' : ''}> · prazo {rel.label}</span>}
+          {rel && <span className={overdue ? 'text-expense' : rel.days <= 1 ? 'text-warn' : ''}> · prazo {rel.label}</span>}
         </span>
       </span>
       <span className="shrink-0 text-right">
@@ -132,7 +132,7 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen(s: Sale): void }) {
         {status === 'paid' ? (
           <Badge tone="positive">{SALE_STATUS_LABEL.paid}</Badge>
         ) : (
-          <span className={`num text-[13px] ${overdue ? 'text-expense' : 'text-warn'}`}>falta {formatMoney(remaining, sale.currency)}</span>
+          <span className={`num text-[13px] ${overdue ? 'text-expense' : 'text-soft'}`}>falta {formatMoney(remaining, sale.currency)}</span>
         )}
       </span>
     </button>
@@ -203,7 +203,7 @@ export function SalesPage() {
         <>
           <Overview totals={overview.totals} owing={overview.owing} />
           <div className="mb-4">
-            <Segmented
+            <Segmented variant="underline"
               block
               label="Ver vendas por"
               value={tab}

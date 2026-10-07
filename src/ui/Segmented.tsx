@@ -19,7 +19,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
   const h = size === 'sm' ? 'h-8 text-[13px] px-3' : 'h-10 text-sm px-3.5'
   if (variant === 'underline') {
     return (
-      <div role="radiogroup" aria-label={label} className="flex gap-5 border-b border-line">
+      <div role="radiogroup" aria-label={label} className="no-scrollbar flex w-full min-w-0 gap-5 overflow-x-auto border-b border-line">
         {options.map((o) => {
           const active = o.value === value
           return (
@@ -30,7 +30,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
               aria-checked={active}
               disabled={o.disabled}
               onClick={() => onChange(o.value)}
-              className={`hit relative shrink-0 pb-2.5 text-[15px] whitespace-nowrap transition-colors disabled:opacity-35 ${active ? 'font-bold text-ink' : 'font-semibold text-faint hover:text-soft'}`}
+              className={`relative flex h-11 shrink-0 items-end pb-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors disabled:opacity-35 ${active ? 'text-ink' : 'text-faint hover:text-soft'}`}
             >
               {o.label}
               {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-accent" transition={{ type: 'spring', stiffness: 500, damping: 45 }} />}

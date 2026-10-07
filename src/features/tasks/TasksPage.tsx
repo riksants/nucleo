@@ -66,7 +66,7 @@ export function TasksPage() {
       </form>
 
       <div className="mb-4">
-        <Segmented
+        <Segmented variant="underline"
           block
           label="Estado"
           value={tab}

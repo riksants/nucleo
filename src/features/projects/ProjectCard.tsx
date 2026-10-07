@@ -13,11 +13,12 @@ export function DueLabel({ date, done }: { date: string; done?: boolean }) {
   const rel = relativeDays(date)
   if (!rel) return null
   const late = !done && rel.days < 0
-  const soon = !done && rel.days >= 0 && rel.days <= 3
+  // Amber only when it is really close (today or tomorrow); further ahead is plain information.
+  const soon = !done && rel.days >= 0 && rel.days <= 1
   return (
     <span className={`inline-flex items-center gap-1.5 text-[13px] ${late ? 'text-expense' : soon ? 'text-warn' : 'text-faint'}`}>
       <CalendarClock size={14} />
-      {late ? `Atrasado · ${formatDateValue(date)}` : `${formatDateValue(date)} · ${rel.label}`}
+      {late ? `Atrasado · ${formatDateValue(date)}` : Math.abs(rel.days) <= 1 ? formatDateValue(date) : `${formatDateValue(date)} · ${rel.label}`}
     </span>
   )
 }
@@ -65,7 +66,7 @@ export function ProjectCard({ project, onOpen, onReceive }: { project: Project; 
             ) : (
               <DueLabel date={project.dueDate} />
             )}
-            {outstanding > 0 && <span className="num text-[13px] font-medium text-warn">Falta {formatMoney(outstanding, project.currency)}</span>}
+            {outstanding > 0 && <span className="num text-[13px] text-soft">Falta <span className="font-semibold text-ink">{formatMoney(outstanding, project.currency)}</span></span>}
           </div>
         )}
         {project.charged > 0 && outstanding === 0 && received > 0 && <p className="mt-3 text-right text-[13px] font-medium text-income">Quitado</p>}

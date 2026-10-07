@@ -83,7 +83,7 @@ export type BuyerStatus = 'paid' | 'partial' | 'pending'
 
 export const BUYER_STATUS_LABEL: Record<BuyerStatus, string> = { paid: 'Pago', partial: 'Parcial', pending: 'Pendente' }
 
-export const BUYER_TONE = { paid: 'positive', partial: 'accent', pending: 'warn' } as const
+export const BUYER_TONE = { paid: 'positive', partial: 'accent', pending: 'neutral' } as const
 
 /** Totals of one currency. Different currencies are never added together. */
 export interface MoneyTotals {

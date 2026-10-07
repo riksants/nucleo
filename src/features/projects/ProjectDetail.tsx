@@ -65,7 +65,7 @@ export function ProjectDetail({ project, open, onClose, onEdit }: { project: Pro
         {[
           { label: 'Valor', value: current.charged, className: '' },
           { label: 'Recebido', value: received, className: 'text-income' },
-          { label: 'Falta', value: outstanding, className: outstanding > 0 ? 'text-warn' : 'text-soft' },
+          { label: 'Falta', value: outstanding, className: outstanding > 0 ? 'text-ink' : 'text-soft' },
         ].map((x) => (
           <div key={x.label} className="rounded-2xl bg-raised p-3">
             <p className="text-[13px] text-soft">{x.label}</p>

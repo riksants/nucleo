@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
 import { LOGO_PIECES } from './logoMark'
@@ -164,17 +164,45 @@ export function Shell({ children }: { children: ReactNode }) {
  * On the phone, screens that are not in the tab bar get a way back: sections that live in "Mais" go
  * back to Mais (where they are), other screens (Configurações, Busca, Conta…) go back where you came from.
  */
-function BackLink() {
+function useBack(): { label: string; go(): void } | null {
   const { path } = useRoute()
   const { settings } = useStore()
   if (path === '/' || path === '/more' || primarySections(settings).some((s) => s.path === path)) return null
   const inMore = Boolean(MODULE_BY_PATH[path])
-  const back = () => (inMore ? navigate('/more') : history.length > 1 ? history.back() : navigate('/'))
+  return { label: inMore ? 'Mais' : 'Voltar', go: () => (inMore ? navigate('/more') : history.length > 1 ? history.back() : navigate('/')) }
+}
+
+function BackLink() {
+  const back = useBack()
+  if (!back) return null
   return (
-    <button type="button" onClick={back} className="hit relative -ml-1.5 mb-1 flex h-9 items-center gap-0.5 text-[15px] font-semibold text-accent-hi lg:hidden">
+    <button type="button" onClick={back.go} className="hit relative -ml-1.5 mb-1 flex h-9 items-center gap-0.5 text-[15px] font-semibold text-accent-hi lg:hidden">
       <ChevronLeft size={20} strokeWidth={2.4} />
-      {inMore ? 'Mais' : 'Voltar'}
+      {back.label}
     </button>
+  )
+}
+
+/**
+ * Phone: once the big title scrolls away, a compact translucent bar with the screen's name (and the way
+ * back) stays at the top — the content passes underneath, blurred. Reduced transparency: solid.
+ */
+function CompactBar({ title, visible }: { title: string; visible: boolean }) {
+  const back = useBack()
+  return (
+    <div
+      aria-hidden={!visible}
+      className={`fixed inset-x-0 top-0 z-30 border-b border-line bg-bg/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-opacity duration-200 reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+    >
+      <div className="relative mx-auto flex h-11 max-w-lg items-center justify-center px-12">
+        {back && (
+          <button type="button" tabIndex={visible ? 0 : -1} onClick={back.go} className="hit absolute left-3 flex items-center text-[15px] font-semibold text-accent-hi" aria-label={back.label}>
+            <ChevronLeft size={22} strokeWidth={2.4} />
+          </button>
+        )}
+        <span className="truncate font-display text-[17px] font-bold tracking-[-0.01em]">{title}</span>
+      </div>
+    </div>
   )
 }
 
@@ -184,12 +212,23 @@ function BackLink() {
  */
 export function PageHeader({ title, subtitle, actions, primary }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction }) {
   usePrimaryAction(primary)
+  // The compact bar shows once the big title has scrolled under the top edge.
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setCollapsed(!e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: '-48px 0px 0px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   return (
     <>
+    <CompactBar title={title} visible={collapsed} />
     <BackLink />
     <header className="mb-6 flex items-end justify-between gap-4 lg:mb-8">
       <div className="min-w-0">
-        <h1 className="text-[32px] leading-tight font-bold tracking-[-0.035em] lg:text-[36px]">{title}</h1>
+        <h1 ref={titleRef} className="text-[32px] leading-tight font-bold tracking-[-0.035em] lg:text-[36px]">{title}</h1>
         {subtitle && <p className="mt-1 text-[15px] text-soft">{subtitle}</p>}
       </div>
       {(actions || primary) && (

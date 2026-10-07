@@ -68,7 +68,7 @@ export function ClientDetail({ client, open, onClose, onEdit }: { client: Client
           </div>
           <div className="rounded-2xl bg-raised p-3">
             <p className="text-[13px] text-soft">A receber</p>
-            <p className={`num mt-1 text-[17px] font-semibold ${outstanding.total > 0 ? 'text-warn' : 'text-soft'}`}>{formatMoney(outstanding.total, displayCurrency)}</p>
+            <p className={`num mt-1 text-[17px] font-semibold ${outstanding.total > 0 ? 'text-ink' : 'text-soft'}`}>{formatMoney(outstanding.total, displayCurrency)}</p>
           </div>
         </div>
       )}

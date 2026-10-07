@@ -265,7 +265,7 @@ export function TodayPage() {
         }
       />
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Segmented<DayMode> label="Modo do dia" value={mode} onChange={setMode} options={[{ value: 'morning', label: 'Manhã' }, { value: 'day', label: 'Dia' }, { value: 'night', label: 'Noite' }]} />
+        <Segmented<DayMode> variant="underline" label="Modo do dia" value={mode} onChange={setMode} options={[{ value: 'morning', label: 'Manhã' }, { value: 'day', label: 'Dia' }, { value: 'night', label: 'Noite' }]} />
         {hint && (
           <button type="button" onClick={() => setMode(hint.to)} className="hit relative flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
             {hint.label} <ChevronRight size={16} />

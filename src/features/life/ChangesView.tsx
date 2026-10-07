@@ -13,7 +13,7 @@ export function ChangesView() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <Segmented<ChangePeriod> block label="Período" value={period} onChange={setPeriod} options={[{ value: 'week', label: 'Semana × anterior' }, { value: 'month', label: 'Mês × anterior' }]} />
+      <Segmented<ChangePeriod> variant="underline" block label="Período" value={period} onChange={setPeriod} options={[{ value: 'week', label: 'Semana × anterior' }, { value: 'month', label: 'Mês × anterior' }]} />
       {c.partialNote && !c.notComparable && <p className="px-1 text-[13px] text-faint">{c.partialNote}</p>}
       {c.notComparable ? (
         <p className="card px-5 py-4 text-[15px] leading-relaxed text-soft">Dados insuficientes: você começou a usar o NÚCLEO depois do início do período anterior. A comparação aparece quando houver dois períodos completos para comparar.</p>

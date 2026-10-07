@@ -11,7 +11,7 @@ export interface Option<V extends string> {
 export const CLIENT_STATUS: Option<ClientStatus>[] = [
   { value: 'potential', label: 'Potencial', tone: 'goal' },
   { value: 'active', label: 'Ativo', tone: 'accent' },
-  { value: 'waiting', label: 'Aguardando', tone: 'warn' },
+  { value: 'waiting', label: 'Aguardando', tone: 'neutral' },
   { value: 'done', label: 'Concluído', tone: 'positive' },
   { value: 'archived', label: 'Arquivado', tone: 'neutral' },
 ]
@@ -26,8 +26,8 @@ export const PROJECT_STATUS: Option<ProjectStatus>[] = [
   { value: 'idea', label: 'Ideia', tone: 'goal' },
   { value: 'notStarted', label: 'Não iniciado', tone: 'neutral' },
   { value: 'inProgress', label: 'Em andamento', tone: 'accent' },
-  { value: 'waitingClient', label: 'Aguardando cliente', tone: 'warn' },
-  { value: 'review', label: 'Revisão', tone: 'warn' },
+  { value: 'waitingClient', label: 'Aguardando cliente', tone: 'neutral' },
+  { value: 'review', label: 'Revisão', tone: 'accent' },
   { value: 'done', label: 'Concluído', tone: 'positive' },
   { value: 'paused', label: 'Pausado', tone: 'neutral' },
 ]
@@ -41,7 +41,7 @@ export const TASK_STATUS: Option<TaskStatus>[] = [
 export const TASK_PRIORITY: Option<TaskPriority>[] = [
   { value: 'none', label: 'Nenhuma' },
   { value: 'low', label: 'Baixa', tone: 'neutral' },
-  { value: 'medium', label: 'Média', tone: 'warn' },
+  { value: 'medium', label: 'Média', tone: 'accent' },
   { value: 'high', label: 'Alta', tone: 'negative' },
 ]
 
@@ -54,7 +54,7 @@ export const TOOL_BILLING: Option<ToolBilling>[] = [
 
 export const TOOL_STATUS: Option<ToolStatus>[] = [
   { value: 'active', label: 'Ativa', tone: 'accent' },
-  { value: 'trial', label: 'Teste', tone: 'warn' },
+  { value: 'trial', label: 'Teste', tone: 'accent' },
   { value: 'free', label: 'Gratuita', tone: 'positive' },
   { value: 'cancelled', label: 'Cancelada', tone: 'neutral' },
 ]

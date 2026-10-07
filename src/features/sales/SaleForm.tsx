@@ -15,7 +15,7 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDraft } from '../../ui/formHooks'
 import { ClientSelect } from '../shared/RelationSelect'
 
-export const STATUS_TONE = { pending: 'warn', partial: 'accent', paid: 'positive' } as const
+export const STATUS_TONE = { pending: 'neutral', partial: 'accent', paid: 'positive' } as const
 
 /** A new sale can start with the buyer already chosen (from the person's page). */
 export interface BuyerPreset {
@@ -254,7 +254,7 @@ export function SalePayments({ sale }: { sale: Sale }) {
         </div>
         <div className="p-3.5">
           <p className="text-[12px] text-faint">Falta</p>
-          <p className={`num mt-0.5 text-[15px] font-semibold ${saleRemaining(sale) ? 'text-warn' : 'text-soft'}`}>{formatMoney(saleRemaining(sale), sale.currency)}</p>
+          <p className={`num mt-0.5 text-[15px] font-semibold ${saleRemaining(sale) ? 'text-ink' : 'text-soft'}`}>{formatMoney(saleRemaining(sale), sale.currency)}</p>
         </div>
       </div>
       <SectionTitle action={status !== 'paid' && !adding ? 'Registrar pagamento' : undefined} onAction={() => setAdding(true)}>

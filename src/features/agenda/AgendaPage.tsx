@@ -66,7 +66,7 @@ export function AgendaPage() {
         primary={{ label: 'Compromisso', aria: 'Novo compromisso', onPress: () => newEvent.show(base) }}
       />
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <Segmented<'day' | 'week'> value={view} onChange={setView} options={[{ value: 'day', label: 'Hoje' }, { value: 'week', label: 'Semana' }]} />
+        <Segmented<'day' | 'week'> variant="underline" value={view} onChange={setView} options={[{ value: 'day', label: 'Hoje' }, { value: 'week', label: 'Semana' }]} />
         <div className="ml-auto flex items-center gap-1">
           <IconButton label="Anterior" size="sm" onClick={() => setAnchor(addDaysToDate(base, -step))}>
             <ChevronLeft size={18} />

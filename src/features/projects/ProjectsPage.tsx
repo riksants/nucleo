@@ -49,7 +49,8 @@ export function ProjectsPage() {
   return (
     <>
       <PageHeader
-        title="Projetos de trabalho"
+        title="Projetos"
+        subtitle="De trabalho · prazos e valores a receber"
         primary={{ label: 'Novo', aria: 'Novo projeto', onPress: () => edit(null) }}
       />
 
@@ -70,7 +71,7 @@ export function ProjectsPage() {
             </div>
             <div className="card p-4">
               <p className="text-[13px] text-soft">A receber</p>
-              <p className={`num mt-1 text-[24px] font-semibold ${receivable.total > 0 ? 'text-warn' : ''}`}>
+              <p className={`num mt-1 text-[24px] font-semibold ${receivable.total > 0 ? 'text-accent-hi' : ''}`}>
                 {formatMoney(receivable.total, displayCurrency, { compact: true })}
               </p>
             </div>

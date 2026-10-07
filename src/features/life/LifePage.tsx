@@ -34,7 +34,7 @@ export function LifePage() {
     <>
       <PageHeader title="Vida" />
       <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
-        <Segmented<View> size="sm" label="Vida" value={view} onChange={setView} options={VIEWS} />
+        <Segmented<View> variant="underline" size="sm" label="Vida" value={view} onChange={setView} options={VIEWS} />
       </div>
       {view === 'calendar' && <LifeCalendar />}
       {view === 'projects' && <PlansView key="projects" kind="project" />}
