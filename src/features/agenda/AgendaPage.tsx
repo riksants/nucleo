@@ -1,11 +1,11 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { buildAgenda, type AgendaItem } from '../../core/agenda'
 import { addDaysToDate, useToday, weekDates, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import { formatDateValue } from '../../lib/dates'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
@@ -63,11 +63,7 @@ export function AgendaPage() {
       <PageHeader
         title="Agenda"
         subtitle="Tudo o que está marcado, num lugar só"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => newEvent.show(base)}>
-            Compromisso
-          </Button>
-        }
+        primary={{ label: 'Compromisso', aria: 'Novo compromisso', onPress: () => newEvent.show(base) }}
       />
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Segmented<'day' | 'week'> value={view} onChange={setView} options={[{ value: 'day', label: 'Hoje' }, { value: 'week', label: 'Semana' }]} />

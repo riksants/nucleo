@@ -81,7 +81,7 @@ function Card3D({ children }: { children: ReactNode }) {
         onPointerUp={reset}
         onPointerCancel={reset}
         style={reduce ? undefined : { rotateX: springX, rotateY: springY }}
-        className="relative overflow-hidden rounded-[1.75rem] border border-white/15 p-5 text-white shadow-[0_28px_56px_-20px_rgb(76_35_214/0.6),0_10px_20px_-10px_rgb(20_10_60/0.45),inset_0_1px_0_rgb(255_255_255/0.35)] lg:p-7"
+        className="relative overflow-clip rounded-[1.75rem] border border-white/15 p-5 text-white shadow-[0_28px_56px_-20px_rgb(76_35_214/0.6),0_10px_20px_-10px_rgb(20_10_60/0.45),inset_0_1px_0_rgb(255_255_255/0.35)] lg:p-7"
       >
         {/* Body: deep purple with a lit top-left, and two embossed rings for depth. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_12%_0%,#a07dff_0%,transparent_55%),linear-gradient(140deg,#7a48ff_0%,#5a2be6_48%,#34128f_100%)]" />

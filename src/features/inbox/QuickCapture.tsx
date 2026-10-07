@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isEnabled } from '../../app/modules'
+import { useCurrentPrimaryAction } from '../../app/primaryAction'
 import { useRoute } from '../../app/router'
 import { useStore } from '../../data/store'
 import { Button } from '../../ui/Button'
@@ -93,17 +94,21 @@ export function QuickCaptureButton() {
   const { path } = useRoute()
   const [open, setOpen] = useState(false)
   const hidden = useHideOnScroll(path)
-  // The Assistant has its own input in that spot.
-  if (!ready || !isEnabled(settings, 'inbox') || path === '/assistant') return null
+  // One "+" per screen: what this screen creates (Nova tarefa, Novo projeto…); otherwise the capture.
+  const action = useCurrentPrimaryAction()
+  // The Assistant has its own input in that spot; Início and Financeiro have their own main actions (null).
+  if (!ready || path === '/assistant' || action === null) return null
+  if (!action && !isEnabled(settings, 'inbox')) return null
   return (
     <>
       <button
         type="button"
-        aria-label="Capturar na caixa de entrada"
-        title="Capturar"
-        onClick={() => setOpen(true)}
+        aria-label={action ? action.aria : 'Capturar na caixa de entrada'}
+        title={action ? action.aria : 'Capturar'}
+        disabled={action?.disabled}
+        onClick={() => (action ? action.onPress() : setOpen(true))}
         data-hidden={hidden}
-        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:brightness-[0.96] lg:hidden"
+        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:brightness-[0.96] disabled:opacity-40 lg:hidden"
         style={{ bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 84px)' }}
       >
         <Plus size={26} strokeWidth={2.4} />

@@ -123,7 +123,7 @@ try {
   // ---------- Offline edit on B
   await fetch(MOCK + '/__offline?v=1')
   await B.goto(BASE + '#/tasks')
-  await B.click('Nova', 'button')
+  await B.click('Nova tarefa', 'button')
   await B.fill('Título', 'Feita offline')
   await B.click('Criar tarefa', 'button[type=submit]')
   await B.sleep(2500)

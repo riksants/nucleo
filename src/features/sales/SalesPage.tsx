@@ -1,4 +1,4 @@
-import { BadgeDollarSign, ChevronRight, Pencil, Plus, SlidersHorizontal } from 'lucide-react'
+import { BadgeDollarSign, ChevronRight, Pencil, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import {
@@ -21,7 +21,7 @@ import { useStore } from '../../data/store'
 import type { Currency, Sale } from '../../data/types'
 import { formatDateValue, relativeDays } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { Badge, EmptyState, SearchField } from '../../ui/Display'
 import { Field, Select, TextInput } from '../../ui/Field'
 import { useSheet } from '../../ui/formHooks'
@@ -195,11 +195,7 @@ export function SalesPage() {
       <PageHeader
         title="Vendas"
         subtitle={data.sales.length ? `${data.sales.length} vendas${overdueCount ? ` · ${overdueCount} atrasada${overdueCount > 1 ? 's' : ''}` : ''}` : 'Quem comprou, quanto pagou e quanto falta'}
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => newSale(null)}>
-            Nova
-          </Button>
-        }
+        primary={{ label: 'Nova', aria: 'Nova venda', onPress: () => newSale(null) }}
       />
       {data.sales.length === 0 ? (
         <EmptyState icon={<BadgeDollarSign size={22} />} title="Nenhuma venda ainda" text="Registre o que vendeu, para quem e acompanhe os pagamentos parciais." action="Registrar venda" onAction={() => newSale(null)} />

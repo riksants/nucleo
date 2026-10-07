@@ -19,7 +19,7 @@ try {
   await b.click('Semanal', '[role=radio]')
   await b.click('Criar', 'button[type=submit]')
   // Monthly on today's day of month
-  await b.click('Novo', 'button')
+  await b.click('Novo recorrente', 'button')
   await b.fill('O que fazer', 'Pagar aluguel')
   await b.click('Mensal', '[role=radio]')
   await b.fill('Dia do mês', String(Number(today.slice(8, 10))))
@@ -28,7 +28,7 @@ try {
   // Weekly on another day → not today
   const wd = await b.eval(`new Date(${JSON.stringify(today)} + 'T12:00:00Z').getUTCDay()`)
   const other = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][(wd + 3) % 7]
-  await b.click('Novo', 'button')
+  await b.click('Novo recorrente', 'button')
   await b.fill('O que fazer', 'Revisar finanças')
   await b.click('Semanal', '[role=radio]')
   await b.click(other, 'button[aria-pressed=false]')

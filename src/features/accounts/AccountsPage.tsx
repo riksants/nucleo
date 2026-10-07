@@ -1,11 +1,11 @@
-import { Copy, ExternalLink, Eye, EyeOff, KeyRound, Pencil, Plus } from 'lucide-react'
+import { Copy, ExternalLink, Eye, EyeOff, KeyRound, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Account, SealedValue } from '../../data/types'
 import { copyText, displayUrl, normalizeUrl } from '../../lib/links'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { EmptyState, SearchField } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { useSheet } from '../../ui/formHooks'
@@ -121,11 +121,7 @@ export function AccountsPage() {
       <PageHeader
         title="Senhas"
         subtitle="Acessos anotados para consulta rápida"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Nova
-          </Button>
-        }
+        primary={{ label: 'Nova', aria: 'Novo acesso', onPress: () => form.show() }}
       />
       <VaultBar onCreate={() => setVaultSheet('create')} onUnlock={() => setVaultSheet('unlock')} />
       {data.accounts.length === 0 ? (

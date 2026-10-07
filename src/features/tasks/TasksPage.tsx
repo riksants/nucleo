@@ -1,12 +1,12 @@
 import { AnimatePresence } from 'framer-motion'
-import { ListTodo, Plus } from 'lucide-react'
+import { ArrowUp, ListTodo } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { sortOpenTasks } from '../../data/selectors'
 import type { Task, TaskStatus } from '../../data/types'
 import { usePref } from '../../lib/prefs'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { EmptyState } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { useSheet } from '../../ui/formHooks'
@@ -49,11 +49,7 @@ export function TasksPage() {
     <>
       <PageHeader
         title="Tarefas"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Nova
-          </Button>
-        }
+        primary={{ label: 'Nova', aria: 'Nova tarefa', onPress: () => form.show() }}
       />
 
       <form onSubmit={quickAdd} className="mb-4 flex gap-2">
@@ -65,7 +61,7 @@ export function TasksPage() {
           className="h-12 min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 text-ink placeholder:text-faint focus:border-accent-hi/60 focus:outline-none"
         />
         <IconButton label="Adicionar" tone="accent" type="submit" className="size-12! rounded-2xl" disabled={!quick.trim()}>
-          <Plus size={20} />
+          <ArrowUp size={20} strokeWidth={2.4} />
         </IconButton>
       </form>
 

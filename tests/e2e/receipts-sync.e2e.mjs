@@ -73,7 +73,7 @@ try {
   // A creates the project (R$ 400) while online
   await A.goto(BASE + '#/projects')
   await A.sleep(800)
-  await A.click('Novo', 'button')
+  await A.click('Novo projeto', 'button')
   await A.sleep(600)
   await fillIn(A, 'Nome do projeto', 'Perfect Clean')
   await fillIn(A, 'Valor do projeto', '400')
@@ -151,7 +151,7 @@ try {
   await B.sleep(500)
   await B.goto(BASE + '#/sales')
   await B.sleep(800)
-  await B.click('Nova', 'button')
+  await B.click('Nova venda', 'button')
   await B.sleep(600)
   await fillIn(B, 'Ou nome de quem comprou', 'Maria')
   await fillIn(B, 'Produto', 'Bolo')

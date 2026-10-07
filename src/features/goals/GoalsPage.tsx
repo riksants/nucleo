@@ -1,9 +1,8 @@
-import { Plus, Target } from 'lucide-react'
+import { Target } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
 import { sortByNewest } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Goal } from '../../data/types'
-import { Button } from '../../ui/Button'
 import { EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { useOpenParam } from '../useOpenParam'
@@ -24,11 +23,7 @@ export function GoalsPage() {
       <PageHeader
         title="Metas de compra"
         subtitle="Compare o que quer comprar com seu saldo"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => sheet.show()}>
-            Nova meta
-          </Button>
-        }
+        primary={{ label: 'Nova meta', aria: 'Nova meta de compra', onPress: () => sheet.show() }}
       />
       {active.length === 0 && purchased.length === 0 ? (
         <EmptyState

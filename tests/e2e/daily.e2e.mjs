@@ -116,7 +116,7 @@ try {
 
   // ---------- Caixa de entrada → compromisso → agenda
   await b.goto(BASE + '#/inbox')
-  await b.click('Capturar', 'button')
+  await b.click('Capturar na caixa de entrada', 'button')
   await setValue(b, 'textarea[aria-label="O que você quer guardar?"]', 'Consulta amanhã')
   await b.click('Guardar para organizar depois')
   await b.click('Organizar')

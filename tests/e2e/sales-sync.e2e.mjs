@@ -65,7 +65,7 @@ const clickIn = (b, text) => b.eval(`(() => { const d = [...document.querySelect
 async function newSale(b, who, product, total, received = '') {
   await b.goto(BASE + '#/sales')
   await b.sleep(700)
-  await b.click('Nova', 'button')
+  await b.click('Nova venda', 'button')
   await b.sleep(600)
   await fill(b, 'Ou nome de quem comprou', who)
   await fill(b, 'Produto', product)

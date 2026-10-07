@@ -3,7 +3,10 @@ import { useId, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
 import { LOGO_PIECES } from './logoMark'
-import { isEnabled, MODULE_BY_ID, MODULE_GROUPS } from './modules'
+import { isEnabled, MODULE_BY_ID, MODULE_BY_PATH, MODULE_GROUPS } from './modules'
+import { usePrimaryAction, type PrimaryAction } from './primaryAction'
+import { ChevronLeft, Plus } from 'lucide-react'
+import { Button } from '../ui/Button'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
 import { ASSISTANT, MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
@@ -157,15 +160,52 @@ export function Shell({ children }: { children: ReactNode }) {
   )
 }
 
-/** Standard page header: big title, optional subtitle and actions. */
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+/**
+ * On the phone, screens that are not in the tab bar get a way back: sections that live in "Mais" go
+ * back to Mais (where they are), other screens (Configurações, Busca, Conta…) go back where you came from.
+ */
+function BackLink() {
+  const { path } = useRoute()
+  const { settings } = useStore()
+  if (path === '/' || path === '/more' || primarySections(settings).some((s) => s.path === path)) return null
+  const inMore = Boolean(MODULE_BY_PATH[path])
+  const back = () => (inMore ? navigate('/more') : history.length > 1 ? history.back() : navigate('/'))
   return (
+    <button type="button" onClick={back} className="hit relative -ml-1.5 mb-1 flex h-9 items-center gap-0.5 text-[15px] font-semibold text-accent-hi lg:hidden">
+      <ChevronLeft size={20} strokeWidth={2.4} />
+      {inMore ? 'Mais' : 'Voltar'}
+    </button>
+  )
+}
+
+/**
+ * Standard page header: big title, optional subtitle and actions.
+ * `primary`: what this screen creates — the floating "+" on the phone, a button here on the computer.
+ */
+export function PageHeader({ title, subtitle, actions, primary }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction }) {
+  usePrimaryAction(primary)
+  return (
+    <>
+    <BackLink />
     <header className="mb-6 flex items-end justify-between gap-4 lg:mb-8">
       <div className="min-w-0">
         <h1 className="text-[32px] leading-tight font-bold tracking-[-0.035em] lg:text-[36px]">{title}</h1>
         {subtitle && <p className="mt-1 text-[15px] text-soft">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {(actions || primary) && (
+        <div className="flex shrink-0 items-center gap-2">
+          {actions}
+          {/* On the phone this action is the floating "+" (one per screen). */}
+          {primary && (
+            <span className="hidden lg:block">
+              <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
+                {primary.label}
+              </Button>
+            </span>
+          )}
+        </div>
+      )}
     </header>
+    </>
   )
 }

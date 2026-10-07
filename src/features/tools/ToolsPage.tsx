@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Wrench } from 'lucide-react'
+import { ExternalLink, Wrench } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
 import { optionOf, TOOL_STATUS } from '../../data/labels'
 import { isPaidTool, nextChargeDate, toolSpending } from '../../data/selectors'
@@ -8,7 +8,6 @@ import { formatDateValue, relativeDays } from '../../lib/dates'
 import { displayUrl, normalizeUrl } from '../../lib/links'
 import { formatMoney } from '../../lib/money'
 import { usePref } from '../../lib/prefs'
-import { Button } from '../../ui/Button'
 import { Badge, EmptyState } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
@@ -84,11 +83,7 @@ export function ToolsPage() {
     <>
       <PageHeader
         title="Assinaturas"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Nova
-          </Button>
-        }
+        primary={{ label: 'Nova', aria: 'Nova assinatura', onPress: () => form.show() }}
       />
       {data.tools.length === 0 ? (
         <EmptyState icon={<Wrench size={22} />} title="Nenhuma assinatura ainda" text="Registre o que você usa e paga, e veja quanto isso custa por mês." action="Adicionar assinatura" onAction={() => form.show()} />

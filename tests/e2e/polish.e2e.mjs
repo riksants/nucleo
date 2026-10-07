@@ -103,10 +103,11 @@ try {
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await sleep(500)
 
-  // ---------- 5) "+" hides while scrolling down, comes back on scroll up
-  await b.goto(BASE + '#/finance')
+  // ---------- 5) "+" hides while scrolling down, comes back on scroll up (Mais: a long screen whose "+" is the capture;
+  // Início and Financeiro have no floating "+" and the other screens' "+" creates their own item)
+  await b.goto(BASE + '#/more')
   await sleep(1200)
-  const fab = 'button[aria-label="Capturar na caixa de entrada"]'
+  const fab = 'button.fab'
   const state = () => b.eval(`(() => { const el = document.querySelector(${JSON.stringify(fab)}); const cs = getComputedStyle(el); return { hidden: el.dataset.hidden, opacity: cs.opacity, pe: cs.pointerEvents } })()`)
   r.check('"+" visível no topo', (await state()).hidden === 'false')
   for (let i = 0; i < 6; i++) {
@@ -146,6 +147,8 @@ try {
   r.check('reduzir movimento: a folha aparece no lugar, sem deslizar', reducedFrames.length > 3 && Math.abs(reducedTop - settled) <= 2, `maior posição ${reducedTop} vs final ${settled}`)
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await sleep(400)
+  await b.goto(BASE + '#/more')
+  await sleep(800)
   for (let i = 0; i < 6; i++) {
     await b.eval(`window.scrollBy(0, 120)`)
     await sleep(60)

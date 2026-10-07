@@ -1,5 +1,6 @@
 import { ReceiptText } from 'lucide-react'
 import { useState } from 'react'
+import { usePrimaryAction } from '../../app/primaryAction'
 import { PageHeader } from '../../app/Shell'
 import { matches, sortByNewest, totalsSince } from '../../data/selectors'
 import { useStore } from '../../data/store'
@@ -45,6 +46,8 @@ function WeekBars() {
 
 function FinanceHome() {
   const { data, settings, displayCurrency, convert } = useStore()
+  // The balance card already has Adicionar / Retirar: no floating "+" here.
+  usePrimaryAction(null)
   const [category, setCategory] = useState('all')
   const [period, setPeriod] = usePref<Period>('finance.period', 'month')
   const [typeFilter, setTypeFilter] = usePref<TypeFilter>('finance.type', 'all')

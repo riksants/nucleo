@@ -1,11 +1,11 @@
-import { NotebookPen, Pin, PinOff, Plus } from 'lucide-react'
+import { NotebookPen, Pin, PinOff } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Note } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { EmptyState, SearchField, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { FormSheet } from '../../ui/FormSheet'
@@ -97,11 +97,7 @@ export function NotesPage() {
     <>
       <PageHeader
         title="Anotações"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => editor.show()}>
-            Nova
-          </Button>
-        }
+        primary={{ label: 'Nova', aria: 'Nova anotação', onPress: () => editor.show() }}
       />
       {data.notes.length === 0 ? (
         <EmptyState icon={<NotebookPen size={22} />} title="Nenhuma nota ainda" text="Ideias, lembretes, rascunhos — tudo em um lugar." action="Criar nota" onAction={() => editor.show()} />

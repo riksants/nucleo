@@ -26,7 +26,7 @@ try {
   const today = await todayIn(tz)
   const todayWd = await b.eval(`new Date(${JSON.stringify(today)} + 'T12:00:00Z').getUTCDay()`)
   const otherDay = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][(todayWd + 2) % 7]
-  await b.click('Novo', 'button')
+  await b.click('Novo hábito', 'button')
   await b.fill('Hábito', 'Treinar')
   await b.click('Dias', '[role=radio]')
   // clear default Seg–Sex and choose one other day

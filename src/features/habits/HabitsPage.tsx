@@ -1,4 +1,4 @@
-import { Plus, Sprout } from 'lucide-react'
+import { Sprout } from 'lucide-react'
 import { useMemo } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { indexCompletions, statusOf } from '../../core/completions'
@@ -7,7 +7,6 @@ import { addDaysToDate, useToday, weekdayOfDate, zoneOf } from '../../core/perio
 import { describeRule } from '../../core/recurrence'
 import { useStore } from '../../data/store'
 import type { Habit } from '../../data/types'
-import { Button } from '../../ui/Button'
 import { EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { DAY_SHORT } from '../../../supabase/functions/_shared/planner/schedule.ts'
@@ -48,11 +47,7 @@ export function HabitsPage() {
       <PageHeader
         title="Hábitos"
         subtitle={due.length ? `${doneToday} de ${due.length} hoje` : undefined}
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Novo
-          </Button>
-        }
+        primary={{ label: 'Novo', aria: 'Novo hábito', onPress: () => form.show() }}
       />
       {data.habits.length === 0 ? (
         <EmptyState icon={<Sprout size={22} />} title="Nenhum hábito ainda" text="Água, treino, leitura, sono… Marque um dia de cada vez e acompanhe o histórico." action="Criar hábito" onAction={() => form.show()} />

@@ -88,7 +88,7 @@ try {
   await b.eval(`(() => { const el = document.querySelector('input[inputmode=decimal]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'240'); el.dispatchEvent(new Event('input',{bubbles:true})) })()`)
   await b.click('Salvar', 'button[type=submit]')
   for (const [name, plan] of [['João', 'Mensal'], ['Ana', 'Anual']]) {
-    await b.click('Assinante', 'button')
+    await b.click('Novo assinante', 'button')
     await b.eval(`(() => { const sel = [...document.querySelectorAll('select')].find(s => [...s.options].some(o => o.textContent.startsWith(${JSON.stringify(plan)}))); const opt = [...sel.options].find(o => o.textContent.startsWith(${JSON.stringify(plan)})); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(sel, opt.value); sel.dispatchEvent(new Event('change',{bubbles:true})) })()`)
     await b.fill('Nome', name)
     await b.click('Salvar', 'button[type=submit]')
@@ -104,7 +104,7 @@ try {
   await b.goto(BASE + '#/tasks')
   await b.eval(`void 0`)
   text = await b.text()
-  await b.click(text.includes('Nova tarefa') ? 'Nova tarefa' : 'Nova')
+  await b.click('Nova tarefa')
   await b.fill('Título', 'Ligar para fornecedor')
   const today = await b.eval(`new Date().toLocaleDateString('sv')`)
   await b.fill('Prazo', today)

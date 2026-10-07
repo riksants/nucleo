@@ -1,4 +1,4 @@
-import { Briefcase, ExternalLink, ImagePlus, Plus, X } from 'lucide-react'
+import { Briefcase, ExternalLink, ImagePlus, X } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
 import { optionOf, PROJECT_KIND } from '../../data/labels'
 import { useStore } from '../../data/store'
@@ -6,7 +6,6 @@ import type { PortfolioItem, ProjectKind } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
 import { compressImage } from '../../lib/image'
 import { displayUrl, normalizeUrl } from '../../lib/links'
-import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextArea, TextInput } from '../../ui/Field'
@@ -117,11 +116,7 @@ export function PortfolioPage() {
       <PageHeader
         title="Portfólio"
         subtitle={list.length ? `${list.length} ${list.length === 1 ? 'trabalho' : 'trabalhos'}` : undefined}
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Adicionar
-          </Button>
-        }
+        primary={{ label: 'Adicionar', aria: 'Adicionar ao portfólio', onPress: () => form.show() }}
       />
       {list.length === 0 ? (
         <EmptyState icon={<Briefcase size={22} />} title="Nenhum trabalho ainda" text="Registre o que você já construiu para olhar depois." action="Adicionar trabalho" onAction={() => form.show()} />

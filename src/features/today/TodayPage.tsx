@@ -24,8 +24,6 @@ import { DayAgenda } from '../planner/RoutinePage'
 import { useBuyerName } from '../sales/useBuyerName'
 import { TaskForm } from '../tasks/TaskForm'
 
-/** Up to 3 suggestions; its code loads after the screen (startup stays light). */
-const AttentionCard = lazy(() => import('../assistant/Insights').then((m) => ({ default: m.AttentionCard })))
 import { TaskRow } from '../tasks/TaskRow'
 
 const UPCOMING_DAYS = 7
@@ -266,9 +264,6 @@ export function TodayPage() {
           </button>
         }
       />
-      <Suspense fallback={null}>
-        <AttentionCard />
-      </Suspense>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Segmented<DayMode> label="Modo do dia" value={mode} onChange={setMode} options={[{ value: 'morning', label: 'Manhã' }, { value: 'day', label: 'Dia' }, { value: 'night', label: 'Noite' }]} />
         {hint && (

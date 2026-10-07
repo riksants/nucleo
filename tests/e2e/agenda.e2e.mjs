@@ -26,7 +26,7 @@ try {
   r.check('agenda não gravou nada (só visualiza)', (await idb(b, 'completions')).length === 0 && (await idb(b, 'events')).length === 1)
 
   // New appointment
-  await b.click('Compromisso', 'button')
+  await b.click('Novo compromisso', 'button')
   await b.fill('Título', 'Reunião com Ana')
   await b.fill('Início', '22:00')
   await b.shot('agenda-novo-compromisso')

@@ -3,6 +3,7 @@ import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settin
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { Logo } from '../../app/Shell'
+import { usePrimaryAction } from '../../app/primaryAction'
 import { navigate } from '../../app/router'
 import { optionOf, PROJECT_STATUS } from '../../data/labels'
 import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upcomingCharges } from '../../data/selectors'
@@ -67,6 +68,8 @@ export function HomePage() {
   const { data, settings, displayCurrency, convert } = useStore()
   const txSheet = useSheet<Transaction>()
   const newTx = useSheet<'in' | 'out'>()
+  // Início has its own main actions (Adicionar, Retirar, Hoje, Assistente): no floating "+".
+  usePrimaryAction(null)
   const taskSheet = useSheet<Task>()
   const goalSheet = useSheet<Goal>()
 
@@ -84,6 +87,8 @@ export function HomePage() {
   const todayKey = toDateInput(today)
   const dueNow = openTasks.filter((t) => t.dueDate && t.dueDate <= todayKey)
   const taskList = dueNow.length ? dueNow : openTasks
+  const late = openTasks.filter((t) => t.dueDate && t.dueDate < todayKey).length
+  const dueToday = dueNow.length - late
   const activeProjects = sortByNewest(data.projects.filter((p) => ACTIVE_PROJECT_STATUSES.has(p.status)))
   const goals = sortByNewest(data.goals.filter((g) => !g.purchasedAt)).slice(0, 2)
   const charges = upcomingCharges(data.tools, 30, today).slice(0, 4)
@@ -164,7 +169,28 @@ export function HomePage() {
         </div>
 
         <div className="min-w-0 space-y-7">
-          {on('tasks') && (
+          {on('tasks') && on('today') && (
+            // Início is the overview; the list itself lives in Hoje.
+            <Block title="Hoje">
+              <button type="button" onClick={() => navigate('/today')} className="card tap flex w-full items-center gap-3.5 p-4 text-left">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent/14 text-accent-hi">
+                  <CalendarCheck size={20} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold">
+                    {dueToday ? `${dueToday} ${dueToday === 1 ? 'tarefa' : 'tarefas'} para hoje` : openTasks.length ? 'Nada vencendo hoje' : 'Nenhuma tarefa pendente'}
+                  </span>
+                  <span className="block truncate text-[13px] text-soft">
+                    {late ? <span className="font-semibold text-expense">{late} {late === 1 ? 'atrasada' : 'atrasadas'} · </span> : null}
+                    {taskList[0] ? `Próxima: ${taskList[0].title}` : 'Ver o dia'}
+                  </span>
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-faint" />
+              </button>
+            </Block>
+          )}
+
+          {on('tasks') && !on('today') && (
           <Block title={dueNow.length ? `Para hoje · ${dueNow.length}` : openTasks.length ? `Tarefas pendentes · ${openTasks.length}` : 'Tarefas'} action={openTasks.length ? 'Ver todas' : undefined} onAction={() => navigate('/tasks')}>
             {openTasks.length ? (
               <div className="card p-1.5">

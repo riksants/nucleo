@@ -1,11 +1,10 @@
-import { FolderKanban, Plus } from 'lucide-react'
+import { FolderKanban } from 'lucide-react'
 import { PageHeader } from '../../app/Shell'
 import { ACTIVE_PROJECT_STATUSES, projectOutstanding, sortByNewest, sumIn } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Project } from '../../data/types'
 import { formatMoney } from '../../lib/money'
 import { usePref } from '../../lib/prefs'
-import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
@@ -51,11 +50,7 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projetos de trabalho"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => edit(null)}>
-            Novo
-          </Button>
-        }
+        primary={{ label: 'Novo', aria: 'Novo projeto', onPress: () => edit(null) }}
       />
 
       {data.projects.length === 0 ? (

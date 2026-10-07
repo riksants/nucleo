@@ -1,4 +1,4 @@
-import { ChevronRight, Plus, Users } from 'lucide-react'
+import { ChevronRight, Users } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { CLIENT_STATUS, optionOf } from '../../data/labels'
@@ -6,7 +6,6 @@ import { matches } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Client, ClientStatus } from '../../data/types'
 import { usePref } from '../../lib/prefs'
-import { Button } from '../../ui/Button'
 import { Badge, EmptyState, SearchField } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
@@ -44,11 +43,7 @@ export function ClientsPage() {
     <>
       <PageHeader
         title="Clientes"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => edit(null)}>
-            Novo
-          </Button>
-        }
+        primary={{ label: 'Novo', aria: 'Novo cliente', onPress: () => edit(null) }}
       />
       {data.clients.length === 0 ? (
         <EmptyState icon={<Users size={22} />} title="Nenhum cliente ainda" text="Guarde contatos e acompanhe projetos e valores de cada cliente." action="Adicionar cliente" onAction={() => edit(null)} />

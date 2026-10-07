@@ -148,7 +148,7 @@ try {
   r.check('histórico antigo mantido (pagamentos antigos intactos)', all.find((s) => s.product === 'Produto A').payments[0].id === 'oa' && all.find((s) => s.product === 'Produto B').payments.some((p) => p.id === 'ob'))
 
   // Avoid duplicates: typing an existing name suggests it
-  await b.click('Nova', 'button')
+  await b.click('Nova venda', 'button')
   await b.sleep(700)
   await fill('Ou nome de quem comprou', 'mar')
   await b.sleep(200)
@@ -164,7 +164,7 @@ try {
   await b.sleep(400)
   text = await b.text()
   r.check('aba Vendas mantém a lista individual', text.includes('Livro') && text.includes('Bolsa') && text.includes('Tênis'), text.slice(0, 600).replace(/\n/g, ' | '))
-  await b.click('Nova', 'button')
+  await b.click('Nova venda', 'button')
   await b.sleep(600)
   await fill('Ou nome de quem comprou', 'Diego')
   await fill('Produto', 'Caneca')

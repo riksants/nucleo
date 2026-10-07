@@ -1,4 +1,4 @@
-import { ListRestart, Plus } from 'lucide-react'
+import { ListRestart } from 'lucide-react'
 import { useMemo } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { indexCompletions, statusOf } from '../../core/completions'
@@ -8,7 +8,6 @@ import { describeRule, nextOccurrence } from '../../core/recurrence'
 import { useStore } from '../../data/store'
 import type { RecurringItem } from '../../data/types'
 import { formatDateValue } from '../../lib/dates'
-import { Button } from '../../ui/Button'
 import { EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { useOpenParam } from '../useOpenParam'
@@ -35,11 +34,7 @@ export function RecurringPage() {
       <PageHeader
         title="Recorrentes"
         subtitle="Coisas que voltam sempre"
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => form.show()}>
-            Novo
-          </Button>
-        }
+        primary={{ label: 'Novo', aria: 'Novo recorrente', onPress: () => form.show() }}
       />
       {data.recurring.length === 0 ? (
         <EmptyState icon={<ListRestart size={22} />} title="Nenhum item recorrente" text="Ex.: pagar aluguel todo dia 5, lavar roupa toda terça, revisar finanças aos domingos." action="Criar item" onAction={() => form.show()} />

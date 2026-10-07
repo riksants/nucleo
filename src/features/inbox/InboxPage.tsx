@@ -1,4 +1,4 @@
-import { Archive, CalendarClock, Compass, FolderHeart, FolderKanban, Salad, ShoppingBasket, Inbox, ListTodo, NotebookPen, Plus, Trash2 } from 'lucide-react'
+import { Archive, CalendarClock, Compass, FolderHeart, FolderKanban, Salad, ShoppingBasket, Inbox, ListTodo, NotebookPen, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { PageHeader } from '../../app/Shell'
@@ -6,7 +6,6 @@ import { zoneOf, todayIn, weekStart } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { CollectionName, InboxItem } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
-import { Button } from '../../ui/Button'
 import { EmptyState, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { useSheet } from '../../ui/formHooks'
@@ -104,11 +103,7 @@ export function InboxPage() {
       <PageHeader
         title="Caixa de entrada"
         subtitle={open.length ? `${open.length} para organizar` : 'Capture rápido, organize depois'}
-        actions={
-          <Button icon={<Plus size={18} />} onClick={() => setCapturing(true)}>
-            Capturar
-          </Button>
-        }
+        primary={{ label: 'Capturar', aria: 'Capturar na caixa de entrada', onPress: () => setCapturing(true) }}
       />
 
       {open.length === 0 ? (

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Repeat } from 'lucide-react'
+import { Pencil, Repeat } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { matches } from '../../data/selectors'
@@ -7,7 +7,7 @@ import { convertTotals, nextChargeOf, PER_INTERVAL, projectRevenue, receivedByCu
 import type { Offering, SubPlan, Subscriber, SubscriberStatus } from '../../data/types'
 import { formatDateTime, formatDateValue, relativeDays, toDateInput } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
-import { Button, IconButton } from '../../ui/Button'
+import { IconButton } from '../../ui/Button'
 import { Badge, EmptyState, SearchField, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
@@ -136,13 +136,7 @@ export function SubscribersPage() {
       <PageHeader
         title="Assinantes"
         subtitle="Planos e assinantes dos seus projetos"
-        actions={
-          data.offerings.length > 0 && (
-            <Button icon={<Plus size={18} />} onClick={() => subForm.show()} disabled={data.subPlans.length === 0}>
-              Assinante
-            </Button>
-          )
-        }
+        primary={data.offerings.length > 0 ? { label: 'Assinante', aria: 'Novo assinante', onPress: () => subForm.show(), disabled: data.subPlans.length === 0 } : undefined}
       />
       {data.offerings.length === 0 ? (
         <EmptyState
