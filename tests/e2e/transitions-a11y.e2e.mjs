@@ -73,7 +73,7 @@ try {
   await b.eval(`[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Retirar R$')).click()`)
   await sleep(400)
   const toast = await b.eval(`(() => { const t = document.querySelector('[role=status]'); if (!t) return null; const cs = getComputedStyle(t); return { blur: cs.backdropFilter, bg: cs.backgroundColor } })()`)
-  r.check('reduzir transparência: aviso (toast) sólido', !!toast && toast.blur === 'none' && toast.bg === 'rgb(34, 31, 46)', JSON.stringify(toast))
+  r.check('reduzir transparência: aviso (toast) sólido', !!toast && toast.blur === 'none' && toast.bg === 'rgb(46, 43, 60)', JSON.stringify(toast))
   await b.send('Emulation.setEmulatedMedia', { features: [] })
 } catch (err) {
   r.results.push('ERROR ' + err.message)

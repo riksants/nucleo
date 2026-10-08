@@ -86,9 +86,10 @@ try {
   await sleep(120)
   const strike = await b.eval(`(() => { const s = [...document.querySelectorAll('main span.origin-left')][0]; if (!s) return null; const cs = getComputedStyle(s); return { transform: s.style.transform, prop: cs.transitionProperty, dur: cs.transitionDuration } })()`)
   r.check('risco da tarefa concluída por transform (GPU) em 200 ms', !!strike && strike.transform === 'scaleX(1)' && strike.prop.startsWith('transform') && strike.dur === '0.2s', JSON.stringify(strike))
-  await sleep(700)
+  // Wait (inside the page) for the 400 ms ring to start, instead of sampling one instant: on a slow machine
+  // the check could land after the ring already finished.
+  const celebrated = await b.eval(`new Promise((res) => { const t0 = performance.now(); const tick = () => { if ([...document.querySelectorAll('.ring-income\\\\/60')].some((el) => el.getAnimations().length > 0)) return res(true); if (performance.now() - t0 > 1500) return res(false); requestAnimationFrame(tick) }; tick() })`)
   let text = await b.text()
-  const celebrated = await ringPlaying()
   r.check('última tarefa do dia: "Tudo feito por hoje" com celebração', text.includes('Tudo feito por hoje') && celebrated, `anel animando: ${celebrated}`)
   await sleep(600)
   r.check('celebração toca uma vez só (anel some)', !(await ringPlaying()))

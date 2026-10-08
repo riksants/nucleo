@@ -11,18 +11,23 @@
  * - accent: the fill (strong purple) in both themes; text on it uses on-accent (white).
  * - accent-hi: accent as TEXT/lines — light lavender on dark, deep purple on light.
  * - tint: the color of hover/press overlays and soft fills — white on dark, ink on light.
+ * - depth (dark): bg < surface (cards) < sheet (things that come over the page); cards carry a faint light
+ *   top edge, like light from above. Light theme: white cards with a soft shadow instead.
  */
 @theme {
   --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
 
   --color-bg: #0b0a10;
-  --color-surface: #13121b;
-  --color-raised: #1a1924;
-  --color-elevated: #221f2e;
-  --color-line: rgb(255 255 255 / 0.07);
-  --color-line-strong: rgb(255 255 255 / 0.12);
-  --color-card-border: rgb(255 255 255 / 0.06);
+  --color-surface: #1c1b27;
+  --color-sheet: #22202e;
+  --color-raised: #262433;
+  --color-elevated: #2e2b3c;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.13);
+  --color-card-border: rgb(255 255 255 / 0.05);
+  --color-card-edge: rgb(255 255 255 / 0.07);
+  --card-shadow: inset 0 1px 0 var(--color-card-edge);
   --color-nav: #0b0a10;
   --color-check-line: rgb(255 255 255 / 0.24);
   --color-check-line-soft: rgb(255 255 255 / 0.12);
@@ -43,6 +48,15 @@
   --color-warn: #ffc357;
   --color-goal: #67d4f0;
 
+  /* Settings icon tiles (same in both themes; white glyph on top, ≥3:1). */
+  --color-tile-blue: #2563eb;
+  --color-tile-teal: #0d9488;
+  --color-tile-green: #16a34a;
+  --color-tile-orange: #ea580c;
+  --color-tile-sky: #0284c7;
+  --color-tile-gray: #64748b;
+  --color-tile-red: #e11d48;
+
   --radius-card: 1.5rem;
   --radius-field: 1rem;
 
@@ -52,11 +66,14 @@
 :root[data-theme='light'] {
   --color-bg: #f4f3f8;
   --color-surface: #ffffff;
+  --color-sheet: #ffffff;
   --color-raised: #efeef5;
   --color-elevated: #ffffff;
   --color-line: rgb(21 19 31 / 0.09);
   --color-line-strong: rgb(21 19 31 / 0.16);
   --color-card-border: transparent;
+  --color-card-edge: transparent;
+  --card-shadow: 0 1px 2px rgb(21 19 31 / 0.05), 0 0 0 1px rgb(21 19 31 / 0.03);
   --color-nav: #ffffff;
   --color-check-line: rgb(21 19 31 / 0.3);
   --color-check-line-soft: rgb(21 19 31 / 0.14);
@@ -161,6 +178,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
 }
 
 @utility press {

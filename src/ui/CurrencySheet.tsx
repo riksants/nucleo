@@ -29,7 +29,7 @@ export function CurrencySheet({ open, onClose, value, onPick, title = 'Escolher 
 
   return (
     <Sheet open={open} onClose={onClose} title={title}>
-      <div className="sticky top-0 z-10 -mx-1 bg-surface px-1 pb-3">
+      <div className="sticky top-0 z-10 -mx-1 bg-sheet px-1 pb-3">
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por nome ou código" />
       </div>
       <div className="divide-y divide-line">

@@ -120,8 +120,11 @@ function AttentionButton({ all, top }: { all: Insight[]; top: Insight[] }) {
       <span className="mt-2 block space-y-1">
         {top.map((i) => (
           <span key={i.key} className="flex items-start gap-2 text-[13px] leading-snug text-soft">
-            <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${i.priority === 'high' ? 'bg-warn' : i.priority === 'medium' ? 'bg-accent-hi' : 'bg-faint'}`} />
-            <span className="min-w-0 flex-1">{i.title}</span>
+            <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${i.priority === 'high' ? 'bg-warn' : i.priority === 'medium' ? 'bg-accent-hi' : 'bg-faint'}`} />
+            <span className="min-w-0 flex-1">
+              <span className="sr-only">Prioridade {LABEL[i.priority]}: </span>
+              {i.title}
+            </span>
           </span>
         ))}
       </span>

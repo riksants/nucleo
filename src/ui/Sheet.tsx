@@ -153,7 +153,7 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
           <motion.div className={`relative w-full ${width}`} style={{ marginBottom: keyboard }} {...motionProps}>
             <div
               ref={panel}
-              className="flex w-full flex-col border border-line bg-surface shadow-2xl shadow-shade/60 max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.75rem] lg:max-h-[86dvh] lg:rounded-[1.75rem]"
+              className="flex w-full flex-col border border-line bg-sheet shadow-[inset_0_1px_0_var(--color-card-edge),0_25px_50px_-12px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.75rem] lg:max-h-[86dvh] lg:rounded-[1.75rem]"
             >
               <header ref={header} className="shrink-0 touch-none px-5 pb-2 lg:touch-auto lg:px-6 lg:pt-5">
                 {!desktop && <div className="mx-auto mt-2.5 mb-3 h-1.5 w-10 rounded-full bg-tint/15" aria-hidden />}

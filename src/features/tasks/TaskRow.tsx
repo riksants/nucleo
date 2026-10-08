@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Flag } from 'lucide-react'
 import { useState } from 'react'
 import { optionOf, TASK_PRIORITY } from '../../data/labels'
 import { useStore } from '../../data/store'
@@ -7,7 +8,8 @@ import { useFeedback } from '../../ui/Feedback'
 import { DueLabel } from '../projects/ProjectCard'
 import { useNames } from '../shared/useNames'
 
-const PRIORITY_DOT = { none: '', low: 'bg-soft', medium: 'bg-warn', high: 'bg-expense' }
+// Priority is said in words (with a flag), never by color alone; the color only reinforces it.
+const PRIORITY_TEXT = { none: '', low: 'text-faint', medium: 'text-accent-hi', high: 'font-semibold text-expense' }
 
 function CheckCircle({ checked }: { checked: boolean }) {
   return (
@@ -63,7 +65,6 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
         </button>
         <button type="button" onClick={() => onOpen(task)} className="min-w-0 flex-1 py-3 pr-2 text-left">
           <span className="flex items-center gap-2">
-            {task.priority !== 'none' && <span className={`size-2 shrink-0 rounded-full ${PRIORITY_DOT[task.priority]}`} aria-label={`Prioridade ${optionOf(TASK_PRIORITY, task.priority).label}`} />}
             <span className={`relative truncate text-[15px] transition-colors duration-300 ${checked ? 'text-faint' : ''}`}>
               {task.title}
               <span
@@ -73,8 +74,15 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
             </span>
             {task.status === 'doing' && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-medium text-accent-hi">Fazendo</span>}
           </span>
-          {(project || (task.dueDate && !done) || task.changedBy) && (
+          {(project || (task.dueDate && !done) || task.changedBy || (task.priority !== 'none' && !done)) && (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-faint">
+              {task.priority !== 'none' && !done && (
+                <span className={`inline-flex items-center gap-1 ${PRIORITY_TEXT[task.priority]}`} data-priority={task.priority}>
+                  <Flag size={12} strokeWidth={2.4} fill={task.priority === 'high' ? 'currentColor' : 'none'} aria-hidden />
+                  <span className="sr-only">Prioridade </span>
+                  {optionOf(TASK_PRIORITY, task.priority).label}
+                </span>
+              )}
               {project && <span className="truncate">{project}</span>}
               {task.changedBy === 'assistant' && <span className="text-accent-hi/80">Alterado pelo Assistente</span>}
               {task.dueDate && !done && <DueLabel date={task.dueDate} />}

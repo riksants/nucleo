@@ -1,5 +1,5 @@
 import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sunrise, Tags, Upload, UserRound } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
 import { navigate, useRoute } from '../../app/router'
 import { MAX_TABS, primarySections } from '../../app/sections'
@@ -29,21 +29,50 @@ import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
 import { ModulePicker, Switch } from './ModulePicker'
 
 
-function Group({ title, children, note }: { title: string; children: ReactNode; note?: ReactNode }) {
+/** Icon tiles in the iOS way: one solid color per group, white glyph — the groups read apart at a glance. */
+type TileTone = 'blue' | 'purple' | 'teal' | 'green' | 'orange' | 'sky' | 'gray' | 'red'
+const TILE: Record<TileTone, string> = {
+  blue: 'bg-tile-blue',
+  purple: 'bg-accent',
+  teal: 'bg-tile-teal',
+  green: 'bg-tile-green',
+  orange: 'bg-tile-orange',
+  sky: 'bg-tile-sky',
+  gray: 'bg-tile-gray',
+  red: 'bg-tile-red',
+}
+const GroupTone = createContext<TileTone>('purple')
+
+function Tile({ children, tone }: { children: ReactNode; tone?: TileTone }) {
+  const groupTone = useContext(GroupTone)
+  return (
+    <span aria-hidden data-tile={tone ?? groupTone} className={`grid size-8 shrink-0 place-items-center rounded-[9px] text-white ${TILE[tone ?? groupTone]}`}>
+      {children}
+    </span>
+  )
+}
+
+function Group({ title, children, note, tone = 'purple' }: { title: string; children: ReactNode; note?: ReactNode; tone?: TileTone }) {
   return (
     <section>
       <SectionTitle>{title}</SectionTitle>
-      <div className="card divide-y divide-line overflow-hidden">{children}</div>
+      <GroupTone.Provider value={tone}>
+        <div className="card divide-y divide-line overflow-hidden">{children}</div>
+      </GroupTone.Provider>
       {note && <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">{note}</p>}
     </section>
   )
 }
 
-function Row({ label, value, icon, onClick }: { label: string; value?: ReactNode; icon?: ReactNode; onClick?(): void }) {
+/** `detail`: a longer value shown under the label (wraps) instead of squeezing the label to the side. */
+function Row({ label, value, detail, icon, onClick }: { label: string; value?: ReactNode; detail?: ReactNode; icon?: ReactNode; onClick?(): void }) {
   const content = (
     <>
-      {icon && <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">{icon}</span>}
-      <span className="min-w-0 flex-1 text-[15px]">{label}</span>
+      {icon && <Tile>{icon}</Tile>}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px]">{label}</span>
+        {detail !== undefined && <span className="block text-[13px] leading-snug text-faint [overflow-wrap:anywhere]">{detail}</span>}
+      </span>
       {value !== undefined && <span className="num shrink-0 text-right text-[15px] text-soft">{value}</span>}
       {onClick && <ChevronRight size={18} className="shrink-0 text-faint" />}
     </>
@@ -234,15 +263,15 @@ export function SettingsPage() {
     <>
       <PageHeader title="Configurações" />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
-        <Group title="Conta" note={configured && !userId ? 'Seus dados ficam só neste aparelho. Com uma conta, eles sincronizam entre aparelhos.' : undefined}>
+        <Group title="Conta" tone="blue" note={configured && !userId ? 'Seus dados ficam só neste aparelho. Com uma conta, eles sincronizam entre aparelhos.' : undefined}>
           {userId ? (
             <>
-              <Row label="Conectado como" icon={<UserRound size={18} />} value={<span className="block max-w-[52vw] truncate lg:max-w-[16rem]">{email ?? 'conta'}</span>} />
+              <Row label="Conectado como" icon={<UserRound size={18} />} detail={email ?? 'conta'} />
               <Row label="Sincronização e detalhes" icon={<RefreshCw size={18} />} onClick={() => navigate('/account')} />
               <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap disabled:opacity-60">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-expense/10 text-expense">
+                <Tile tone="red">
                   <LogOut size={18} />
-                </span>
+                </Tile>
                 <span className="min-w-0 flex-1 text-[15px] text-expense">Sair da conta</span>
               </button>
             </>
@@ -258,14 +287,10 @@ export function SettingsPage() {
           <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
           <Row
             label="Barra de navegação"
-            value={
-              <span className="block max-w-36 truncate text-[14px]">
-                {primarySections(settings)
-                  .slice(1)
-                  .map((s) => s.shortLabel ?? s.label)
-                  .join(' · ')}
-              </span>
-            }
+            detail={primarySections(settings)
+              .slice(1)
+              .map((s) => s.shortLabel ?? s.label)
+              .join(' · ')}
             icon={<PanelBottom size={18} />}
             onClick={() => setSheet('tabs')}
           />
@@ -278,12 +303,10 @@ export function SettingsPage() {
               onClick={() => updateSettings({ hideScore: !settings.hideScore })}
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-                <Gauge size={18} />
-              </span>
+              <Tile><Gauge size={18} /></Tile>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px]">Mostrar o NÚCLEO Score</span>
-                <span className="block text-[13px] text-faint">Pontuação pessoal da semana, só sua</span>
+                <span className="block text-[13px] text-faint">Sua pontuação pessoal da semana</span>
               </span>
               <Switch checked={!settings.hideScore} />
             </button>
@@ -296,9 +319,7 @@ export function SettingsPage() {
               onClick={() => updateSettings({ morningAutoOpen: !settings.morningAutoOpen })}
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-                <Sunrise size={18} />
-              </span>
+              <Tile><Sunrise size={18} /></Tile>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px]">Abrir o Modo Manhã sozinho</span>
                 <span className="block text-[13px] text-faint">Uma vez por dia, antes do meio-dia</span>
@@ -308,17 +329,17 @@ export function SettingsPage() {
           )}
         </Group>
 
-        <Group title="Assistente" note={settings.activeHours ? undefined : 'Sem faixa definida, uso os horários da sua rotina; sem rotina, 07:00–22:00.'}>
-          <div className="flex min-h-14 flex-wrap items-center gap-3 px-4 py-2.5">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-              <Clock size={18} />
-            </span>
-            <span className="min-w-0 flex-1 text-[15px]">Horários para sugestões</span>
-            <span className="flex items-center gap-1.5">
-              <input type="time" aria-label="Início da faixa de horário" value={settings.activeHours?.start ?? '07:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: e.target.value, end: settings.activeHours?.end ?? '22:00' } })} className="h-10 rounded-xl border border-line bg-raised px-2 text-[15px] text-ink" />
-              <span className="text-faint">–</span>
-              <input type="time" aria-label="Fim da faixa de horário" value={settings.activeHours?.end ?? '22:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: settings.activeHours?.start ?? '07:00', end: e.target.value } })} className="h-10 rounded-xl border border-line bg-raised px-2 text-[15px] text-ink" />
-            </span>
+        <Group title="Assistente" tone="teal" note={settings.activeHours ? undefined : 'Sem faixa definida, uso os horários da sua rotina; sem rotina, 07:00–22:00.'}>
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Tile><Clock size={18} /></Tile>
+              <span className="min-w-0 flex-1 text-[15px]">Horários para sugestões</span>
+            </div>
+            <div className="mt-2.5 flex items-center gap-2 pl-11">
+              <input type="time" aria-label="Início da faixa de horário" value={settings.activeHours?.start ?? '07:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: e.target.value, end: settings.activeHours?.end ?? '22:00' } })} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-raised px-3 text-[15px] text-ink" />
+              <span className="text-faint" aria-hidden>–</span>
+              <input type="time" aria-label="Fim da faixa de horário" value={settings.activeHours?.end ?? '22:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: settings.activeHours?.start ?? '07:00', end: e.target.value } })} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-raised px-3 text-[15px] text-ink" />
+            </div>
           </div>
           {settings.activeHours && <Row label="Voltar a usar os horários da rotina" onClick={() => updateSettings({ activeHours: undefined })} />}
           <button
@@ -336,9 +357,7 @@ export function SettingsPage() {
             }}
             className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-              <MessageCircle size={18} />
-            </span>
+            <Tile><MessageCircle size={18} /></Tile>
             <span className="min-w-0 flex-1">
               <span className="block text-[15px]">Entender frases livres com IA</span>
               <span className="block text-[13px] text-faint">Opcional · desligado: nada é enviado</span>
@@ -353,7 +372,7 @@ export function SettingsPage() {
           </div>
         </Group>
 
-        <Group title="Saldo" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
+        <Group title="Saldo" tone="green" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
           <Row label="Moeda principal" icon={<Coins size={18} />} value={`${display} ${currencyInfo(display).symbol}`} onClick={() => setSheet('currency')} />
           {display !== settings.baseCurrency && <Row label="Moeda de registro do saldo" value={settings.baseCurrency} />}
           <Row label="Saldo inicial" value={formatMoney(settings.initialBalance, settings.baseCurrency)} />
@@ -364,6 +383,7 @@ export function SettingsPage() {
 
         <Group
           title="Câmbio"
+          tone="orange"
           note={
             settings.rates
               ? `Fonte: ${settings.rates.source} · atualizado ${formatDateTime(settings.rates.fetchedAt).toLowerCase()}. Sem internet, a última taxa salva é usada.`
@@ -383,17 +403,19 @@ export function SettingsPage() {
             />
           ))}
           <Row label={ratesLoading ? 'Atualizando…' : 'Atualizar cotação'} icon={<RefreshCw size={18} className={ratesLoading ? 'animate-spin' : ''} />} onClick={update} />
-          <Row label="Definir taxa manual" icon={<span className="text-[15px] font-semibold">≈</span>} onClick={() => setSheet('rates')} />
+          <Row label="Definir taxa manual" icon={<span className="text-[16px] font-bold">≈</span>} onClick={() => setSheet('rates')} />
         </Group>
 
         {isEnabled(settings, 'accounts') && vault.exists && (
-          <Group title="Cofre de senhas" note="A senha do cofre é diferente da senha de login. Sem ela (ou sem o código de recuperação) as senhas guardadas não podem ser recuperadas.">
-            <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-                <KeyRound size={18} />
-              </span>
-              <span className="min-w-0 flex-1 text-[15px]">Fechar após</span>
-              <Segmented size="sm" value={String(vault.meta?.autoLockMin ?? 5)} onChange={(v) => vault.setAutoLock(Number(v))} options={AUTO_LOCK_OPTIONS.map((m) => ({ value: String(m), label: `${m} min` }))} />
+          <Group title="Cofre de senhas" tone="sky" note="A senha do cofre é diferente da senha de login. Sem ela (ou sem o código de recuperação) as senhas guardadas não podem ser recuperadas.">
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Tile><KeyRound size={18} /></Tile>
+                <span className="min-w-0 flex-1 text-[15px]">Fechar após</span>
+              </div>
+              <div className="mt-2.5 pl-11">
+                <Segmented block size="sm" label="Fechar o cofre após" value={String(vault.meta?.autoLockMin ?? 5)} onChange={(v) => vault.setAutoLock(Number(v))} options={AUTO_LOCK_OPTIONS.map((m) => ({ value: String(m), label: `${m} min` }))} />
+              </div>
             </div>
             <Row label="Trocar senha do cofre" onClick={() => setSheet('vaultPassword')} />
           </Group>
@@ -401,6 +423,7 @@ export function SettingsPage() {
 
         <Group
           title="Backup"
+          tone="gray"
           note={`${email ? 'Seus dados estão na sua conta e neste aparelho.' : 'Seus dados ficam salvos neste aparelho.'} Senhas só saem criptografadas pelo cofre. Último backup: ${settings.lastBackupAt ? formatDateTime(settings.lastBackupAt).toLowerCase() : 'nunca'}.`}
         >
           <Row label="Exportar dados" icon={<Download size={18} />} onClick={exportData} />
@@ -481,9 +504,7 @@ function ModulesSheet({ open, onClose, onTabs }: { open: boolean; onClose(): voi
     <Sheet open={open} onClose={onClose} title="Seções visíveis">
       <p className="pb-4 text-[15px] leading-relaxed text-soft">Esconder uma seção não apaga nada: os dados voltam quando você liga de novo.</p>
       <button type="button" onClick={onTabs} className="card tap mb-4 flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
-          <PanelBottom size={18} />
-        </span>
+        <Tile><PanelBottom size={18} /></Tile>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-medium">Barra de navegação</span>
           <span className="block truncate text-[13px] text-faint">Escolha quais seções ficam na barra de baixo</span>
