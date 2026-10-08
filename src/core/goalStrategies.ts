@@ -76,12 +76,28 @@ export function nice125(cents: number): Cents {
 }
 
 /** Head counts that read naturally for a subscription. */
-const PEOPLE = [3, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000]
-/** Target sales per period for the three example prices (many cheap → few expensive). */
-const SALES_PER_PERIOD = [20, 5, 2]
-const SERVICES_PER_PERIOD = [1, 2, 4]
+const PEOPLE = [2, 3, 5, 8, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000]
+const SERVICES_PER_PERIOD = [1, 2, 3, 4, 5, 6, 8, 10]
+/** How many options each group shows at most (spread from one end of the range to the other). */
+export const OPTIONS_PER_GROUP = 8
+/** Sales per period the example prices cover: from many cheap sales to a single bigger one. */
+const SALES_RANGE = [1, 50]
 /** A "comfortable" monthly fee, in currency units (only to prefer some head counts over others). */
-const FEE_RANGE = [10, 300]
+const FEE_RANGE = [10, 500]
+/** A service cheaper than this (currency units) is not much of a service. */
+const MIN_SERVICE = 10
+
+/** Prices people actually use: 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150… (whole units). */
+function pricePoints(minUnits: number, maxUnits: number): number[] {
+  const out: number[] = []
+  for (let exp = 0; exp <= 9; exp++) {
+    for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5]) {
+      const v = m * 10 ** exp
+      if (Number.isInteger(v) && v >= minUnits && v <= maxUnits) out.push(v)
+    }
+  }
+  return out
+}
 
 /** Picks `n` items spread over the list (first, middle, last…). */
 function spread<T>(list: T[], n: number): T[] {
@@ -112,8 +128,12 @@ export function goalStrategies(missing: Cents, today: string, deadline: string):
     perDay: ceilUnit(missing / daysLeft),
   }
 
-  // Sales: example prices that give about 20, 5 and 2 sales per period.
-  const prices = [...new Set(SALES_PER_PERIOD.map((k) => nice125(perPeriod / k)))].filter((p) => p < missing || p === nice125(missing)).sort((a, b) => a - b)
+  // Sales: common price points between "about 50 sales per period" and "about 1 per period".
+  const minPrice = Math.max(1, perPeriod / UNIT / SALES_RANGE[1])
+  const maxPrice = Math.min(missing, perPeriod) / UNIT / SALES_RANGE[0]
+  let points = pricePoints(minPrice, maxPrice)
+  if (!points.length) points = [nice125(perPeriod) / UNIT]
+  const prices = spread(points, OPTIONS_PER_GROUP).map((v) => v * UNIT)
   const sales = prices.map((price) => {
     const total = Math.ceil(missing / price)
     return { price, total, perPeriod: period === 'total' ? null : Math.ceil(total / periods) }
@@ -125,11 +145,14 @@ export function goalStrategies(missing: Cents, today: string, deadline: string):
   if (months >= 2) {
     const all = PEOPLE.map((people) => ({ people, fee: niceCeil(missing / (people * months)) })).filter((s) => s.fee >= 5 * UNIT && s.fee * s.people * months >= missing && s.fee < missing / months)
     const comfortable = all.filter((s) => s.fee >= FEE_RANGE[0] * UNIT && s.fee <= FEE_RANGE[1] * UNIT)
-    recurring = spread(comfortable.length >= 3 ? comfortable : all, 3)
+    recurring = spread(comfortable.length >= 3 ? comfortable : all, OPTIONS_PER_GROUP)
   }
 
-  // Services: 1, 2 or 4 per period — at what price.
-  const services = SERVICES_PER_PERIOD.map((count) => ({ count, price: niceCeil(perPeriod / count) })).filter((s, i, list) => i === 0 || s.price < list[i - 1].price)
+  // Services: 1 to 10 per period — at what price (skipping ones that would be too cheap to be a service).
+  const services = SERVICES_PER_PERIOD.map((count) => ({ count, price: niceCeil(perPeriod / count) }))
+    .filter((s, i) => i === 0 || s.price >= MIN_SERVICE * UNIT)
+    .filter((s, i, list) => i === 0 || s.price < list[i - 1].price)
+    .slice(0, OPTIONS_PER_GROUP)
 
   return { missing, daysLeft, period, periods, save, sales, recurring, recurringMonths, services }
 }

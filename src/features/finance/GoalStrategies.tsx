@@ -47,7 +47,9 @@ export function StrategyTeaser({ goal, today, onOpen }: { goal: FinanceGoal; tod
   if (!s) return null
   const money = (c: number) => formatMoney(c, goal.currency as Currency, { compact: true })
   const save = s.save.perMonth !== null ? `${money(s.save.perMonth)}/mês` : s.save.perWeek !== null ? `${money(s.save.perWeek)}/semana` : `${money(s.save.perDay)}/dia`
-  const sale = s.sales[0]
+  // The most "everyday" sales option: closest to about 10 sales per period.
+  const count = (x: (typeof s.sales)[number]) => x.perPeriod ?? x.total
+  const sale = [...s.sales].sort((a, b) => Math.abs(count(a) - 10) - Math.abs(count(b) - 10))[0]
   const saleText = sale ? ` ou ${sale.perPeriod ?? sale.total} ${(sale.perPeriod ?? sale.total) === 1 ? 'venda' : 'vendas'} de ${money(sale.price)}${SHORT[s.period]}` : ''
   return (
     <button type="button" onClick={onOpen} data-strategy-teaser className="press flex w-full items-center gap-3 rounded-2xl bg-accent/10 px-3.5 py-2.5 text-left hover:bg-accent/15">
