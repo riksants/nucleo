@@ -97,7 +97,7 @@ try {
   let goals = await idb(b, 'financeGoals')
   r.check('meta financeira criada com valor, guardado, prazo e moeda', goals.length === 1 && goals[0].target === 500000 && goals[0].saved === 200000 && goals[0].deadline === deadline && goals[0].currency === 'BRL' && goals[0].status === 'active')
   text = await b.text()
-  r.check('meta mostra quanto falta e o necessário por mês, sem tom negativo', text.includes('faltam R$ 3.000,00') && /seriam necessários aproximadamente R\$ [\d.]+,\d\d por mês/.test(text) && !/atrasad/i.test(text))
+  r.check('meta mostra quanto falta e o necessário por mês, sem tom negativo', text.includes('faltam R$ 3.000,00') && /Como alcançar\s*Guardar R\$ [\d.]+\/mês/.test(text) && !/atrasad/i.test(text))
 
   await b.click('Reserva de emergência', 'button')
   await fillIn('Quanto guardou', '300')

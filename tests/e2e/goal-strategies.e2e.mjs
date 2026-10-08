@@ -64,6 +64,18 @@ try {
   t = await view()
   r.check('guardou R$ 2.500 → recalcula sobre os R$ 5.000 que faltam', /Faltam R\$ 5\.000/.test(t) && /R\$ 1\.002\s*por mês/.test(t), t.slice(0, 160))
 
+  // ---------- Visible right on the goal in the list
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await sleep(700)
+  r.check('(folha anterior fechada antes de testar a prévia)', !(await b.eval(`!!document.querySelector('[role=dialog]')`)))
+  const teaser = await b.eval(`(() => [...document.querySelectorAll('main [data-strategy-teaser]')].map((x) => x.innerText.replace(/\\s+/g, ' ').trim()))()`)
+  r.check('na lista, cada meta em andamento mostra "Como alcançar" com o principal cenário', teaser.length === 2 && teaser.some((t) => /^Como alcançar Guardar R\$ 1\.002\/mês ou \d+ vendas de R\$ [\d.]+\/mês$/.test(t)) && teaser.some((t) => /\/semana ou \d+ vendas de R\$ [\d.]+\/semana$/.test(t)), JSON.stringify(teaser))
+  r.check('o cartão não repete a frase "seriam necessários" (está na prévia)', !/seriam necessários/.test(await b.eval(`[...document.querySelectorAll('main .card')].find((c) => c.textContent.includes('Reserva'))?.innerText ?? ''`)))
+  await b.click('Como alcançar', 'main [data-strategy-teaser]')
+  await sleep(700)
+  r.check('tocar na prévia abre a folha direto em "Como alcançar"', await b.eval(`[...document.querySelectorAll('[role=dialog] [role=radio]')].some((x) => x.textContent === 'Como alcançar' && x.getAttribute('aria-checked') === 'true') && !!document.querySelector('[role=dialog] [data-strategies]')`))
+  await b.shot('metas-lista-previa')
+
   // ---------- Short deadline
   await open('Viagem curta')
   await b.click('Como alcançar', '[role=dialog] [role=radio]')

@@ -15,7 +15,7 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft, useSheet } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
-import { GoalStrategies } from './GoalStrategies'
+import { GoalStrategies, StrategyTeaser } from './GoalStrategies'
 
 /** Neutral sentence about what would be needed (never "you are late"). */
 export function planSentence(goal: FinanceGoal, today: string): string {
@@ -94,17 +94,17 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
 }
 
 /** "Atualizar valor guardado": add/withdraw an amount or set the new total. */
-function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null; open: boolean; onClose(): void; onEdit(g: FinanceGoal): void }) {
+function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal: FinanceGoal | null; open: boolean; onClose(): void; onEdit(g: FinanceGoal): void; startOn?: 'update' | 'strategies' }) {
   const { save, settings } = useStore()
   const { toast } = useFeedback()
   const [mode, setMode] = useState<'add' | 'remove' | 'total'>('add')
   const [value, setValue] = useState('')
-  // Each time the sheet opens it starts on "Atualizar" (its main job); "Como alcançar" is one tap away.
+  // Each time the sheet opens it starts on "Atualizar" (its main job), or on "Como alcançar" when opened from the goal's preview.
   const [view, setView] = useState<'update' | 'strategies'>('update')
   const [wasOpen, setWasOpen] = useState(open)
   if (wasOpen !== open) {
     setWasOpen(open)
-    if (open) setView('update')
+    if (open) setView(startOn)
   }
   const today = nowIn(zoneOf(settings)).date
   if (!goal) return null
@@ -166,28 +166,36 @@ function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null;
   )
 }
 
-export function FinanceGoalCard({ goal, today, onOpen }: { goal: FinanceGoal; today: string; onOpen(g: FinanceGoal): void }) {
+export function FinanceGoalCard({ goal, today, onOpen, onPlan }: { goal: FinanceGoal; today: string; onOpen(g: FinanceGoal): void; onPlan?(g: FinanceGoal): void }) {
   const p = goalPlan(goal, today)
   return (
-    <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
-      <span className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
-        <Celebrate active={p.reached}>{p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}</Celebrate>
-      </span>
-      <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 text-[13px] text-faint">
-        <span className="num">
-          <span className="text-[15px] font-semibold text-ink">{formatMoney(goal.saved, goal.currency)}</span> de {formatMoney(goal.target, goal.currency)}
+    <div>
+      <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
+        <span className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
+          <Celebrate active={p.reached}>{p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}</Celebrate>
         </span>
-        <span>até {formatDateValue(goal.deadline).toLowerCase()}</span>
-      </span>
-      <span className="mt-2 block">
-        <Progress value={p.percent} tone={p.reached ? 'positive' : 'goal'} />
-      </span>
-      <span className="mt-1.5 block text-[13px] leading-snug text-soft">
-        {p.reached ? 'Meta alcançada.' : `${p.percent}% · faltam ${formatMoney(p.missing, goal.currency)}. `}
-        {!p.reached && planSentence(goal, today)}
-      </span>
-    </button>
+        <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 text-[13px] text-faint">
+          <span className="num">
+            <span className="text-[15px] font-semibold text-ink">{formatMoney(goal.saved, goal.currency)}</span> de {formatMoney(goal.target, goal.currency)}
+          </span>
+          <span>até {formatDateValue(goal.deadline).toLowerCase()}</span>
+        </span>
+        <span className="mt-2 block">
+          <Progress value={p.percent} tone={p.reached ? 'positive' : 'goal'} />
+        </span>
+        <span className="mt-1.5 block text-[13px] leading-snug text-soft">
+          {p.reached ? 'Meta alcançada.' : `${p.percent}% · faltam ${formatMoney(p.missing, goal.currency)}. `}
+          {/* With the "Como alcançar" preview below, the plan is said there (not twice). */}
+          {!p.reached && (!onPlan || p.due || goal.status === 'archived') && planSentence(goal, today)}
+        </span>
+      </button>
+      {onPlan && goal.status !== 'archived' && (
+        <div className="px-3 pb-3 empty:hidden">
+          <StrategyTeaser goal={goal} today={today} onOpen={() => onPlan(goal)} />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -196,6 +204,11 @@ export function FinanceGoalsSection() {
   const { data, settings } = useStore()
   const form = useSheet<FinanceGoal>()
   const detail = useSheet<string>()
+  const [startOn, setStartOn] = useState<'update' | 'strategies'>('update')
+  const openGoal = (g: FinanceGoal, on: 'update' | 'strategies' = 'update') => {
+    setStartOn(on)
+    detail.show(g.id)
+  }
   const [showArchived, setShowArchived] = useState(false)
   const today = nowIn(zoneOf(settings)).date
   const goals = [...data.financeGoals].sort((a, b) => (a.deadline < b.deadline ? -1 : 1))
@@ -211,7 +224,7 @@ export function FinanceGoalsSection() {
       {active.length ? (
         <div className="card divide-y divide-line">
           {active.map((g) => (
-            <FinanceGoalCard key={g.id} goal={g} today={today} onOpen={(x) => detail.show(x.id)} />
+            <FinanceGoalCard key={g.id} goal={g} today={today} onOpen={(x) => openGoal(x)} onPlan={(x) => openGoal(x, 'strategies')} />
           ))}
         </div>
       ) : (
@@ -232,12 +245,13 @@ export function FinanceGoalsSection() {
       {showArchived && archived.length > 0 && (
         <div className="card mt-2 divide-y divide-line opacity-80">
           {archived.map((g) => (
-            <FinanceGoalCard key={g.id} goal={g} today={today} onOpen={(x) => detail.show(x.id)} />
+            <FinanceGoalCard key={g.id} goal={g} today={today} onOpen={(x) => openGoal(x)} />
           ))}
         </div>
       )}
       <SavedSheet
         goal={open}
+        startOn={startOn}
         open={detail.open && open !== null}
         onClose={detail.close}
         onEdit={(g) => {

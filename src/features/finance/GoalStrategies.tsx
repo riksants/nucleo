@@ -1,4 +1,4 @@
-import { Briefcase, PiggyBank, Repeat, ShoppingBag } from 'lucide-react'
+import { Briefcase, ChevronRight, Lightbulb, PiggyBank, Repeat, ShoppingBag } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { goalStrategies, type StrategyPeriod } from '../../core/goalStrategies'
 import type { Currency, FinanceGoal } from '../../data/types'
@@ -33,6 +33,36 @@ function Line({ label, value, detail }: { label: string; value: string; detail?:
         {detail && <span className="num block text-[13px] text-faint">{detail}</span>}
       </span>
     </div>
+  )
+}
+
+const SHORT: Record<StrategyPeriod, string> = { month: '/mês', week: '/semana', total: ' até o prazo' }
+
+/**
+ * On the goal in the list: the headline scenario ("guardar R$ 1.502/mês ou 15 vendas de R$ 100/mês") as a
+ * tappable row that opens "Como alcançar". Nothing when there is nothing to plan.
+ */
+export function StrategyTeaser({ goal, today, onOpen }: { goal: FinanceGoal; today: string; onOpen(): void }) {
+  const s = goalStrategies(Math.max(goal.target - goal.saved, 0), today, goal.deadline)
+  if (!s) return null
+  const money = (c: number) => formatMoney(c, goal.currency as Currency, { compact: true })
+  const save = s.save.perMonth !== null ? `${money(s.save.perMonth)}/mês` : s.save.perWeek !== null ? `${money(s.save.perWeek)}/semana` : `${money(s.save.perDay)}/dia`
+  const sale = s.sales[0]
+  const saleText = sale ? ` ou ${sale.perPeriod ?? sale.total} ${(sale.perPeriod ?? sale.total) === 1 ? 'venda' : 'vendas'} de ${money(sale.price)}${SHORT[s.period]}` : ''
+  return (
+    <button type="button" onClick={onOpen} data-strategy-teaser className="press flex w-full items-center gap-3 rounded-2xl bg-accent/10 px-3.5 py-2.5 text-left hover:bg-accent/15">
+      <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
+        <Lightbulb size={16} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-semibold text-accent-hi">Como alcançar</span>
+        <span className="block text-[13px] leading-snug text-soft">
+          Guardar <span className="num font-semibold text-ink">{save}</span>
+          {saleText}
+        </span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-accent-hi" />
+    </button>
   )
 }
 
