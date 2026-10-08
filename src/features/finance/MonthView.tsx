@@ -38,7 +38,7 @@ export function ThisMonthCard() {
   return (
     <div className="card p-5">
       <div className="flex items-center gap-2">
-        <TrendingUp size={17} className="shrink-0 text-accent-hi" />
+        <TrendingUp size={18} className="shrink-0 text-accent-hi" />
         <p className="min-w-0 flex-1 text-[13px] font-semibold text-soft">Este mês · {monthLabel(month)}</p>
       </div>
       <p className={`mt-3 text-[15px] leading-relaxed ${forecast.ready ? 'font-medium' : 'text-soft'}`}>{f.title}</p>
@@ -53,7 +53,7 @@ export function ThisMonthCard() {
           {comparison && <p>{comparison}</p>}
         </div>
       )}
-      <Button variant="secondary" block className="mt-4" icon={<CalendarDays size={17} />} onClick={() => navigate('/finance', { view: 'month' })}>
+      <Button variant="secondary" block className="mt-4" icon={<CalendarDays size={18} />} onClick={() => navigate('/finance', { view: 'month' })}>
         Resumo do mês
       </Button>
     </div>

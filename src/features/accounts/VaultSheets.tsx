@@ -94,7 +94,7 @@ function RecoveryCodeSheet({ code, onClose }: { code: string | null; onClose(): 
         <code className="num min-w-0 flex-1 text-[17px] font-semibold tracking-wider break-all">{code}</code>
         <Button
           variant="secondary"
-          icon={<Copy size={17} />}
+          icon={<Copy size={18} />}
           onClick={async () => {
             const ok = await copyText(code ?? '')
             toast(ok ? 'Copiado' : 'Não foi possível copiar', ok ? 'success' : 'error')

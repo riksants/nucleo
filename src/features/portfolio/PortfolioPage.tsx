@@ -67,7 +67,7 @@ function PortfolioForm({ open, onClose, item }: { open: boolean; onClose(): void
             </div>
           ) : (
             <span className="flex aspect-[16/7] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong bg-raised text-sm text-soft hover:text-ink">
-              <ImagePlus size={22} />
+              <ImagePlus size={24} />
               Escolher imagem
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickImage(e.target.files?.[0])} />
             </span>
@@ -119,7 +119,7 @@ export function PortfolioPage() {
         primary={{ label: 'Adicionar', aria: 'Adicionar ao portfólio', onPress: () => form.show() }}
       />
       {list.length === 0 ? (
-        <EmptyState icon={<Briefcase size={22} />} title="Nenhum trabalho ainda" text="Registre o que você já construiu para olhar depois." action="Adicionar trabalho" onAction={() => form.show()} />
+        <EmptyState icon={<Briefcase size={20} />} title="Nenhum trabalho ainda" text="Registre o que você já construiu para olhar depois." action="Adicionar trabalho" onAction={() => form.show()} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((p) => (

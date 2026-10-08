@@ -48,7 +48,7 @@ function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
   const primary = primarySections(settings)
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/90 backdrop-blur-xl reduce-transparency:bg-nav reduce-transparency:backdrop-blur-none lg:hidden" aria-label="Navegação principal">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/75 backdrop-blur-xl backdrop-saturate-150 reduce-transparency:bg-nav reduce-transparency:backdrop-filter-none lg:hidden" aria-label="Navegação principal">
       <div className="mx-auto grid max-w-lg px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
         {[...primary, MORE].map((s) => {
           const active = isActive(s, path, primary)
@@ -64,7 +64,7 @@ function BottomNav({ path }: { path: RoutePath }) {
                 {active && (
                   <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent" transition={INDICATOR_SPRING} />
                 )}
-                <Icon size={21} strokeWidth={active ? 2.2 : 1.8} className={`relative ${active ? 'text-on-accent' : ''}`} />
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} className={`relative ${active ? 'text-on-accent' : ''}`} />
               </span>
               {s.shortLabel ?? s.label}
             </a>
@@ -87,7 +87,7 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
       }`}
     >
       {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-tint/[0.06]" transition={INDICATOR_SPRING} />}
-      <Icon size={19} className={`relative ${active ? 'text-accent-hi' : ''}`} />
+      <Icon size={20} className={`relative ${active ? 'text-accent-hi' : ''}`} />
       <span className="relative">{section.label}</span>
     </a>
   )
@@ -154,6 +154,8 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <div className="mx-auto w-full max-w-lg lg:max-w-5xl">{children}</div>
       </main>
+      {/* Under the phone status bar: whatever scrolls up there is blurred, never sharp behind the clock. */}
+      <div aria-hidden data-status-blur className="pointer-events-none fixed inset-x-0 top-0 z-20 h-[env(safe-area-inset-top)] bg-bg/75 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-filter-none lg:hidden" />
       <QuickCaptureButton />
       <BottomNav path={path} />
     </div>
@@ -192,12 +194,12 @@ function CompactBar({ title, visible }: { title: string; visible: boolean }) {
   return (
     <div
       aria-hidden={!visible}
-      className={`fixed inset-x-0 top-0 z-30 border-b border-line bg-bg/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-opacity duration-200 reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      className={`fixed inset-x-0 top-0 z-30 border-b border-line bg-bg/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 transition-opacity duration-200 reduce-transparency:bg-bg reduce-transparency:backdrop-filter-none lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
     >
       <div className="relative mx-auto flex h-11 max-w-lg items-center justify-center px-12">
         {back && (
           <button type="button" tabIndex={visible ? 0 : -1} onClick={back.go} className="hit absolute left-3 flex items-center text-[15px] font-semibold text-accent-hi" aria-label={back.label}>
-            <ChevronLeft size={22} strokeWidth={2.4} />
+            <ChevronLeft size={20} strokeWidth={2.4} />
           </button>
         )}
         <span className="truncate font-display text-[17px] font-bold tracking-[-0.01em]">{title}</span>

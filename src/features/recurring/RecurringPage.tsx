@@ -37,7 +37,7 @@ export function RecurringPage() {
         primary={{ label: 'Novo', aria: 'Novo recorrente', onPress: () => form.show() }}
       />
       {data.recurring.length === 0 ? (
-        <EmptyState icon={<ListRestart size={22} />} title="Nenhum item recorrente" text="Ex.: pagar aluguel todo dia 5, lavar roupa toda terça, revisar finanças aos domingos." action="Criar item" onAction={() => form.show()} />
+        <EmptyState icon={<ListRestart size={20} />} title="Nenhum item recorrente" text="Ex.: pagar aluguel todo dia 5, lavar roupa toda terça, revisar finanças aos domingos." action="Criar item" onAction={() => form.show()} />
       ) : (
         <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
           <section>

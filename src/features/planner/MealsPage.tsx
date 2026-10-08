@@ -167,7 +167,7 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
               {s.qty && <span className="shrink-0 text-[13px] text-faint">{s.qty}</span>}
             </label>
             <IconButton label="Remover item" size="sm" onClick={() => save('mealPlans', { ...plan, shopping: plan.shopping.filter((_, j) => j !== i) })}>
-              <Trash2 size={15} />
+              <Trash2 size={16} />
             </IconButton>
           </div>
         ))}
@@ -231,7 +231,7 @@ export function AiPlanView() {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] text-soft">Modelo semanal montado com IA — não é prescrição.</p>
-        <Button variant="secondary" icon={<MessageCircle size={17} />} onClick={() => navigate('/planner')}>
+        <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>
           {profile ? 'Refazer' : 'Montar'}
         </Button>
       </div>
@@ -281,7 +281,7 @@ export function AiPlanView() {
         </section>
       ) : (
         !mealsDraft && (
-          <EmptyState icon={<Salad size={22} />} title="Nenhum planejamento ainda" text="Responda um questionário curto e receba refeições da semana e lista de compras, respeitando alergias e restrições." action="Começar" onAction={() => navigate('/planner')} />
+          <EmptyState icon={<Salad size={20} />} title="Nenhum planejamento ainda" text="Responda um questionário curto e receba refeições da semana e lista de compras, respeitando alergias e restrições." action="Começar" onAction={() => navigate('/planner')} />
         )
       )}
 

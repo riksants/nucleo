@@ -53,7 +53,7 @@ export function PlanWeek({ week, currentWeek, today }: { week: WeekId; currentWe
               <div key={t.id} className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => togglePriority(t)} aria-label={t.priority === 'high' ? 'Tirar prioridade' : 'Marcar como prioridade'} className={`grid size-8 shrink-0 place-items-center rounded-lg ${t.priority === 'high' ? 'text-warn' : 'text-faint hover:text-soft'}`}>
-                    <Star size={17} fill={t.priority === 'high' ? 'currentColor' : 'none'} />
+                    <Star size={18} fill={t.priority === 'high' ? 'currentColor' : 'none'} />
                   </button>
                   <span className="min-w-0 flex-1 truncate text-[15px]">{t.title}</span>
                   {t.dueDate && <span className="shrink-0 text-[13px] text-expense">atrasada</span>}
@@ -86,10 +86,10 @@ export function PlanWeek({ week, currentWeek, today }: { week: WeekId; currentWe
                 <div className="flex items-center gap-1 px-3 pt-2 pb-1">
                   <p className={`min-w-0 flex-1 text-[14px] font-medium first-letter:uppercase ${d === today ? 'text-accent-hi' : ''}`}>{label(d)}</p>
                   <button type="button" aria-label={`Nova tarefa em ${label(d)}`} title="Nova tarefa" onClick={() => newTask.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-tint/[0.04] tap hover:text-ink">
-                    <ListPlus size={17} />
+                    <ListPlus size={18} />
                   </button>
                   <button type="button" aria-label={`Novo compromisso em ${label(d)}`} title="Novo compromisso" onClick={() => newEvent.show(d)} className="grid size-9 place-items-center rounded-xl text-faint hover:bg-tint/[0.04] tap hover:text-ink">
-                    <CalendarPlus size={17} />
+                    <CalendarPlus size={18} />
                   </button>
                 </div>
                 {list.length ? list.map((i) => <AgendaRow key={i.key} item={i} onOpen={open} readOnly={d > today} />) : <p className="px-3.5 pb-3 text-[14px] text-faint">Livre</p>}

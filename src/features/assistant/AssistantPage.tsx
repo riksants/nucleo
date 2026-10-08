@@ -59,7 +59,7 @@ function ReplyView({ reply, onFollow }: { reply: Reply; onFollow(text: string): 
       {reply.proposal && <ProposalCard proposal={reply.proposal} />}
       {reply.link && (
         <button type="button" onClick={() => navigate(reply.link!.path as never, reply.link!.params)} className="mt-2 flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
-          {reply.link.label} <ChevronRight size={15} />
+          {reply.link.label} <ChevronRight size={16} />
         </button>
       )}
     </div>
@@ -183,7 +183,7 @@ export function AssistantPage() {
         <div className="mx-auto flex max-w-2xl items-center gap-2">
           <input aria-label="Pergunte ao NÚCLEO" placeholder="Pergunte ao NÚCLEO…" value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none" />
           <IconButton label="Enviar" tone="accent" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
-            <ArrowUp size={19} />
+            <ArrowUp size={20} />
           </IconButton>
         </div>
       </form>

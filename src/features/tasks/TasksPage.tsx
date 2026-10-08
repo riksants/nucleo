@@ -90,7 +90,7 @@ export function TasksPage() {
       ) : (
         <EmptyState
           compact
-          icon={<ListTodo size={22} />}
+          icon={<ListTodo size={20} />}
           title={tab === 'done' ? 'Nenhuma tarefa concluída' : data.tasks.length ? 'Tudo em dia' : 'Nenhuma tarefa ainda'}
           text={tab === 'done' ? undefined : 'Use o campo acima para anotar uma tarefa em segundos.'}
           action={tab === 'done' ? undefined : 'Adicionar tarefa'}

@@ -292,7 +292,7 @@ export function SalePayments({ sale }: { sale: Sale }) {
             <Button variant="secondary" onClick={() => setAdding(false)}>
               Cancelar
             </Button>
-            <Button className="flex-1" icon={<Plus size={17} />} disabled={busy} onClick={add}>
+            <Button className="flex-1" icon={<Plus size={18} />} disabled={busy} onClick={add}>
               Adicionar
             </Button>
           </div>

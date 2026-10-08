@@ -62,7 +62,7 @@ export function TaskForm({
         {task && task.status !== 'done' && (
           <Button
             variant="secondary"
-            icon={<Crosshair size={17} />}
+            icon={<Crosshair size={18} />}
             onClick={() => {
               onClose()
               navigate('/focus', { task: task.id })

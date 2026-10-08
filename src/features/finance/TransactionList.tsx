@@ -74,7 +74,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent/14 font-display text-[14px] font-extrabold text-accent-hi">{initials(tx)}</span>
       ) : (
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-raised text-ink">
-          <Icon size={19} />
+          <Icon size={20} />
         </span>
       )}
       <span className="min-w-0 flex-1">

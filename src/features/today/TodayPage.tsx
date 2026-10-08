@@ -119,7 +119,7 @@ function DayView({ today }: { today: string }) {
       {nothing && (
         <div className="card flex flex-col items-center px-6 py-10 text-center">
           <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-            <CalendarCheck size={22} />
+            <CalendarCheck size={24} />
           </div>
           <p className="text-[17px] font-semibold tracking-tight">Dia livre</p>
           <p className="mt-1.5 max-w-72 text-[15px] leading-relaxed text-soft">Nenhuma tarefa, horário, refeição ou prazo para hoje.</p>

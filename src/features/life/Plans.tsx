@@ -195,7 +195,7 @@ function StepRow({ step, plan, index, count, done }: { step: PlanStep; plan: Lif
           </IconButton>
         )}
         <IconButton label={`Excluir etapa ${step.title}`} size="sm" className="text-faint hover:text-expense" onClick={del}>
-          <Trash2 size={15} />
+          <Trash2 size={16} />
         </IconButton>
       </div>
     </div>
@@ -290,7 +290,7 @@ export function PlanDetail({ plan, open, onClose, onEdit }: { plan: LifePlan | n
           </div>
           {options.length > 0 && suggest === null && (
             <button type="button" onClick={() => setSuggest([])} className="mt-3 flex items-center gap-1.5 text-[14px] font-medium text-accent-hi hover:text-ink">
-              <MessageCircle size={15} /> Sugerir etapas
+              <MessageCircle size={16} /> Sugerir etapas
             </button>
           )}
           {suggest !== null && (
@@ -422,11 +422,11 @@ export function PlansView({ kind }: { kind: PlanKind }) {
         </div>
       ) : (
         <EmptyState
-          icon={kind === 'objective' ? <Compass size={22} /> : <FolderHeart size={22} />}
+          icon={kind === 'objective' ? <Compass size={20} /> : <FolderHeart size={20} />}
           title={all.length ? 'Nada neste filtro' : kind === 'objective' ? 'Nenhum objetivo ainda' : 'Nenhum projeto pessoal ainda'}
           text={all.length ? 'Tente outro filtro.' : kind === 'objective' ? 'Coisas maiores, de médio ou longo prazo — como aprender inglês ou comprar a casa. Divida em etapas.' : 'Viagem, mudança, reforma, estudar para uma prova… com etapas e tarefas.'}
-          action={all.length ? undefined : kind === 'objective' ? 'Criar objetivo' : 'Criar projeto'}
-          onAction={all.length ? undefined : () => form.show()}
+          action={all.length ? (filter !== 'open' ? 'Ver em andamento' : undefined) : kind === 'objective' ? 'Criar objetivo' : 'Criar projeto'}
+          onAction={all.length ? () => setFilter('open') : () => form.show()}
         />
       )}
       <PlanDetail

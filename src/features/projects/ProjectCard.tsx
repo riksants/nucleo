@@ -77,7 +77,7 @@ export function ProjectCard({ project, onOpen, onReceive }: { project: Project; 
           onClick={() => onReceive!(project)}
           className="tap flex h-12 w-full items-center justify-center gap-1.5 border-t border-line text-[15px] font-medium text-accent-hi hover:text-ink"
         >
-          <Plus size={17} />
+          <Plus size={18} />
           Registrar pagamento
         </button>
       )}

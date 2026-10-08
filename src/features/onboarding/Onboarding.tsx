@@ -54,7 +54,7 @@ export function Onboarding() {
         <div className="flex h-11 items-center justify-between">
           {step > 0 ? (
             <IconButton label="Voltar" onClick={() => setStep(step - 1)} className="-ml-2">
-              <ArrowLeft size={22} />
+              <ArrowLeft size={20} />
             </IconButton>
           ) : (
             <span />
@@ -88,7 +88,7 @@ export function Onboarding() {
                     {points.map((p) => (
                       <li key={p} className="flex items-center gap-3 text-[16px]">
                         <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent-hi">
-                          <Check size={14} strokeWidth={3} />
+                          <Check size={14} strokeWidth={2.6} />
                         </span>
                         {p}
                       </li>
@@ -133,7 +133,7 @@ export function Onboarding() {
                             <span className="text-sm text-faint">{c}</span>
                           </span>
                           <span className={`grid size-6 place-items-center rounded-full border-2 ${active ? 'border-accent-hi bg-accent text-on-accent' : 'border-tint/20'}`}>
-                            {active && <Check size={14} strokeWidth={3} />}
+                            {active && <Check size={14} strokeWidth={2.6} />}
                           </span>
                         </button>
                       )

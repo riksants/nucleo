@@ -129,21 +129,21 @@ export function HomePage() {
 
           {/* Quick actions: round, with names. Money first when Financeiro is on. */}
           <nav aria-label="Ações rápidas" className="grid grid-cols-4 gap-2">
-            {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.3} />} primary onClick={() => newTx.show('in')} />}
-            {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.3} />} onClick={() => newTx.show('out')} />}
-            {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={22} />} primary={!on('finance')} onClick={() => navigate('/today')} />}
-            <QuickAction label="Assistente" icon={<MessageCircle size={22} />} onClick={() => navigate('/assistant')} />
+            {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.4} />} primary onClick={() => newTx.show('in')} />}
+            {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('out')} />}
+            {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} primary={!on('finance')} onClick={() => navigate('/today')} />}
+            <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
           </nav>
 
           {on('finance') && (
             <div className="grid grid-cols-2 gap-3">
               <div className="card p-4">
                 <p className="text-[13px] text-soft first-letter:uppercase">Entrou em {monthName(today)}</p>
-                <p className={`display-num mt-1 text-[22px] font-bold ${month.income ? 'text-income' : 'text-soft'}`}>{show(month.income)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${month.income ? 'text-income' : 'text-soft'}`}>{show(month.income)}</p>
               </div>
               <div className="card p-4">
                 <p className="text-[13px] text-soft first-letter:uppercase">Saiu em {monthName(today)}</p>
-                <p className={`display-num mt-1 text-[22px] font-bold ${month.expense ? 'text-expense' : 'text-soft'}`}>{show(month.expense)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${month.expense ? 'text-expense' : 'text-soft'}`}>{show(month.expense)}</p>
               </div>
             </div>
           )}

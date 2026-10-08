@@ -207,7 +207,7 @@ export function App() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-tint/[0.06] text-soft">
-          <CloudOff size={22} />
+          <CloudOff size={24} />
         </div>
         <p className="text-[17px] font-semibold tracking-tight">{loadError === DATABASE_BLOCKED ? 'Atualização esperando outra aba' : 'Não foi possível carregar seus dados'}</p>
         <p className="mt-1.5 max-w-80 text-[15px] leading-relaxed text-soft">{userId && loadError !== DATABASE_BLOCKED ? 'Na primeira vez neste aparelho é preciso internet para baixar a conta.' : loadError}</p>

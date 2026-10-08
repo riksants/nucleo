@@ -78,7 +78,7 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
             <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-faint">
               {task.priority !== 'none' && !done && (
                 <span className={`inline-flex items-center gap-1 ${PRIORITY_TEXT[task.priority]}`} data-priority={task.priority}>
-                  <Flag size={12} strokeWidth={2.4} fill={task.priority === 'high' ? 'currentColor' : 'none'} aria-hidden />
+                  <Flag size={14} strokeWidth={2.4} fill={task.priority === 'high' ? 'currentColor' : 'none'} aria-hidden />
                   <span className="sr-only">Prioridade </span>
                   {optionOf(TASK_PRIORITY, task.priority).label}
                 </span>

@@ -139,7 +139,7 @@ export function BuyerDetail({
         <Button variant="secondary" disabled={!owing.length} onClick={startPaying}>
           Pagamento geral
         </Button>
-        <Button variant="secondary" icon={<Plus size={17} />} onClick={() => onNewSale(preset)}>
+        <Button variant="secondary" icon={<Plus size={18} />} onClick={() => onNewSale(preset)}>
           Nova venda
         </Button>
       </div>

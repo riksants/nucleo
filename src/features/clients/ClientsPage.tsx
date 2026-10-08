@@ -46,7 +46,7 @@ export function ClientsPage() {
         primary={{ label: 'Novo', aria: 'Novo cliente', onPress: () => edit(null) }}
       />
       {data.clients.length === 0 ? (
-        <EmptyState icon={<Users size={22} />} title="Nenhum cliente ainda" text="Guarde contatos e acompanhe projetos e valores de cada cliente." action="Adicionar cliente" onAction={() => edit(null)} />
+        <EmptyState icon={<Users size={20} />} title="Nenhum cliente ainda" text="Guarde contatos e acompanhe projetos e valores de cada cliente." action="Adicionar cliente" onAction={() => edit(null)} />
       ) : (
         <>
           <div className="mb-3">
@@ -73,7 +73,7 @@ export function ClientsPage() {
               })}
             </div>
           ) : (
-            <EmptyState compact icon={<Users size={22} />} title="Nenhum cliente encontrado" />
+            <EmptyState compact icon={<Users size={20} />} title="Nenhum cliente encontrado" action={query ? 'Limpar busca' : undefined} onAction={() => setQuery('')} />
           )}
         </>
       )}

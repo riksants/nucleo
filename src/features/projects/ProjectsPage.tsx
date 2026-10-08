@@ -56,7 +56,7 @@ export function ProjectsPage() {
 
       {data.projects.length === 0 ? (
         <EmptyState
-          icon={<FolderKanban size={22} />}
+          icon={<FolderKanban size={20} />}
           title="Nenhum projeto ainda"
           text="Registre os sites e apps que você faz, com prazos e valores."
           action="Adicionar projeto"
@@ -86,7 +86,7 @@ export function ProjectsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState compact icon={<FolderKanban size={22} />} title="Nada por aqui" text="Nenhum projeto com esse status." />
+            <EmptyState compact icon={<FolderKanban size={20} />} title="Nada por aqui" text="Nenhum projeto com esse status." action={filter !== 'all' ? 'Ver todos' : undefined} onAction={() => setFilter('all')} />
           )}
         </>
       )}

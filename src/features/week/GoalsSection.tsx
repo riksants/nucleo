@@ -69,7 +69,7 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
                   {gp.auto ? 'Atualiza sozinha' : 'Manual'}
                   {(streaks[g.id] ?? 0) >= 2 && (
                     <span className="inline-flex items-center gap-1 text-warn">
-                      <Flame size={13} /> {streaks[g.id]} semanas seguidas
+                      <Flame size={14} /> {streaks[g.id]} semanas seguidas
                     </span>
                   )}
                 </span>
@@ -80,7 +80,7 @@ export function GoalsSection({ week, currentWeek, metrics, editable = true }: { 
       ) : (
         <div className="card flex items-center justify-between gap-3 px-5 py-4">
           <span className="flex items-center gap-2 text-[15px] text-faint">
-            <Target size={17} /> Nenhuma meta para esta semana
+            <Target size={18} /> Nenhuma meta para esta semana
           </span>
           {editable && (
             <button type="button" onClick={() => form.show()} className="hit relative shrink-0 text-sm font-medium text-accent-hi hover:text-ink">

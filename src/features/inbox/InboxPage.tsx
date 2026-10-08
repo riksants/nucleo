@@ -107,7 +107,7 @@ export function InboxPage() {
       />
 
       {open.length === 0 ? (
-        <EmptyState compact={done.length > 0} icon={<Inbox size={22} />} title="Nada para organizar" text="Use o botão + para guardar ideias, lembretes e tarefas sem pensar em onde colocar." />
+        <EmptyState compact={done.length > 0} icon={<Inbox size={20} />} title="Nada para organizar" text="Use o botão + para guardar ideias, lembretes e tarefas sem pensar em onde colocar." />
       ) : (
         <div className="card p-1.5">
           {open.map((item) => (

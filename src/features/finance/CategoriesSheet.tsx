@@ -60,7 +60,7 @@ export function CategoriesSheet({ open, onClose }: { open: boolean; onClose(): v
         </div>
         <div className="flex gap-2">
           <TextInput aria-label="Nova categoria" placeholder={type === 'out' ? 'Ex.: Pets' : 'Ex.: Aluguel recebido'} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} />
-          <Button variant="secondary" icon={<Plus size={17} />} onClick={add} className="shrink-0">
+          <Button variant="secondary" icon={<Plus size={18} />} onClick={add} className="shrink-0">
             Adicionar
           </Button>
         </div>

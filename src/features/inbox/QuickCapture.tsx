@@ -111,7 +111,7 @@ export function QuickCaptureButton() {
         className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:brightness-[0.96] disabled:opacity-40 lg:hidden"
         style={{ bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 84px)' }}
       >
-        <Plus size={26} strokeWidth={2.4} />
+        <Plus size={24} strokeWidth={2.4} />
       </button>
       <CaptureSheet open={open} onClose={() => setOpen(false)} />
     </>

@@ -74,7 +74,7 @@ export function ReminderCenter() {
             role="status"
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
-              <Bell size={15} />
+              <Bell size={16} />
             </span>
             <a href={o.url} onClick={() => setVisible((v) => v.filter((x) => x.key !== o.key))} className="min-w-0 flex-1 text-[15px] leading-snug">
               {o.detail}

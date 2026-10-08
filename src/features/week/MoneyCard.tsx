@@ -15,8 +15,8 @@ import { Progress, SectionTitle } from '../../ui/Display'
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="min-w-0">
-      <p className={`num text-[clamp(16px,4.4vw,19px)] leading-tight font-semibold break-words ${tone ?? ''}`}>{value}</p>
-      <p className="truncate text-[13px] text-faint">{label}</p>
+      <p className="text-[13px] text-soft">{label}</p>
+      <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${tone ?? ''}`}>{value}</p>
     </div>
   )
 }
@@ -64,10 +64,13 @@ export function MoneyCard({ week, today, isCurrent, snapshot, flat, prevFlat }: 
       <SectionTitle>Dinheiro</SectionTitle>
       <div className="card p-5">
         {count ? (
-          <div className="grid grid-cols-3 gap-3">
-            <Stat label="gastou" value={formatMoney(expense, cur)} />
-            <Stat label="recebeu" value={formatMoney(income, cur)} tone={income ? 'text-income' : ''} />
-            <Stat label="saldo da semana" value={formatMoney(net, cur, { sign: true })} tone={net < 0 ? 'text-expense' : ''} />
+          <div>
+            <p className="text-[13px] text-soft">Saldo da semana</p>
+            <p className={`num mt-0.5 text-[28px] leading-tight font-bold [overflow-wrap:anywhere] ${net < 0 ? 'text-expense' : net > 0 ? 'text-income' : ''}`}>{formatMoney(net, cur, { sign: true })}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3">
+              <Stat label="Gastou" value={formatMoney(expense, cur)} tone={expense ? 'text-expense' : ''} />
+              <Stat label="Recebeu" value={formatMoney(income, cur)} tone={income ? 'text-income' : ''} />
+            </div>
           </div>
         ) : (
           <p className="text-[15px] text-faint">Nenhuma movimentação registrada {isCurrent ? 'nesta semana ainda' : 'nesta semana'}.</p>

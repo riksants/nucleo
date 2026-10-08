@@ -198,7 +198,7 @@ export function SalesPage() {
         primary={{ label: 'Nova', aria: 'Nova venda', onPress: () => newSale(null) }}
       />
       {data.sales.length === 0 ? (
-        <EmptyState icon={<BadgeDollarSign size={22} />} title="Nenhuma venda ainda" text="Registre o que vendeu, para quem e acompanhe os pagamentos parciais." action="Registrar venda" onAction={() => newSale(null)} />
+        <EmptyState icon={<BadgeDollarSign size={20} />} title="Nenhuma venda ainda" text="Registre o que vendeu, para quem e acompanhe os pagamentos parciais." action="Registrar venda" onAction={() => newSale(null)} />
       ) : (
         <>
           <Overview totals={overview.totals} owing={overview.owing} />
@@ -229,7 +229,7 @@ export function SalesPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState compact icon={<BadgeDollarSign size={22} />} title="Ninguém com esse filtro" />
+                <EmptyState compact icon={<BadgeDollarSign size={20} />} title="Ninguém com esse filtro" action="Limpar filtros" onAction={() => { setPeopleQuery(''); setPeopleStatus('all'); setPreset(null) }} />
               )}
             </>
           ) : (
@@ -258,7 +258,7 @@ export function SalesPage() {
                   <SearchField value={filter.query} onChange={(v) => set('query', v)} placeholder="Buscar cliente ou produto" />
                 </div>
                 <IconButton label="Filtros" tone={filtered || showFilters ? 'accent' : 'raised'} className="size-12!" onClick={() => setShowFilters(!showFilters)}>
-                  <SlidersHorizontal size={19} />
+                  <SlidersHorizontal size={20} />
                 </IconButton>
               </div>
               {showFilters && (
@@ -291,7 +291,7 @@ export function SalesPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState compact icon={<BadgeDollarSign size={22} />} title="Nenhuma venda com esse filtro" />
+                <EmptyState compact icon={<BadgeDollarSign size={20} />} title="Nenhuma venda com esse filtro" action="Limpar filtros" onAction={() => setFilter({ query: '', status: 'all', from: '', to: '', clientKey: '' })} />
               )}
             </>
           )}
@@ -323,7 +323,7 @@ export function SalesPage() {
                 form.show(open)
               }}
             >
-              <Pencil size={17} />
+              <Pencil size={18} />
             </IconButton>
           )
         }

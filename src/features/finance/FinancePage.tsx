@@ -98,11 +98,11 @@ function FinanceHome() {
             <div className="grid grid-cols-2 gap-3">
               <div className="card p-4">
                 <p className="text-[13px] text-soft">Entradas</p>
-                <p className={`display-num mt-1 text-[20px] font-bold ${totals.income ? 'text-income' : 'text-soft'}`}>{show(totals.income)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.income ? 'text-income' : 'text-soft'}`}>{show(totals.income)}</p>
               </div>
               <div className="card p-4">
                 <p className="text-[13px] text-soft">Saídas</p>
-                <p className={`display-num mt-1 text-[20px] font-bold ${totals.expense ? 'text-expense' : 'text-soft'}`}>{show(totals.expense)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.expense ? 'text-expense' : 'text-soft'}`}>{show(totals.expense)}</p>
               </div>
             </div>
           </section>
@@ -145,9 +145,16 @@ function FinanceHome() {
           ) : (
             <EmptyState
               compact
-              icon={<ReceiptText size={22} />}
+              icon={<ReceiptText size={20} />}
               title={data.transactions.length ? 'Nada encontrado' : 'Nenhuma movimentação ainda'}
               text={data.transactions.length ? 'Tente outro período, filtro, categoria ou termo.' : 'Use os botões Adicionar e Retirar no card de saldo.'}
+              action={data.transactions.length ? 'Ver tudo' : undefined}
+              onAction={() => {
+                setPeriod('all')
+                setTypeFilter('all')
+                setCategory('all')
+                setQuery('')
+              }}
             />
           )}
         </section>

@@ -191,9 +191,9 @@ function ActivityEditor({ a, onChange, onRemove }: { a: WishActivity; onChange(a
 
 function ModeChoice({ onPick }: { onPick(mode: PlannerMode): void }) {
   const options: { mode: PlannerMode; title: string; text: string; icon: ReactNode }[] = [
-    { mode: 'routine', title: 'Só rotina', text: 'Agenda semanal com seus horários e atividades', icon: <CalendarClock size={22} /> },
-    { mode: 'meals', title: 'Só alimentação', text: 'Refeições da semana e lista de compras', icon: <Salad size={22} /> },
-    { mode: 'both', title: 'Rotina + alimentação', text: 'As refeições se encaixam na sua rotina', icon: <MessageCircle size={22} /> },
+    { mode: 'routine', title: 'Só rotina', text: 'Agenda semanal com seus horários e atividades', icon: <CalendarClock size={24} /> },
+    { mode: 'meals', title: 'Só alimentação', text: 'Refeições da semana e lista de compras', icon: <Salad size={24} /> },
+    { mode: 'both', title: 'Rotina + alimentação', text: 'As refeições se encaixam na sua rotina', icon: <MessageCircle size={24} /> },
   ]
   return (
     <div className="space-y-3">
@@ -364,7 +364,7 @@ export function PlannerPage() {
             {r.commitments.map((c, i) => (
               <CommitmentEditor key={c.id} c={c} onChange={(next) => setR({ commitments: r.commitments.map((x, j) => (j === i ? next : x)) })} onRemove={() => setR({ commitments: r.commitments.filter((_, j) => j !== i) })} />
             ))}
-            <Button variant="secondary" block icon={<Plus size={17} />} onClick={() => setR({ commitments: [...r.commitments, newCommitment()] })}>
+            <Button variant="secondary" block icon={<Plus size={18} />} onClick={() => setR({ commitments: [...r.commitments, newCommitment()] })}>
               Adicionar compromisso
             </Button>
           </div>
@@ -375,7 +375,7 @@ export function PlannerPage() {
             {r.trainings.map((t, i) => (
               <TrainingEditor key={t.id} t={t} onChange={(next) => setR({ trainings: r.trainings.map((x, j) => (j === i ? next : x)) })} onRemove={() => setR({ trainings: r.trainings.filter((_, j) => j !== i) })} />
             ))}
-            <Button variant="secondary" block icon={<Plus size={17} />} onClick={() => setR({ trainings: [...r.trainings, newTraining()] })}>
+            <Button variant="secondary" block icon={<Plus size={18} />} onClick={() => setR({ trainings: [...r.trainings, newTraining()] })}>
               Adicionar treino
             </Button>
             <Field label="Competições" hint="opcional">
@@ -390,7 +390,7 @@ export function PlannerPage() {
             {r.activities.map((a, i) => (
               <ActivityEditor key={a.id} a={a} onChange={(next) => setR({ activities: r.activities.map((x, j) => (j === i ? next : x)) })} onRemove={() => setR({ activities: r.activities.filter((_, j) => j !== i) })} />
             ))}
-            <Button variant="secondary" block icon={<Plus size={17} />} onClick={() => setR({ activities: [...r.activities, newActivity()] })}>
+            <Button variant="secondary" block icon={<Plus size={18} />} onClick={() => setR({ activities: [...r.activities, newActivity()] })}>
               Adicionar atividade
             </Button>
           </div>
@@ -624,7 +624,7 @@ export function PlannerPage() {
     <>
       <div className="mb-4 flex items-center gap-2">
         <IconButton label="Voltar" onClick={() => (index > 0 ? go(steps[index - 1]) : setChoosing(true))} className="-ml-2">
-          <ArrowLeft size={22} />
+          <ArrowLeft size={20} />
         </IconButton>
         <div className="flex flex-1 gap-1" aria-hidden>
           {steps.map((s, i) => (

@@ -19,7 +19,7 @@ export function MealsCard({ flat, isCurrent }: { flat: FlatMetrics; isCurrent: b
       <button type="button" onClick={() => navigate('/meals')} className="card block w-full p-5 text-left hover:border-line-strong">
         <span className="flex items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-income/12 text-income">
-            <Salad size={19} />
+            <Salad size={20} />
           </span>
           <span className="min-w-0 flex-1 text-[15px] leading-snug">
             {done} de {planned} {planned === 1 ? 'refeição planejada marcada' : 'refeições planejadas marcadas'} como realizada{planned === 1 ? '' : 's'}{isCurrent ? ' até agora' : ''}

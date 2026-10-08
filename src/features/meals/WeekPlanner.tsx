@@ -61,7 +61,7 @@ export function MealTypesSheet({ open, onClose }: { open: boolean; onClose(): vo
         </div>
         <div className="flex gap-2">
           <TextInput aria-label="Novo tipo de refeição" placeholder="Ex.: Pré-treino" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} />
-          <Button variant="secondary" icon={<Plus size={17} />} onClick={add} className="shrink-0">
+          <Button variant="secondary" icon={<Plus size={18} />} onClick={add} className="shrink-0">
             Adicionar
           </Button>
         </div>
@@ -131,7 +131,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
           )}
         </div>
         <IconButton label="Tipos de refeição" size="sm" onClick={() => setTypesOpen(true)}>
-          <Settings2 size={17} />
+          <Settings2 size={18} />
         </IconButton>
         <Button icon={<Plus size={18} />} onClick={() => addOn(week <= today && today <= addDaysToDate(week, 6) ? today : week)}>
           Refeição
@@ -165,7 +165,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
                   {date === today && <span className="ml-2 text-[12px] font-medium text-accent-hi">hoje</span>}
                 </p>
                 <IconButton label={`Adicionar refeição em ${DAY_NAME[wd]}`} size="sm" onClick={() => addOn(date)}>
-                  <Plus size={17} />
+                  <Plus size={18} />
                 </IconButton>
               </div>
               {list.length ? (

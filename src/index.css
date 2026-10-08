@@ -147,7 +147,8 @@
   }
 }
 
-/* Big numbers (balances, totals): the display face, tight. */
+/* Money has two voices only: display-num for THE big number of a screen (balance, period result);
+   every other amount uses num (the body face, tabular) — same font in lists, tiles and summaries. */
 @utility display-num {
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;

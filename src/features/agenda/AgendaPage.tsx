@@ -84,7 +84,7 @@ export function AgendaPage() {
         items.length ? (
           <DayList items={items} onOpen={open} />
         ) : (
-          <EmptyState compact icon={<CalendarDays size={22} />} title="Dia livre" text="Compromissos, tarefas com prazo, rotina, hábitos e recorrentes aparecem aqui." action="Novo compromisso" onAction={() => newEvent.show(base)} />
+          <EmptyState compact icon={<CalendarDays size={20} />} title="Dia livre" text="Compromissos, tarefas com prazo, rotina, hábitos e recorrentes aparecem aqui." action="Novo compromisso" onAction={() => newEvent.show(base)} />
         )
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">

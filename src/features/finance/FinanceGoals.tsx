@@ -197,7 +197,7 @@ export function FinanceGoalsSection() {
       ) : (
         <div className="card flex items-center justify-between gap-3 px-5 py-4">
           <span className="flex min-w-0 items-center gap-2 text-[15px] text-faint">
-            <Flag size={17} className="shrink-0" /> Ex.: juntar R$ 5.000 até dezembro
+            <Flag size={18} className="shrink-0" /> Ex.: juntar R$ 5.000 até dezembro
           </span>
           <Button variant="secondary" icon={<Plus size={16} />} onClick={() => form.show()}>
             Criar

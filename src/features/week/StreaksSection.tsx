@@ -22,7 +22,7 @@ export function StreaksSection({ today, index }: { today: string; index: Complet
         {list.map((s) => (
           <div key={s.key} className="flex items-center gap-3 px-4 py-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-warn/12 text-warn">
-              <Flame size={17} />
+              <Flame size={18} />
             </span>
             <span className="min-w-0 flex-1 truncate text-[15px]">{s.name}</span>
             <span className="num shrink-0 text-[15px] font-semibold">

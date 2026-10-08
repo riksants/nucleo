@@ -77,7 +77,7 @@ export function ChipSelect({ options, value, onChange }: { options: { id: string
               onClick={() => onChange(on ? value.filter((x) => x !== o.id) : [...value, o.id])}
               className={`press inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-medium ${on ? 'border-transparent bg-ink text-bg' : 'border-line bg-surface text-soft hover:text-ink'}`}
             >
-              {on && <Check size={14} strokeWidth={3} />}
+              {on && <Check size={14} strokeWidth={2.6} />}
               {o.label}
             </button>
           )

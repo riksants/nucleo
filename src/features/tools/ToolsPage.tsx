@@ -62,7 +62,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
       </button>
       {tool.link && (
         <a href={normalizeUrl(tool.link)} target="_blank" rel="noreferrer" aria-label={`Abrir ${displayUrl(tool.link)}`} className="grid size-10 shrink-0 place-items-center rounded-xl text-faint hover:bg-tint/[0.05] tap hover:text-ink">
-          <ExternalLink size={17} />
+          <ExternalLink size={18} />
         </a>
       )}
     </div>
@@ -86,7 +86,7 @@ export function ToolsPage() {
         primary={{ label: 'Nova', aria: 'Nova assinatura', onPress: () => form.show() }}
       />
       {data.tools.length === 0 ? (
-        <EmptyState icon={<Wrench size={22} />} title="Nenhuma assinatura ainda" text="Registre o que você usa e paga, e veja quanto isso custa por mês." action="Adicionar assinatura" onAction={() => form.show()} />
+        <EmptyState icon={<Wrench size={20} />} title="Nenhuma assinatura ainda" text="Registre o que você usa e paga, e veja quanto isso custa por mês." action="Adicionar assinatura" onAction={() => form.show()} />
       ) : (
         <>
           <section className="card mb-5 p-5">
@@ -111,7 +111,7 @@ export function ToolsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState compact icon={<Wrench size={22} />} title="Nada por aqui" />
+            <EmptyState compact icon={<Wrench size={20} />} title="Nada por aqui" action={filter !== 'all' ? 'Ver todas' : undefined} onAction={() => setFilter('all')} />
           )}
         </>
       )}

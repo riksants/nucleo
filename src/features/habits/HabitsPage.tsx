@@ -50,7 +50,7 @@ export function HabitsPage() {
         primary={{ label: 'Novo', aria: 'Novo hábito', onPress: () => form.show() }}
       />
       {data.habits.length === 0 ? (
-        <EmptyState icon={<Sprout size={22} />} title="Nenhum hábito ainda" text="Água, treino, leitura, sono… Marque um dia de cada vez e acompanhe o histórico." action="Criar hábito" onAction={() => form.show()} />
+        <EmptyState icon={<Sprout size={20} />} title="Nenhum hábito ainda" text="Água, treino, leitura, sono… Marque um dia de cada vez e acompanhe o histórico." action="Criar hábito" onAction={() => form.show()} />
       ) : (
         <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
           <section>

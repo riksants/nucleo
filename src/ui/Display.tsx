@@ -5,7 +5,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { TONE_BADGE, type Tone } from '../data/labels'
 import type { Cents, Currency } from '../data/types'
 import { formatMoney } from '../lib/money'
-import { Button } from './Button'
 
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {
   return (
@@ -78,15 +77,16 @@ export function EmptyState({
       initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }}
       animate={{ opacity: 1, transform: 'translateY(0px)' }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className={`card flex flex-col items-center border-dashed text-center ${compact ? 'px-5 py-7' : 'px-6 py-12'}`}
+      data-empty
+      className={`flex flex-col items-center rounded-[var(--radius-card)] bg-tint/[0.03] text-center ${compact ? 'px-5 py-5' : 'px-6 py-7'}`}
     >
-      <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">{icon}</div>
-      <p className="text-[17px] font-semibold tracking-tight">{title}</p>
-      {text && <p className="mt-1.5 max-w-72 text-[15px] leading-relaxed text-soft">{text}</p>}
+      <div aria-hidden className={`mb-3 grid place-items-center rounded-xl bg-accent/12 text-accent-hi ${compact ? 'size-9 [&_svg]:size-[18px]' : 'size-10 [&_svg]:size-5'}`}>{icon}</div>
+      <p className="text-[16px] font-semibold tracking-tight">{title}</p>
+      {text && <p className="mt-1 max-w-72 text-[14px] leading-relaxed text-soft">{text}</p>}
       {action && onAction && (
-        <Button className="mt-5" onClick={onAction}>
+        <button type="button" onClick={onAction} className="press mt-4 inline-flex h-11 items-center rounded-full bg-accent/12 px-5 text-[15px] font-semibold text-accent-hi hover:bg-accent/18">
           {action}
-        </Button>
+        </button>
       )}
     </motion.div>
   )

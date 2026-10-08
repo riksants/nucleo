@@ -27,7 +27,7 @@ export function GoalsPage() {
       />
       {active.length === 0 && purchased.length === 0 ? (
         <EmptyState
-          icon={<Target size={22} />}
+          icon={<Target size={20} />}
           title="Nenhuma meta ainda"
           text="Adicione algo que pretende comprar e veja quanto falta com base no seu saldo."
           action="Adicionar meta"

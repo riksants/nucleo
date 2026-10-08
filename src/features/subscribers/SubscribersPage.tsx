@@ -140,7 +140,7 @@ export function SubscribersPage() {
       />
       {data.offerings.length === 0 ? (
         <EmptyState
-          icon={<Repeat size={22} />}
+          icon={<Repeat size={20} />}
           title="Nenhum produto por assinatura"
           text="Comece cadastrando o que você oferece (pode ser um dos seus projetos) e os planos com preço e frequência."
           action="Cadastrar produto"
@@ -214,7 +214,7 @@ export function SubscribersPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState compact icon={<Repeat size={22} />} title={data.subPlans.length ? 'Ninguém aqui' : 'Crie um plano primeiro'} action={data.subPlans.length ? 'Adicionar assinante' : undefined} onAction={() => subForm.show()} />
+              <EmptyState compact icon={<Repeat size={20} />} title={data.subPlans.length ? 'Ninguém aqui' : 'Crie um plano primeiro'} action={data.subPlans.length ? 'Adicionar assinante' : undefined} onAction={() => subForm.show()} />
             )}
           </section>
         </div>
@@ -234,7 +234,7 @@ export function SubscribersPage() {
                 subForm.show(open)
               }}
             >
-              <Pencil size={17} />
+              <Pencil size={18} />
             </IconButton>
           )
         }

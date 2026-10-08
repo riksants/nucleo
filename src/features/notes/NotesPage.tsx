@@ -67,7 +67,7 @@ function NoteCard({ note, onOpen }: { note: Note; onOpen(n: Note): void }) {
     <button type="button" onClick={() => onOpen(note)} className="card press flex w-full flex-col p-4 text-left hover:border-line-strong">
       <div className="flex items-start gap-2">
         <h3 className="min-w-0 flex-1 truncate text-[16px] font-semibold tracking-tight">{note.title || note.body.split('\n')[0]}</h3>
-        {note.pinned && <Pin size={15} className="mt-1 shrink-0 text-accent-hi" fill="currentColor" />}
+        {note.pinned && <Pin size={16} className="mt-1 shrink-0 text-accent-hi" fill="currentColor" />}
       </div>
       {note.title && note.body && <p className="mt-1.5 line-clamp-3 text-[15px] leading-relaxed whitespace-pre-line text-soft">{note.body}</p>}
       <p className="mt-3 text-xs text-faint">{formatDateTime(note.updatedAt)}</p>
@@ -100,13 +100,13 @@ export function NotesPage() {
         primary={{ label: 'Nova', aria: 'Nova anotação', onPress: () => editor.show() }}
       />
       {data.notes.length === 0 ? (
-        <EmptyState icon={<NotebookPen size={22} />} title="Nenhuma nota ainda" text="Ideias, lembretes, rascunhos — tudo em um lugar." action="Criar nota" onAction={() => editor.show()} />
+        <EmptyState icon={<NotebookPen size={20} />} title="Nenhuma nota ainda" text="Ideias, lembretes, rascunhos — tudo em um lugar." action="Criar nota" onAction={() => editor.show()} />
       ) : (
         <>
           <div className="mb-5">
             <SearchField value={query} onChange={setQuery} placeholder="Buscar nas notas" />
           </div>
-          {list.length === 0 && <EmptyState compact icon={<PinOff size={22} />} title="Nada encontrado" />}
+          {list.length === 0 && <EmptyState compact icon={<PinOff size={20} />} title="Nada encontrado" action={query ? 'Limpar busca' : undefined} onAction={() => setQuery('')} />}
           {pinned.length > 0 && (
             <section className="mb-6">
               <SectionTitle>Fixadas</SectionTitle>

@@ -78,7 +78,7 @@ export function FocusPage() {
           <div className="flex h-11 items-center justify-between">
             <h1 className="text-[24px] font-semibold tracking-tight">Modo foco</h1>
             <IconButton label="Sair do modo foco" onClick={() => navigate('/')}>
-              <X size={22} />
+              <X size={20} />
             </IconButton>
           </div>
           <p className="mt-2 mb-6 text-[15px] text-soft">Escolha uma tarefa para focar.</p>
@@ -105,7 +105,7 @@ export function FocusPage() {
         <div className="flex h-11 items-center justify-between">
           <span className="text-[13px] font-semibold text-faint">Modo foco</span>
           <IconButton label="Sair do modo foco" onClick={exit}>
-            <X size={22} />
+            <X size={20} />
           </IconButton>
         </div>
 

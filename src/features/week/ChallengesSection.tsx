@@ -170,7 +170,7 @@ export function ChallengesSection({ today, index }: { today: string; index: Comp
       ) : (
         <div className="card flex items-center justify-between gap-3 px-5 py-4">
           <span className="flex items-center gap-2 text-[15px] text-faint">
-            <Mountain size={17} /> Nenhum desafio em andamento
+            <Mountain size={18} /> Nenhum desafio em andamento
           </span>
           <button type="button" onClick={() => setCreating(true)} className="hit relative shrink-0 text-sm font-medium text-accent-hi hover:text-ink">
             Escolher

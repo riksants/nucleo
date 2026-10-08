@@ -84,7 +84,7 @@ export function WeekPage() {
       {suggestPlan && (
         <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card mb-5 flex w-full items-center gap-3 border-accent-hi/30 p-4 text-left hover:border-accent-hi/50">
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-            <MessageCircle size={19} />
+            <MessageCircle size={20} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
@@ -154,7 +154,7 @@ export function WeekPage() {
             <SectionTitle>Check-in</SectionTitle>
             <button type="button" onClick={() => setCheckin(true)} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
               <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-goal/14 text-goal">
-                <MessageCircleHeart size={19} />
+                <MessageCircleHeart size={20} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-medium">{checkinDone ? 'Check-in feito' : 'Como foi sua semana?'}</span>
@@ -167,7 +167,7 @@ export function WeekPage() {
           {isEnabled(settings, 'life') && (
             <button type="button" onClick={() => navigate('/life', { view: 'changes' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
               <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-                <GitCompareArrows size={19} />
+                <GitCompareArrows size={20} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-medium">O que mudou?</span>
@@ -180,7 +180,7 @@ export function WeekPage() {
           {w.isCurrent && (
             <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
               <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-                <CalendarRange size={19} />
+                <CalendarRange size={20} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-medium">Planejar a próxima semana</span>

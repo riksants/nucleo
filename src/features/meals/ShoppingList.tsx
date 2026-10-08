@@ -139,7 +139,7 @@ export function ShoppingList({ week, onWeek }: { week: WeekId; onWeek(w: WeekId)
                 {g.rows.map((r) => (
                   <div key={r.id} className="flex items-center gap-1 pr-1">
                     <button type="button" role="checkbox" aria-checked={r.checked} aria-label={`${r.checked ? 'Desmarcar' : 'Marcar'} ${r.name}${r.amount ? ` (${r.amount})` : ''}`} onClick={() => toggle(r)} className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left">
-                      <span className={`grid size-7 shrink-0 place-items-center rounded-lg border-2 transition-colors ${r.checked ? 'border-income bg-income text-bg' : 'border-line-strong'}`}>{r.checked && <Check size={17} strokeWidth={3} />}</span>
+                      <span className={`grid size-7 shrink-0 place-items-center rounded-lg border-2 transition-colors ${r.checked ? 'border-income bg-income text-bg' : 'border-line-strong'}`}>{r.checked && <Check size={18} strokeWidth={2.6} />}</span>
                       <span className="min-w-0 flex-1">
                         <span className={`block text-[16px] leading-snug break-words ${r.checked ? 'text-faint line-through' : ''}`}>{r.name}</span>
                         {(r.amount || r.note || r.orphan) && <span className="block text-[13px] text-faint">{[r.amount, r.note, r.orphan ? 'fora das refeições' : ''].filter(Boolean).join(' · ')}</span>}
@@ -161,7 +161,7 @@ export function ShoppingList({ week, onWeek }: { week: WeekId; onWeek(w: WeekId)
           <p className="px-1 text-[13px] leading-relaxed text-faint">Itens das refeições somam quantidades só quando as unidades combinam (g com kg, ml com l). Sem quantidade na refeição, a lista também fica sem. Itens que você adiciona nunca são alterados pelas refeições.</p>
         </>
       ) : (
-        <EmptyState icon={<ShoppingBasket size={22} />} title="Lista vazia" text="Os ingredientes das refeições desta semana aparecem aqui sozinhos. Você também pode adicionar itens." />
+        <EmptyState icon={<ShoppingBasket size={20} />} title="Lista vazia" text="Os ingredientes das refeições desta semana aparecem aqui sozinhos. Você também pode adicionar itens." />
       )}
       <ItemForm open={form.open} onClose={form.close} row={form.item} week={week} categories={categories} />
     </div>

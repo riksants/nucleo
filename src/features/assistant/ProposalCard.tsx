@@ -62,7 +62,7 @@ export function ProposalCard({ proposal, onDone }: { proposal: Proposal; onDone?
             <li key={c.id} className="flex items-start gap-2.5">
               {adjusting ? (
                 <button type="button" role="checkbox" aria-checked={on} aria-label={`Incluir: ${c.label}`} onClick={() => setChosen((s) => (on ? new Set([...s].filter((x) => x !== c.id)) : new Set([...s, c.id])))} className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 ${on ? 'border-accent-hi bg-accent text-on-accent' : 'border-line-strong'}`}>
-                  {on && <Check size={14} strokeWidth={3} />}
+                  {on && <Check size={14} strokeWidth={2.6} />}
                 </button>
               ) : (
                 <span className={`mt-2 size-1.5 shrink-0 rounded-full ${on ? 'bg-accent-hi' : 'bg-faint'}`} />

@@ -83,7 +83,7 @@ export function SearchPage() {
       </div>
 
       {!q && <p className="px-1 text-[15px] text-faint">Procure em clientes, projetos, tarefas, assinaturas, movimentações, anotações e contas.</p>}
-      {q && groups.length === 0 && <EmptyState compact icon={<Search size={22} />} title="Nada encontrado" text={`Nenhum resultado para “${q}”.`} />}
+      {q && groups.length === 0 && <EmptyState compact icon={<Search size={20} />} title="Nada encontrado" text={`Nenhum resultado para “${q}”.`} />}
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         {groups.map((g) => {
@@ -93,7 +93,7 @@ export function SearchPage() {
           return (
             <section key={g.label}>
               <h2 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold text-soft">
-                <Icon size={15} />
+                <Icon size={16} />
                 {g.label}
                 <span className="text-faint">{g.hits.length}</span>
               </h2>

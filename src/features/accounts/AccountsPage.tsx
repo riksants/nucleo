@@ -68,7 +68,7 @@ function CopyRow({ label, value, secret, sealed, onLocked }: { label: string; va
         </IconButton>
       )}
       <IconButton label={`Copiar ${label.toLowerCase()}`} size="sm" onClick={copy}>
-        <Copy size={17} />
+        <Copy size={18} />
       </IconButton>
     </div>
   )
@@ -90,7 +90,7 @@ function AccountCard({ account, onEdit, onLocked }: { account: Account; onEdit(a
           </a>
         )}
         <IconButton label="Editar" size="sm" onClick={() => onEdit(account)}>
-          <Pencil size={17} />
+          <Pencil size={18} />
         </IconButton>
       </div>
       <div className="space-y-2">
@@ -125,7 +125,7 @@ export function AccountsPage() {
       />
       <VaultBar onCreate={() => setVaultSheet('create')} onUnlock={() => setVaultSheet('unlock')} />
       {data.accounts.length === 0 ? (
-        <EmptyState icon={<KeyRound size={22} />} title="Nenhum acesso guardado ainda" text="Anote e-mails, usuários e senhas dos serviços que você usa." action="Adicionar acesso" onAction={() => form.show()} />
+        <EmptyState icon={<KeyRound size={20} />} title="Nenhum acesso guardado ainda" text="Anote e-mails, usuários e senhas dos serviços que você usa." action="Adicionar acesso" onAction={() => form.show()} />
       ) : (
         <>
           <div className="mb-5">
@@ -138,7 +138,7 @@ export function AccountsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState compact icon={<KeyRound size={22} />} title="Nada encontrado" />
+            <EmptyState compact icon={<KeyRound size={20} />} title="Nada encontrado" action={query ? 'Limpar busca' : undefined} onAction={() => setQuery('')} />
           )}
         </>
       )}

@@ -135,7 +135,7 @@ export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: Rout
           <div key={b.id} className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
             {!editable && date <= today ? (
               <button type="button" onClick={() => toggle(b)} aria-label={isDone ? 'Desmarcar' : 'Marcar como feito'} className="grid size-11 shrink-0 place-items-center">
-                <span className={`grid size-6 place-items-center rounded-full border-2 ${isDone ? 'border-accent-hi bg-accent text-on-accent' : 'border-tint/20'}`}>{isDone && <Check size={14} strokeWidth={3} />}</span>
+                <span className={`grid size-6 place-items-center rounded-full border-2 ${isDone ? 'border-accent-hi bg-accent text-on-accent' : 'border-tint/20'}`}>{isDone && <Check size={14} strokeWidth={2.6} />}</span>
               </button>
             ) : (
               <span className="grid size-11 shrink-0 place-items-center">
@@ -210,7 +210,7 @@ export function RoutinePage() {
         title="Rotina"
         subtitle={routine ? 'Sua semana' : undefined}
         actions={
-          <Button variant="secondary" icon={<MessageCircle size={17} />} onClick={() => navigate('/planner')}>
+          <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>
             {profile ? 'Refazer' : 'Montar'}
           </Button>
         }
@@ -235,7 +235,7 @@ export function RoutinePage() {
               <Button onClick={approve} disabled={draftConflicts.length > 0}>
                 Aprovar e salvar
               </Button>
-              <Button variant="secondary" icon={<Plus size={17} />} onClick={() => blockSheet.show({ block: null, plan: routineDraft })}>
+              <Button variant="secondary" icon={<Plus size={18} />} onClick={() => blockSheet.show({ block: null, plan: routineDraft })}>
                 Horário
               </Button>
               <Button variant="ghost" onClick={discard}>
@@ -261,7 +261,7 @@ export function RoutinePage() {
       ) : (
         !routineDraft && (
           <EmptyState
-            icon={<CalendarClock size={22} />}
+            icon={<CalendarClock size={20} />}
             title="Nenhuma rotina ainda"
             text="Responda algumas perguntas e receba uma agenda semanal que respeita seus horários. Também dá para montar à mão."
             action="Começar"

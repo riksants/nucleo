@@ -36,7 +36,7 @@ function Frame({ title, text, onBack, children, footer }: { title: string; text?
         <div className="flex h-11 items-center">
           {onBack ? (
             <IconButton label="Voltar" onClick={onBack} className="-ml-2">
-              <ArrowLeft size={22} />
+              <ArrowLeft size={20} />
             </IconButton>
           ) : (
             <Logo />
@@ -229,7 +229,7 @@ export function AuthScreen() {
               }
             >
               <div className="grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
-                <MailCheck size={22} />
+                <MailCheck size={24} />
               </div>
               {messages}
               {codeField}
