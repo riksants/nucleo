@@ -15,6 +15,7 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft, useSheet } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
+import { GoalStrategies } from './GoalStrategies'
 
 /** Neutral sentence about what would be needed (never "you are late"). */
 export function planSentence(goal: FinanceGoal, today: string): string {
@@ -98,9 +99,19 @@ function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null;
   const { toast } = useFeedback()
   const [mode, setMode] = useState<'add' | 'remove' | 'total'>('add')
   const [value, setValue] = useState('')
+  // Each time the sheet opens it starts on "Atualizar" (its main job); "Como alcançar" is one tap away.
+  const [view, setView] = useState<'update' | 'strategies'>('update')
+  const [wasOpen, setWasOpen] = useState(open)
+  if (wasOpen !== open) {
+    setWasOpen(open)
+    if (open) setView('update')
+  }
   const today = nowIn(zoneOf(settings)).date
   if (!goal) return null
   const p = goalPlan(goal, today)
+  // Scenarios only while there is something to plan (not reached, deadline not come).
+  const planning = !p.reached && !p.due
+  const tab = planning ? view : 'update'
   const cents = parseAmount(value)
   const next = cents === null ? null : mode === 'add' ? goal.saved + cents : mode === 'remove' ? Math.max(0, goal.saved - cents) : cents
 
@@ -118,7 +129,7 @@ function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null;
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={goal.name} footer={<Button size="lg" block onClick={apply}>{next !== null && cents ? `Salvar · ${formatMoney(next, goal.currency)} guardados` : 'Salvar'}</Button>}>
+    <Sheet open={open} onClose={onClose} title={goal.name} footer={tab === 'strategies' ? undefined : <Button size="lg" block onClick={apply}>{next !== null && cents ? `Salvar · ${formatMoney(next, goal.currency)} guardados` : 'Salvar'}</Button>}>
       <div className="space-y-5 pt-1">
         <div>
           <p className="num text-[26px] font-semibold">
@@ -129,18 +140,27 @@ function SavedSheet({ goal, open, onClose, onEdit }: { goal: FinanceGoal | null;
           </div>
           <p className="mt-2 text-[14px] leading-relaxed text-soft">{planSentence(goal, today)}</p>
         </div>
-        <Segmented<'add' | 'remove' | 'total'> block size="sm" label="Como atualizar" value={mode} onChange={setMode} options={[{ value: 'add', label: 'Guardei' }, { value: 'remove', label: 'Retirei' }, { value: 'total', label: 'Novo total' }]} />
-        <Field label={mode === 'total' ? 'Total guardado agora' : mode === 'add' ? 'Quanto guardou' : 'Quanto retirou'}>
-          <TextInput inputMode="decimal" className="num" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => onEdit(goal)}>
-            Editar meta
-          </Button>
-          <Button variant="ghost" onClick={archive}>
-            {goal.status === 'archived' ? 'Reativar' : 'Arquivar'}
-          </Button>
-        </div>
+        {planning && (
+          <Segmented<'update' | 'strategies'> variant="underline" label="Ver" value={tab} onChange={setView} options={[{ value: 'update', label: 'Atualizar' }, { value: 'strategies', label: 'Como alcançar' }]} />
+        )}
+        {tab === 'strategies' ? (
+          <GoalStrategies goal={goal} today={today} />
+        ) : (
+          <>
+            <Segmented<'add' | 'remove' | 'total'> block size="sm" label="Como atualizar" value={mode} onChange={setMode} options={[{ value: 'add', label: 'Guardei' }, { value: 'remove', label: 'Retirei' }, { value: 'total', label: 'Novo total' }]} />
+            <Field label={mode === 'total' ? 'Total guardado agora' : mode === 'add' ? 'Quanto guardou' : 'Quanto retirou'}>
+              <TextInput inputMode="decimal" className="num" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => onEdit(goal)}>
+                Editar meta
+              </Button>
+              <Button variant="ghost" onClick={archive}>
+                {goal.status === 'archived' ? 'Reativar' : 'Arquivar'}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </Sheet>
   )
