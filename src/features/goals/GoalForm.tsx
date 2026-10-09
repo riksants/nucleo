@@ -1,10 +1,11 @@
 import { useStore } from '../../data/store'
 import type { Goal } from '../../data/types'
-import { amountToInput, parseAmount } from '../../lib/money'
+import { amountToInput } from '../../lib/money'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, MoneyInput, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
+import { parseMoney } from '../../lib/calc'
 
 export function GoalForm({ open, onClose, goal }: { open: boolean; onClose(): void; goal: Goal | null }) {
   const { save, displayCurrency } = useStore()
@@ -18,7 +19,7 @@ export function GoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
   }))
 
   const submit = async () => {
-    const price = parseAmount(draft.price)
+    const price = parseMoney(draft.price)
     if (!draft.name.trim()) return 'Dê um nome para a meta'
     if (!price) return 'Informe o valor'
     await save('goals', {

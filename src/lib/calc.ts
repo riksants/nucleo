@@ -95,6 +95,17 @@ export function appendOperator(text: string, op: CalcOp): string {
   return `${trimmed} ${symbol} `
 }
 
+/**
+ * What a money field is worth when its form is saved: a plain number reads exactly as before
+ * (parseAmount, so 0 and empty rules stay with each form), and an unfinished calculation counts
+ * as its result — "200 + 50" saves 250 even if "=" was never tapped. null when it can't be read.
+ */
+export function parseMoney(text: string): Cents | null {
+  if (!isExpression(text)) return parseAmount(text)
+  const r = evaluate(endsWithOperator(text) ? text.trimEnd().slice(0, -1) : text)
+  return r.ok ? r.cents : null
+}
+
 /** "=" : the expression becomes its result, in the app's number format ("3.370", "12,50"). */
 export function resultText(cents: Cents): string {
   return formatNumber(cents, { compact: true })

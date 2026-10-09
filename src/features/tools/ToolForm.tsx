@@ -1,11 +1,12 @@
 import { TOOL_BILLING, TOOL_STATUS } from '../../data/labels'
 import { useStore } from '../../data/store'
 import type { Tool, ToolBilling, ToolStatus } from '../../data/types'
-import { amountToInput, parseAmount } from '../../lib/money'
+import { amountToInput } from '../../lib/money'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, MoneyInput, Select, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
+import { parseMoney } from '../../lib/calc'
 
 export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): void; tool: Tool | null }) {
   const { save, displayCurrency } = useStore()
@@ -28,7 +29,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
 
   const submit = async () => {
     if (!d.name.trim()) return 'Informe o nome da assinatura'
-    const price = free || !d.price.trim() ? 0 : parseAmount(d.price)
+    const price = free || !d.price.trim() ? 0 : parseMoney(d.price)
     if (price === null) return 'Confira o preço'
     await save('tools', {
       ...tool,

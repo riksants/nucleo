@@ -4,7 +4,7 @@ import { newId, useStore } from '../../data/store'
 import { chargeAfterPayment, INTERVAL_LABEL, PER_INTERVAL, SUBSCRIBER_STATUS_LABEL } from '../../data/subscriptions'
 import type { BillingInterval, Currency, Offering, SubPlan, Subscriber, SubscriberStatus } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
-import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
@@ -13,6 +13,8 @@ import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { ClientSelect, ProjectSelect } from '../shared/RelationSelect'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 export function OfferingForm({ open, onClose, offering }: { open: boolean; onClose(): void; offering: Offering | null }) {
   const { save, data } = useStore()
@@ -69,7 +71,7 @@ export function PlanForm({ open, onClose, plan, offeringId }: { open: boolean; o
 
   const submit = async () => {
     if (!d.name.trim()) return 'Dê um nome ao plano'
-    const price = parseAmount(d.price)
+    const price = parseMoney(d.price)
     if (price === null || price <= 0) return 'Digite o preço'
     await save('subPlans', { ...plan, offeringId: plan?.offeringId ?? offeringId, name: d.name.trim(), price, currency: d.currency, interval: d.interval })
     toast(plan ? 'Plano atualizado' : 'Plano criado')
@@ -213,7 +215,7 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
 
   const add = async () => {
     if (busy || !plan) return
-    const cents = parseAmount(amount || amountToInput(plan.price))
+    const cents = parseMoney(amount || amountToInput(plan.price))
     if (!cents) return toast('Digite o valor recebido', 'error')
     setBusy(true)
     try {
@@ -244,9 +246,11 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
       {adding && plan && (
         <div className="card mb-3 space-y-3 p-4">
           <div className="grid grid-cols-2 gap-3">
-            <Field label={`Valor (${plan.currency})`}>
-              <TextInput inputMode="decimal" className="num" autoFocus placeholder={amountToInput(plan.price)} value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </Field>
+            <div className="col-span-2">
+              <Field label={`Valor (${plan.currency})`}>
+                <AmountField currency={plan.currency} autoFocus placeholder={amountToInput(plan.price)} value={amount} onChange={setAmount} />
+              </Field>
+            </div>
             <Field label="Data">
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>

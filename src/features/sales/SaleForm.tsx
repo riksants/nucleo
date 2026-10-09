@@ -6,7 +6,7 @@ import { useReceipts } from '../../data/useReceipts'
 import { buyers, OVERPAY, paymentProblem, personName, saleRemaining, saleStatus, SALE_STATUS_LABEL, salePaid, similarPeople, totalProblem, withoutGeneralPayment, withPayment } from '../../data/sales'
 import type { Currency, Payment, Sale } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
-import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { Badge, SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
@@ -14,6 +14,8 @@ import { Field, FormGrid, MoneyInput, TextArea, TextInput } from '../../ui/Field
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft } from '../../ui/formHooks'
 import { ClientSelect } from '../shared/RelationSelect'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 export const STATUS_TONE = { pending: 'neutral', partial: 'accent', paid: 'positive' } as const
 
@@ -45,7 +47,7 @@ export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClo
     if (!d.product.trim()) return 'Diga o que vendeu'
     const quantity = Number(d.quantity.replace(',', '.'))
     if (!Number.isFinite(quantity) || quantity <= 0) return 'Quantidade inválida'
-    const total = parseAmount(d.total)
+    const total = parseMoney(d.total)
     const payments = sale?.payments ?? []
     const problem = totalProblem(total, payments)
     if (problem) return problem
@@ -62,7 +64,7 @@ export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClo
       notes: d.notes,
     } as Sale
     if (!sale && d.firstPayment.trim()) {
-      const amount = parseAmount(d.firstPayment)
+      const amount = parseMoney(d.firstPayment)
       const p: Payment = { id: newId(), date: d.date, amount: amount ?? 0, note: 'Pago na venda', finance: true }
       const err = paymentProblem(next, p)
       if (err) return err
@@ -154,7 +156,7 @@ export function SaleForm({ open, onClose, sale, preset }: { open: boolean; onClo
         </div>
         {!sale && (
           <Field label="Já recebeu quanto?" hint="opcional">
-            <TextInput inputMode="decimal" className="num" placeholder="0,00" value={d.firstPayment} onChange={(e) => set('firstPayment', e.target.value)} />
+            <AmountField currency={d.currency} value={d.firstPayment} onChange={(v) => set('firstPayment', v)} />
           </Field>
         )}
         <Field label="Observações" hint="opcional">
@@ -203,7 +205,7 @@ export function SalePayments({ sale }: { sale: Sale }) {
 
   const add = async () => {
     if (busy) return
-    const p: Payment = { id: newId(), date, amount: parseAmount(amount) ?? 0, note: '', finance: true }
+    const p: Payment = { id: newId(), date, amount: parseMoney(amount) ?? 0, note: '', finance: true }
     const err = paymentProblem(sale, p)
     setError(err)
     if (err) return
@@ -264,19 +266,20 @@ export function SalePayments({ sale }: { sale: Sale }) {
         <div className="card mb-3 space-y-3 p-4">
           <p className="text-[13px] text-faint">Pagamento específico desta compra.</p>
           <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
             <Field label="Valor">
-              <TextInput
-                inputMode="decimal"
-                className="num"
+              <AmountField
+                currency={sale.currency}
                 autoFocus
                 placeholder={amountToInput(saleRemaining(sale))}
                 value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value)
+                onChange={(v) => {
+                  setAmount(v)
                   setError(null)
                 }}
               />
             </Field>
+            </div>
             <Field label="Data">
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>

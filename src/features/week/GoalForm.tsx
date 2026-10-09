@@ -4,13 +4,15 @@ import { addDaysToDate, weekStart } from '../../core/period'
 import { metricOptions } from '../../core/weekGoals'
 import { newId, useStore } from '../../data/store'
 import type { HabitCategory, WeekId, WeeklyGoal, WeeklyGoalKind } from '../../data/types'
-import { amountToInput, currencyInfo, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, currencyInfo, formatMoney } from '../../lib/money'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, Select, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { NumberInput } from '../planner/controls'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 const KINDS: { value: WeeklyGoalKind; label: string }[] = [
   { value: 'quantity', label: 'Quantidade' },
@@ -41,7 +43,7 @@ export function GoalForm({ open, onClose, goal, defaultWeek, currentWeek }: { op
   const chosen = options.find((o) => o.key === metric)
 
   const submit = async () => {
-    const target = d.kind === 'money' ? parseAmount(d.target) : Number(d.target.replace(',', '.'))
+    const target = d.kind === 'money' ? parseMoney(d.target) : Number(d.target.replace(',', '.'))
     if (target === null || !Number.isFinite(target) || target <= 0) return 'Defina um alvo maior que zero'
     if (d.kind === 'percent' && target > 100) return 'Porcentagem vai até 100'
     const title =
@@ -84,7 +86,7 @@ export function GoalForm({ open, onClose, goal, defaultWeek, currentWeek }: { op
         {d.kind === 'frequency' && !available.length && <p className="text-[13px] text-faint">Crie um hábito ou recorrente (ou dê uma categoria a um hábito) para medir frequência.</p>}
         <Field label={d.kind === 'money' ? `Alvo (${settings.baseCurrency} ${currencyInfo(settings.baseCurrency).symbol})` : d.kind === 'percent' ? 'Alvo (%)' : 'Alvo'} hint={d.kind === 'money' ? (metric === 'finance.saved' ? 'conta o que você registrar como guardado nas metas com prazo' : 'saldo da semana: entradas − saídas') : chosen?.unit}>
           {d.kind === 'money' ? (
-            <TextInput inputMode="decimal" className="num" value={d.target} onChange={(e) => set('target', e.target.value)} />
+            <AmountField currency={settings.baseCurrency} value={d.target} onChange={(v) => set('target', v)} />
           ) : (
             <NumberInput label="Alvo" value={Number(d.target) || 0} min={0} max={d.kind === 'percent' ? 100 : 100000} onChange={(v) => set('target', String(v))} suffix={d.kind === 'percent' ? '%' : undefined} />
           )}

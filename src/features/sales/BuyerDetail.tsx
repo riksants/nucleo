@@ -18,7 +18,7 @@ import {
 } from '../../data/sales'
 import type { Currency } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
-import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { Celebrate } from '../../ui/Celebrate'
 import { Badge, SectionTitle } from '../../ui/Display'
@@ -26,6 +26,8 @@ import { useFeedback } from '../../ui/Feedback'
 import { Field, Select, TextInput } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
 import { PaymentAmountError, PaymentKind, STATUS_TONE, type BuyerPreset } from './SaleForm'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 /** One person in Vendas: every purchase, what was paid (general or specific) and what is still owed. */
 export function BuyerDetail({
@@ -74,7 +76,7 @@ export function BuyerDetail({
 
   const registerGeneral = async () => {
     if (busy) return
-    const result = applyGeneralPayment(buyer.sales, { generalId: newId(), currency: payCurrency, amount: parseAmount(amount), date, note: note.trim() }, newId)
+    const result = applyGeneralPayment(buyer.sales, { generalId: newId(), currency: payCurrency, amount: parseMoney(amount), date, note: note.trim() }, newId)
     if ('error' in result) return setError(result.error)
     setBusy(true)
     try {
@@ -148,20 +150,21 @@ export function BuyerDetail({
         <div className="card mb-5 space-y-3 p-4">
           <p className="text-[13px] leading-relaxed text-faint">Pagamento geral: não é de um produto específico. O app aplica o valor nas compras em aberto mais antigas desta moeda.</p>
           <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
             <Field label="Valor" hint={`falta ${formatMoney(owedIn(buyer.sales, payCurrency), payCurrency)}`}>
-              <TextInput
-                inputMode="decimal"
-                className="num"
+              <AmountField
+                currency={payCurrency}
                 autoFocus
-                aria-label="Valor do pagamento geral"
+                ariaLabel="Valor do pagamento geral"
                 placeholder={amountToInput(owedIn(buyer.sales, payCurrency))}
                 value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value)
+                onChange={(v) => {
+                  setAmount(v)
                   setError(null)
                 }}
               />
             </Field>
+            </div>
             <Field label="Data">
               <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>

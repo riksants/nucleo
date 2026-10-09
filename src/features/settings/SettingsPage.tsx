@@ -8,7 +8,7 @@ import { useStore } from '../../data/store'
 import { COLLECTION_NAMES, type Account, type Currency, type DataState, type ModuleId } from '../../data/types'
 import { backupFileName, buildBackup, parseBackup, saveFile, type ParsedBackup } from '../../lib/backup'
 import { formatDateTime } from '../../lib/dates'
-import { amountToInput, currencyInfo, formatMoney, formatNumber, parseAmount } from '../../lib/money'
+import { amountToInput, currencyInfo, formatMoney, formatNumber } from '../../lib/money'
 import { vaultPasswordProblem } from '../../lib/vault'
 import { effectiveRates } from '../../lib/rates'
 import { setThemePref, THEME_OPTIONS, useThemePref } from '../../lib/theme'
@@ -27,6 +27,8 @@ import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useSession } from '../account/session'
 import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
 import { ModulePicker, Switch } from './ModulePicker'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 
 /** Icon tiles in the iOS way: one solid color per group, white glyph — the groups read apart at a glance. */
@@ -92,7 +94,7 @@ function AdjustSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   const { toast } = useFeedback()
   const [d, set] = useDraft(open, () => ({ value: amountToInput(balance) }))
   const submit = async () => {
-    const target = parseAmount(d.value.replace(/^-/, ''))
+    const target = parseMoney(d.value.replace(/^-/, ''))
     if (target === null) return 'Digite um valor válido'
     const signed = d.value.trim().startsWith('-') ? -target : target
     const tx = await adjustBalance(signed)
@@ -105,7 +107,7 @@ function AdjustSheet({ open, onClose }: { open: boolean; onClose(): void }) {
         Informe quanto você tem de verdade agora. A diferença entra no histórico como <span className="text-ink">“Ajuste de saldo”</span>.
       </p>
       <Field label={`Saldo real (${settings.baseCurrency})`} hint={`atual: ${formatMoney(balance, settings.baseCurrency)}`}>
-        <TextInput className="num text-[20px]!" inputMode="decimal" value={d.value} onChange={(e) => set('value', e.target.value)} autoFocus />
+        <AmountField currency={settings.baseCurrency} value={d.value} onChange={(v) => set('value', v)} autoFocus />
       </Field>
     </FormSheet>
   )

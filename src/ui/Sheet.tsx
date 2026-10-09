@@ -2,7 +2,7 @@ import { animate, AnimatePresence, motion, type MotionProps } from 'framer-motio
 import { X } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useIsDesktop, useKeyboardInset, usePrefersReducedMotion, useScrollLock } from '../lib/hooks'
+import { useIsDesktop, usePrefersReducedMotion, useScrollLock, useVisualViewport } from '../lib/hooks'
 import { IconButton } from './Button'
 
 interface SheetProps {
@@ -112,10 +112,32 @@ function useDragToDismiss(open: boolean, enabled: boolean, onClose: () => void, 
 /** Bottom sheet on phones, centered dialog on desktop. */
 export function Sheet({ open, onClose, title, actions, footer, children, size = 'md' }: SheetProps) {
   const desktop = useIsDesktop()
-  const keyboard = useKeyboardInset(open && !desktop)
+  // Phones: the sheet lives inside the visible part of the screen (above the keyboard on iPhone).
+  const vv = useVisualViewport(open && !desktop)
+  const keyboard = Boolean(vv?.keyboard)
   const reduce = usePrefersReducedMotion()
   const { panel, header, scroller } = useDragToDismiss(open, !desktop, onClose, reduce)
   useScrollLock(open)
+
+  // The field being typed in stays in view by scrolling the sheet's own content — never the page.
+  // A money field brings its calculator keys and result along.
+  useEffect(() => {
+    const box = scroller.current
+    if (!open || !box) return
+    const reveal = () => {
+      const el = document.activeElement
+      if (!(el instanceof HTMLElement) || !box.contains(el) || !el.matches('input, textarea, select')) return
+      const target = (el.closest('[data-amount-field]') as HTMLElement | null) ?? el
+      const r = target.getBoundingClientRect()
+      const b = box.getBoundingClientRect()
+      if (r.bottom > b.bottom - 12) box.scrollTop += r.bottom - b.bottom + 12
+      else if (r.top < b.top + 8) box.scrollTop -= b.top + 8 - r.top
+    }
+    const later = () => requestAnimationFrame(reveal)
+    box.addEventListener('focusin', later)
+    later()
+    return () => box.removeEventListener('focusin', later)
+  }, [open, vv?.height, scroller])
 
   useEffect(() => {
     if (!open) return
@@ -140,7 +162,7 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center lg:p-6" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center lg:p-6" role="dialog" aria-modal="true" style={vv ? { top: vv.top, height: vv.height, bottom: 'auto' } : undefined}>
           <motion.div
             className="absolute inset-0 bg-black/60"
             initial={{ opacity: 0 }}
@@ -150,9 +172,10 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
             onClick={onClose}
           />
           {/* Outer layer: enter/exit. Inner layer: follows the finger while dragging. */}
-          <motion.div className={`relative w-full ${width}`} style={{ marginBottom: keyboard }} {...motionProps}>
+          <motion.div className={`relative w-full ${width}`} {...motionProps}>
             <div
               ref={panel}
+              style={vv ? { maxHeight: `calc(${vv.height}px - env(safe-area-inset-top) - 8px)` } : undefined}
               className="flex w-full flex-col border border-line bg-sheet shadow-[inset_0_1px_0_var(--color-card-edge),0_25px_50px_-12px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.75rem] lg:max-h-[86dvh] lg:rounded-[1.75rem]"
             >
               <header ref={header} className="shrink-0 touch-none px-5 pb-2 lg:touch-auto lg:px-6 lg:pt-5">

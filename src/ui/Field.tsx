@@ -2,9 +2,9 @@ import { ChevronDown, Ellipsis } from 'lucide-react'
 import { useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { useStore } from '../data/store'
 import type { Currency } from '../data/types'
-import { currencyInfo } from '../lib/money'
 import { CurrencySheet, quickCurrencies } from './CurrencySheet'
 import { Segmented } from './Segmented'
+import { AmountField } from './AmountField'
 
 const CONTROL =
   'w-full rounded-[var(--radius-field)] border border-line bg-raised px-4 text-ink placeholder:text-faint transition-colors focus:border-accent-hi/70 focus:bg-elevated focus:outline-none'
@@ -41,7 +41,7 @@ export function Select({ className = '', children, ...rest }: SelectHTMLAttribut
   )
 }
 
-/** Amount text + currency picker, laid out as one control. */
+/** Amount (with the calculator keys) + currency picker, laid out as one control. */
 export function MoneyInput({
   value,
   onChange,
@@ -57,23 +57,7 @@ export function MoneyInput({
   placeholder?: string
   autoFocus?: boolean
 }) {
-  return (
-    <div className="flex gap-2">
-      <div className="relative flex-1">
-        <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-soft">{currencyInfo(currency).symbol}</span>
-        <input
-          className={`${CONTROL} num h-12`}
-          style={{ paddingLeft: currency === 'AED' ? 48 : currency === 'BRL' ? 44 : currency === 'EUR' ? 36 : 22 + currencyInfo(currency).symbol.length * 9 }}
-          inputMode="decimal"
-          value={value}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
-      <CurrencyPicker value={currency} onChange={onCurrency} />
-    </div>
-  )
+  return <AmountField value={value} onChange={onChange} currency={currency} placeholder={placeholder} autoFocus={autoFocus} trailing={<CurrencyPicker block label="Moeda" value={currency} onChange={onCurrency} />} />
 }
 
 /**
@@ -132,5 +116,5 @@ export function CurrencyPicker({
 }
 
 export function FormGrid({ children }: { children: ReactNode }) {
-  return <div className="grid gap-5 pt-2 sm:grid-cols-2 [&>*]:sm:col-span-2 [&>.half]:sm:col-span-1">{children}</div>
+  return <div className="grid gap-5 pt-2 sm:grid-cols-2 [&>*]:min-w-0 [&>*]:sm:col-span-2 [&>.half]:sm:col-span-1">{children}</div>
 }

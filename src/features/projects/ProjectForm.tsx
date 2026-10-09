@@ -4,13 +4,15 @@ import { useStore } from '../../data/store'
 import { useReceipts } from '../../data/useReceipts'
 import type { Project, ProjectKind, ProjectStatus } from '../../data/types'
 import { toDateInput } from '../../lib/dates'
-import { amountToInput, currencyInfo, parseAmount } from '../../lib/money'
+import { amountToInput, currencyInfo } from '../../lib/money'
 import { useFeedback } from '../../ui/Feedback'
 import { CurrencyPicker, Field, FormGrid, Select, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { ClientSelect } from '../shared/RelationSelect'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 export function ProjectForm({
   open,
@@ -50,7 +52,7 @@ export function ProjectForm({
 
   const submit = async () => {
     if (!d.name.trim()) return 'Dê um nome ao projeto'
-    const charged = d.charged.trim() ? parseAmount(d.charged) : 0
+    const charged = d.charged.trim() ? parseMoney(d.charged) : 0
     if (charged === null) return 'Confira o valor'
     // Money received is registered with "Registrar pagamento", never typed here.
     const chargedProblem = project ? projectChargedProblem(project, charged, project.currency) : null
@@ -138,7 +140,7 @@ export function ProjectForm({
           )}
         </Field>
         <Field label="Valor do projeto" hint="o combinado; o que entra no saldo são os pagamentos">
-          <TextInput className="num" inputMode="decimal" placeholder="0,00" value={d.charged} onChange={(e) => set('charged', e.target.value)} />
+          <AmountField currency={d.currency} value={d.charged} onChange={(v) => set('charged', v)} />
         </Field>
         <Field label="Link" hint="opcional">
           <TextInput type="url" inputMode="url" autoCapitalize="none" placeholder="site.com" value={d.link} onChange={(e) => set('link', e.target.value)} />

@@ -5,7 +5,7 @@ import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { FinanceGoal } from '../../data/types'
 import { formatDateValue } from '../../lib/dates'
-import { amountToInput, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, formatMoney } from '../../lib/money'
 import { Button } from '../../ui/Button'
 import { Celebrate } from '../../ui/Celebrate'
 import { Badge, Progress, SectionTitle } from '../../ui/Display'
@@ -16,6 +16,8 @@ import { useDelete, useDraft, useSheet } from '../../ui/formHooks'
 import { Segmented } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
 import { GoalStrategies, StrategyTeaser } from './GoalStrategies'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 /** Neutral sentence about what would be needed (never "you are late"). */
 export function planSentence(goal: FinanceGoal, today: string): string {
@@ -42,8 +44,8 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
   }))
 
   const submit = async () => {
-    const target = parseAmount(d.target)
-    const saved = d.saved.trim() ? parseAmount(d.saved) : 0
+    const target = parseMoney(d.target)
+    const saved = d.saved.trim() ? parseMoney(d.saved) : 0
     if (!d.name.trim()) return 'Dê um nome para a meta'
     if (!target || target <= 0) return 'Informe o valor objetivo'
     if (saved === null || saved < 0) return 'Confira o valor já guardado'
@@ -76,7 +78,7 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
         </Field>
         <div className="half">
           <Field label="Já guardado" hint="você atualiza">
-            <TextInput inputMode="decimal" className="num" placeholder="0,00" value={d.saved} onChange={(e) => set('saved', e.target.value)} />
+            <AmountField currency={d.currency} value={d.saved} onChange={(v) => set('saved', v)} />
           </Field>
         </div>
         <div className="half">
@@ -112,7 +114,7 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
   // Scenarios only while there is something to plan (not reached, deadline not come).
   const planning = !p.reached && !p.due
   const tab = planning ? view : 'update'
-  const cents = parseAmount(value)
+  const cents = parseMoney(value)
   const next = cents === null ? null : mode === 'add' ? goal.saved + cents : mode === 'remove' ? Math.max(0, goal.saved - cents) : cents
 
   const apply = async () => {
@@ -149,7 +151,7 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
           <>
             <Segmented<'add' | 'remove' | 'total'> block size="sm" label="Como atualizar" value={mode} onChange={setMode} options={[{ value: 'add', label: 'Guardei' }, { value: 'remove', label: 'Retirei' }, { value: 'total', label: 'Novo total' }]} />
             <Field label={mode === 'total' ? 'Total guardado agora' : mode === 'add' ? 'Quanto guardou' : 'Quanto retirou'}>
-              <TextInput inputMode="decimal" className="num" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+              <AmountField currency={goal.currency} value={value} onChange={setValue} autoFocus />
             </Field>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => onEdit(goal)}>

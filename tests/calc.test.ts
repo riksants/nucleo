@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendOperator, endsWithOperator, evaluate, isExpression, resultText } from '../src/lib/calc'
+import { appendOperator, endsWithOperator, evaluate, isExpression, parseMoney, resultText } from '../src/lib/calc'
 import { parseAmount } from '../src/lib/money'
 
 const cents = (text: string) => {
@@ -92,5 +92,32 @@ describe('calculadora do campo de valor', () => {
     expect(appendOperator('100 + ', '-')).toBe('100 − ')
     expect(endsWithOperator('100 + ')).toBe(true)
     expect(endsWithOperator('100 + 5')).toBe(false)
+  })
+
+  it('200 + 50 = 250, depois × 2 = 500 (o fluxo do campo de valor)', () => {
+    let text = appendOperator('200', '+') + '50'
+    expect(text).toBe('200 + 50')
+    let r = evaluate(text)
+    text = r.ok ? resultText(r.cents) : ''
+    expect(text).toBe('250')
+    text = appendOperator(text, '*') + '2'
+    r = evaluate(text)
+    expect(r.ok && resultText(r.cents)).toBe('500')
+  })
+
+  it('0,1 + 0,2 mostra 0,3 (sem erro de ponto flutuante)', () => {
+    const r = evaluate('0,1 + 0,2')
+    expect(r.ok && resultText(r.cents)).toBe('0,30')
+    expect(evaluate('0,1 × 3').ok && resultText(30)).toBe('0,30')
+  })
+
+  it('valor salvo pelos formulários: número como antes, conta pelo resultado (mesmo sem "=")', () => {
+    expect(parseMoney('1.500,50')).toBe(parseAmount('1.500,50'))
+    expect(parseMoney('0')).toBe(parseAmount('0'))
+    expect(parseMoney('')).toBe(parseAmount(''))
+    expect(parseMoney('200 + 50')).toBe(25000)
+    expect(parseMoney('200 + 50 + ')).toBe(25000)
+    expect(parseMoney('10 ÷ 0')).toBeNull()
+    expect(parseMoney('abc + 2')).toBeNull()
   })
 })

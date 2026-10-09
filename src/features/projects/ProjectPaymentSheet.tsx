@@ -6,12 +6,14 @@ import { newId, useStore } from '../../data/store'
 import type { Project, ProjectPayment } from '../../data/types'
 import { useReceipts } from '../../data/useReceipts'
 import { formatDateValue } from '../../lib/dates'
-import { amountToInput, currencyInfo, formatMoney, parseAmount } from '../../lib/money'
+import { amountToInput, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, TextInput } from '../../ui/Field'
 import { useDraft } from '../../ui/formHooks'
 import { Sheet } from '../../ui/Sheet'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 /**
  * Receiving money for a project, without opening "Editar projeto".
@@ -67,7 +69,7 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
       const pay: ProjectPayment = { id: newId(), date: draft.date, amount: project.received, currency: cur, note: draft.note.trim() }
       return run({ ...project, received: 0, legacyReceived: undefined, payments: sorted([...(project.payments ?? []), pay]) }, 'Lançado no Financeiro')
     }
-    const pay: ProjectPayment = { id: payment?.id ?? newId(), date: draft.date, amount: parseAmount(draft.amount) ?? 0, currency: cur, note: draft.note.trim() }
+    const pay: ProjectPayment = { id: payment?.id ?? newId(), date: draft.date, amount: parseMoney(draft.amount) ?? 0, currency: cur, note: draft.note.trim() }
     const problem = projectPaymentProblem(project, pay)
     setError(problem)
     if (problem) return
@@ -128,22 +130,16 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
           </p>
         ) : (
           <Field label="Valor recebido" error={error && error !== OVER_REMAINING ? error : null}>
-            <div className="relative">
-              <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-soft">{currencyInfo(cur).symbol}</span>
-              <TextInput
-                id="project-payment-amount"
-                className="num pl-12"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0,00"
-                value={draft.amount}
-                autoFocus={!payment}
-                onChange={(e) => {
-                  set('amount', e.target.value)
-                  setError(null)
-                }}
-              />
-            </div>
+            <AmountField
+              id="project-payment-amount"
+              currency={cur}
+              value={draft.amount}
+              autoFocus={!payment}
+              onChange={(v) => {
+                set('amount', v)
+                setError(null)
+              }}
+            />
           </Field>
         )}
         {error === OVER_REMAINING && (

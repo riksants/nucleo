@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { MissingRateError, useStore } from '../../data/store'
 import { sortByNewest } from '../../data/selectors'
 import type { Currency, Transaction } from '../../data/types'
-import { appendOperator, CALC_ERROR, endsWithOperator, evaluate, isExpression, resultText, type CalcOp } from '../../lib/calc'
+import { CALC_ERROR, evaluate, isExpression, parseMoney } from '../../lib/calc'
 import { amountToInput, currencyInfo, formatMoney } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
@@ -15,6 +15,7 @@ import { CurrencyPicker, Select } from '../../ui/Field'
 import { NO_CATEGORY, pickableCategories } from '../../core/financeCategories'
 import { ToggleRow } from '../planner/controls'
 import { Sheet } from '../../ui/Sheet'
+import { AmountField } from '../../ui/AmountField'
 
 interface Props {
   open: boolean
@@ -54,15 +55,12 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   }, [open])
 
   // A plain number works as always; "2500 + 750 + 120" is calculated (no eval) and the final result is what gets saved.
+  // An unfinished "200 + 50" counts as its result when confirming (no need to tap "=").
   const calc = evaluate(draft.amount)
   const expression = isExpression(draft.amount)
-  const cents = calc.ok ? calc.cents : null
-  const amountError = calc.ok ? null : expression ? CALC_ERROR[calc.error] : 'Digite um valor'
-  const tapOperator = (op: CalcOp) => set('amount', appendOperator(draft.amount, op))
-  const equals = () => {
-    if (calc.ok) set('amount', resultText(calc.cents))
-    else setTried(true)
-  }
+  const parsed = parseMoney(draft.amount)
+  const cents = parsed !== null && parsed > 0 ? parsed : null
+  const amountError = cents !== null ? null : expression ? CALC_ERROR[calc.ok ? 'notPositive' : calc.error] : 'Digite um valor'
   const reasonError = draft.reason.trim() ? null : 'O motivo é obrigatório'
 
   const suggestions = useMemo(() => {
@@ -118,7 +116,6 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const title = editing ? (kind === 'adjust' ? 'Ajuste de saldo' : 'Editar movimentação') : kind === 'in' ? 'Adicionar dinheiro' : 'Retirar dinheiro'
   const verb = kind === 'in' ? 'Adicionar' : kind === 'out' ? 'Retirar' : 'Salvar'
   const confirmLabel = editing ? 'Salvar alterações' : cents ? `${verb} ${formatMoney(cents, draft.currency)}` : 'Confirmar'
-  const symbol = currencyInfo(draft.currency).symbol
 
   // An income created by a received payment is changed where the payment lives (project/sale),
   // so the two never disagree. If that payment no longer exists, it is a normal movement again.
@@ -182,72 +179,20 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           <label htmlFor="tx-amount" className="mb-2 block text-[13px] font-semibold text-soft">
             Valor
           </label>
-          <div
-            className={`flex items-center gap-2 rounded-[1.25rem] border bg-raised px-5 transition-colors focus-within:border-accent-hi/70 ${
-              tried && amountError ? 'border-expense/60' : 'border-line'
-            }`}
-          >
-            <span className="text-2xl font-medium text-soft">{kind === 'out' ? '−' : kind === 'in' ? '+' : ''}</span>
-            <span className="text-2xl font-medium text-soft">{symbol}</span>
-            <input
-              id="tx-amount"
-              inputMode="decimal"
-              autoComplete="off"
-              enterKeyHint="next"
-              autoFocus={!editing}
-              placeholder="0"
-              value={draft.amount}
-              onChange={(e) => set('amount', e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  reasonRef.current?.focus()
-                } else if (e.key === '=') {
-                  e.preventDefault()
-                  equals()
-                }
-              }}
-              className="num h-20 min-w-0 flex-1 bg-transparent text-[40px]! font-semibold tracking-tight placeholder:text-faint/60 focus:outline-none"
-            />
-          </div>
-          {expression ? (
-            <p aria-live="polite" data-testid="calc-result" className={`num mt-1.5 text-sm ${calc.ok ? 'text-soft' : 'text-expense'}`}>
-              {calc.ok ? `= ${resultText(calc.cents)}` : endsWithOperator(draft.amount) && !tried ? ' ' : amountError}
-            </p>
-          ) : (
-            tried && amountError && <p className="mt-1.5 text-sm text-expense">{amountError}</p>
-          )}
-          {/* Calculator keys. They keep the focus on the field, so the phone keyboard stays open. */}
-          <div className="mt-2 grid grid-cols-5 gap-2">
-            {(
-              [
-                ['+', 'Somar', '+'],
-                ['-', 'Subtrair', '−'],
-                ['*', 'Multiplicar', '×'],
-                ['/', 'Dividir', '÷'],
-              ] as const
-            ).map(([op, label, symbol]) => (
-              <button
-                key={op}
-                type="button"
-                aria-label={label}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => tapOperator(op)}
-                className="press h-9 rounded-full border border-line bg-surface text-[17px] text-soft hover:text-ink"
-              >
-                {symbol}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-label="Calcular"
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={equals}
-              className="press h-9 rounded-full border border-line bg-surface text-[17px] text-soft hover:text-ink"
-            >
-              =
-            </button>
-          </div>
+          <AmountField
+            id="tx-amount"
+            size="lg"
+            keys="always"
+            value={draft.amount}
+            onChange={(v) => set('amount', v)}
+            currency={draft.currency}
+            sign={kind === 'out' ? '−' : kind === 'in' ? '+' : ''}
+            autoFocus={!editing}
+            enterKeyHint="next"
+            onEnter={() => reasonRef.current?.focus()}
+            error={amountError}
+            showError={tried}
+          />
           {kind !== 'adjust' && (
             <div className="mt-3">
               <CurrencyPicker

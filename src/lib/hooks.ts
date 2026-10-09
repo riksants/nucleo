@@ -17,25 +17,37 @@ export const useIsDesktop = () => useMediaQuery('(min-width: 1024px)')
 export const usePrefersReducedMotion = () => useMediaQuery('(prefers-reduced-motion: reduce)')
 
 /**
- * Height of the on-screen keyboard on iOS, where fixed elements are not pushed
- * up automatically. Used to keep bottom sheets' buttons visible while typing.
+ * The part of the screen that is really visible (the Visual Viewport): on iPhone the keyboard covers
+ * the page instead of resizing it, and fixed elements are not moved. Bottom sheets size and place
+ * themselves to this box, so they sit right above the keyboard. `keyboard`: the keyboard (or any
+ * bottom bar of the browser) is covering part of the screen. null when inactive or unsupported.
  */
-export function useKeyboardInset(active: boolean): number {
-  const [inset, setInset] = useState(0)
+export function useVisualViewport(active: boolean): { top: number; height: number; keyboard: boolean } | null {
+  const [box, setBox] = useState<{ top: number; height: number; keyboard: boolean } | null>(null)
   useEffect(() => {
     const vv = window.visualViewport
     if (!active || !vv) return
-    const update = () => setInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    let frame = 0
+    const update = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const height = Math.round(vv.height)
+        const top = Math.round(vv.offsetTop)
+        const keyboard = window.innerHeight - height > 80
+        setBox((b) => (b && b.top === top && b.height === height && b.keyboard === keyboard ? b : { top, height, keyboard }))
+      })
+    }
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
     return () => {
+      cancelAnimationFrame(frame)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
-      setInset(0)
+      setBox(null)
     }
   }, [active])
-  return inset
+  return box
 }
 
 /** Locks page scroll while a sheet or dialog is open. Supports nesting. */

@@ -5,11 +5,13 @@ import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Logo } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { STARTER_CURRENCIES, type Currency, type ModuleId } from '../../data/types'
-import { currencyInfo, parseAmount } from '../../lib/money'
+import { currencyInfo } from '../../lib/money'
 import { Button, IconButton } from '../../ui/Button'
 import { CurrencySheet } from '../../ui/CurrencySheet'
 import { useSession } from '../account/session'
 import { ModulePicker, starterModules } from '../settings/ModulePicker'
+import { parseMoney } from '../../lib/calc'
+import { AmountField } from '../../ui/AmountField'
 
 /** Step transitions on the GPU: the old step leaves quickly (120 ms), the new one settles in (220 ms). Reduced motion: fades only. */
 const STEP_EASE = [0.22, 1, 0.36, 1] as const
@@ -38,7 +40,7 @@ export function Onboarding() {
   const [searching, setSearching] = useState(false)
   const [modules, setModules] = useState<Partial<Record<ModuleId, boolean>>>(starterModules)
   const [amount, setAmount] = useState('')
-  const cents = amount.trim() ? parseAmount(amount) : 0
+  const cents = amount.trim() ? parseMoney(amount) : 0
   const choices = STARTER_CURRENCIES.includes(currency) ? STARTER_CURRENCIES : [...STARTER_CURRENCIES, currency]
   const points = ['Saldo em qualquer moeda', 'Projetos, clientes, tarefas e mais', auth.userId ? 'Sincronizado na sua conta' : auth.configured ? 'No aparelho ou sincronizado na sua conta' : 'Tudo salvo no seu aparelho']
   const steps = modules.finance ? 4 : 3
@@ -170,19 +172,9 @@ export function Onboarding() {
                 <div className="flex-1 pt-10">
                   <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">Quanto você tem hoje?</h1>
                   <p className="mt-2 text-[16px] text-soft">Esse é o seu saldo inicial. Não conta como entrada.</p>
-                  <label className="mt-8 flex items-center gap-3 rounded-[1.25rem] border border-line bg-raised px-5 focus-within:border-accent-hi/70">
-                    <span className="text-2xl font-medium text-soft">{currencyInfo(currency).symbol}</span>
-                    <input
-                      inputMode="decimal"
-                      autoFocus
-                      placeholder="0"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && finish()}
-                      aria-label="Saldo inicial"
-                      className="num h-20 min-w-0 flex-1 bg-transparent text-[40px]! font-semibold tracking-tight placeholder:text-faint/60 focus:outline-none"
-                    />
-                  </label>
+                  <div className="mt-8">
+                    <AmountField size="lg" keys="always" currency={currency} autoFocus value={amount} onChange={setAmount} onEnter={finish} ariaLabel="Saldo inicial" />
+                  </div>
                   {cents === null && <p className="mt-2 text-sm text-expense">Digite um valor válido</p>}
                   <p className="mt-4 text-sm text-faint">Dá para corrigir depois em Configurações.</p>
                 </div>
