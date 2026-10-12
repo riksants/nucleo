@@ -21,7 +21,7 @@ import { formatMoney } from '../lib/money'
 import type { Converter } from '../lib/rates'
 import { zonedToInstant } from '../lib/zoned'
 import type { BatchOp } from './repository'
-import type { Cents, Client, Currency, DataState, Project, ProjectPayment, ReceiptSource, Sale, Settings, Transaction } from './types'
+import type { Cents, Client, Currency, DataState, Project, ProjectPayment, ReceiptSource, Sale, Settings, Subscriber, Transaction } from './types'
 
 export interface Receipt {
   /** The fixed id of its income in Financeiro. */
@@ -34,10 +34,10 @@ export interface Receipt {
   reason: string
   category: 'freelance' | 'sales'
   /** Where the payment lives (to open it from Financeiro). */
-  open: { path: '/projects' | '/sales'; id: string }
+  open: { path: '/projects' | '/sales' | '/subscribers'; id: string }
 }
 
-export const receiptTxId = (kind: 'project' | 'sale' | 'general', paymentId: string) => `rcv-${kind}-${paymentId}`
+export const receiptTxId = (kind: 'project' | 'sale' | 'general' | 'subscriber', paymentId: string) => `rcv-${kind}-${paymentId}`
 
 // ---------- Projects
 
@@ -137,9 +137,36 @@ export function saleReceipts(sales: Sale[], nameOf: (s: Sale) => string): Receip
   return out
 }
 
-/** Every receipt of the account (projects + sales). */
-export function allReceipts(data: Pick<DataState, 'projects' | 'sales' | 'clients'>): Receipt[] {
-  return [...data.projects.flatMap(projectReceipts), ...saleReceipts(data.sales, buyerNameOf(data.clients))]
+// ---------- Subscribers
+
+/**
+ * Subscriber payments that settle a charge of the automation (confirmed, or considered paid by the
+ * person's choice). Payments registered by hand before keep their old behavior (not in Financeiro).
+ */
+export function subscriberReceipts(subscribers: Subscriber[]): Receipt[] {
+  return subscribers.flatMap((s) =>
+    s.payments
+      .filter((p) => p.finance && p.chargeRun)
+      .map((p) => ({
+        txId: receiptTxId('subscriber', p.id),
+        source: { kind: 'subscriber' as const, parentId: s.id, paymentId: p.id },
+        amount: p.amount,
+        currency: p.currency,
+        date: p.date,
+        reason: `${s.name} · Assinatura`,
+        category: 'sales' as const,
+        open: { path: '/subscribers' as const, id: s.id },
+      })),
+  )
+}
+
+/** Every receipt of the account (projects + sales + subscriber charges). */
+export function allReceipts(data: Pick<DataState, 'projects' | 'sales' | 'clients'> & Partial<Pick<DataState, 'subscribers'>>): Receipt[] {
+  return [
+    ...data.projects.flatMap(projectReceipts),
+    ...saleReceipts(data.sales, buyerNameOf(data.clients)),
+    ...subscriberReceipts(data.subscribers ?? []),
+  ]
 }
 
 // ---------- The income
