@@ -7,6 +7,7 @@ import { Shell } from './app/Shell'
 import { DATABASE_BLOCKED } from './data/repository'
 import { useStore } from './data/store'
 import { useReceiptReconciler } from './data/useReceipts'
+import { useAutomations } from './data/useAutomations'
 import { useTheme } from './lib/theme'
 import { AccountPage } from './features/account/AccountPage'
 import { MigrationOffer, useMigrationCandidate } from './features/account/MigrationOffer'
@@ -201,6 +202,8 @@ export function App() {
   usePreloadSections()
   // Payments saved without a rate get their income in Financeiro once the rate exists.
   useReceiptReconciler()
+  // Charges, payments considered paid and goal reservations happen by themselves (core/automation).
+  useAutomations()
   useTheme()
 
   if (loadError) {
