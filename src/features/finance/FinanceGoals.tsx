@@ -1,5 +1,6 @@
 import { Flag, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { calculatedPreview } from '../../core/automation/goalSave'
 import { goalPlan, startHistory, withSaved } from '../../core/financeGoals'
 import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
@@ -18,6 +19,7 @@ import { Sheet } from '../../ui/Sheet'
 import { GoalStrategies, StrategyTeaser } from './GoalStrategies'
 import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
+import { Switch } from '../settings/ModulePicker'
 
 /** Neutral sentence about what would be needed (never "you are late"). */
 export function planSentence(goal: FinanceGoal, today: string): string {
@@ -31,10 +33,15 @@ export function planSentence(goal: FinanceGoal, today: string): string {
 
 function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): void; goal: FinanceGoal | null }) {
   const { save, settings } = useStore()
-  const { toast } = useFeedback()
+  const { toast, confirm } = useFeedback()
   const del = useDelete()
   const today = nowIn(zoneOf(settings)).date
   const [d, set] = useDraft(open, () => ({
+    inBalance: Boolean(goal?.inBalance),
+    auto: Boolean(goal?.autoSave),
+    day: String(goal?.autoSave?.day ?? Number(today.slice(8, 10))),
+    mode: goal?.autoSave?.mode ?? ('calculated' as 'calculated' | 'fixed'),
+    autoAmount: goal?.autoSave?.mode === 'fixed' ? amountToInput(goal.autoSave.amount) : '',
     name: goal?.name ?? '',
     target: goal ? amountToInput(goal.target) : '',
     saved: goal ? amountToInput(goal.saved) : '',
@@ -51,8 +58,38 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
     if (saved === null || saved < 0) return 'Confira o valor já guardado'
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d.deadline)) return 'Escolha a data limite'
     if (!goal && d.deadline <= today) return 'A data limite precisa ser depois de hoje'
+    const auto = d.inBalance && d.auto
+    const day = Number(d.day)
+    const autoAmount = d.mode === 'fixed' ? parseMoney(d.autoAmount) : 0
+    if (auto && (!Number.isInteger(day) || day < 1 || day > 31)) return 'Escolha um dia do mês entre 1 e 31'
+    if (auto && d.mode === 'fixed' && (!autoAmount || autoAmount <= 0)) return 'Digite quanto guardar por mês'
+    // Saved money becomes Reservado only after the person agrees, with the exact amount.
+    if (d.inBalance && !goal?.inBalance && saved > 0) {
+      const money = formatMoney(saved, d.currency)
+      const ok = await confirm({
+        title: 'Considerar no seu saldo?',
+        message: `Esta meta já possui ${money} guardados. Ao ativar esta opção, ${money} passarão a ser considerados reservados do seu saldo disponível.`,
+        confirmLabel: 'Ativar',
+      })
+      if (!ok) return
+    }
+    const { inBalance: _in, autoSave: _auto, ...rest } = goal ?? ({} as Partial<FinanceGoal>)
+    void _in
+    void _auto
     await save('financeGoals', {
-      ...goal,
+      ...rest,
+      ...(d.inBalance ? { inBalance: true } : {}),
+      ...(auto
+        ? {
+            autoSave: {
+              day,
+              mode: d.mode,
+              amount: d.mode === 'fixed' ? autoAmount! : 0,
+              // Changing the settings keeps the start; turning it on starts today (nothing before is caught up).
+              since: goal?.autoSave?.since ?? today,
+            },
+          }
+        : {}),
       name: d.name.trim(),
       target,
       saved,
@@ -86,6 +123,52 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
             <TextInput type="date" min={goal ? undefined : today} value={d.deadline} onChange={(e) => set('deadline', e.target.value)} />
           </Field>
         </div>
+        <button type="button" role="switch" aria-checked={d.inBalance} onClick={() => set('inBalance', !d.inBalance)} className="flex w-full items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-left">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium">Este dinheiro está no meu saldo</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-faint">O valor guardado fica reservado: o Disponível no Financeiro desconta ele. Nada sai do saldo.</span>
+          </span>
+          <Switch checked={d.inBalance} />
+        </button>
+        {d.inBalance && (
+          <button type="button" role="switch" aria-checked={d.auto} onClick={() => set('auto', !d.auto)} className="flex w-full items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-left">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium">Guardar todo mês</span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-faint">No dia escolhido, o Núcleo reserva sozinho do seu disponível. Você pode mudar ou pular qualquer mês.</span>
+            </span>
+            <Switch checked={d.auto} />
+          </button>
+        )}
+        {d.inBalance && d.auto && (
+          <>
+            <div className="half">
+              <Field label="Dia do mês">
+                <TextInput type="number" inputMode="numeric" min={1} max={31} value={d.day} onChange={(e) => set('day', e.target.value)} />
+              </Field>
+            </div>
+            <div className="half">
+              <Field label="Valor">
+                <Segmented block value={d.mode} onChange={(v) => set('mode', v)} options={[{ value: 'calculated', label: 'Calculado' }, { value: 'fixed', label: 'Fixo' }]} />
+              </Field>
+            </div>
+            {d.mode === 'fixed' ? (
+              <Field label="Guardar por mês">
+                <AmountField currency={d.currency} value={d.autoAmount} onChange={(v) => set('autoAmount', v)} />
+              </Field>
+            ) : (
+              <p className="text-[13px] leading-relaxed text-faint">
+                {(() => {
+                  const target = parseMoney(d.target) ?? 0
+                  const savedNow = parseMoney(d.saved || '0') ?? 0
+                  const preview = /^\d{4}-\d{2}-\d{2}$/.test(d.deadline) ? calculatedPreview({ target, saved: savedNow, deadline: d.deadline }, Number(d.day) || 1, today) : null
+                  return preview !== null
+                    ? `Próxima reserva: ${formatMoney(preview, d.currency)} — o que falta dividido pelos meses até o prazo. Recalculado todo mês.`
+                    : 'O que falta dividido pelos meses até o prazo, recalculado todo mês.'
+                })()}
+              </p>
+            )}
+          </>
+        )}
         {d.currency !== settings.baseCurrency && <p className="text-[13px] leading-relaxed text-faint">Metas em {d.currency} ficam na própria moeda e não entram na meta semanal “Guardar”, que usa {settings.baseCurrency}.</p>}
         <Field label="Observação" hint="opcional">
           <TextArea value={d.note} onChange={(e) => set('note', e.target.value)} rows={2} />
@@ -141,6 +224,12 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
             <Progress value={p.percent} tone={p.reached ? 'positive' : 'goal'} />
           </div>
           <p className="mt-2 text-[14px] leading-relaxed text-soft">{planSentence(goal, today)}</p>
+          {goal.inBalance && (
+            <p className="mt-1 text-[13px] leading-relaxed text-faint">
+              Reservado do seu saldo
+              {goal.autoSave ? ` · guarda todo dia ${goal.autoSave.day} (${goal.autoSave.mode === 'fixed' ? formatMoney(goal.autoSave.amount, goal.currency) : 'valor calculado'})` : ''}
+            </p>
+          )}
         </div>
         {planning && (
           <Segmented<'update' | 'strategies'> variant="underline" label="Ver" value={tab} onChange={setView} options={[{ value: 'update', label: 'Atualizar' }, { value: 'strategies', label: 'Como alcançar' }]} />
@@ -175,6 +264,7 @@ export function FinanceGoalCard({ goal, today, onOpen, onPlan }: { goal: Finance
       <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
+          {goal.inBalance && <Badge>{goal.autoSave ? 'guarda todo mês' : 'no saldo'}</Badge>}
           <Celebrate active={p.reached}>{p.reached ? <Badge tone="positive">alcançada</Badge> : p.onPace ? <Badge tone="accent">no ritmo</Badge> : null}</Celebrate>
         </span>
         <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 text-[13px] text-faint">

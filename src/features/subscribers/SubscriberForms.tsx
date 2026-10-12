@@ -15,6 +15,7 @@ import { Segmented } from '../../ui/Segmented'
 import { ClientSelect, ProjectSelect } from '../shared/RelationSelect'
 import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
+import { useAutomationActions } from '../../data/useAutomations'
 
 export function OfferingForm({ open, onClose, offering }: { open: boolean; onClose(): void; offering: Offering | null }) {
   const { save, data } = useStore()
@@ -120,6 +121,7 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
     nextCharge: subscriber?.nextCharge ?? toDateInput(),
     status: (subscriber?.status ?? 'active') as SubscriberStatus,
     notes: subscriber?.notes ?? '',
+    paymentMode: subscriber?.paymentMode ?? ('confirm' as 'confirm' | 'autoPaid'),
   }))
   const plans = data.subPlans.filter((p) => p.offeringId === d.offeringId)
   const planId = plans.some((p) => p.id === d.planId) ? d.planId : (plans[0]?.id ?? '')
@@ -195,6 +197,22 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
         <Field label="Situação">
           <Segmented block value={d.status} onChange={(v) => set('status', v)} options={(Object.keys(SUBSCRIBER_STATUS_LABEL) as SubscriberStatus[]).map((v) => ({ value: v, label: SUBSCRIBER_STATUS_LABEL[v] }))} />
         </Field>
+        <Field label="Recebimento">
+          <Segmented
+            block
+            value={d.paymentMode}
+            onChange={(v) => set('paymentMode', v)}
+            options={[
+              { value: 'confirm', label: 'Confirmar recebimento' },
+              { value: 'autoPaid', label: 'Considerar pago' },
+            ]}
+          />
+        </Field>
+        <p className="text-[13px] leading-relaxed text-faint">
+          {d.paymentMode === 'confirm'
+            ? 'No dia da renovação, o Núcleo cria a cobrança “A receber”. O dinheiro só entra no Financeiro quando você confirmar.'
+            : 'Considerar pago automaticamente na data: no dia da renovação, o Núcleo registra o pagamento e a entrada no Financeiro sozinho. Se não pagar, é só desfazer.'}
+        </p>
         <Field label="Observações" hint="opcional">
           <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
@@ -205,7 +223,8 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
 
 /** Payments received from one subscriber. Recording one can move the next charge one cycle ahead. */
 export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscriber; plan: SubPlan | undefined }) {
-  const { save } = useStore()
+  const { save, data } = useStore()
+  const { undo } = useAutomationActions()
   const { toast, confirm } = useFeedback()
   const [adding, setAdding] = useState(false)
   const [amount, setAmount] = useState('')
@@ -234,6 +253,13 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
   }
 
   const remove = async (id: string) => {
+    // A payment of an automatic charge is removed with its income in Financeiro (undo of that charge).
+    const run = data.automationRuns.find((r) => r.id === subscriber.payments.find((p) => p.id === id)?.chargeRun)
+    if (run) {
+      const ok = await confirm({ title: 'Remover pagamento?', message: 'A entrada desta cobrança também sai do Financeiro.', confirmLabel: 'Remover', danger: true })
+      if (ok) await undo(run)
+      return
+    }
     const ok = await confirm({ title: 'Remover pagamento?', message: 'A próxima cobrança não volta sozinha; ajuste se precisar.', confirmLabel: 'Remover', danger: true })
     if (ok) await save('subscribers', { ...subscriber, payments: subscriber.payments.filter((p) => p.id !== id) })
   }

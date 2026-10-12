@@ -120,8 +120,31 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
   // An income created by a received payment is changed where the payment lives (project/sale),
   // so the two never disagree. If that payment no longer exists, it is a normal movement again.
   const receipt = editing?.source ? allReceipts(data).find((r) => r.txId === editing.id) : undefined
+  // An expense paid by the automation (a tool charge): changed or undone in "Feito pelo Núcleo".
+  if (editing?.source?.kind === 'tool') {
+    return (
+      <Sheet
+        open={open}
+        onClose={onClose}
+        title="Pagamento automático"
+        footer={
+          <Button size="lg" block variant="secondary" icon={<ArrowUpRight size={18} />} onClick={() => (onClose(), navigate('/automations'))}>
+            Abrir Feito pelo Núcleo
+          </Button>
+        }
+      >
+        <div className="space-y-3 pt-1">
+          <p className="num text-[28px] font-semibold text-expense">− {formatMoney(editing.amount, editing.currency)}</p>
+          <p className="text-[15px]">{editing.reason}</p>
+          <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
+          <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">Esta saída foi lançada pelo Núcleo porque a assinatura está marcada como “Considerar pago automaticamente”. Para desfazer, use Feito pelo Núcleo.</p>
+        </div>
+      </Sheet>
+    )
+  }
   if (editing && receipt) {
-    const from = receipt.source.kind === 'project' ? 'projeto' : 'venda'
+    const kind = receipt.source.kind
+    const from = kind === 'project' ? 'projeto' : kind === 'subscriber' ? 'assinante' : 'venda'
     return (
       <Sheet
         open={open}
@@ -138,7 +161,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
               navigate(receipt.open.path, { open: receipt.open.id })
             }}
           >
-            {receipt.source.kind === 'project' ? 'Abrir projeto' : 'Abrir venda'}
+            {kind === 'project' ? 'Abrir projeto' : kind === 'subscriber' ? 'Abrir assinante' : 'Abrir venda'}
           </Button>
         }
       >
@@ -147,7 +170,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           <p className="text-[15px]">{editing.reason}</p>
           <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
           <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">
-            Esta entrada veio de um pagamento registrado {receipt.source.kind === 'project' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — o Financeiro acompanha.
+            Esta entrada veio de um pagamento registrado {kind === 'project' || kind === 'subscriber' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — o Financeiro acompanha.
           </p>
         </div>
       </Sheet>

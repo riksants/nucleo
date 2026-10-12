@@ -8,11 +8,13 @@ import { formatDateValue, relativeDays } from '../../lib/dates'
 import { displayUrl, normalizeUrl } from '../../lib/links'
 import { formatMoney } from '../../lib/money'
 import { usePref } from '../../lib/prefs'
-import { Badge, EmptyState } from '../../ui/Display'
+import { Badge, EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
 import { useOpenParam } from '../useOpenParam'
 import { ToolForm } from './ToolForm'
+import { PendingCharges } from '../automations/PendingCharges'
+import { pendingRuns } from '../automations/runs'
 
 type Filter = 'all' | 'paying' | 'free' | 'cancelled'
 
@@ -101,6 +103,12 @@ export function ToolsPage() {
               {!spending.monthly.complete && ' · algumas sem cotação ficaram de fora'}
             </p>
           </section>
+          {pendingRuns(data.automationRuns).some((r) => r.automation === 'toolCharge') && (
+            <section className="mb-5">
+              <SectionTitle>A pagar</SectionTitle>
+              <PendingCharges runs={pendingRuns(data.automationRuns).filter((r) => r.automation === 'toolCharge')} />
+            </section>
+          )}
           <div className="mb-5">
             <Chips value={filter} onChange={setFilter} options={FILTERS} />
           </div>

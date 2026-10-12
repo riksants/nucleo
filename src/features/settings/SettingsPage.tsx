@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sunrise, Tags, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound } from 'lucide-react'
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
 import { navigate, useRoute } from '../../app/router'
@@ -283,6 +283,18 @@ export function SettingsPage() {
               {configured && <Row label="Entrar ou criar conta" icon={<UserRound size={18} />} onClick={() => openAuth('signin')} />}
             </>
           )}
+        </Group>
+
+        <Group title="Automações" tone="teal" note="O Núcleo automatiza ações, mas nunca inventa fatos: só considera algo pago quando você confirma ou escolhe isso no item.">
+          <Row
+            label="Feito pelo Núcleo"
+            detail={(() => {
+              const n = data.automationRuns.filter((r) => r.status === 'pending').length
+              return n ? `${n} esperando você · ligar ou desligar automações` : 'Histórico · ligar ou desligar automações'
+            })()}
+            icon={<Sparkles size={18} />}
+            onClick={() => navigate('/automations')}
+          />
         </Group>
 
         <Group title="Seções e lembretes">

@@ -119,3 +119,12 @@ export function changeGoalMonth(run: AutomationRun, amount: Cents, ctx: Automati
   }
   return [{ op: 'put', collection: 'financeGoals', item }, runPut(next)]
 }
+
+/** The calculated amount the next reservation would have (form preview). Null = nothing to plan. */
+export function calculatedPreview(goal: Pick<FinanceGoal, 'target' | 'saved' | 'deadline'>, day: number, today: string): Cents | null {
+  const missing = goal.target - goal.saved
+  if (missing <= 0 || !isDate(goal.deadline)) return null
+  const month = dayInMonth(monthOf(today), day) >= today ? monthOf(today) : nextMonth(monthOf(today))
+  if (dayInMonth(month, day) > goal.deadline) return null
+  return Math.ceil(missing / daysLeft(month, day, goal.deadline))
+}

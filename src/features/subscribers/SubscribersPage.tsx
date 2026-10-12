@@ -14,6 +14,8 @@ import { Chips } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
 import { useOpenParam } from '../useOpenParam'
 import { OfferingForm, PlanForm, SubscriberForm, SubscriberPayments } from './SubscriberForms'
+import { PendingCharges } from '../automations/PendingCharges'
+import { pendingRuns } from '../automations/runs'
 
 const STATUS_TONE: Record<SubscriberStatus, 'accent' | 'warn' | 'neutral'> = { active: 'accent', trial: 'warn', paused: 'neutral', cancelled: 'neutral' }
 
@@ -81,7 +83,7 @@ function Projection() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[13px] leading-relaxed text-faint">Soma dos pagamentos registrados. Não entra no saldo do Financeiro automaticamente.</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-faint">Soma dos pagamentos registrados. Só cobranças confirmadas (ou de assinantes marcados “Considerar pago”) entram no Financeiro.</p>
       </div>
     </div>
   )
@@ -97,6 +99,7 @@ function SubscriberRow({ s, plan, offering, onOpen }: { s: Subscriber; plan?: Su
         <span className="block truncate text-[13px] text-faint">
           {offering?.name} · {plan?.name ?? 'sem plano'}
           {rel && <span className={rel.days <= 3 ? 'text-warn' : ''}> · cobra {rel.label}</span>}
+          {s.paymentMode === 'autoPaid' && ' · pago automático'}
           {s.status === 'cancelled' && s.cancelledAt && ` · cancelou ${formatDateValue(s.cancelledAt).toLowerCase()}`}
         </span>
       </span>
@@ -149,6 +152,13 @@ export function SubscribersPage() {
       ) : (
         <div className="space-y-7">
           <Projection />
+
+          {pendingRuns(data.automationRuns).some((r) => r.automation === 'subscriberCharge') && (
+            <section>
+              <SectionTitle>A receber</SectionTitle>
+              <PendingCharges runs={pendingRuns(data.automationRuns).filter((r) => r.automation === 'subscriberCharge')} />
+            </section>
+          )}
 
           <section>
             <SectionTitle action="Novo produto" onAction={() => offeringForm.show()}>
@@ -246,6 +256,12 @@ export function SubscribersPage() {
             </p>
             {open.status !== 'cancelled' && nextChargeOf(open, plans.get(open.planId)) && (
               <p className="mt-2 text-[15px]">Próxima cobrança: {formatDateValue(nextChargeOf(open, plans.get(open.planId)))}</p>
+            )}
+            {pendingRuns(data.automationRuns, open.id).length > 0 && (
+              <section className="mt-5">
+                <SectionTitle>A receber</SectionTitle>
+                <PendingCharges runs={pendingRuns(data.automationRuns, open.id)} />
+              </section>
             )}
             <SubscriberPayments subscriber={open} plan={plans.get(open.planId)} />
           </>

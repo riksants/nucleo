@@ -6,6 +6,7 @@ import { categoryLabel } from '../../core/financeCategories'
 import { goalPlan } from '../../core/financeGoals'
 import { weekMoneySentences } from '../../core/financeText'
 import { addDaysToDate } from '../../core/period'
+import { reserveSummary } from '../../core/reserved'
 import type { FlatMetrics } from '../../core/weekSummary'
 import { useStore } from '../../data/store'
 import type { WeekId, WeekSnapshot } from '../../data/types'
@@ -27,8 +28,9 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
  * Details open the month summary in Financeiro — no second finance screen.
  */
 export function MoneyCard({ week, today, isCurrent, snapshot, flat, prevFlat }: { week: WeekId; today: string; isCurrent: boolean; snapshot: WeekSnapshot | null; flat: FlatMetrics; prevFlat: FlatMetrics }) {
-  const { data, settings } = useStore()
+  const { data, settings, balance, convert } = useStore()
   const cur = settings.baseCurrency
+  const reserve = isCurrent ? reserveSummary(data.financeGoals, balance, cur, convert) : null
   const live = useMemo(() => (snapshot ? null : weekMoney(data, settings, week)), [snapshot, data.transactions, settings, week, today]) // eslint-disable-line react-hooks/exhaustive-deps
   const n = (k: string) => flat[k] ?? 0
   const t = live?.totals
@@ -93,6 +95,11 @@ export function MoneyCard({ week, today, isCurrent, snapshot, flat, prevFlat }: 
               <Progress value={plan.percent} tone={plan.reached ? 'positive' : 'goal'} />
             </div>
           </div>
+        )}
+        {reserve?.hasReserve && (
+          <p className="mt-4 border-t border-line pt-3 text-[14px] leading-relaxed text-soft">
+            Disponível agora: <span className="num font-semibold text-ink">{formatMoney(reserve.available, cur)}</span> · {formatMoney(reserve.reserved, cur)} reservado para metas
+          </p>
         )}
         <button type="button" onClick={() => navigate('/finance', monthOf(addDaysToDate(week, 6)) === monthOf(today) ? { view: 'month' } : { view: 'month', m: monthOf(addDaysToDate(week, 6)) })} className="mt-4 flex w-full items-center gap-2 rounded-xl text-left text-[14px] font-medium text-accent-hi hover:text-ink">
           <Wallet size={16} /> <span className="flex-1">Ver detalhes financeiros</span> <ChevronRight size={16} />

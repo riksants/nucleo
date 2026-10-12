@@ -2,6 +2,7 @@ import { AnimatePresence, animate, motion, useMotionTemplate, useMotionValue, us
 import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Minus, Plus } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { reserveSummary } from '../../core/reserved'
 import { useStore } from '../../data/store'
 import type { Cents, Currency } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
@@ -104,7 +105,7 @@ function Card3D({ children }: { children: ReactNode }) {
  */
 export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'hero'; note?: ReactNode }) {
   const hero = variant === 'hero'
-  const { balance, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
+  const { balance, data, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
   const sheet = useSheet<'in' | 'out'>()
   const [delta, setDelta] = useState<{ id: number; cents: Cents } | null>(null)
   const reduce = usePrefersReducedMotion()
@@ -136,6 +137,30 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
     const when = manual ? 'taxa manual' : rates ? `atualizado ${formatDateTime(rates.fetchedAt).toLowerCase()}` : ''
     return `1 ${settings.baseCurrency} = ${formatNumber(one)} ${currency} · ${when}`
   })()
+
+  // Saldo / Reservado para metas / Disponível: shown only when some goal reserves money from the balance.
+  const reserve = reserveSummary(data.financeGoals, balance, settings.baseCurrency, convert)
+  const inShown = (cents: Cents) => formatMoney(convert(cents, settings.baseCurrency, currency) ?? cents, convert(cents, settings.baseCurrency, currency) === null ? settings.baseCurrency : currency)
+  const reserveBlock = reserve.hasReserve && (
+    <div className={`mt-3 border-t pt-3 ${hero ? 'border-line' : 'border-white/20'}`}>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-white/75'}`}>Reservado para metas</p>
+          <p className="num text-[17px] font-semibold [overflow-wrap:anywhere]">{inShown(reserve.reserved)}</p>
+        </div>
+        <div className="min-w-0">
+          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-white/75'}`}>Disponível</p>
+          <p className={`num text-[17px] font-semibold [overflow-wrap:anywhere] ${reserve.available < 0 && hero ? 'text-expense' : ''}`}>{inShown(reserve.available)}</p>
+        </div>
+      </div>
+      {reserve.missing.length > 0 && (
+        <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-white/70'}`}>
+          Reserva em {reserve.missing.join(', ')} ainda sem cotação: o Disponível ainda não a considera.
+        </p>
+      )}
+      {reserve.available < 0 && <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-white/70'}`}>As metas têm mais reservado do que o saldo atual.</p>}
+    </div>
+  )
 
   const ink = hero ? 'var(--color-ink)' : '#ffffff'
   const content = (
@@ -187,6 +212,8 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
           )}
         </AnimatePresence>
       </div>
+
+      {reserveBlock}
 
       {!hero && (
         <div className="mt-5 grid grid-cols-2 gap-3">

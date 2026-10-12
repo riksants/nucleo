@@ -7,6 +7,7 @@ import { Field, FormGrid, MoneyInput, Select, TextArea, TextInput } from '../../
 import { FormSheet } from '../../ui/FormSheet'
 import { useDelete, useDraft } from '../../ui/formHooks'
 import { parseMoney } from '../../lib/calc'
+import { Switch } from '../settings/ModulePicker'
 
 export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): void; tool: Tool | null }) {
   const { save, displayCurrency } = useStore()
@@ -22,24 +23,30 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
     nextCharge: tool?.nextCharge ?? '',
     notes: tool?.notes ?? '',
     status: tool?.status ?? ('active' as ToolStatus),
+    autoPaid: Boolean(tool?.autoPaid),
   }))
 
   const free = d.billing === 'free'
   const recurring = d.billing === 'monthly' || d.billing === 'yearly'
+  const dated = recurring || d.billing === 'once'
 
   const submit = async () => {
     if (!d.name.trim()) return 'Informe o nome da assinatura'
     const price = free || !d.price.trim() ? 0 : parseMoney(d.price)
     if (price === null) return 'Confira o preço'
+    const { autoPaid, ...fields } = d
+    const { autoPaid: _old, ...base } = tool ?? ({} as Partial<Tool>)
+    void _old
     await save('tools', {
-      ...tool,
-      ...d,
+      ...base,
+      ...fields,
+      ...(autoPaid && !free ? { autoPaid: true } : {}),
       name: d.name.trim(),
       link: d.link.trim(),
       plan: d.plan.trim(),
       notes: d.notes.trim(),
       price,
-      nextCharge: recurring ? d.nextCharge : '',
+      nextCharge: dated ? d.nextCharge : '',
       status: free && d.status === 'active' ? 'free' : d.status,
     })
     toast(tool ? 'Assinatura atualizada' : 'Assinatura adicionada')
@@ -97,10 +104,21 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
             <MoneyInput value={d.price} onChange={(v) => set('price', v)} currency={d.currency} onCurrency={(c) => set('currency', c)} />
           </Field>
         )}
-        {recurring && (
-          <Field label="Próxima cobrança" hint="opcional">
+        {dated && (
+          <Field label={recurring ? 'Próxima cobrança' : 'Data da cobrança'} hint="opcional">
             <TextInput type="date" value={d.nextCharge} onChange={(e) => set('nextCharge', e.target.value)} />
           </Field>
+        )}
+        {dated && (
+          <button type="button" role="switch" aria-checked={d.autoPaid} onClick={() => set('autoPaid', !d.autoPaid)} className="flex w-full items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-left">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium">Considerar pago automaticamente na data da cobrança</span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-faint">
+                {d.autoPaid ? 'A saída entra sozinha no Financeiro no dia da cobrança.' : 'Desligado: no dia, fica “A pagar” e só vira saída quando você confirmar.'}
+              </span>
+            </span>
+            <Switch checked={d.autoPaid} />
+          </button>
         )}
         <Field label="Observação" hint="opcional">
           <TextArea rows={3} value={d.notes} onChange={(e) => set('notes', e.target.value)} />

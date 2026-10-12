@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings } from 'lucide-react'
+import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings, Sparkles } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { Logo } from '../../app/Shell'
@@ -10,7 +10,7 @@ import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upco
 import { useStore } from '../../data/store'
 import type { Goal, Project, Task, Transaction } from '../../data/types'
 import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
-import { todayIn, zoneOf } from '../../core/period'
+import { addDaysToDate, todayIn, zoneOf } from '../../core/period'
 import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
 import { IconButton } from '../../ui/Button'
@@ -25,6 +25,8 @@ import { TransactionSheet } from '../finance/TransactionSheet'
 import { GoalCard } from '../goals/GoalCard'
 import { GoalForm } from '../goals/GoalForm'
 import { DueLabel } from '../projects/ProjectCard'
+import { PendingCharges } from '../automations/PendingCharges'
+import { historyRuns, pendingRuns } from '../automations/runs'
 import { TaskForm } from '../tasks/TaskForm'
 import { TaskRow } from '../tasks/TaskRow'
 
@@ -95,6 +97,9 @@ export function HomePage() {
   const goals = sortByNewest(data.goals.filter((g) => !g.purchasedAt)).slice(0, 2)
   const charges = upcomingCharges(data.tools, 30, today).slice(0, 4)
   const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
+  // Automations: charges waiting for the person, and what the Núcleo did in the last 7 days.
+  const pending = pendingRuns(data.automationRuns)
+  const doneLately = historyRuns(data.automationRuns).filter((r) => r.status === 'done' && r.date >= addDaysToDate(todayKey, -7))
 
   return (
     <>
@@ -134,6 +139,25 @@ export function HomePage() {
             {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} primary={!on('finance')} onClick={() => navigate('/today')} />}
             <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
           </nav>
+
+          {pending.length > 0 && (
+            <Block title="Esperando você" action={pending.length > 3 ? `Ver ${pending.length}` : 'Ver tudo'} onAction={() => navigate('/automations')}>
+              <PendingCharges runs={pending.slice(0, 3)} />
+            </Block>
+          )}
+
+          {doneLately.length > 0 && (
+            <button type="button" onClick={() => navigate('/automations')} className="card flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-hi">
+                <Sparkles size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium">Feito pelo Núcleo</span>
+                <span className="block truncate text-[13px] text-faint">{doneLately.length === 1 ? doneLately[0].summary : `${doneLately.length} ações nos últimos 7 dias · ${doneLately[0].summary}`}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-faint" />
+            </button>
+          )}
 
           {on('finance') && (
             <div className="grid grid-cols-2 gap-3">
