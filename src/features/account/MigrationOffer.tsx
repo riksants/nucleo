@@ -45,6 +45,7 @@ export const COLLECTION_LABELS: Record<CollectionName, string> = {
   planSteps: 'Etapas de projetos e objetivos',
   meals: 'Refeições planejadas',
   shoppingItems: 'Lista de compras',
+  automationRuns: 'Feito pelo Núcleo',
 }
 
 /** Local data that was never sent (nor refused) for this account. */

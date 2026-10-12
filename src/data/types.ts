@@ -42,8 +42,11 @@ export interface Transaction extends Entity {
 
 /** Where an automatic income came from. */
 export interface ReceiptSource {
-  /** project: one project payment · sale: one payment of a sale · saleGeneral: a "pagamento geral" (all its pieces). */
-  kind: 'project' | 'sale' | 'saleGeneral'
+  /**
+   * project: one project payment · sale: one payment of a sale · saleGeneral: a "pagamento geral" (all its pieces) ·
+   * subscriber: a subscriber charge paid (automation) · tool: a tool charge paid (automation).
+   */
+  kind: 'project' | 'sale' | 'saleGeneral' | 'subscriber' | 'tool'
   /** The project or sale id (for saleGeneral: the sale of its first piece). */
   parentId: string
   /** The payment id (for saleGeneral: the general payment id). */
@@ -221,6 +224,10 @@ export interface Tool extends Entity {
   nextCharge: string
   notes: string
   status: ToolStatus
+  /** "Considerar pago automaticamente na data da cobrança". Missing = off: the charge waits for confirmation. */
+  autoPaid?: boolean
+  /** Day of the month the charges keep (set by the automation), so 31 → 28 Feb → 31 Mar. */
+  chargeDay?: number
 }
 
 export interface Account extends Entity {
@@ -264,6 +271,8 @@ export interface Payment {
    * rate) an income in Financeiro. Older payments don't have it and never create one by themselves.
    */
   finance?: true
+  /** Subscribers: the automation run (charge) this payment settles. Its id is the run id. */
+  chargeRun?: string
 }
 
 export interface Sale extends Entity {
@@ -313,6 +322,10 @@ export interface Subscriber extends Entity {
   /** Payments received, in the plan's currency at the time (kept on each payment). */
   payments: (Payment & { currency: Currency })[]
   notes: string
+  /** confirm (default): the charge becomes "A receber" · autoPaid: considered paid on the date. */
+  paymentMode?: 'confirm' | 'autoPaid'
+  /** Day of the month the charges keep (set by the automation). */
+  chargeDay?: number
 }
 
 /* ----------------------------- Rotina e alimentação ----------------------------- */
@@ -423,6 +436,8 @@ export interface Settings {
   mealTypes?: MealType[]
   /** Personal finance categories and hidden default ones. Missing = defaults only. */
   financeCategories?: FinanceCategorySettings
+  /** Automations on/off and since when (nothing before `since` is caught up). Missing = on, since its first run. */
+  automations?: Partial<Record<AutomationId, { on: boolean; since: string }>>
   /** Last change, used to resolve edits made on two devices. */
   updatedAt?: string
 }
@@ -530,6 +545,7 @@ export interface Collections {
   planSteps: PlanStep
   meals: MealEntry
   shoppingItems: ShoppingEntry
+  automationRuns: AutomationRun
 }
 
 export type CollectionName = keyof Collections
@@ -566,6 +582,7 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'planSteps',
   'meals',
   'shoppingItems',
+  'automationRuns',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
@@ -660,6 +677,20 @@ export interface FinanceGoal extends Entity {
   note: string
   status: 'active' | 'archived'
   history: { date: string; saved: Cents }[]
+  /** "Este dinheiro está no meu saldo": the saved amount counts as Reservado. Missing = no. */
+  inBalance?: boolean
+  /** "Guardar todo mês" (needs inBalance). Missing = off. */
+  autoSave?: GoalAutoSave
+}
+
+export interface GoalAutoSave {
+  /** Day of the month (29–31 fall on the last day of shorter months). */
+  day: number
+  /** calculated: what is missing ÷ reservation days left until the deadline · fixed: `amount`. */
+  mode: 'calculated' | 'fixed'
+  amount: Cents
+  /** "YYYY-MM-DD": first day it may act (nothing before it is caught up). */
+  since: string
 }
 
 /* ----------------------------- Planejamento pessoal (Etapa 4) ----------------------------- */
@@ -773,4 +804,33 @@ export interface InsightMark {
   until?: string
   /** When it was set (for pruning). */
   at: string
+}
+
+/* ----------------------------- Automações ----------------------------- */
+
+export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave'
+export type AutomationRunStatus = 'pending' | 'done' | 'undone' | 'skipped'
+
+/**
+ * One thing the Núcleo did (or prepared) by itself. The id is fixed and derived from what it
+ * refers to, so two devices land on the same record and a run is never done twice — a run
+ * that was undone or skipped stays, so it is not done again either.
+ */
+export interface AutomationRun extends Entity {
+  automation: AutomationId
+  /** "YYYY-MM-DD": the day it refers to (charge date, reservation day). */
+  date: string
+  /** What the Núcleo did, as shown ("Núcleo reservou €100 para Meta Viagem"). */
+  summary: string
+  /** Extra line (e.g. reserved less than planned). */
+  detail?: string
+  origin: { collection: CollectionName; id: string; label: string }
+  amount?: Cents
+  currency?: Currency
+  /** Records it created (removed by undo). */
+  created: { collection: CollectionName; id: string }[]
+  /** Fields it changed (restored by undo only if they still hold `after`). */
+  changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown }[]
+  /** pending: waiting for the person (A receber / A pagar). */
+  status: AutomationRunStatus
 }
