@@ -86,6 +86,7 @@ export function confirmSubscriberCharge(run: AutomationRun, input: { amount: Cen
   const done: AutomationRun = {
     ...run,
     status: 'done',
+    fromPending: true,
     amount: input.amount,
     currency,
     summary: `Recebimento confirmado de ${s.name}: ${formatMoney(input.amount, currency)}`,

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { automationSince, planAll, sinceDefaults } from '../src/core/automation/engine'
 import type { AutomationCtx, BatchOp } from '../src/core/automation/types'
 import { undoRun } from '../src/core/automation/undo'
+import { confirmSubscriberCharge } from '../src/core/automation/subscriberCharge'
+import { confirmToolCharge } from '../src/core/automation/toolCharge'
 import type { CollectionName, DataState, Entity, FinanceGoal, Settings, SubPlan, Subscriber, Tool } from '../src/data/types'
 import { baseSettings, makeCtx, T } from './automation-helpers'
 
@@ -85,6 +87,32 @@ describe('motor', () => {
     expect(partial).toBe(true)
     expect(after.tools[0].nextCharge).toBe('2026-11-15')
     expect(after.transactions).toEqual([])
+  })
+
+  it('desfazer uma confirmação: a cobrança volta para "A receber" (dá para confirmar de novo), sem dinheiro', () => {
+    const ctx = makeCtx({ subscribers: [sub({ paymentMode: 'confirm' })], subPlans: [plan] }, '2026-10-06', { settings: on('2026-10-01') })
+    const pending = pass(ctx)
+    const ops = confirmSubscriberCharge(pending.automationRuns[0], { amount: 5000, date: '2026-10-06' }, { ...ctx, data: pending })
+    if (typeof ops === 'string') throw new Error(ops)
+    const confirmed = apply(pending, ops)
+    const after = apply(confirmed, undoRun(confirmed.automationRuns[0], confirmed, '2026-10-07').ops)
+    expect(after.automationRuns[0]).toMatchObject({ status: 'pending', summary: 'Cobrança de Ana: a receber', created: [] })
+    expect(after.transactions).toEqual([])
+    expect(after.subscribers[0].payments).toEqual([])
+    expect(after.subscribers[0].nextCharge).toBe('2026-11-05') // the cycle happened: only the payment is undone
+  })
+
+  it('desfazer a confirmação de "A pagar" de ferramenta: volta para "A pagar"', () => {
+    const t = { ...tool, autoPaid: false }
+    const ctx = makeCtx({ tools: [t] }, '2026-10-06', { settings: on('2026-10-01') })
+    const pending = pass(ctx)
+    const ops = confirmToolCharge(pending.automationRuns[0], { amount: 2000, date: '2026-10-06' }, { ...ctx, data: pending })
+    if (typeof ops === 'string') throw new Error(ops)
+    const confirmed = apply(pending, ops)
+    const after = apply(confirmed, undoRun(confirmed.automationRuns[0], confirmed, '2026-10-07').ops)
+    expect(after.automationRuns[0]).toMatchObject({ status: 'pending', summary: 'Figma: a pagar' })
+    expect(after.transactions).toEqual([])
+    expect(after.tools[0].nextCharge).toBe('2026-11-05')
   })
 
   it('meta: desfazer tira só o valor da execução (o que a pessoa guardou à mão fica)', () => {

@@ -833,4 +833,6 @@ export interface AutomationRun extends Entity {
   changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown }[]
   /** pending: waiting for the person (A receber / A pagar). */
   status: AutomationRunStatus
+  /** Confirmed by the person from "A receber"/"A pagar": undoing takes it back to pending. */
+  fromPending?: true
 }

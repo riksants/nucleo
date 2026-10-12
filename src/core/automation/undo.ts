@@ -33,6 +33,16 @@ export function undoRun(run: AutomationRun, data: DataState, today: string, next
     if (s) s.payments = s.payments.filter((p) => p.id !== run.id)
   }
 
+  // A confirmation undone: the money goes, the charge stays "A receber"/"A pagar" (the cycle happened).
+  if (run.fromPending) {
+    for (const { collection, item } of touched.values()) ops.push({ op: 'put', collection, item: item as unknown as Entity } as BatchOp)
+    const { fromPending: _f, ...rest } = run
+    void _f
+    const summary = run.automation === 'subscriberCharge' ? `Cobrança de ${run.origin.label}: a receber` : `${run.origin.label}: a pagar`
+    ops.push(runPut({ ...rest, status: 'pending', summary, created: [] }))
+    return { ops, partial: false }
+  }
+
   for (const ch of run.changed) {
     const item = record(ch.collection, ch.id)
     if (!item) continue

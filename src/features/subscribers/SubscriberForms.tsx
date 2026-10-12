@@ -256,7 +256,12 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
     // A payment of an automatic charge is removed with its income in Financeiro (undo of that charge).
     const run = data.automationRuns.find((r) => r.id === subscriber.payments.find((p) => p.id === id)?.chargeRun)
     if (run) {
-      const ok = await confirm({ title: 'Remover pagamento?', message: 'A entrada desta cobrança também sai do Financeiro.', confirmLabel: 'Remover', danger: true })
+      const ok = await confirm({
+        title: 'Remover pagamento?',
+        message: run.fromPending ? 'A entrada desta cobrança também sai do Financeiro, e a cobrança volta para “A receber”.' : 'A entrada desta cobrança também sai do Financeiro.',
+        confirmLabel: 'Remover',
+        danger: true,
+      })
       if (ok) await undo(run)
       return
     }

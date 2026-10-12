@@ -86,6 +86,7 @@ export function confirmToolCharge(run: AutomationRun, input: { amount: Cents; da
   const done: AutomationRun = {
     ...run,
     status: 'done',
+    fromPending: true,
     amount: input.amount,
     currency,
     summary: `Pagamento confirmado de ${t?.name ?? run.origin.label}: ${formatMoney(input.amount, currency)}`,

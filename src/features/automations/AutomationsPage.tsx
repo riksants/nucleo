@@ -64,7 +64,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
     const ok = await confirm({ title: 'Desfazer?', message: run.summary, confirmLabel: 'Desfazer' })
     if (!ok) return
     const { partial } = await undo(run)
-    toast(partial ? 'Desfeito. A data da próxima cobrança ficou como você deixou.' : 'Desfeito')
+    toast(run.fromPending ? 'Confirmação desfeita: a cobrança voltou para a lista' : partial ? 'Desfeito. A data da próxima cobrança ficou como você deixou.' : 'Desfeito')
   }
   const skip = async () => {
     await undo(run, 'skipped')
@@ -103,7 +103,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
           )}
           {done && !goal && (
             <button type="button" className="text-[14px] font-medium text-soft hover:text-ink" onClick={doUndo}>
-              {run.automation === 'subscriberCharge' ? 'Não pagou · desfazer' : 'Desfazer'}
+              {run.fromPending ? 'Desfazer confirmação' : run.automation === 'subscriberCharge' ? 'Não pagou · desfazer' : 'Desfazer'}
             </button>
           )}
         </div>
