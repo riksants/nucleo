@@ -66,6 +66,8 @@ export function planSubscriberCharges(ctx: AutomationCtx, since: string): ItemPl
         runs.push(makeRun({ id, automation: 'subscriberCharge', date, summary: `Cobrança de ${s.name}: a receber`, origin, amount: plan.price, currency: plan.currency, created: [], changed, status: 'pending' }, ctx.now))
       }
     })
+    // Only a new run moves the date: a charge that was undone (date restored) is not moved again.
+    if (!runs.length) continue
     const item: Subscriber = { ...s, nextCharge: next, chargeDay: anchor, payments: payments.sort(byDate) }
     out.push({ runs, ops: [{ op: 'put', collection: 'subscribers', item }, ...extra, ...runs.map(runPut)] })
   }

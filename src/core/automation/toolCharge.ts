@@ -46,7 +46,8 @@ export function planToolCharges(ctx: AutomationCtx, since: string): ItemPlan[] {
       ? { due: t.nextCharge >= since && t.nextCharge <= ctx.today ? [t.nextCharge] : [], next: t.nextCharge }
       : cycleDates(t.nextCharge, anchor, t.billing === 'monthly' ? 1 : 12, since, ctx.today, MAX_RUNS_PER_ITEM)
     const todo = due.filter((d) => !known.has(toolRunId(t.id, d)))
-    if (!todo.length && next === t.nextCharge) continue
+    // Only a new run moves the date: a charge that was undone (date restored) is not moved again.
+    if (!todo.length) continue
     // Considered paid but no rate yet: wait, so the expense is never invented.
     if (t.autoPaid && todo.length && ctx.convert(t.price, t.currency, ctx.settings.baseCurrency) === null) continue
     const money = formatMoney(t.price, t.currency)

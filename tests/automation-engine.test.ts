@@ -64,8 +64,16 @@ describe('motor', () => {
     expect(after.subscribers[0].payments).toEqual([])
     expect(after.subscribers[0].nextCharge).toBe('2026-10-05')
     expect(after.automationRuns[0].status).toBe('undone')
-    // undone stays registered: never redone
-    expect(planAll({ ...ctx, data: after }).flatMap((p) => p.runs)).toEqual([])
+    // undone stays registered: never redone, and the date it restored is not moved again
+    expect(planAll({ ...ctx, data: after })).toEqual([])
+  })
+
+  it('desfazer a saída de ferramenta: a data volta e a próxima passada não a move de novo', () => {
+    const ctx = makeCtx({ tools: [tool] }, '2026-10-06', { settings: on('2026-10-01') })
+    const data = pass(ctx)
+    const after = apply(data, undoRun(data.automationRuns[0], data, '2026-10-07').ops)
+    expect(after.tools[0].nextCharge).toBe('2026-10-05')
+    expect(planAll({ ...ctx, data: after })).toEqual([])
   })
 
   it('a pessoa mudou a próxima cobrança depois: desfazer preserva a edição dela', () => {
