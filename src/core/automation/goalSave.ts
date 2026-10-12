@@ -87,7 +87,8 @@ export function planGoalSaves(ctx: AutomationCtx, since: string): ItemPlan[] {
       )
     }
     if (!runs.length) continue
-    const ops: BatchOp[] = saved !== g.saved ? [{ op: 'put', collection: 'financeGoals', item: { ...g, saved, history } satisfies FinanceGoal }] : []
+    const item: FinanceGoal = { ...g, saved, history }
+    const ops: BatchOp[] = saved !== g.saved ? [{ op: 'put', collection: 'financeGoals', item }] : []
     out.push({ runs, ops: [...ops, ...runs.map(runPut)] })
   }
   return out

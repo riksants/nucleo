@@ -1,6 +1,6 @@
 import { PROJECT_KIND, PROJECT_STATUS } from '../../data/labels'
 import { belongsToProject, projectChargedProblem } from '../../data/receipts'
-import { useStore } from '../../data/store'
+import { newId, useStore } from '../../data/store'
 import { useReceipts } from '../../data/useReceipts'
 import type { Project, ProjectKind, ProjectStatus } from '../../data/types'
 import { toDateInput } from '../../lib/dates'
@@ -30,7 +30,7 @@ export function ProjectForm({
   initial?: { name?: string; notes?: string }
   onSaved?(project: Project): void
 }) {
-  const { save, displayCurrency } = useStore()
+  const { displayCurrency } = useStore()
   const { toast, confirm } = useFeedback()
   const del = useDelete()
   const { saveProject, removeProject, linkedCount } = useReceipts()
@@ -59,8 +59,10 @@ export function ProjectForm({
     if (chargedProblem) return chargedProblem
     const endDate = d.status === 'done' && !d.endDate ? toDateInput() : d.endDate
     const fields = { ...d, name: d.name.trim(), link: d.link.trim(), notes: d.notes.trim(), charged, endDate, currency: currencyLocked ? project!.currency : d.currency }
-    // An existing project goes through the receipts layer: a new name reaches its incomes in Financeiro.
-    const saved = project ? await saveProject({ ...project, ...fields }) : await save('projects', { ...fields, received: 0 })
+    // Every project goes through the receipts layer: a new name reaches its incomes in Financeiro,
+    // and concluding/reopening it updates its client (automation).
+    const now = new Date().toISOString()
+    const saved = await saveProject(project ? { ...project, ...fields } : { ...fields, received: 0, id: newId(), createdAt: now, updatedAt: now })
     toast(project ? 'Projeto atualizado' : 'Projeto criado')
     onSaved?.(saved)
     onClose()

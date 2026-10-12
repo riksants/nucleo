@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
+import { projectClientPlan } from '../core/automation/projectClient'
 import type { BatchOp } from './repository'
 import {
   allReceipts,
@@ -23,18 +24,22 @@ import type { Project, ReceiptSource, Sale } from './types'
 export function useReceipts() {
   const { data, settings, convert, commit } = useStore()
 
-  /** Saves an existing project; its payments' incomes follow (new, changed, removed, renamed). */
+  /**
+   * Saves a project (new or existing); its payments' incomes follow (new, changed, removed, renamed),
+   * and so does its client when the project is concluded or reopened (automation, same transaction).
+   */
   const saveProject = useCallback(
     async (next: Project) => {
       const before = data.projects.find((p) => p.id === next.id)
       const ops: BatchOp[] = [
         { op: 'put', collection: 'projects', item: next },
         ...receiptOps(before ? projectReceipts(before) : [], projectReceipts(next), data.transactions, { settings, convert }),
+        ...(projectClientPlan(before, next, data, settings, new Date())?.ops ?? []),
       ]
       await commit(ops)
       return next
     },
-    [data.projects, data.transactions, settings, convert, commit],
+    [data, settings, convert, commit],
   )
 
   /** Saves sales (new or changed); incomes of their payments (specific and general) follow. */

@@ -67,7 +67,8 @@ export function planToolCharges(ctx: AutomationCtx, since: string): ItemPlan[] {
         runs.push(makeRun({ id, automation: 'toolCharge', date, summary: `${t.name}: a pagar`, origin, amount: t.price, currency: t.currency, created: [], changed, status: 'pending' }, ctx.now))
       }
     }
-    const ops: BatchOp[] = once ? [] : [{ op: 'put', collection: 'tools', item: { ...t, nextCharge: next, chargeDay: anchor } }]
+    const item: Tool = { ...t, nextCharge: next, chargeDay: anchor }
+    const ops: BatchOp[] = once ? [] : [{ op: 'put', collection: 'tools', item }]
     out.push({ runs, ops: [...ops, ...extra, ...runs.map(runPut)] })
   }
   return out.filter((p) => p.ops.length)
