@@ -178,7 +178,7 @@ export interface ReceiptCtx {
 }
 
 /** The moment the income is placed at: the payment's day (today = now; another day = noon of that day). */
-function instantFor(date: string, tz: string, now: Date, existing?: string): string {
+export function instantFor(date: string, tz: string, now: Date, existing?: string): string {
   if (existing && dayOf(existing, tz) === date) return existing
   if (date === todayIn(tz, now)) return now.toISOString()
   return zonedToInstant(date, '12:00', tz).toISOString()
