@@ -48,7 +48,8 @@ export function projectOutstanding(p: Project): Cents {
 export const ACTIVE_PROJECT_STATUSES = new Set<Project['status']>(['notStarted', 'inProgress', 'waitingClient', 'review'])
 
 export function isPaidTool(t: Tool): boolean {
-  return (t.status === 'active' || t.status === 'trial') && (t.billing === 'monthly' || t.billing === 'yearly') && t.price > 0
+  // A tool in "Teste" is not a paid expense anywhere in the app (same rule as the automation).
+  return t.status === 'active' && (t.billing === 'monthly' || t.billing === 'yearly') && t.price > 0
 }
 
 /**
