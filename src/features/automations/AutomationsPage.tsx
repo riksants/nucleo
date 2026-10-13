@@ -59,6 +59,9 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
   const path = ORIGIN_PATH[run.origin.collection]
   const done = run.status === 'done'
   const goal = run.automation === 'goalSave'
+  // The amount on the right, unless the summary already says it ("Pagamento automático de Ana: €50,00").
+  const money = run.amount !== undefined && run.amount > 0 && run.currency ? formatMoney(run.amount, run.currency) : null
+  const showMoney = money !== null && !run.summary.includes(money)
 
   const doUndo = async () => {
     const ok = await confirm({ title: 'Desfazer?', message: run.summary, confirmLabel: 'Desfazer' })
@@ -87,7 +90,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
             {STATUS_LABEL[run.status] && <Badge>{STATUS_LABEL[run.status]}</Badge>}
           </span>
         </span>
-        {run.amount !== undefined && run.amount > 0 && run.currency && <span className="num shrink-0 text-[15px] font-semibold">{formatMoney(run.amount, run.currency)}</span>}
+        {showMoney && <span className="num shrink-0 text-[15px] font-semibold">{money}</span>}
       </div>
       {(done || (goal && run.status === 'skipped')) && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
