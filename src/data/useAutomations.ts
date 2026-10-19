@@ -4,8 +4,10 @@ import { changeGoalMonth } from '../core/automation/goalSave'
 import { confirmSubscriberCharge, declineRun } from '../core/automation/subscriberCharge'
 import { confirmToolCharge } from '../core/automation/toolCharge'
 import type { AutomationCtx } from '../core/automation/types'
-import { undoRun } from '../core/automation/undo'
+import { linkedRuleRuns, undoRun } from '../core/automation/undo'
+import { planScheduledRules } from '../core/rules/schedule'
 import { todayIn, useToday, zoneOf } from '../core/period'
+import { applyOps } from '../core/rules/work'
 import { useStore } from './store'
 import type { AutomationId, AutomationRun, Cents } from './types'
 
@@ -33,8 +35,14 @@ export function useAutomations() {
           await updateSettings({ automations: defaults })
           return
         }
-        const ops = planAll({ data, settings, today, convert, now: new Date() }).flatMap((p) => p.ops)
+        const ctx = { data, settings, today, convert, now: new Date() }
+        const ops = planAll(ctx).flatMap((p) => p.ops)
+        // Parte 1 first (its writes may trigger rules); the date rules run in the next pass, on the new data.
         if (ops.length) await commit(ops, { by: 'automation' })
+        else {
+          const ruleOps = planScheduledRules(ctx)
+          if (ruleOps.length) await commit(ruleOps, { by: 'rule' })
+        }
       } catch (err) {
         console.error('Automações: falha numa passada', err)
       } finally {
@@ -63,14 +71,30 @@ export function useAutomationActions() {
 
   const decline = useCallback((run: AutomationRun) => commit(declineRun(run, 'Marcado como não pago')), [commit])
 
+  /** `alsoLinked`: the rule runs caused by a movement of this run are undone in the same write. */
   const undo = useCallback(
-    async (run: AutomationRun, status: 'undone' | 'skipped' = 'undone') => {
-      const { ops, partial } = undoRun(run, data, todayIn(zoneOf(settings)), status)
+    async (run: AutomationRun, status: 'undone' | 'skipped' = 'undone', alsoLinked = false) => {
+      const today = todayIn(zoneOf(settings))
+      const first = undoRun(run, data, today, status)
+      let ops = first.ops
+      let partial = first.partial
+      if (alsoLinked) {
+        // Each rule undo sees the records as the previous undos left them.
+        let state = data
+        for (const linked of linkedRuleRuns(run, data.automationRuns)) {
+          state = applyOps(state, ops)
+          const next = undoRun(linked, state, today)
+          ops = [...ops, ...next.ops]
+          partial ||= next.partial
+        }
+      }
       await commit(ops, { by: 'undo' })
       return { partial }
     },
     [data, settings, commit],
   )
+
+  const linkedRuns = useCallback((run: AutomationRun) => linkedRuleRuns(run, data.automationRuns), [data.automationRuns])
 
   const changeMonth = useCallback(
     async (run: AutomationRun, amount: Cents) => {
@@ -92,5 +116,5 @@ export function useAutomationActions() {
     [settings, updateSettings],
   )
 
-  return { confirm, decline, undo, changeMonth, setEnabled }
+  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns }
 }
