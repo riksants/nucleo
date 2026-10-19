@@ -76,7 +76,7 @@ interface Rule extends Entity {
 |---|---|
 | reserveFixed | valor na moeda da meta; meta ativa e "no meu saldo"; limitado ao que falta e ao Disponível |
 | reservePercent | só em gatilhos de dinheiro entrando; X% do valor do evento (arredonda para baixo), convertido para a moeda da meta pela cotação atual; sem cotação → não feita |
-| createTask | título com marcadores `{cliente}` `{projeto}` `{valor}` `{tarefa}` `{venda}`; prazo: sem data ou daqui N dias (a partir da data do evento); pode ligar ao projeto do evento |
+| createTask | título com marcadores `{cliente}` `{projeto}` `{valor}` `{tarefa}` `{venda}`; prazo: sem data, no mesmo dia ou daqui N dias (a partir do dia em que a regra rodou); pode ligar ao projeto do evento |
 | projectStatus / clientStatus | só o projeto/cliente do evento, para o status escolhido; projeto passa pela automação projeto→cliente da Parte 1 |
 | setCategory | só se a movimentação não tiver categoria e o tipo combinar |
 | createNote | título + texto com marcadores |
@@ -184,7 +184,7 @@ Agora não (30 dias) / Não sugerir isso novamente. "Por quê?" lista as ocorrê
 
 - **Minhas regras** (`/rules`), a partir de "Feito pelo Núcleo" e Configurações: sugestão no
   topo; cartões com nome, interruptor, frase-resumo, "Última vez · N vezes · Ver histórico";
-  menu: Editar, Duplicar, Subir, Descer, Excluir. Vazio: modelos prontos.
+  menu: Editar, Duplicar, Subir/Descer na ordem (no lugar de arrastar), Ver histórico, Excluir. Vazio: modelos prontos.
 - **Editor** (folha): QUANDO / SE / FAÇA com partes tocáveis em linguagem humana; "Em resumo"
   ao vivo; avisos (moeda, meta fora do saldo, automação pronta que já faz isso).
   "Salvar e ligar" / "Salvar desligada".
