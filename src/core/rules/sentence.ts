@@ -1,6 +1,8 @@
 /** A rule in the person's words: "Quando eu receber pagamento de um projeto, se o valor for maior que €500: reservar 20% para Impostos". */
 import { CLIENT_STATUS, PROJECT_STATUS, TASK_PRIORITY } from '../../data/labels'
-import type { Cents, Currency, Rule, RuleAction, RuleCondition } from '../../data/types'
+import type { Cents, Currency, DataState, Rule, RuleAction, RuleCondition, Settings } from '../../data/types'
+import { formatMoney } from '../../lib/money'
+import { categoryLabel, findCategory } from '../financeCategories'
 import { ORIGIN_LABEL, triggerInfo, WEEKDAY_LABEL } from './catalog'
 import type { RuleDraft } from './templates'
 
@@ -89,4 +91,19 @@ export function describeRule(rule: Pick<RuleDraft, 'trigger' | 'conditions' | 'a
   const cond = ifs.length ? `, se ${ifs.join(' e ')}` : ''
   const summary = `Quando ${when}${cond}: ${dos.length ? dos.join(' · ') : 'nada ainda'}.`
   return { when, ifs, dos, summary: summary.charAt(0).toUpperCase() + summary.slice(1) }
+}
+
+/** Names from the data (deleted items get a neutral word). */
+export function ruleNames(data: Pick<DataState, 'financeGoals' | 'clients' | 'projects'>, settings: Settings): Names {
+  const goals = new Map(data.financeGoals.map((g) => [g.id, g]))
+  const clients = new Map(data.clients.map((c) => [c.id, c.name]))
+  const projects = new Map(data.projects.map((p) => [p.id, p.name]))
+  return {
+    goal: (id) => goals.get(id)?.name,
+    goalCurrency: (id) => goals.get(id)?.currency,
+    client: (id) => clients.get(id),
+    project: (id) => projects.get(id),
+    category: (id) => (findCategory(settings, id) ? categoryLabel(settings, id) : 'categoria apagada'),
+    money: (c, cur) => formatMoney(c, cur),
+  }
 }

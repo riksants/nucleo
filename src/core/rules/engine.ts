@@ -15,7 +15,7 @@ import type { AutomationRun, DataState, Rule, Settings } from '../../data/types'
 import type { Converter } from '../../lib/rates'
 import { todayIn, zoneOf } from '../period'
 import { makeRun, runPut } from '../automation/types'
-import { matches } from './conditions'
+import { checkConditions, triggerMatches, type ConditionCheck } from './conditions'
 import { detectEvents } from './events'
 import { hash16 } from './hash'
 import { planActions } from './actions'
@@ -55,20 +55,78 @@ function runsToday(work: Work, ruleId: string, today: string): number {
   return work.list('automationRuns').filter((r) => r.rule?.id === ruleId && r.date === today).length
 }
 
+/** Chains (2.1): at most this many rules in one chain, and this many runs in one write. */
+export const MAX_CHAIN_DEPTH = 3
+export const MAX_RUNS_PER_WRITE = 20
+
+export type Matcher = (r: Rule, ev: RuleEvent) => ConditionCheck
+
+export interface ExecuteOptions {
+  /** Rules a chained event may reach (the write-time ones). Default: the same list. */
+  chainRules?: Rule[]
+}
+
+interface ChainState {
+  root: string | null
+  path: { id: string; name: string }[]
+  keys: Set<string>
+  budget: { runs: number; stopped: boolean }
+}
+
+/** Default matcher: trigger, then every condition (a value condition may convert, see checkCondition). */
+export const matcherFor =
+  (ctx: RuleCtx): Matcher =>
+  (r, ev) =>
+    triggerMatches(r, ev) ? checkConditions(r.conditions, ev, ctx) : { ok: false }
+
+/** The records a run wrote (its own created/changed entries, as they are now in `work`). */
+function runOps(work: Work, run: AutomationRun): BatchOp[] {
+  const seen = new Set<string>()
+  const ops: BatchOp[] = []
+  for (const e of [...run.created, ...run.changed]) {
+    const key = `${e.collection}:${e.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const item = work.get(e.collection, e.id)
+    if (item) ops.push({ op: 'put', collection: e.collection, item })
+  }
+  return ops
+}
+
+function stopRun(rule: Rule, ev: RuleEvent, ctx: RuleCtx, why: string): AutomationRun {
+  return makeRun(
+    { id: `rule-${rule.id}-stop-${hash16(ev.key)}`, automation: 'rule', date: ctx.today, summary: `Cadeia interrompida por segurança antes da regra “${rule.name}”`, detail: why, origin: ev.origin, created: [], changed: [], status: 'skipped', rule: { id: rule.id, name: rule.name } },
+    ctx.now,
+  )
+}
+
 /**
- * Runs the matching rules for each event on the working copy. `match` decides whether a rule
- * answers an event (default: trigger + conditions). Returns nothing: the writes are in `work`.
+ * Runs the matching rules for each event on the working copy. Returns nothing: the writes are in
+ * `work`. A rule with `chain` on lets the events of what IT wrote reach the other rules, with every
+ * guard: at most MAX_CHAIN_DEPTH rules per chain, no rule twice in a chain (no A→A, no A→B→A), no
+ * event twice in a chain, MAX_RUNS_PER_WRITE runs per write, and the daily limit.
  */
-export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ctx: RuleCtx, match: (r: Rule, ev: RuleEvent) => boolean = matches): void {
-  const known = new Set(work.list('automationRuns').map((r) => r.id))
+export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ctx: RuleCtx, match: Matcher = matcherFor(ctx), opts: ExecuteOptions = {}, chain?: ChainState): void {
+  const state: ChainState = chain ?? { root: null, path: [], keys: new Set(), budget: { runs: 0, stopped: false } }
   const paused = new Set<string>()
   for (const ev of events) {
+    if (state.path.length) {
+      if (state.keys.has(ev.key)) continue
+      state.keys.add(ev.key)
+    }
     for (const rule of rules) {
-      if (paused.has(rule.id) || !match(rule, ev)) continue
+      if (paused.has(rule.id) || state.path.some((p) => p.id === rule.id)) continue
+      const check = match(rule, ev)
+      if (check.ok === false) continue
       // A movement dated before the rule was turned on (e.g. an old payment whose income only now got a rate).
       if (ev.date < rule.since) continue
       const id = ruleRunId(rule.id, ev.key)
-      if (known.has(id)) continue
+      if (work.get('automationRuns', id)) continue
+      if (state.budget.runs >= MAX_RUNS_PER_WRITE) {
+        if (!state.budget.stopped) work.put('automationRuns', stopRun(rule, ev, ctx, `Mais de ${MAX_RUNS_PER_WRITE} execuções numa só ação. Nada além disso foi feito.`))
+        state.budget.stopped = true
+        return
+      }
       if (runsToday(work, rule.id, ctx.today) >= MAX_RUNS_PER_RULE_PER_DAY) {
         paused.add(rule.id)
         const reason = `Rodou ${MAX_RUNS_PER_RULE_PER_DAY} vezes hoje`
@@ -78,6 +136,21 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
         work.put('automationRuns', pausedRun)
         continue
       }
+      state.budget.runs++
+      const cause: NonNullable<AutomationRun['cause']> = {
+        key: ev.key,
+        label: ev.label,
+        ...(ev.txId ? { txId: ev.txId } : {}),
+        ...(ev.amount !== undefined && ev.currency ? { amount: ev.amount, currency: ev.currency } : {}),
+        ...(check.conversion ? { conversion: check.conversion } : {}),
+      }
+      const chainInfo = state.path.length ? { chain: { rootRunId: state.root!, path: [...state.path, { id: rule.id, name: rule.name }], depth: state.path.length } } : {}
+      if (check.ok === null) {
+        // A value condition could not be checked (no rate): the rule does not run, and says why.
+        work.put('automationRuns', makeRun({ id, automation: 'rule', date: ctx.today, summary: `Regra “${rule.name}” não rodou`, detail: `Não deu para conferir a condição: ${check.reason}.`, origin: ev.origin, created: [], changed: [], status: 'skipped', rule: { id: rule.id, name: rule.name }, cause, ...chainInfo }, ctx.now))
+        continue
+      }
+      const beforeRun = work.snapshot()
       const plan = planActions(rule, ev, work, ctx, id)
       const ok = plan.results.filter((r) => r.ok).map((r) => r.text)
       const notDone = plan.results.filter((r) => !r.ok).map((r) => r.text)
@@ -93,14 +166,22 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
           changed: plan.changed,
           status: ok.length ? 'done' : 'skipped',
           rule: { id: rule.id, name: rule.name },
-          cause: { key: ev.key, label: ev.label, ...(ev.txId ? { txId: ev.txId } : {}) },
+          cause,
           actions: plan.results,
+          ...chainInfo,
         },
         ctx.now,
       )
       if (!run.detail) delete run.detail
       work.put('automationRuns', run)
-      known.add(id)
+
+      // Chain: only when this rule allows it, only from what this run wrote, never past the depth.
+      const path = [...state.path, { id: rule.id, name: rule.name }]
+      if (rule.chain && ok.length && path.length < MAX_CHAIN_DEPTH) {
+        const next = detectEvents(beforeRun, runOps(work, run), ctx)
+        if (next.length) executeEvents(next, opts.chainRules ?? rules, work, ctx, matcherFor(ctx), opts, { root: state.root ?? id, path, keys: new Set([...state.keys, ev.key]), budget: state.budget })
+        if (state.budget.stopped) return
+      }
     }
   }
 }
@@ -117,7 +198,7 @@ export function planRulesForWrite(before: DataState, ops: BatchOp[], actor: Writ
   if (!events.length) return []
   const after = applyOps(before, ops)
   const work = new Work(after)
-  executeEvents(events, rules, work, ctx)
+  executeEvents(events, rules, work, ctx, matcherFor(ctx), { chainRules: rules })
   const extra = work.ops()
   assertNoInventedFacts(after, extra)
   return extra

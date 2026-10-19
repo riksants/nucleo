@@ -25,11 +25,16 @@ import { flattenMetrics } from '../snapshots'
 import { goalProgress } from '../weekGoals'
 import { summarySentences } from '../weekSummary'
 import type { Intent } from './intents'
+import type { RuleSketch } from './ruleSentence'
 import { proposalId, type Proposal } from './proposal'
 
 export interface Reply {
   lines: string[]
   list?: { title: string; meta?: string }[]
+  /** 2.1: a question with the options as buttons (tapping one continues the same rule). */
+  choices?: { label: string; sketch: RuleSketch }[]
+  /** 2.1: the rule being created, in the person's words (QUANDO / SE / FAÇA). */
+  rule?: { when: string; ifs: string[]; dos: string[] }
   proposal?: Proposal
   link?: { label: string; path: string; params?: Record<string, string> }
 }
@@ -40,7 +45,7 @@ export interface Ctx {
   now: Date
 }
 
-export const EXAMPLES = ['O que tenho hoje?', 'O que tenho amanhã?', 'Organiza meu dia', 'Organiza minha semana', 'Quanto gastei esta semana?', 'Resumo financeiro', 'Como estão minhas metas?', 'O que mudou neste mês?', 'Coloca comprar passagem nas minhas tarefas', 'Tenho reunião amanhã às 18h', 'Cria uma meta de treinar 4 vezes', 'Quero guardar R$ 5.000 até dezembro', 'Cria um hábito de beber água', 'Como está meu projeto da viagem?']
+export const EXAMPLES = ['O que tenho hoje?', 'O que tenho amanhã?', 'Organiza meu dia', 'Organiza minha semana', 'Quanto gastei esta semana?', 'Resumo financeiro', 'Como estão minhas metas?', 'O que mudou neste mês?', 'Coloca comprar passagem nas minhas tarefas', 'Tenho reunião amanhã às 18h', 'Cria uma meta de treinar 4 vezes', 'Quero guardar R$ 5.000 até dezembro', 'Cria um hábito de beber água', 'Como está meu projeto da viagem?', 'Sempre que eu receber de um projeto, guarda 20% para Impostos']
 
 const norm = (s: string) =>
   s

@@ -83,7 +83,7 @@ export function ProposalCard({ proposal, onDone }: { proposal: Proposal; onDone?
       {state === 'open' && (
         <div className="flex flex-wrap gap-2">
           <Button onClick={run} disabled={!chosen.size || busy} className={destructive ? 'bg-expense! hover:bg-expense/90!' : ''}>
-            {destructive ? 'Excluir' : proposal.kind === 'create' ? 'Criar' : 'Aplicar'}
+            {proposal.confirmLabel ?? (destructive ? 'Excluir' : proposal.kind === 'create' ? 'Criar' : 'Aplicar')}
           </Button>
           {!single && (
             <Button variant="secondary" onClick={() => setAdjusting(!adjusting)}>

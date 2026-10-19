@@ -6,7 +6,7 @@
  * - a category is only applied to a movement that has none;
  * - statuses change only on the project/client of the event, to the status the rule names.
  */
-import type { AutomationRun, Client, FinanceGoal, InboxItem, Note, Project, Rule, RuleAction, Task } from '../../data/types'
+import type { ActionCode, AutomationRun, Client, FinanceGoal, InboxItem, Note, Project, Rule, RuleAction, RunAction, Task } from '../../data/types'
 import { balanceOf } from '../../data/selectors'
 import { CLIENT_STATUS, PROJECT_STATUS } from '../../data/labels'
 import { formatMoney } from '../../lib/money'
@@ -20,7 +20,7 @@ import type { RuleCtx, RuleEvent } from './types'
 import type { Work } from './work'
 
 export interface ActionsPlan {
-  results: { text: string; ok: boolean }[]
+  results: RunAction[]
   created: AutomationRun['created']
   changed: AutomationRun['changed']
 }
@@ -35,10 +35,19 @@ export function fingerprint(item: object): string {
 const ddmm = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`
 const labelOf = (list: { value: string; label: string }[], v: string) => list.find((o) => o.value === v)?.label ?? v
 
-class NotDone extends Error {}
-const fail = (reason: string): never => {
-  throw new NotDone(reason)
+class NotDone extends Error {
+  code: ActionCode
+  constructor(message: string, code: ActionCode = 'final') {
+    super(message)
+    this.code = code
+  }
 }
+const fail = (reason: string, code?: ActionCode): never => {
+  throw new NotDone(reason, code)
+}
+
+/** Reasons that may change by themselves or by the person (a rate arrives, money comes in, the goal is put in the balance). */
+export const RETRYABLE = new Set<ActionCode>(['noRate', 'noAvailable', 'goalNotInBalance'])
 
 /** Disponível now (base currency), from the working copy: the movement of this event included. */
 function availableBase(work: Work, ctx: RuleCtx): number {
@@ -71,7 +80,7 @@ function reserve(a: Extract<RuleAction, { kind: 'reserveFixed' | 'reservePercent
   const g = work.get('financeGoals', a.goalId)
   if (!g) return fail('a meta não existe mais')
   if (g.status !== 'active') return fail(`a meta ${g.name} está arquivada`)
-  if (!g.inBalance) return fail(`a meta ${g.name} não está marcada como “Este dinheiro está no meu saldo”`)
+  if (!g.inBalance) return fail(`a meta ${g.name} não está marcada como “Este dinheiro está no meu saldo”`, 'goalNotInBalance')
   const missing = g.target - g.saved
   if (missing <= 0) return fail(`a meta ${g.name} já foi atingida`)
   const m = (c: number, cur = g.currency) => formatMoney(c, cur)
@@ -83,7 +92,7 @@ function reserve(a: Extract<RuleAction, { kind: 'reserveFixed' | 'reservePercent
     if (ev.amount === undefined || !ev.currency) return fail('este acontecimento não tem valor')
     const raw = Math.floor((ev.amount * a.percent) / 100)
     const converted = ev.currency === g.currency ? raw : ctx.convert(raw, ev.currency, g.currency)
-    if (converted === null) return fail(`sem cotação para converter ${ev.currency} em ${g.currency}`)
+    if (converted === null) return fail(`sem cotação para converter ${ev.currency} em ${g.currency}`, 'noRate')
     planned = Math.floor(converted)
     how = ` (${a.percent}% de ${m(ev.amount, ev.currency)})`
   }
@@ -91,9 +100,9 @@ function reserve(a: Extract<RuleAction, { kind: 'reserveFixed' | 'reservePercent
 
   const base = ctx.settings.baseCurrency
   const free = ctx.convert(Math.max(availableBase(work, ctx), 0), base, g.currency)
-  if (free === null) return fail(`sem cotação de ${g.currency} para calcular o disponível`)
+  if (free === null) return fail(`sem cotação de ${g.currency} para calcular o disponível`, 'noRate')
   const reserved = Math.max(0, Math.min(planned, missing, Math.floor(free)))
-  if (reserved <= 0) return fail('saldo disponível insuficiente')
+  if (reserved <= 0) return fail('saldo disponível insuficiente', 'noAvailable')
 
   const saved = g.saved + reserved
   const next: FinanceGoal = { ...g, saved, history: withSaved(g, saved, ctx.today) }
@@ -177,19 +186,31 @@ function one(rule: Rule, a: RuleAction, ev: RuleEvent, work: Work, ctx: RuleCtx,
   }
 }
 
+/**
+ * One action (index `i` of its rule) on the working copy. Everything it creates or changes is tagged
+ * with `i`, so it can be undone alone. Ids of created records come from `newId` (fixed per run/attempt).
+ */
+export function planAction(rule: Pick<Rule, 'name'>, a: RuleAction, i: number, ev: RuleEvent, work: Work, ctx: RuleCtx, newId: () => string, plan: ActionsPlan): RunAction {
+  const c0 = plan.created.length
+  const ch0 = plan.changed.length
+  let result: RunAction
+  try {
+    result = { text: one(rule as Rule, a, ev, work, ctx, newId, plan), ok: true, def: a }
+  } catch (err) {
+    const reason = err instanceof NotDone ? err.message : 'erro inesperado'
+    if (!(err instanceof NotDone)) console.error('Regras: falha numa ação', err)
+    result = { text: `${actionName(a, work)}: ${reason}`, ok: false, def: a, code: err instanceof NotDone ? err.code : 'final' }
+  }
+  for (let k = c0; k < plan.created.length; k++) plan.created[k] = { ...plan.created[k], action: i }
+  for (let k = ch0; k < plan.changed.length; k++) plan.changed[k] = { ...plan.changed[k], action: i }
+  return result
+}
+
 /** Plans every action of `rule` for `ev` on the working copy; created records get ids `<runId>-<n>`. */
 export function planActions(rule: Rule, ev: RuleEvent, work: Work, ctx: RuleCtx, runId: string): ActionsPlan {
   const plan: ActionsPlan = { results: [], created: [], changed: [] }
   let n = 0
   const newId = () => `${runId}-${++n}`
-  for (const a of rule.actions) {
-    try {
-      plan.results.push({ text: one(rule, a, ev, work, ctx, newId, plan), ok: true })
-    } catch (err) {
-      const reason = err instanceof NotDone ? err.message : 'erro inesperado'
-      if (!(err instanceof NotDone)) console.error('Regras: falha numa ação', err)
-      plan.results.push({ text: `${actionName(a, work)}: ${reason}`, ok: false })
-    }
-  }
+  rule.actions.forEach((a, i) => plan.results.push(planAction(rule, a, i, ev, work, ctx, newId, plan)))
   return plan
 }

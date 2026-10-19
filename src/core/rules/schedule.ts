@@ -12,8 +12,8 @@ import { dayInMonth } from '../automation/dates'
 import { makeRun, type AutomationCtx } from '../automation/types'
 import { addDaysToDate, weekdayOfDate } from '../period'
 import { triggerInfo } from './catalog'
-import { conditionsHold } from './conditions'
-import { activeRules, assertNoInventedFacts, executeEvents, ruleRunId } from './engine'
+import { checkConditions } from './conditions'
+import { activeRules, assertNoInventedFacts, executeEvents, matcherFor, ruleRunId, type Matcher } from './engine'
 import type { RuleCtx, RuleEvent } from './types'
 import { Work } from './work'
 
@@ -43,9 +43,15 @@ const noReserve = (rule: Rule): Rule => ({ ...rule, actions: rule.actions.filter
 
 /** Everything the date rules should write now (runs already written are left out). */
 export function planScheduledRules(actx: AutomationCtx): BatchOp[] {
-  const rules = activeRules(actx.data.rules ?? []).filter((r) => triggerInfo(r.trigger.kind).scheduled).map(noReserve)
+  const active = activeRules(actx.data.rules ?? [])
+  const rules = active.filter((r) => triggerInfo(r.trigger.kind).scheduled).map(noReserve)
+  // A date rule allowed to chain may reach the write-time rules.
+  const chainRules = active.filter((r) => !triggerInfo(r.trigger.kind).scheduled)
   if (!rules.length) return []
   const ctx: RuleCtx = { settings: actx.settings, today: actx.today, convert: actx.convert, now: actx.now }
+  // The date rule itself: only its conditions (its "trigger" is the date). Chained rules: trigger + conditions.
+  const any = matcherFor(ctx)
+  const own = (ruleId: string): Matcher => (r, e) => (r.id === ruleId ? checkConditions(r.conditions, e, ctx) : any(r, e))
   const work = new Work(actx.data)
   const known = new Set(actx.data.automationRuns.map((r) => r.id))
   const today = actx.today
@@ -60,7 +66,7 @@ export function planScheduledRules(actx: AutomationCtx): BatchOp[] {
         const projeto = t.projectId ? (actx.data.projects.find((p) => p.id === t.projectId) as Project | undefined)?.name : undefined
         events.push({ key: `overdue:${t.id}:${t.dueDate}`, kind: 'taskOverdue', date: today, origin: { collection: 'tasks', id: t.id, label: t.title }, label: `Tarefa atrasada: ${t.title}`, projectId: t.projectId, priority: t.priority, text: t.title, names: { tarefa: t.title, projeto } })
       }
-      executeEvents(events, [rule], work, ctx, (r, ev) => conditionsHold(r.conditions, ev))
+      executeEvents(events, [rule], work, ctx, own(rule.id), { chainRules })
       continue
     }
 
@@ -75,7 +81,7 @@ export function planScheduledRules(actx: AutomationCtx): BatchOp[] {
       known.add(id)
     }
     const ev: RuleEvent = { key: `day:${latest}`, kind: 'date', date: latest, origin: { collection: 'rules', id: rule.id, label: rule.name }, label: `Dia ${ddmm(latest)}`, names: {} }
-    executeEvents([ev], [rule], work, { ...ctx, today: latest }, (r, e) => conditionsHold(r.conditions, e))
+    executeEvents([ev], [rule], work, { ...ctx, today: latest }, own(rule.id), { chainRules })
   }
   const ops = work.ops()
   assertNoInventedFacts(actx.data, ops)

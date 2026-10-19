@@ -833,19 +833,51 @@ export interface AutomationRun extends Entity {
   amount?: Cents
   currency?: Currency
   /** Records it created (removed by undo; with `fp`, only while still exactly as created). */
-  created: { collection: CollectionName; id: string; fp?: string }[]
+  created: { collection: CollectionName; id: string; fp?: string; action?: number }[]
   /** Fields it changed (restored by undo only if they still hold `after`; `delta`: amount added to a goal). */
-  changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown; delta?: Cents }[]
+  changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown; delta?: Cents; action?: number }[]
   /** pending: waiting for the person (A receber / A pagar). */
   status: AutomationRunStatus
   /** Confirmed by the person from "A receber"/"A pagar": undoing takes it back to pending. */
   fromPending?: true
   /** Rules: which rule ran. */
   rule?: { id: string; name: string }
-  /** Rules: the event that made it run (`txId` when it was a movement in Financeiro). */
-  cause?: { key: string; label: string; txId?: string }
-  /** Rules: each action, done or not (with the reason). */
-  actions?: { text: string; ok: boolean }[]
+  /**
+   * Rules: the event that made it run (`txId` when it was a movement in Financeiro). 2.1: its value
+   * (to try a reservation again with the same numbers) and, when a value condition converted it,
+   * exactly how (so the history stays explainable after the rate changes).
+   */
+  cause?: { key: string; label: string; txId?: string; amount?: Cents; currency?: Currency; conversion?: RunConversion }
+  /** Rules: each action, done or not (with the reason). 2.1 runs carry the rest (older ones only text/ok). */
+  actions?: RunAction[]
+  /** 2.1: run started by another rule's action ("Permitir que ações desta regra ativem outras regras"). */
+  chain?: { rootRunId: string; path: { id: string; name: string }[]; depth: number }
+}
+
+/** Why an action was not done. Only the `retryable` ones offer "Tentar de novo". */
+export type ActionCode = 'noRate' | 'noAvailable' | 'goalNotInBalance' | 'final'
+
+export interface RunAction {
+  text: string
+  ok: boolean
+  /** 2.1: the action as it was in the rule when it ran (a later edit of the rule never changes a retry). */
+  def?: RuleAction
+  code?: ActionCode
+  /** 2.1: undone alone ("Desfazer só esta ação"). */
+  undone?: boolean
+  /** 2.1: "Tentar de novo", each with a fixed id (the same attempt is never applied twice). */
+  attempts?: { id: string; at: string; ok: boolean; text: string }[]
+}
+
+export interface RunConversion {
+  from: Currency
+  amount: Cents
+  to: Currency
+  converted: Cents
+  /** Units of `to` per 1 `from`. */
+  rate: number
+  /** When that rate was obtained (ISO), or "manual" for a rate typed by the person. */
+  rateAt: string
 }
 
 /* ----------------------------- Regras (Automações Parte 2) ----------------------------- */
@@ -885,7 +917,12 @@ export interface RuleTrigger {
 /** Every condition must hold (AND). Several values in one condition mean "any of them" (OR). */
 export type RuleCondition =
   /** Only events in this same currency can match (never converted). */
-  | { field: 'amount'; op: 'gt' | 'lt' | 'between'; value: Cents; value2?: Cents; currency: Currency }
+  /**
+   * Only events in this same currency can match (never converted) — unless `compare: 'base'`
+   * (2.1, opt-in): other currencies are converted to `currency` with the app's rates; no rate → the
+   * rule does not run for that event and says why.
+   */
+  | { field: 'amount'; op: 'gt' | 'lt' | 'between'; value: Cents; value2?: Cents; currency: Currency; compare?: 'same' | 'base' }
   | { field: 'currency'; values: Currency[] }
   | { field: 'category'; values: string[] }
   | { field: 'origin'; values: MoneyOrigin[] }
@@ -933,4 +970,6 @@ export interface Rule extends Entity {
   template?: string
   /** Turned off by the safety limit (too many runs in one day). */
   paused?: { at: string; reason: string }
+  /** 2.1: "Permitir que ações desta regra ativem outras regras". Missing = off (every older rule). */
+  chain?: boolean
 }

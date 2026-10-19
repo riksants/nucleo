@@ -172,8 +172,18 @@ export function RulesPage() {
   // ?open=<rule id> (from "Feito pelo Núcleo") · ?suggestion=1 (from Início).
   const openId = route.params.get('open')
   const fromHome = route.params.get('suggestion')
+  const fromAssistant = route.params.get('draft')
   useEffect(() => {
-    if (openId) {
+    if (fromAssistant) {
+      // "Ajustar no editor" from the Assistant: only opens the editor, nothing is saved.
+      try {
+        const d = JSON.parse(fromAssistant) as Draft
+        if (d && typeof d.name === 'string' && d.trigger?.kind && Array.isArray(d.conditions) && Array.isArray(d.actions)) edit({ name: d.name, trigger: d.trigger, conditions: d.conditions, actions: d.actions })
+      } catch {
+        /* a broken link opens the page as usual */
+      }
+      clearParams()
+    } else if (openId) {
       const r = data.rules.find((x) => x.id === openId)
       if (r) edit(draftOf(r), r)
       clearParams()
@@ -182,7 +192,7 @@ export function RulesPage() {
       clearParams()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openId, fromHome])
+  }, [openId, fromHome, fromAssistant])
 
   return (
     <>

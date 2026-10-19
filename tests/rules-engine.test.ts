@@ -98,10 +98,10 @@ describe('motor: execução na gravação', () => {
     expect(run).toMatchObject({ automation: 'rule', status: 'done', rule: { id: 'imp' }, cause: { txId: 'rcv-project-pay1' } })
     const g = puts(ops, 'financeGoals')[0] as unknown as FinanceGoal
     expect(g.saved).toBe(24000)
-    expect(run.changed).toEqual([{ collection: 'financeGoals', id: 'g1', field: 'saved', before: 0, after: 24000, delta: 24000 }])
+    expect(run.changed).toEqual([{ collection: 'financeGoals', id: 'g1', field: 'saved', before: 0, after: 24000, delta: 24000, action: 0 }])
     const t = puts(ops, 'tasks')[0]
     expect(t).toMatchObject({ id: `${run.id}-1`, title: 'Enviar recibo a Ana', projectId: 'p1', status: 'todo' })
-    expect(run.created).toEqual([{ collection: 'tasks', id: `${run.id}-1`, fp: expect.any(String) }])
+    expect(run.created).toEqual([{ collection: 'tasks', id: `${run.id}-1`, fp: expect.any(String), action: 1 }])
     // Nunca cria dinheiro: nenhuma movimentação nas ops da regra.
     expect(puts(ops, 'transactions')).toHaveLength(0)
   })
@@ -139,7 +139,7 @@ describe('motor: execução na gravação', () => {
     const noRate = planRulesForWrite(base([r]), [put('transactions', projectPayment(60000, 'USD'))], 'person', ctx())
     const [run] = runsOf(noRate)
     expect(run.status).toBe('done')
-    expect(run.actions).toEqual([{ ok: false, text: 'Reservar para Impostos: sem cotação para converter USD em EUR' }, { ok: true, text: 'criou a tarefa “Recibo”' }])
+    expect(run.actions).toMatchObject([{ ok: false, code: 'noRate', text: 'Reservar para Impostos: sem cotação para converter USD em EUR' }, { ok: true, text: 'criou a tarefa “Recibo”' }])
     expect(run.detail).toBe('Não fez: Reservar para Impostos: sem cotação para converter USD em EUR')
   })
 

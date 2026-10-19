@@ -1,34 +1,20 @@
 import { useCallback, useMemo } from 'react'
 import { dayInMonth } from '../../core/automation/dates'
-import { findCategory } from '../../core/financeCategories'
 import { todayIn, zoneOf } from '../../core/period'
-import type { Names } from '../../core/rules/sentence'
+import { ruleNames, type Names } from '../../core/rules/sentence'
+import { ruleRecord } from '../../core/rules/build'
 import { markSuggestion, ruleSuggestions, SNOOZE_DAYS, visibleSuggestion, type RuleSuggestion } from '../../core/rules/suggestions'
 import type { RuleDraft } from '../../core/rules/templates'
 import { addDaysToDate } from '../../core/period'
 import { newId, useStore } from '../../data/store'
 import type { AutomationRun, Rule, Tool } from '../../data/types'
-import { formatMoney } from '../../lib/money'
-import { categoryLabel } from '../../core/financeCategories'
 
 const byOrder = (a: Rule, b: Rule) => a.order - b.order || (a.createdAt < b.createdAt ? -1 : 1)
 
 /** Names for the sentences of the rules (deleted items get a neutral word). */
 export function useRuleNames(): Names {
   const { data, settings } = useStore()
-  return useMemo(() => {
-    const goals = new Map(data.financeGoals.map((g) => [g.id, g]))
-    const clients = new Map(data.clients.map((c) => [c.id, c.name]))
-    const projects = new Map(data.projects.map((p) => [p.id, p.name]))
-    return {
-      goal: (id) => goals.get(id)?.name,
-      goalCurrency: (id) => goals.get(id)?.currency,
-      client: (id) => clients.get(id),
-      project: (id) => projects.get(id),
-      category: (id) => (findCategory(settings, id) ? categoryLabel(settings, id) : 'categoria apagada'),
-      money: (c, cur) => formatMoney(c, cur),
-    }
-  }, [data.financeGoals, data.clients, data.projects, settings])
+  return useMemo(() => ruleNames(data, settings), [data, settings])
 }
 
 export function ruleStats(ruleId: string, runs: AutomationRun[]): { count: number; last: string | null } {
@@ -43,21 +29,7 @@ export function useRules() {
 
   /** New (no `id`) or edited. Turning on (again) starts today: nothing before is caught up. */
   const saveRule = useCallback(
-    async (draft: RuleDraft, on: boolean, existing?: Rule) => {
-      const turningOn = on && (!existing || !existing.on || existing.paused)
-      const order = existing?.order ?? (rules.length ? Math.max(...rules.map((r) => r.order)) + 1 : 0)
-      const { paused: _p, ...rest } = existing ?? ({} as Partial<Rule>)
-      void _p
-      const next = {
-        ...rest,
-        ...draft,
-        on,
-        order,
-        since: turningOn ? today : (existing?.since ?? today),
-        ...(existing?.paused && !on ? { paused: existing.paused } : {}),
-      }
-      return save('rules', next as Rule)
-    },
+    (draft: RuleDraft & { name: string }, on: boolean, existing?: Rule) => save('rules', ruleRecord(draft, on, existing, rules, today, newId) as Rule),
     [rules, today, save],
   )
 

@@ -29,6 +29,8 @@ export interface Proposal {
   changes: Change[]
   /** Neutral notes shown with the proposal ("o que não coube", "faixa usada"). */
   notes: string[]
+  /** Text of the confirm button (default: Criar / Aplicar / Excluir). */
+  confirmLabel?: string
 }
 
 export const isDestructive = (p: Proposal) => p.kind === 'delete' || p.changes.some((c) => c.ops.some((o) => o.op === 'remove'))

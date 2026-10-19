@@ -4,6 +4,9 @@ import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { runIntent, type Reply } from '../../core/assistant/actions'
 import { aiActive, resolveIntent } from '../../core/assistant/resolve'
+import { ruleReply } from '../../core/assistant/ruleReply'
+import { readRuleSentence, type RuleSketch } from '../../core/assistant/ruleSentence'
+import { newId } from '../../data/store'
 import { aiAvailable, interpretWithAi } from './ai'
 import { ASSISTANT_LIMIT, type Insight } from '../../core/insights'
 import { replanItem } from '../../core/reorganize'
@@ -30,7 +33,7 @@ const MAX = 20
 
 const QUICK = ['Organizar meu dia', 'Organizar minha semana', 'O que tenho hoje?', 'Como estão minhas metas?', 'Resumo financeiro']
 
-function ReplyView({ reply, onFollow }: { reply: Reply; onFollow(text: string): void }) {
+function ReplyView({ reply, onFollow, onChoose }: { reply: Reply; onFollow(text: string): void; onChoose(label: string, sketch: RuleSketch): void }) {
   return (
     <div className="min-w-0">
       {reply.lines.map((l, i) => (
@@ -55,6 +58,37 @@ function ReplyView({ reply, onFollow }: { reply: Reply; onFollow(text: string): 
             </li>
           ))}
         </ul>
+      )}
+      {reply.rule && (
+        <div className="card mt-2 space-y-2 px-4 py-3.5">
+          <p className="text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Quando</p>
+          <p className="text-[15px] leading-snug first-letter:uppercase">{reply.rule.when}</p>
+          {reply.rule.ifs.length > 0 && (
+            <>
+              <p className="pt-1 text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Se</p>
+              {reply.rule.ifs.map((x) => (
+                <p key={x} className="text-[15px] leading-snug first-letter:uppercase">
+                  {x}
+                </p>
+              ))}
+            </>
+          )}
+          <p className="pt-1 text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Faça</p>
+          {reply.rule.dos.map((x) => (
+            <p key={x} className="text-[15px] leading-snug first-letter:uppercase">
+              → {x}
+            </p>
+          ))}
+        </div>
+      )}
+      {reply.choices && reply.choices.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {reply.choices.map((c) => (
+            <button key={c.label} type="button" onClick={() => onChoose(c.label, c.sketch)} className="press rounded-full border border-line bg-surface px-4 py-2 text-[15px] text-ink hover:border-accent-hi/60">
+              {c.label}
+            </button>
+          ))}
+        </div>
       )}
       {reply.proposal && <ProposalCard proposal={reply.proposal} />}
       {reply.link && (
@@ -98,6 +132,13 @@ export function AssistantPage() {
     if (!question) return
     setText('')
     const { settings: s0 } = latest.current
+    // A rule sentence ("Sempre que…, guarda 20% para…"): preview first, never written without confirming.
+    const sketch = readRuleSentence(question)
+    if (sketch) {
+      const { data: d, settings: s } = latest.current
+      push([{ from: 'me', text: question }, { from: 'nucleo', reply: ruleReply(sketch, { data: d, settings: s, now: new Date(), newId }) }])
+      return
+    }
     const today = nowIn(zoneOf(s0)).date
     // Local commands first; the optional AI only when on, consented, online — never otherwise.
     const r = await resolveIntent(question, today, { ai: s0.assistantAi, online: navigator.onLine, available: aiAvailable(), call: interpretWithAi })
@@ -106,6 +147,11 @@ export function AssistantPage() {
     if (r.via === 'ai') reply.lines = [...reply.lines, '(interpretado com IA)']
     if (r.note) reply.lines = [r.note, ...reply.lines]
     push([{ from: 'me', text: question }, { from: 'nucleo', reply }])
+  }
+  /** A tapped option of a question (which goal, which currency): the same rule continues. */
+  const choose = (label: string, sketch: RuleSketch) => {
+    const { data: d, settings: s } = latest.current
+    push([{ from: 'me', text: label }, { from: 'nucleo', reply: ruleReply(sketch, { data: d, settings: s, now: new Date(), newId }) }])
   }
   // "?ask=" from other screens (e.g. Hoje → Organizar meu dia).
   useEffect(() => {
@@ -165,7 +211,7 @@ export function AssistantPage() {
               </p>
             ) : (
               <div key={m.id} className="max-w-full">
-                <ReplyView reply={m.reply!} onFollow={ask} />
+                <ReplyView reply={m.reply!} onFollow={ask} onChoose={choose} />
               </div>
             ),
           )}

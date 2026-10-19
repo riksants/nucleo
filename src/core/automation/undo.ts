@@ -20,45 +20,34 @@ export function linkedRuleRuns(run: AutomationRun, runs: AutomationRun[]): Autom
   return runs.filter((r) => r.automation === 'rule' && r.status === 'done' && r.cause?.txId && txs.has(r.cause.txId))
 }
 
-export function undoRun(run: AutomationRun, data: DataState, today: string, nextStatus: 'undone' | 'skipped' = 'undone'): { ops: BatchOp[]; partial: boolean } {
+type Created = AutomationRun['created'][number]
+type Changed = AutomationRun['changed'][number]
+
+/**
+ * Puts back what `created`/`changed` did, with every protection: a created record edited later stays;
+ * a field changed later stays; a goal loses exactly the reserved amount. `touched` collects the
+ * records to write (each edited once).
+ */
+function revert(run: AutomationRun, created: Created[], changed: Changed[], data: DataState, today: string, touched: Map<string, { collection: CollectionName; item: Record<string, unknown> }>) {
   const ops: BatchOp[] = []
   let partial = false
   const find = (collection: CollectionName, id: string) => (data[collection] as Entity[]).find((x) => x.id === id)
-  for (const c of run.created) {
+  for (const c of created) {
     const item = find(c.collection, c.id)
     if (!item) continue
     if (c.fp !== undefined && fingerprint(item) !== c.fp) partial = true
     else ops.push({ op: 'remove', collection: c.collection, id: c.id })
   }
-
-  // Every record touched, edited once and written once.
-  const touched = new Map<string, { collection: CollectionName; item: Record<string, unknown> }>()
   const record = (collection: CollectionName, id: string) => {
     const key = `${collection}:${id}`
     if (!touched.has(key)) {
-      const item = (data[collection] as Entity[]).find((x) => x.id === id)
+      const item = find(collection, id)
       if (!item) return null
       touched.set(key, { collection, item: { ...item } })
     }
     return touched.get(key)!.item
   }
-
-  if (run.automation === 'subscriberCharge' && run.status === 'done') {
-    const s = record('subscribers', run.origin.id) as unknown as Subscriber | null
-    if (s) s.payments = s.payments.filter((p) => p.id !== run.id)
-  }
-
-  // A confirmation undone: the money goes, the charge stays "A receber"/"A pagar" (the cycle happened).
-  if (run.fromPending) {
-    for (const { collection, item } of touched.values()) ops.push({ op: 'put', collection, item: item as unknown as Entity } as BatchOp)
-    const { fromPending: _f, ...rest } = run
-    void _f
-    const summary = run.automation === 'subscriberCharge' ? `Cobrança de ${run.origin.label}: a receber` : `${run.origin.label}: a pagar`
-    ops.push(runPut({ ...rest, status: 'pending', summary, created: [] }))
-    return { ops, partial: false }
-  }
-
-  for (const ch of run.changed) {
+  for (const ch of changed) {
     const item = record(ch.collection, ch.id)
     if (!item) continue
     if (ch.collection === 'financeGoals' && ch.field === 'saved' && (ch.delta !== undefined || run.automation === 'goalSave')) {
@@ -71,8 +60,60 @@ export function undoRun(run: AutomationRun, data: DataState, today: string, next
       else item[ch.field] = ch.before
     } else partial = true
   }
+  return { ops, partial, record }
+}
 
+/** An entry of an action already undone alone is never undone a second time. */
+const stillApplied = (run: AutomationRun) => (e: { action?: number }) => e.action === undefined || !run.actions?.[e.action]?.undone
+
+export function undoRun(run: AutomationRun, data: DataState, today: string, nextStatus: 'undone' | 'skipped' = 'undone'): { ops: BatchOp[]; partial: boolean } {
+  const touched = new Map<string, { collection: CollectionName; item: Record<string, unknown> }>()
+
+  // A confirmation undone: the money goes, the charge stays "A receber"/"A pagar" (the cycle happened).
+  if (run.fromPending) {
+    const { ops, record } = revert(run, run.created, [], data, today, touched)
+    if (run.automation === 'subscriberCharge' && run.status === 'done') {
+      const s = record('subscribers', run.origin.id) as unknown as Subscriber | null
+      if (s) s.payments = s.payments.filter((p) => p.id !== run.id)
+    }
+    for (const { collection, item } of touched.values()) ops.push({ op: 'put', collection, item: item as unknown as Entity } as BatchOp)
+    const { fromPending: _f, ...rest } = run
+    void _f
+    const summary = run.automation === 'subscriberCharge' ? `Cobrança de ${run.origin.label}: a receber` : `${run.origin.label}: a pagar`
+    ops.push(runPut({ ...rest, status: 'pending', summary, created: [] }))
+    return { ops, partial: false }
+  }
+
+  const keep = stillApplied(run)
+  const { ops, partial, record } = revert(run, run.created.filter(keep), run.changed.filter(keep), data, today, touched)
+  if (run.automation === 'subscriberCharge' && run.status === 'done') {
+    const s = record('subscribers', run.origin.id) as unknown as Subscriber | null
+    if (s) s.payments = s.payments.filter((p) => p.id !== run.id)
+  }
   for (const { collection, item } of touched.values()) ops.push({ op: 'put', collection, item: item as unknown as Entity } as BatchOp)
   ops.push(runPut({ ...run, status: nextStatus }))
+  return { ops, partial }
+}
+
+/** Can this one action of a rule run be undone alone? (Runs before 2.1 don't know which record came from which action.) */
+export function canUndoAction(run: AutomationRun, i: number): boolean {
+  const a = run.actions?.[i]
+  if (run.automation !== 'rule' || run.status !== 'done' || !a?.ok || a.undone) return false
+  return [...run.created, ...run.changed].some((e) => e.action === i)
+}
+
+/**
+ * "Desfazer só esta ação": the same protections as undoing everything, only for the records of
+ * action `i`. When every action that was done is undone, the run becomes undone.
+ */
+export function undoAction(run: AutomationRun, i: number, data: DataState, today: string): { ops: BatchOp[]; partial: boolean } | null {
+  if (!canUndoAction(run, i)) return null
+  const touched = new Map<string, { collection: CollectionName; item: Record<string, unknown> }>()
+  const mine = (e: { action?: number }) => e.action === i
+  const { ops, partial } = revert(run, run.created.filter(mine), run.changed.filter(mine), data, today, touched)
+  for (const { collection, item } of touched.values()) ops.push({ op: 'put', collection, item: item as unknown as Entity } as BatchOp)
+  const actions = run.actions!.map((a, k) => (k === i ? { ...a, undone: true } : a))
+  const allUndone = actions.every((a) => !a.ok || a.undone)
+  ops.push(runPut({ ...run, actions, status: allUndone ? 'undone' : run.status }))
   return { ops, partial }
 }
