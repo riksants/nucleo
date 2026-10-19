@@ -9,11 +9,12 @@
  * Nothing becomes a rule without the person saving it in the editor.
  */
 import { isEnabled } from '../../app/modules'
-import type { AutomationRun, Cents, Client, Currency, DataState, InsightMark, MoneyOrigin, Rule, Sale, Settings, Transaction } from '../../data/types'
+import type { AutomationRun, Cents, Client, Currency, DataState, InsightMark, MoneyOrigin, Rule, Sale, Settings, Transaction, Weekday } from '../../data/types'
 import { formatMoney } from '../../lib/money'
 import { categoryLabel } from '../financeCategories'
 import { dayOf } from '../indexes'
-import { addDaysToDate, zoneOf } from '../period'
+import { addDaysToDate, weekdayOfDate, zoneOf } from '../period'
+import { WEEKDAY_LABEL } from './catalog'
 import type { RuleDraft } from './templates'
 import { normalize } from './text'
 
@@ -87,7 +88,23 @@ function reserveAfterIncome(data: DataState, settings: Settings, today: string):
       if (hits.length < 4) continue
       const m = median(hits.map((h) => h.ratio))
       const close = hits.filter((h) => Math.abs(h.ratio - m) <= 0.03).sort((a, b) => (a.day < b.day ? -1 : 1))
-      if (close.length < 4 || close.length / all.length < 0.75) continue
+      if (close.length < 4 || close.length / all.length < 0.75) {
+        // 2.1: the same AMOUNT each time (±5%) instead of the same share: "reservar valor fixo".
+        const md = median(hits.map((h) => h.delta))
+        const same = hits.filter((h) => Math.abs(h.delta - md) <= md * 0.05).sort((a, b) => (a.day < b.day ? -1 : 1))
+        if (same.length < 4 || same.length / all.length < 0.75) continue
+        if (daysBetween(same[0].day, same.at(-1)!.day) < 21 || daysBetween(same.at(-1)!.day, today) > RECENT) continue
+        const amount = Math.round(md)
+        const fmt = (c: number) => formatMoney(c, goal.currency)
+        out.push({
+          key: `reserveFixed:${g.key}:${goal.id}:${amount}`,
+          title: `Você guardou cerca de ${fmt(amount)} em ${goal.name} depois dos últimos ${same.length} ${g.label}. Quer automatizar?`,
+          why: `Em ${same.length} de ${all.length} ${g.label} dos últimos ${WINDOW} dias, você guardou perto de ${fmt(amount)} em ${goal.name} até 2 dias depois.`,
+          items: same.map((h) => `${ddmm(h.day)} · ${fmt(h.amount)} → ${fmt(h.delta)}`),
+          draft: { name: `Reservar ${fmt(amount)} para ${goal.name}`, trigger: { kind: TRIGGER_FOR[g.origin] ?? 'moneyIn' }, conditions: g.category ? [{ field: 'category', values: [g.category] }] : [], actions: [{ kind: 'reserveFixed', goalId: goal.id, amount }] },
+        })
+        continue
+      }
       if (daysBetween(close[0].day, close.at(-1)!.day) < 21 || daysBetween(close.at(-1)!.day, today) > RECENT) continue
       const pct = Math.round(m * 100)
       if (pct < 1 || pct > 90) continue
@@ -271,6 +288,146 @@ function categoryByText(data: DataState, settings: Settings, today: string): Rul
   return out
 }
 
+/** 2.1: a task created right after money came in from a project/sale (linked to it or naming the client). */
+function taskAfterPayment(data: DataState, settings: Settings, today: string): RuleSuggestion[] {
+  const tz = zoneOf(settings)
+  const from = addDaysToDate(today, -WINDOW)
+  const clients = new Map(data.clients.map((c) => [c.id, c.name]))
+  const out: RuleSuggestion[] = []
+  for (const origin of ['project', 'sale'] as const) {
+    const incomes = data.transactions
+      .filter((t) => t.type === 'in' && (origin === 'project' ? t.source?.kind === 'project' : t.source?.kind === 'sale' || t.source?.kind === 'saleGeneral'))
+      .map((t) => ({ t, day: dayOf(t.createdAt, tz) }))
+      .filter(({ day }) => day >= from && day <= today)
+    if (incomes.length < 3) continue
+    const hits: { day: string; who: string; title: string; template: string }[] = []
+    for (const { t, day } of incomes) {
+      const project = origin === 'project' ? data.projects.find((p) => p.id === t.source!.parentId) : undefined
+      const sale = origin === 'sale' ? data.sales.find((x) => x.id === t.source!.parentId) : undefined
+      const who = ((project ? clients.get(project.clientId ?? '') : sale ? (sale.clientId ? clients.get(sale.clientId) : sale.clientName) : '') ?? '').trim()
+      const task = data.tasks
+        .filter((x) => !ruleTask(x.id) && ((project && x.projectId === project.id) || (who.length >= 3 && normalize(x.title).includes(normalize(who)))))
+        .map((x) => ({ x, tday: dayOf(x.createdAt, tz) }))
+        .filter(({ tday }) => tday >= day && daysBetween(day, tday) <= 2)[0]
+      if (!task) continue
+      hits.push({ day, who: who || project?.name || 'cliente', title: task.x.title, template: templateTitle(task.x.title, [[who, '{cliente}'], [project?.name, '{projeto}']]) })
+    }
+    if (hits.length < 3 || hits.length / incomes.length < 0.75) continue
+    hits.sort((a, b) => (a.day < b.day ? -1 : 1))
+    if (daysBetween(hits.at(-1)!.day, today) > RECENT) continue
+    const latest = hits.at(-1)!
+    out.push({
+      key: `taskAfterPayment:${origin}:${normalize(latest.template)}`,
+      title: `Você cria uma tarefa sempre que recebe de ${origin === 'project' ? 'um projeto' : 'uma venda'}. Quer transformar isso em uma regra?`,
+      why: `Em ${hits.length} dos ${incomes.length} recebimentos dos últimos ${WINDOW} dias, você criou uma tarefa sobre aquele cliente ou projeto até 2 dias depois.`,
+      items: hits.map((h) => `${ddmm(h.day)} · ${h.who}: “${h.title}”`),
+      draft: { name: 'Tarefa ao receber', trigger: { kind: origin === 'project' ? 'projectPayment' : 'salePayment' }, conditions: [], actions: [{ kind: 'createTask', title: latest.template, dueDays: 0, linkProject: origin === 'project', priority: 'none' }] },
+    })
+  }
+  return out
+}
+
+/** 2.1: a note naming the project, written up to 3 days after it was concluded. */
+function noteAfterProjectDone(data: DataState, settings: Settings, today: string): RuleSuggestion[] {
+  const tz = zoneOf(settings)
+  const from = addDaysToDate(today, -WINDOW)
+  const done = data.projects.filter((p) => p.status === 'done' && p.endDate && p.endDate >= from && p.endDate <= today && p.name.trim().length >= 3)
+  if (done.length < 3) return []
+  const hits: { day: string; project: string; title: string; template: string }[] = []
+  for (const p of done) {
+    const n = data.notes
+      .filter((x) => !ruleTask(x.id) && (normalize(x.title).includes(normalize(p.name)) || normalize(x.body).includes(normalize(p.name))))
+      .map((x) => ({ x, day: dayOf(x.createdAt, tz) }))
+      .filter(({ day }) => day >= p.endDate && daysBetween(p.endDate, day) <= 3)[0]
+    if (n) hits.push({ day: p.endDate, project: p.name, title: n.x.title, template: templateTitle(n.x.title, [[p.name, '{projeto}']]) })
+  }
+  if (hits.length < 3 || hits.length / done.length < 0.75) return []
+  hits.sort((a, b) => (a.day < b.day ? -1 : 1))
+  if (daysBetween(hits.at(-1)!.day, today) > RECENT) return []
+  const latest = hits.at(-1)!
+  const title = latest.template.includes('{projeto}') ? latest.template : `${latest.template} · {projeto}`
+  return [
+    {
+      key: `noteAfterProject:${normalize(title)}`,
+      title: 'Você escreve uma nota sempre que conclui um projeto. Quer que o Núcleo já crie a nota?',
+      why: `Em ${hits.length} dos ${done.length} projetos concluídos nos últimos ${WINDOW} dias, você criou uma nota citando o projeto até 3 dias depois.`,
+      items: hits.map((h) => `${ddmm(h.day)} · ${h.project}: “${h.title}”`),
+      draft: { name: 'Nota ao concluir projeto', trigger: { kind: 'projectDone' }, conditions: [], actions: [{ kind: 'createNote', title, body: '' }] },
+    },
+  ]
+}
+
+/** Tasks the person makes by hand (not by rules, plans or the routine), grouped by a comparable title. */
+function handTasks(data: DataState, settings: Settings, from: string, today: string) {
+  const tz = zoneOf(settings)
+  const core = (title: string) => normalize(title).replace(/\d+([/.-]\d+)*/g, '').replace(/\s+/g, ' ').trim()
+  const groups = new Map<string, { title: string; day: string }[]>()
+  for (const t of data.tasks) {
+    if (ruleTask(t.id) || t.planId || t.fromRoutine) continue
+    const day = dayOf(t.createdAt, tz)
+    if (day < from || day > today) continue
+    const key = core(t.title)
+    if (key.length < 3) continue
+    groups.set(key, [...(groups.get(key) ?? []), { title: t.title, day }])
+  }
+  return groups
+}
+
+/** Weeks counted from a Monday (1970-01-05), so consecutive Mondays are consecutive numbers. */
+const weekIndex = (date: string) => Math.floor((Date.parse(`${date}T00:00:00Z`) - Date.parse('1970-01-05T00:00:00Z')) / (7 * 86_400_000))
+
+const longestRun = (xs: number[]) => {
+  let run = 1
+  let best = xs.length ? 1 : 0
+  for (let k = 1; k < xs.length; k++) {
+    run = xs[k] === xs[k - 1] + 1 ? run + 1 : 1
+    best = Math.max(best, run)
+  }
+  return best
+}
+
+/** 2.1: the same task created by hand on the same weekday, 4 weeks in a row. */
+function weeklyTask(data: DataState, settings: Settings, today: string): RuleSuggestion[] {
+  const out: RuleSuggestion[] = []
+  for (const [key, list] of handTasks(data, settings, addDaysToDate(today, -WINDOW), today)) {
+    for (const wd of [1, 2, 3, 4, 5, 6, 0] as Weekday[]) {
+      const days = list.filter((x) => weekdayOfDate(x.day) === wd).sort((a, b) => (a.day < b.day ? -1 : 1))
+      const best = longestRun([...new Set(days.map((x) => weekIndex(x.day)))].sort((a, b) => a - b))
+      if (best < 4 || daysBetween(days.at(-1)!.day, today) > 14) continue
+      const latest = days.at(-1)!
+      out.push({
+        key: `weeklyTask:${wd}:${key}`,
+        title: `Toda ${WEEKDAY_LABEL[wd]} você cria “${latest.title}”. Quer que o Núcleo crie essa tarefa sozinho?`,
+        why: `${best} semanas seguidas você criou essa tarefa numa ${WEEKDAY_LABEL[wd]}. A regra só cria a tarefa no dia; você continua decidindo quando fazer.`,
+        items: days.slice(-6).map((x) => `${ddmm(x.day)} · “${x.title}”`),
+        draft: { name: latest.title, trigger: { kind: 'weekDay', weekdays: [wd] }, conditions: [], actions: [{ kind: 'createTask', title: latest.title, dueDays: 0, linkProject: false, priority: 'none' }] },
+      })
+    }
+  }
+  return out
+}
+
+/** 2.1: the same task created by hand around the same day of the month, 3 months in a row. */
+function monthlyTask(data: DataState, settings: Settings, today: string): RuleSuggestion[] {
+  const out: RuleSuggestion[] = []
+  for (const [key, list] of handTasks(data, settings, addDaysToDate(today, -120), today)) {
+    if (list.length < 3) continue
+    const day = Math.round(median(list.map((x) => Number(x.day.slice(8, 10)))))
+    const fits = list.filter((x) => Math.abs(Number(x.day.slice(8, 10)) - day) <= 1).sort((a, b) => (a.day < b.day ? -1 : 1))
+    const best = longestRun([...new Set(fits.map((x) => monthIndex(x.day)))].sort((a, b) => a - b))
+    if (best < 3 || daysBetween(fits.at(-1)!.day, today) > RECENT) continue
+    const latest = fits.at(-1)!
+    out.push({
+      key: `monthlyTask:${day}:${key}`,
+      title: `Todo mês, perto do dia ${day}, você cria “${latest.title}”. Quer automatizar?`,
+      why: `${best} meses seguidos você criou essa tarefa perto do dia ${day}.`,
+      items: fits.slice(-4).map((x) => `${ddmm(x.day)} · “${x.title}”`),
+      draft: { name: latest.title, trigger: { kind: 'monthDay', day }, conditions: [], actions: [{ kind: 'createTask', title: latest.title, dueDays: 0, linkProject: false, priority: 'none' }] },
+    })
+  }
+  return out
+}
+
 /** A rule already doing the same (same trigger and same kind of action on the same target). */
 function covered(s: RuleSuggestion, rules: Rule[]): boolean {
   const d = s.draft
@@ -285,7 +442,11 @@ export function ruleSuggestions(data: DataState, settings: Settings, today: stri
     ...reserveAfterIncome(data, settings, today),
     ...taskAfterProjectDone(data, settings, today),
     ...taskAfterSale(data, settings, today),
+    ...taskAfterPayment(data, settings, today),
+    ...noteAfterProjectDone(data, settings, today),
     ...repeatedExpense(data, settings, today),
+    ...weeklyTask(data, settings, today),
+    ...monthlyTask(data, settings, today),
     ...categoryByText(data, settings, today),
   ]
   return all.filter((s) => !covered(s, data.rules ?? []))

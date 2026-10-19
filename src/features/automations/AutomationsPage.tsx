@@ -19,6 +19,8 @@ import { Sheet } from '../../ui/Sheet'
 import { Switch } from '../settings/ModulePicker'
 import { PendingCharges } from './PendingCharges'
 import { historyRuns, ORIGIN_PATH, pendingRuns } from './runs'
+import { canUndoAction } from '../../core/automation/undo'
+import { offersRetry } from '../../core/rules/retry'
 
 const STATUS_LABEL: Partial<Record<AutomationRun['status'], string>> = { undone: 'desfeito', skipped: 'pulado' }
 
@@ -55,7 +57,7 @@ function ChangeMonthSheet({ run, open, onClose }: { run: AutomationRun | null; o
 
 function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: AutomationRun): void }) {
   const { data } = useStore()
-  const { undo, linkedRuns } = useAutomationActions()
+  const { undo, linkedRuns, undoOne, retry } = useAutomationActions()
   const { toast, confirm } = useFeedback()
   const isRule = run.automation === 'rule'
   const path = isRule ? undefined : ORIGIN_PATH[run.origin.collection]
@@ -94,6 +96,26 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
     await undo(run, 'skipped')
     toast('Mês pulado')
   }
+  const [busy, setBusy] = useState(false)
+  const undoThis = async (i: number) => {
+    const a = run.actions![i]
+    const ok = await confirm({ title: 'Desfazer só esta ação?', message: a.text, confirmLabel: 'Desfazer' })
+    if (!ok) return
+    const r = await undoOne(run, i)
+    toast(!r ? 'Esta ação não pode ser desfeita sozinha.' : r.partial ? 'Desfeito. O que você alterou depois foi mantido.' : 'Ação desfeita')
+  }
+  const retryThis = async (i: number) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const r = await retry(run, i)
+      toast(r.text, r.ok ? 'success' : 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const manyActions = (run.actions?.filter((a) => a.ok && !a.undone).length ?? 0) > 1
+  const conv = run.cause?.conversion
 
   return (
     <div className="px-4 py-3.5">
@@ -103,9 +125,31 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
           {isRule && run.actions?.length ? (
             <span className="mt-1 block space-y-0.5">
               {run.actions.map((a, i) => (
-                <span key={i} className={`flex items-start gap-1.5 text-[13px] leading-snug ${a.ok ? 'text-soft' : 'text-faint'}`}>
-                  {a.ok ? <Check size={14} className="mt-0.5 shrink-0 text-income" /> : <X size={14} className="mt-0.5 shrink-0 text-faint" />}
-                  <span className="first-letter:uppercase">{a.ok ? a.text : `Não fez — ${a.text}`}</span>
+                <span key={i} className="block">
+                  <span className={`flex items-start gap-1.5 text-[13px] leading-snug ${a.ok && !a.undone ? 'text-soft' : 'text-faint'}`}>
+                    {a.ok && !a.undone ? <Check size={14} className="mt-0.5 shrink-0 text-income" /> : <X size={14} className="mt-0.5 shrink-0 text-faint" />}
+                    <span className={`first-letter:uppercase ${a.undone ? 'line-through' : ''}`}>{a.ok ? a.text : `Não fez — ${a.text}`}</span>
+                    {a.undone && <span className="shrink-0 no-underline">(desfeita)</span>}
+                  </span>
+                  {a.attempts?.map((t) => (
+                    <span key={t.id} className="ml-5 block text-[12px] leading-snug text-faint">
+                      Tentado de novo em {formatDateValue(t.at.slice(0, 10)).toLowerCase()}: {t.ok ? 'deu certo' : `ainda não — ${t.text}`}
+                    </span>
+                  ))}
+                  {(offersRetry(run, i) || (manyActions && canUndoAction(run, i))) && (
+                    <span className="ml-5 flex flex-wrap gap-x-3">
+                      {offersRetry(run, i) && (
+                        <button type="button" disabled={busy} className="text-[13px] font-medium text-accent-hi hover:text-ink disabled:opacity-50" onClick={() => retryThis(i)}>
+                          Tentar de novo
+                        </button>
+                      )}
+                      {manyActions && canUndoAction(run, i) && (
+                        <button type="button" className="text-[13px] font-medium text-soft hover:text-ink" onClick={() => undoThis(i)}>
+                          Desfazer só esta
+                        </button>
+                      )}
+                    </span>
+                  )}
                 </span>
               ))}
             </span>
@@ -113,6 +157,12 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
             run.detail && <span className="mt-0.5 block text-[13px] leading-snug text-soft">{run.detail}</span>
           )}
           {isRule && run.cause && <span className="mt-1 block text-[13px] leading-snug text-faint">Por causa de: {run.cause.label}</span>}
+          {isRule && run.chain && <span className="mt-0.5 block text-[13px] leading-snug text-faint">Iniciada em cadeia: {run.chain.path.map((p) => `“${p.name}”`).join(' → ')}</span>}
+          {conv && (
+            <span className="mt-0.5 block text-[13px] leading-snug text-faint">
+              Comparado convertendo {formatMoney(conv.amount, conv.from)} ≈ {formatMoney(conv.converted, conv.to)} (1 {conv.from} = {conv.rate.toLocaleString('pt-BR', { maximumFractionDigits: 6 })} {conv.to}, cotação {conv.rateAt === 'manual' ? 'manual' : conv.rateAt === 'desconhecido' ? 'sem data' : `de ${new Date(conv.rateAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`})
+            </span>
+          )}
           {causeGone && <span className="mt-0.5 block text-[13px] leading-snug text-faint">A movimentação que originou isto foi apagada.</span>}
           <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-faint">
             <span>{formatDateValue(run.date)}</span>
@@ -145,7 +195,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
           )}
           {done && !goal && (
             <button type="button" className="text-[14px] font-medium text-soft hover:text-ink" onClick={doUndo}>
-              {run.fromPending ? 'Desfazer confirmação' : run.automation === 'subscriberCharge' ? 'Não pagou · desfazer' : 'Desfazer'}
+              {run.fromPending ? 'Desfazer confirmação' : run.automation === 'subscriberCharge' ? 'Não pagou · desfazer' : manyActions ? 'Desfazer tudo' : 'Desfazer'}
             </button>
           )}
         </div>

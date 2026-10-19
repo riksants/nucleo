@@ -18,7 +18,9 @@ import { Button } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, Select, TextArea, TextInput } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
+import { SimulationView } from './SimulationView'
 import { useRuleNames, useRules } from './useRules'
+import { Switch } from '../settings/ModulePicker'
 
 type Draft = RuleDraft & { name: string }
 
@@ -127,6 +129,22 @@ function ConditionEditor({ c, trigger, onChange }: { c: RuleCondition; trigger: 
             </Select>
           </Field>
           <MoneyBox key={`a-${c.currency}`} label={c.op === 'between' ? 'De' : 'Valor'} cents={c.value} currency={c.currency} onChange={(value) => onChange({ ...c, value })} />
+          <label className="flex items-start gap-3 text-[15px] leading-snug">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]"
+              checked={c.compare === 'base'}
+              onChange={(e) => {
+                const { compare: _c, ...rest } = c
+                void _c
+                onChange(e.target.checked ? { ...rest, compare: 'base' } : rest)
+              }}
+            />
+            <span>
+              Comparar também outras moedas, convertidas para {c.currency}
+              <span className="mt-0.5 block text-[13px] text-faint">Usa as cotações do Financeiro. Sem cotação, a regra não roda naquele valor e diz por quê.</span>
+            </span>
+          </label>
           {c.op === 'between' && <MoneyBox key={`b-${c.currency}`} label="Até" cents={c.value2 ?? 0} currency={c.currency} onChange={(value2) => onChange({ ...c, value2 })} />}
         </>
       )
@@ -295,7 +313,10 @@ function ActionEditor({ a, trigger, onChange }: { a: RuleAction; trigger: RuleTr
 /** What the person should know before saving (never blocks). */
 function warnings(d: Draft, data: ReturnType<typeof useStore>['data'], settings: ReturnType<typeof useStore>['settings']): string[] {
   const out: string[] = []
-  for (const c of d.conditions) if (c.field === 'amount') out.push(`Esta regra só olha valores em ${c.currency}. Para outra moeda, duplique a regra e troque a moeda.`)
+  for (const c of d.conditions) {
+    if (c.field !== 'amount') continue
+    out.push(c.compare === 'base' ? `Valores em outras moedas são convertidos para ${c.currency} pela cotação do app; cada execução guarda a cotação usada.` : `Esta regra só olha valores em ${c.currency}. Para comparar outras moedas, marque “Comparar também outras moedas”.`)
+  }
   for (const a of d.actions) {
     if (a.kind !== 'reserveFixed' && a.kind !== 'reservePercent') continue
     const g = data.financeGoals.find((x) => x.id === a.goalId)
@@ -315,11 +336,13 @@ export function RuleBuilder({ open, onClose, initial, existing, onSaved }: { ope
   const [openPart, setOpenPart] = useState<string | null>(null)
   const [shownFor, setShownFor] = useState<object | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
   if (open && initial && shownFor !== initial) {
     setShownFor(initial)
     setDraft(initial)
     setOpenPart(null)
     setNote(null)
+    setTesting(false)
   }
   const { saveRule } = useRules()
   if (!draft) return null
@@ -466,6 +489,32 @@ export function RuleBuilder({ open, onClose, initial, existing, onSaved }: { ope
               </Part>
             )}
           </div>
+        </section>
+
+        <section>
+          <Heading>Testar</Heading>
+          <Part text={testing ? 'Resultado da simulação' : 'Testar esta regra com os últimos 30 dias'} placeholder={!testing} open={testing} onToggle={() => setTesting((t) => !t)}>
+            {testing && (ruleProblem({ ...draft, name: draft.name || 'Teste' }, data) ? <p className="text-[14px] text-soft">Complete a regra para testar: {ruleProblem({ ...draft, name: draft.name || 'Teste' }, data)}.</p> : <SimulationView draft={{ ...draft, name: draft.name || 'Teste' }} />)}
+          </Part>
+        </section>
+
+        <section>
+          <Heading>Avançado</Heading>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(draft.chain)}
+            onClick={() => {
+              const { chain: _c, ...rest } = draft
+              void _c
+              setDraft(draft.chain ? rest : { ...rest, chain: true })
+            }}
+            className="flex w-full items-start gap-3 rounded-[var(--radius-field)] border border-line bg-raised px-4 py-3 text-left"
+          >
+            <span className="min-w-0 flex-1 text-[15px] leading-snug">Permitir que ações desta regra ativem outras regras</span>
+            <Switch checked={Boolean(draft.chain)} />
+          </button>
+          {draft.chain && <p className="mt-2 text-[13px] leading-relaxed text-warn">Atenção: o que esta regra fizer (uma tarefa criada, um status mudado, uma reserva) poderá iniciar outras regras. No máximo 3 regras em sequência, nenhuma repetida; se houver risco de repetição, a cadeia para.</p>}
         </section>
 
         <section className="rounded-[var(--radius-field)] bg-accent/8 px-4 py-3.5">

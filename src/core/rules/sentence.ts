@@ -30,6 +30,10 @@ export function describeTrigger(t: Rule['trigger']): string {
 export function describeCondition(c: RuleCondition, n: Names): string {
   switch (c.field) {
     case 'amount':
+      if (c.compare === 'base') {
+        const v = c.op === 'gt' ? `maior que ${n.money(c.value, c.currency)}` : c.op === 'lt' ? `menor que ${n.money(c.value, c.currency)}` : `entre ${n.money(Math.min(c.value, c.value2 ?? c.value), c.currency)} e ${n.money(Math.max(c.value, c.value2 ?? c.value), c.currency)}`
+        return `o valor (em qualquer moeda, convertido para ${c.currency}) for ${v}`
+      }
       if (c.op === 'gt') return `o valor for maior que ${n.money(c.value, c.currency)}`
       if (c.op === 'lt') return `o valor for menor que ${n.money(c.value, c.currency)}`
       return `o valor estiver entre ${n.money(Math.min(c.value, c.value2 ?? c.value), c.currency)} e ${n.money(Math.max(c.value, c.value2 ?? c.value), c.currency)}`

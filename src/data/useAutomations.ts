@@ -4,7 +4,8 @@ import { changeGoalMonth } from '../core/automation/goalSave'
 import { confirmSubscriberCharge, declineRun } from '../core/automation/subscriberCharge'
 import { confirmToolCharge } from '../core/automation/toolCharge'
 import type { AutomationCtx } from '../core/automation/types'
-import { linkedRuleRuns, undoRun } from '../core/automation/undo'
+import { linkedRuleRuns, undoAction, undoRun } from '../core/automation/undo'
+import { attemptId, planRetry } from '../core/rules/retry'
 import { planScheduledRules } from '../core/rules/schedule'
 import { todayIn, useToday, zoneOf } from '../core/period'
 import { applyOps } from '../core/rules/work'
@@ -55,7 +56,7 @@ export function useAutomations() {
 
 /** What the person can do with the runs: confirm, decline, undo, change a month, turn on/off. */
 export function useAutomationActions() {
-  const { data, settings, convert, commit, updateSettings } = useStore()
+  const { data, settings, convert, commit, updateSettings, syncStatus } = useStore()
   const ctx = useCallback((): AutomationCtx => ({ data, settings, today: todayIn(zoneOf(settings)), convert, now: new Date() }), [data, settings, convert])
 
   /** Error message, or null when confirmed. */
@@ -116,5 +117,38 @@ export function useAutomationActions() {
     [settings, updateSettings],
   )
 
-  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns }
+  /** "Desfazer só esta ação" (2.1). */
+  const undoOne = useCallback(
+    async (run: AutomationRun, i: number) => {
+      const r = undoAction(run, i, data, todayIn(zoneOf(settings)))
+      if (!r) return null
+      await commit(r.ops, { by: 'undo' })
+      return { partial: r.partial }
+    },
+    [data, settings, commit],
+  )
+
+  // Attempts already sent from this screen: a second tap (before the screen updates) never repeats one.
+  const sent = useRef(new Set<string>())
+  /**
+   * "Tentar de novo" (2.1): only the action that was not done. Signed in, only with the sync idle and
+   * nothing waiting — otherwise another device may have done it, and the Núcleo blocks instead.
+   * Returns the message to show.
+   */
+  const retry = useCallback(
+    async (run: AutomationRun, i: number): Promise<{ ok: boolean; text: string }> => {
+      const syncSafe = !syncStatus || (syncStatus.state === 'idle' && syncStatus.pending === 0 && navigator.onLine !== false)
+      const id = attemptId(run, i)
+      if (sent.current.has(id)) return { ok: false, text: 'Esta tentativa já foi feita.' }
+      const now = new Date()
+      const plan = planRetry(run, i, data, { settings, today: todayIn(zoneOf(settings), now), convert, now }, syncSafe)
+      if (typeof plan === 'string') return { ok: false, text: plan }
+      sent.current.add(id)
+      await commit(plan.ops, { by: 'rule' })
+      return { ok: plan.ok, text: plan.ok ? `Feito: ${plan.text}` : `Ainda não deu: ${plan.text}` }
+    },
+    [data, settings, convert, commit, syncStatus],
+  )
+
+  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry }
 }
