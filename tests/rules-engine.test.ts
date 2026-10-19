@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { conditionHolds, matches } from '../src/core/rules/conditions'
 import { detectEvents } from '../src/core/rules/events'
-import { assertNoInventedFacts, planRulesForWrite, ruleRunId } from '../src/core/rules/engine'
+import { assertNoInventedFacts, planRulesForWrite, ruleRunId, safeRulesForWrite } from '../src/core/rules/engine'
 import { fillTokens } from '../src/core/rules/text'
 import { formatMoney } from '../src/lib/money'
 import type { AutomationRun, FinanceGoal, Rule } from '../src/data/types'
-import { client, ctx, data, goal, NOW, project, put, puts, rule, sale, task, TODAY, tx } from './rules-helpers'
+import { client, ctx, data, goal, NOW, project, put, puts, rule, sale, settings, task, TODAY, tx } from './rules-helpers'
 
 const runsOf = (ops: ReturnType<typeof planRulesForWrite>) => puts(ops, 'automationRuns') as unknown as AutomationRun[]
 const reserve20 = (goalId = 'g1') => ({ kind: 'reservePercent' as const, goalId, percent: 20 })
@@ -200,5 +200,18 @@ describe('motor: execução na gravação', () => {
     expect(() => assertNoInventedFacts(d, [put('transactions', { ...tx('a'), amount: 1 })])).toThrow()
     expect(() => assertNoInventedFacts(d, [{ op: 'remove', collection: 'tasks', id: 'x' }])).toThrow()
     expect(() => assertNoInventedFacts(d, [put('transactions', { ...tx('a'), category: 'salary', updatedAt: 'z' })])).not.toThrow()
+  })
+})
+
+describe('falha do motor nunca bloqueia a gravação', () => {
+  it('regra corrompida: a gravação segue e o erro fica registrado (um por dia)', () => {
+    const broken = { ...rule('moneyIn', []), actions: null } as unknown as Rule
+    const ops = safeRulesForWrite(data({ rules: [broken] }), settings, ctx().convert, [put('transactions', tx('n'))], 'person', NOW)
+    expect(ops).toHaveLength(1)
+    expect(runsOf(ops)[0]).toMatchObject({ id: `rule-error-${TODAY}`, status: 'skipped', summary: 'As regras não conseguiram rodar nesta ação' })
+  })
+
+  it('sem regras, nada é calculado', () => {
+    expect(safeRulesForWrite(data(), settings, ctx().convert, [put('transactions', tx('n'))], 'person', NOW)).toEqual([])
   })
 })

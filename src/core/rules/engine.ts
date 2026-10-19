@@ -11,7 +11,9 @@
  * - rules never create movements, mark payments or remove records (checked before writing).
  */
 import type { BatchOp } from '../../data/repository'
-import type { AutomationRun, DataState, Rule } from '../../data/types'
+import type { AutomationRun, DataState, Rule, Settings } from '../../data/types'
+import type { Converter } from '../../lib/rates'
+import { todayIn, zoneOf } from '../period'
 import { makeRun, runPut } from '../automation/types'
 import { matches } from './conditions'
 import { detectEvents } from './events'
@@ -140,4 +142,21 @@ export function engineErrorRun(ctx: RuleCtx): AutomationRun {
   )
 }
 
-export { runPut }
+/**
+ * What the store adds to a write. If the engine fails, the write goes on without the rules — it
+ * never blocks what the person is doing — and the failure is noted in "Feito pelo Núcleo".
+ */
+export function safeRulesForWrite(before: DataState, settings: Settings, convert: Converter, ops: BatchOp[], actor: WriteActor, now = new Date()): BatchOp[] {
+  if (!settings.onboarded || !before.rules?.length) return []
+  const ctx: RuleCtx = { settings, today: todayIn(zoneOf(settings), now), convert, now }
+  try {
+    return planRulesForWrite(before, ops, actor, ctx)
+  } catch (err) {
+    console.error('Regras: falha no motor (a gravação segue sem as regras)', err)
+    try {
+      return [runPut(engineErrorRun(ctx))]
+    } catch {
+      return []
+    }
+  }
+}

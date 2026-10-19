@@ -34,7 +34,7 @@ export function useAutomations() {
           return
         }
         const ops = planAll({ data, settings, today, convert, now: new Date() }).flatMap((p) => p.ops)
-        if (ops.length) await commit(ops)
+        if (ops.length) await commit(ops, { by: 'automation' })
       } catch (err) {
         console.error('Automações: falha numa passada', err)
       } finally {
@@ -66,7 +66,7 @@ export function useAutomationActions() {
   const undo = useCallback(
     async (run: AutomationRun, status: 'undone' | 'skipped' = 'undone') => {
       const { ops, partial } = undoRun(run, data, todayIn(zoneOf(settings)), status)
-      await commit(ops)
+      await commit(ops, { by: 'undo' })
       return { partial }
     },
     [data, settings, commit],

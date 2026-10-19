@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { safeRulesForWrite } from '../core/rules/engine'
+import type { WriteActor } from '../core/rules/types'
 import { readPref, writePref } from '../lib/prefs'
 import { effectiveRates, fetchRates, makeConverter, RATES_MAX_AGE_MS, type Converter } from '../lib/rates'
 import { createIndexedDbRepository, type BatchOp, type Repository, type SyncStatus } from './repository'
@@ -39,6 +41,33 @@ export type Draft<T extends Entity> = Omit<T, keyof Entity> & Partial<Entity>
 export interface SaveOptions {
   by?: 'assistant'
   keepMark?: boolean
+  /** Who is writing, for the rules (default: the person; `keepMark` = an undo). */
+  actor?: WriteActor
+}
+
+export interface CommitOptions {
+  /** Who is writing, for the rules: writes by rules and undos never trigger rules. Default: the person. */
+  by?: WriteActor
+}
+
+/** Same stamping as save(): a normal change clears the Assistant mark. */
+function stampOps(ops: BatchOp[], now: string): BatchOp[] {
+  return ops.map((o) => {
+    if (o.op !== 'put') return o
+    const { changedBy: _mark, ...rest } = o.item
+    void _mark
+    return { ...o, item: { ...rest, createdAt: rest.createdAt || now, updatedAt: now } }
+  })
+}
+
+function applyToState(prev: DataState, ops: BatchOp[]): DataState {
+  const next = { ...prev } as Record<CollectionName, Entity[]>
+  for (const o of ops) {
+    const list = next[o.collection]
+    if (o.op === 'remove') next[o.collection] = list.filter((x) => x.id !== o.id)
+    else next[o.collection] = list.some((x) => x.id === o.item.id) ? list.map((x) => (x.id === o.item.id ? o.item : x)) : [o.item, ...list]
+  }
+  return next as unknown as DataState
 }
 
 /** Optional details (Etapa 3). Left out = the record keeps exactly what it had. */
@@ -104,8 +133,11 @@ interface Store {
    */
   save<K extends CollectionName>(collection: K, draft: Draft<Collections[K]>, opts?: SaveOptions): Promise<Collections[K]>
   remove(collection: CollectionName, id: string): Promise<void>
-  /** Several saves/removals applied together (on screen and on the device), e.g. a payment and its income. */
-  commit(ops: BatchOp[]): Promise<void>
+  /**
+   * Several saves/removals applied together (on screen and on the device), e.g. a payment and its income.
+   * The actions of the person's rules that answer this write are added to the same write.
+   */
+  commit(ops: BatchOp[], opts?: CommitOptions): Promise<void>
   addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   adjustBalance(target: Cents): Promise<Transaction | null>
@@ -177,6 +209,17 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
 
   const rates = useMemo(() => effectiveRates(settings), [settings])
   const convert = useMemo(() => makeConverter(rates), [rates])
+  const convertRef = useRef(convert)
+  convertRef.current = convert
+
+  /**
+   * The writes the person's rules add to this write (read before the write is applied). If the
+   * engine fails, the write goes on without the rules — it never blocks what the person is doing.
+   */
+  const rulesFor = useCallback(
+    (ops: BatchOp[], actor: WriteActor): BatchOp[] => safeRulesForWrite(dataRef.current, settingsRef.current, convertRef.current, ops, actor),
+    [],
+  )
 
   const updateSettings = useCallback(
     async (patch: Partial<Settings>) => {
@@ -230,18 +273,19 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
       const { changedBy, ...rest } = draft
       const mark = opts.by ?? (opts.keepMark ? changedBy : undefined)
       const item = { ...rest, ...(mark ? { changedBy: mark } : {}), id: draft.id ?? newId(), createdAt: draft.createdAt ?? now, updatedAt: now } as Collections[K]
-      setData((prev) => {
-        const list = prev[collection] as Collections[K][]
-        const exists = list.some((x) => x.id === item.id)
-        const nextList = exists ? list.map((x) => (x.id === item.id ? item : x)) : [item, ...list]
-        const next = { ...prev, [collection]: nextList }
-        dataRef.current = next
-        return next
-      })
-      await repo.put(collection, item)
+      const actor: WriteActor = opts.actor ?? (opts.by === 'assistant' ? 'assistant' : opts.keepMark ? 'undo' : 'person')
+      const own: BatchOp = { op: 'put', collection, item }
+      const extra = stampOps(rulesFor([own], actor), now)
+      const all = [own, ...extra]
+      // The next write (even before React renders) must already see this one as "before".
+      dataRef.current = applyToState(dataRef.current, all)
+      setData((prev) => applyToState(prev, all))
+      if (!extra.length) await repo.put(collection, item)
+      else if (repo.batch) await repo.batch(all)
+      else for (const o of all) await (o.op === 'put' ? repo.put(o.collection, o.item as never) : repo.remove(o.collection, o.id))
       return item
     },
-    [repo],
+    [repo, rulesFor],
   )
 
   const remove = useCallback(
@@ -253,30 +297,18 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   )
 
   const commit = useCallback(
-    async (ops: BatchOp[]) => {
+    async (ops: BatchOp[], opts: CommitOptions = {}) => {
       if (!ops.length) return
       const now = new Date().toISOString()
-      // Same stamping as save(): a normal change clears the Assistant mark.
-      const stamped: BatchOp[] = ops.map((o) => {
-        if (o.op !== 'put') return o
-        const { changedBy: _mark, ...rest } = o.item
-        void _mark
-        return { ...o, item: { ...rest, createdAt: rest.createdAt || now, updatedAt: now } }
-      })
-      setData((prev) => {
-        const next = { ...prev } as Record<CollectionName, Entity[]>
-        for (const o of stamped) {
-          const list = next[o.collection]
-          if (o.op === 'remove') next[o.collection] = list.filter((x) => x.id !== o.id)
-          else next[o.collection] = list.some((x) => x.id === o.item.id) ? list.map((x) => (x.id === o.item.id ? o.item : x)) : [o.item, ...list]
-        }
-        dataRef.current = next as unknown as DataState
-        return next as unknown as DataState
-      })
-      if (repo.batch) await repo.batch(stamped)
-      else for (const o of stamped) await (o.op === 'put' ? repo.put(o.collection, o.item as never) : repo.remove(o.collection, o.id))
+      const stamped = stampOps(ops, now)
+      const all = [...stamped, ...stampOps(rulesFor(stamped, opts.by ?? 'person'), now)]
+      // The next write (even before React renders) must already see this one as "before".
+      dataRef.current = applyToState(dataRef.current, all)
+      setData((prev) => applyToState(prev, all))
+      if (repo.batch) await repo.batch(all)
+      else for (const o of all) await (o.op === 'put' ? repo.put(o.collection, o.item as never) : repo.remove(o.collection, o.id))
     },
-    [repo],
+    [repo, rulesFor],
   )
 
   const toBase = useCallback(

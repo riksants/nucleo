@@ -99,7 +99,7 @@ export function useReceiptReconciler() {
         const tx = receiptTransaction(r, { settings, convert })
         if (tx) ops.push({ op: 'put', collection: 'transactions', item: tx })
       }
-      if (ops.length) void commit(ops)
+      if (ops.length) void commit(ops, { by: 'automation' })
     }, 1500)
     return () => window.clearTimeout(timer)
   }, [missing, idle, settings, convert, commit])
