@@ -438,6 +438,8 @@ export interface Settings {
   financeCategories?: FinanceCategorySettings
   /** Automations on/off and since when (nothing before `since` is caught up). Missing = on, since its first run. */
   automations?: Partial<Record<AutomationId, { on: boolean; since: string }>>
+  /** Parte 2: what the person did with each rule suggestion (key → state). */
+  ruleSuggestions?: Record<string, InsightMark>
   /** Last change, used to resolve edits made on two devices. */
   updatedAt?: string
 }
@@ -546,6 +548,7 @@ export interface Collections {
   meals: MealEntry
   shoppingItems: ShoppingEntry
   automationRuns: AutomationRun
+  rules: Rule
 }
 
 export type CollectionName = keyof Collections
@@ -583,6 +586,7 @@ export const COLLECTION_NAMES: CollectionName[] = [
   'meals',
   'shoppingItems',
   'automationRuns',
+  'rules',
 ]
 
 export type DataState = { [K in CollectionName]: Collections[K][] }
@@ -808,7 +812,8 @@ export interface InsightMark {
 
 /* ----------------------------- Automações ----------------------------- */
 
-export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave'
+/** `rule`: a run of one of the person's rules (Parte 2); it has no on/off of its own in settings. */
+export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule'
 export type AutomationRunStatus = 'pending' | 'done' | 'undone' | 'skipped'
 
 /**
@@ -827,12 +832,105 @@ export interface AutomationRun extends Entity {
   origin: { collection: CollectionName; id: string; label: string }
   amount?: Cents
   currency?: Currency
-  /** Records it created (removed by undo). */
-  created: { collection: CollectionName; id: string }[]
-  /** Fields it changed (restored by undo only if they still hold `after`). */
-  changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown }[]
+  /** Records it created (removed by undo; with `fp`, only while still exactly as created). */
+  created: { collection: CollectionName; id: string; fp?: string }[]
+  /** Fields it changed (restored by undo only if they still hold `after`; `delta`: amount added to a goal). */
+  changed: { collection: CollectionName; id: string; field: string; before: unknown; after: unknown; delta?: Cents }[]
   /** pending: waiting for the person (A receber / A pagar). */
   status: AutomationRunStatus
   /** Confirmed by the person from "A receber"/"A pagar": undoing takes it back to pending. */
   fromPending?: true
+  /** Rules: which rule ran. */
+  rule?: { id: string; name: string }
+  /** Rules: the event that made it run (`txId` when it was a movement in Financeiro). */
+  cause?: { key: string; label: string; txId?: string }
+  /** Rules: each action, done or not (with the reason). */
+  actions?: { text: string; ok: boolean }[]
+}
+
+/* ----------------------------- Regras (Automações Parte 2) ----------------------------- */
+
+/** Where money came from (or went to): typed by hand, or a payment recorded elsewhere in the app. */
+export type MoneyOrigin = 'manual' | 'project' | 'sale' | 'subscriber' | 'tool'
+
+export type RuleTriggerKind =
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'projectPayment'
+  | 'salePayment'
+  | 'subscriberPaid'
+  | 'toolPaid'
+  | 'saleCreated'
+  | 'projectCreated'
+  | 'projectStatus'
+  | 'projectDone'
+  | 'taskCreated'
+  | 'taskDone'
+  | 'taskOverdue'
+  | 'clientCreated'
+  | 'clientStatus'
+  | 'goalSaved'
+  | 'goalReached'
+  | 'monthDay'
+  | 'weekDay'
+
+export interface RuleTrigger {
+  kind: RuleTriggerKind
+  /** monthDay: 1–31 (29–31 fall on the last day of shorter months). */
+  day?: number
+  /** weekDay: the days of the week. */
+  weekdays?: Weekday[]
+}
+
+/** Every condition must hold (AND). Several values in one condition mean "any of them" (OR). */
+export type RuleCondition =
+  /** Only events in this same currency can match (never converted). */
+  | { field: 'amount'; op: 'gt' | 'lt' | 'between'; value: Cents; value2?: Cents; currency: Currency }
+  | { field: 'currency'; values: Currency[] }
+  | { field: 'category'; values: string[] }
+  | { field: 'origin'; values: MoneyOrigin[] }
+  | { field: 'client'; values: string[] }
+  | { field: 'project'; values: string[] }
+  | { field: 'text'; contains: string }
+  | { field: 'status'; values: string[] }
+  | { field: 'statusBefore'; values: string[] }
+  | { field: 'priority'; values: TaskPriority[] }
+  | { field: 'goal'; values: string[] }
+  | { field: 'weekday'; values: Weekday[] }
+
+export type RuleConditionField = RuleCondition['field']
+
+/** Texts may carry {cliente} {projeto} {valor} {tarefa} {venda} {descricao}. */
+export type RuleAction =
+  | { kind: 'reserveFixed'; goalId: string; amount: Cents }
+  | { kind: 'reservePercent'; goalId: string; percent: number }
+  /** dueDays: null = no date; 0 = the event's day; n = n days after it. */
+  | { kind: 'createTask'; title: string; dueDays: number | null; linkProject: boolean; priority: TaskPriority }
+  | { kind: 'projectStatus'; status: ProjectStatus }
+  | { kind: 'clientStatus'; status: ClientStatus }
+  | { kind: 'setCategory'; category: string }
+  | { kind: 'createNote'; title: string; body: string }
+  | { kind: 'addInbox'; text: string }
+
+export type RuleActionKind = RuleAction['kind']
+
+/**
+ * "Quando X → se Y → faça Z". What a rule does never triggers another rule (nor itself).
+ * Last run and how many times are computed from automationRuns (no counter is stored).
+ */
+export interface Rule extends Entity {
+  name: string
+  on: boolean
+  /** "YYYY-MM-DD": the day it was turned on (turning it back on = that day; nothing before is caught up). */
+  since: string
+  /** Position in "Minhas regras" (smaller first): rules answering the same event run in this order. */
+  order: number
+  trigger: RuleTrigger
+  conditions: RuleCondition[]
+  /** 1 to 5, applied in order. */
+  actions: RuleAction[]
+  /** Ready-made model it came from. */
+  template?: string
+  /** Turned off by the safety limit (too many runs in one day). */
+  paused?: { at: string; reason: string }
 }

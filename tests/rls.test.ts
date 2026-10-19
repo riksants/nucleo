@@ -136,7 +136,7 @@ describe('regras de escrita', () => {
 })
 
 describe('Etapas 1 e 2: coleções novas', () => {
-  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals', 'lifePlans', 'planSteps', 'meals', 'shoppingItems', 'automationRuns']
+  const NEW = ['inbox', 'habits', 'recurring', 'completions', 'events', 'focusSessions', 'weeklyGoals', 'challenges', 'weekCheckins', 'weekSnapshots', 'financeGoals', 'lifePlans', 'planSteps', 'meals', 'shoppingItems', 'automationRuns', 'rules']
 
   it('a migração mantém registros antigos e aceita as coleções novas', async () => {
     expect((await as(A, `select count(*)::int as n from records where collection = 'notes'`)).rows[0].n).toBeGreaterThan(0)
@@ -196,7 +196,7 @@ describe('Etapa 5: alimentação', () => {
   it('B não lê, altera nem apaga refeições e lista de compras de A', async () => {
     await as(A, `insert into records (collection, id, data, client_updated_at) values ('meals', 'm1', '{"date":"2026-10-05","name":"Almoço","done":false}', $1)`, [now()])
     await as(A, `insert into records (collection, id, data, client_updated_at) values ('shoppingItems', 'auto:2026-10-05:banana', '{"kind":"auto","checked":true}', $1)`, [now()])
-    for (const c of ['meals', 'shoppingItems', 'automationRuns']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
+    for (const c of ['meals', 'shoppingItems', 'automationRuns', 'rules']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
     expect((await as(B, `update records set data = '{"done":true}' where collection in ('meals', 'shoppingItems')`)).affectedRows).toBe(0)
     expect((await as(B, `delete from records where collection in ('meals', 'shoppingItems')`)).affectedRows).toBe(0)
     await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'meals', 'mB', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
@@ -249,5 +249,18 @@ describe('Vendas por pessoa: vendas, pessoas, pagamentos e valores', () => {
     await as(B, `insert into records (collection, id, data, client_updated_at) values ('sales', 'sale-a', '{"clientName":"Maria","total":1}', $1)`, [now()])
     expect((await as(A, `select data from records where collection = 'sales' and id = 'sale-a'`)).rows[0].data.total).toBe(30000)
     expect((await as(B, `select data from records where collection = 'sales' and id = 'sale-a'`)).rows[0].data.total).toBe(1)
+  })
+})
+
+describe('Regras (Automações Parte 2)', () => {
+  it('B não lê, altera, apaga nem cria regras de A; o histórico das regras de A também é só de A', async () => {
+    const rule = { name: 'Separe para impostos', on: true, since: '2026-10-19', order: 0, trigger: { kind: 'projectPayment' }, conditions: [], actions: [{ kind: 'reservePercent', goalId: 'g1', percent: 20 }] }
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('rules', 'rule-a', $1, $2)`, [JSON.stringify(rule), now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('automationRuns', 'rule-rule-a-0123456789abcdef', '{"automation":"rule","status":"done"}', $1)`, [now()])
+    expect((await as(B, `select * from records where collection in ('rules', 'automationRuns')`)).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = jsonb_set(data, '{on}', 'false') where id = 'rule-a'`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where collection = 'rules'`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'rules', 'rule-b', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    expect((await as(A, `select data from records where id = 'rule-a'`)).rows[0].data.on).toBe(true)
   })
 })
