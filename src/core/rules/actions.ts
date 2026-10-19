@@ -28,7 +28,7 @@ export interface ActionsPlan {
 /** What a record looks like for "was it edited after the rule created it?" (dates and marks left out). */
 export function fingerprint(item: object): string {
   const { id: _i, createdAt: _c, updatedAt: _u, changedBy: _b, ...rest } = item as Record<string, unknown>
-  void _i, _c, _u, _b
+  void [_i, _c, _u, _b]
   return JSON.stringify(Object.keys(rest).sort().map((k) => [k, rest[k]]))
 }
 

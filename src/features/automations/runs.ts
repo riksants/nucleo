@@ -7,6 +7,10 @@ export const ORIGIN_PATH: Partial<Record<CollectionName, RoutePath>> = {
   tools: '/tools',
   financeGoals: '/finance',
   clients: '/clients',
+  projects: '/projects',
+  tasks: '/tasks',
+  sales: '/sales',
+  transactions: '/finance',
 }
 
 /** Charges waiting for the person (A receber / A pagar), oldest first. */

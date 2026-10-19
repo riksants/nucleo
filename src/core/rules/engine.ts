@@ -46,7 +46,7 @@ export function assertNoInventedFacts(before: DataState, ops: BatchOp[]): void {
     if (!prev) throw new InventedFactError('regra tentou criar uma movimentação')
     const { category: _a, updatedAt: _b, ...was } = prev
     const { category: _c, updatedAt: _d, ...now } = o.item as typeof prev
-    void _a, _b, _c, _d
+    void [_a, _b, _c, _d]
     if (JSON.stringify(was) !== JSON.stringify(now)) throw new InventedFactError('regra tentou alterar uma movimentação')
   }
 }

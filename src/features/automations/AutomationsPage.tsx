@@ -1,6 +1,6 @@
-import { Sparkles } from 'lucide-react'
+import { Check, Sparkles, Wand2, X } from 'lucide-react'
 import { useState } from 'react'
-import { navigate } from '../../app/router'
+import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { AUTOMATIONS, automationSince } from '../../core/automation/engine'
 import { useStore } from '../../data/store'
@@ -54,11 +54,15 @@ function ChangeMonthSheet({ run, open, onClose }: { run: AutomationRun | null; o
 }
 
 function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: AutomationRun): void }) {
-  const { undo } = useAutomationActions()
+  const { data } = useStore()
+  const { undo, linkedRuns } = useAutomationActions()
   const { toast, confirm } = useFeedback()
-  const path = ORIGIN_PATH[run.origin.collection]
+  const isRule = run.automation === 'rule'
+  const path = isRule ? undefined : ORIGIN_PATH[run.origin.collection]
   const done = run.status === 'done'
   const goal = run.automation === 'goalSave'
+  const ruleExists = isRule && run.rule && data.rules.some((r) => r.id === run.rule!.id)
+  const causeGone = isRule && run.cause?.txId && !data.transactions.some((t) => t.id === run.cause!.txId)
   // The amount on the right, unless the summary already says it ("Pagamento automático de Ana: €50,00").
   const money = run.amount !== undefined && run.amount > 0 && run.currency ? formatMoney(run.amount, run.currency) : null
   const showMoney = money !== null && !run.summary.includes(money)
@@ -66,8 +70,25 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
   const doUndo = async () => {
     const ok = await confirm({ title: 'Desfazer?', message: run.summary, confirmLabel: 'Desfazer' })
     if (!ok) return
-    const { partial } = await undo(run)
-    toast(run.fromPending ? 'Confirmação desfeita: a cobrança voltou para a lista' : partial ? 'Desfeito. A data da próxima cobrança ficou como você deixou.' : 'Desfeito')
+    // Rules that ran because of the money this run brought in: offered to undo together.
+    const linked = isRule ? [] : linkedRuns(run)
+    const alsoLinked =
+      linked.length > 0 &&
+      (await confirm({
+        title: linked.length === 1 ? 'Desfazer também o que uma regra fez por causa disso?' : `Desfazer também o que ${linked.length} regras fizeram por causa disso?`,
+        message: linked.map((r) => r.summary).join(' · '),
+        confirmLabel: 'Desfazer também',
+      }))
+    const { partial } = await undo(run, 'undone', alsoLinked)
+    toast(
+      run.fromPending
+        ? 'Confirmação desfeita: a cobrança voltou para a lista'
+        : partial
+          ? isRule || alsoLinked
+            ? 'Desfeito. O que você alterou depois foi mantido.'
+            : 'Desfeito. A data da próxima cobrança ficou como você deixou.'
+          : 'Desfeito',
+    )
   }
   const skip = async () => {
     await undo(run, 'skipped')
@@ -78,13 +99,31 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
     <div className="px-4 py-3.5">
       <div className="flex items-start gap-3">
         <span className="min-w-0 flex-1">
-          <span className={`block text-[15px] leading-snug ${done ? '' : 'text-soft'}`}>{run.summary}</span>
-          {run.detail && <span className="mt-0.5 block text-[13px] leading-snug text-soft">{run.detail}</span>}
+          <span className={`block text-[15px] leading-snug ${done ? '' : 'text-soft'}`}>{isRule && run.actions?.length ? `Regra “${run.rule?.name ?? ''}”` : run.summary}</span>
+          {isRule && run.actions?.length ? (
+            <span className="mt-1 block space-y-0.5">
+              {run.actions.map((a, i) => (
+                <span key={i} className={`flex items-start gap-1.5 text-[13px] leading-snug ${a.ok ? 'text-soft' : 'text-faint'}`}>
+                  {a.ok ? <Check size={14} className="mt-0.5 shrink-0 text-income" /> : <X size={14} className="mt-0.5 shrink-0 text-faint" />}
+                  <span className="first-letter:uppercase">{a.ok ? a.text : `Não fez — ${a.text}`}</span>
+                </span>
+              ))}
+            </span>
+          ) : (
+            run.detail && <span className="mt-0.5 block text-[13px] leading-snug text-soft">{run.detail}</span>
+          )}
+          {isRule && run.cause && <span className="mt-1 block text-[13px] leading-snug text-faint">Por causa de: {run.cause.label}</span>}
+          {causeGone && <span className="mt-0.5 block text-[13px] leading-snug text-faint">A movimentação que originou isto foi apagada.</span>}
           <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-faint">
             <span>{formatDateValue(run.date)}</span>
             {path && (
               <button type="button" className="font-medium text-accent-hi hover:text-ink" onClick={() => navigate(path, path === '/finance' ? undefined : { open: run.origin.id })}>
                 {run.origin.label}
+              </button>
+            )}
+            {ruleExists && (
+              <button type="button" className="font-medium text-accent-hi hover:text-ink" onClick={() => navigate('/rules', { open: run.rule!.id })}>
+                Ver regra
               </button>
             )}
             {STATUS_LABEL[run.status] && <Badge>{STATUS_LABEL[run.status]}</Badge>}
@@ -142,22 +181,31 @@ export function AutomationSettings() {
 export function AutomationsPage() {
   const { data } = useStore()
   const monthSheet = useSheet<AutomationRun>()
+  const route = useRoute()
+  const onlyRule = route.params.get('rule')
   const pending = pendingRuns(data.automationRuns)
-  const history = historyRuns(data.automationRuns)
+  const history = historyRuns(onlyRule ? data.automationRuns.filter((r) => r.rule?.id === onlyRule) : data.automationRuns)
+  const ruleName = onlyRule ? (data.rules.find((r) => r.id === onlyRule)?.name ?? data.automationRuns.find((r) => r.rule?.id === onlyRule)?.rule?.name ?? 'regra') : null
 
   return (
     <>
       <PageHeader title="Feito pelo Núcleo" subtitle="O que o Núcleo fez sozinho, e o que espera você" />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
         <div className="space-y-7">
-          {pending.length > 0 && (
+          {pending.length > 0 && !onlyRule && (
             <section>
               <SectionTitle>Esperando você</SectionTitle>
               <PendingCharges runs={pending} />
             </section>
           )}
           <section>
-            <SectionTitle>Histórico</SectionTitle>
+            {onlyRule ? (
+              <SectionTitle action="Ver tudo" onAction={() => navigate('/automations')}>
+                Histórico de “{ruleName}”
+              </SectionTitle>
+            ) : (
+              <SectionTitle>Histórico</SectionTitle>
+            )}
             {history.length ? (
               <div className="card divide-y divide-line">
                 {history.map((r) => (
@@ -172,6 +220,15 @@ export function AutomationsPage() {
         <section>
           <SectionTitle>Automações</SectionTitle>
           <AutomationSettings />
+          <button type="button" onClick={() => navigate('/rules')} className="card mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-hi">
+              <Wand2 size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium">Minhas regras</span>
+              <span className="block text-[13px] text-faint">Quando algo acontece, o Núcleo faz por você</span>
+            </span>
+          </button>
           <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">O Núcleo automatiza ações, mas nunca inventa fatos: só considera algo pago quando você confirma ou quando escolheu “Considerar pago automaticamente” naquele item.</p>
         </section>
       </div>

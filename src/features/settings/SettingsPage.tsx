@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound } from 'lucide-react'
+import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound, Wand2 } from 'lucide-react'
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
 import { navigate, useRoute } from '../../app/router'
@@ -294,6 +294,15 @@ export function SettingsPage() {
             })()}
             icon={<Sparkles size={18} />}
             onClick={() => navigate('/automations')}
+          />
+          <Row
+            label="Minhas regras"
+            detail={(() => {
+              const n = data.rules.filter((r) => r.on).length
+              return n ? `${n === 1 ? '1 regra ligada' : `${n} regras ligadas`} · quando X, faça Y` : 'Quando algo acontece, o Núcleo faz por você'
+            })()}
+            icon={<Wand2 size={18} />}
+            onClick={() => navigate('/rules')}
           />
         </Group>
 

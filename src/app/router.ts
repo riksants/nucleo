@@ -31,6 +31,7 @@ export type RoutePath =
   | '/life'
   | '/assistant'
   | '/automations'
+  | '/rules'
 
 export interface Route {
   path: RoutePath

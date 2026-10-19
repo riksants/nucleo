@@ -29,6 +29,7 @@ import { PendingCharges } from '../automations/PendingCharges'
 import { historyRuns, pendingRuns } from '../automations/runs'
 import { TaskForm } from '../tasks/TaskForm'
 import { TaskRow } from '../tasks/TaskRow'
+import { HomeSuggestion } from '../rules/SuggestionCard'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -158,6 +159,8 @@ export function HomePage() {
               <ChevronRight size={16} className="shrink-0 text-faint" />
             </button>
           )}
+
+          <HomeSuggestion />
 
           {on('finance') && (
             <div className="grid grid-cols-2 gap-3">
