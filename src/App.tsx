@@ -45,6 +45,8 @@ const RecurringPage = lazyPage(() => import('./features/recurring/RecurringPage'
 const AssistantPage = lazyPage(() => import('./features/assistant/AssistantPage').then((m) => m.AssistantPage))
 const AutomationsPage = lazyPage(() => import('./features/automations/AutomationsPage').then((m) => m.AutomationsPage))
 const RulesPage = lazyPage(() => import('./features/rules/RulesPage').then((m) => m.RulesPage))
+const ImportPage = lazyPage(() => import('./features/import/ImportPage').then((m) => m.ImportPage))
+const ImportsPage = lazyPage(() => import('./features/import/ImportsPage').then((m) => m.ImportsPage))
 const MealsPage = lazyPage(() => import('./features/meals/MealsHome').then((m) => m.MealsPage))
 const LifePage = lazyPage(() => import('./features/life/LifePage').then((m) => m.LifePage))
 const WeekPage = lazyPage(() => import('./features/week/WeekPage').then((m) => m.WeekPage))
@@ -85,6 +87,8 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/assistant': AssistantPage,
   '/automations': AutomationsPage,
   '/rules': RulesPage,
+  '/import': ImportPage,
+  '/imports': ImportsPage,
 }
 
 function useSearchShortcut() {

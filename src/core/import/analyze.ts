@@ -175,7 +175,7 @@ export function analyze(lines: ParsedLine[], source: ImportSource, data: DataSta
   }
 
   const consumed = new Set<string>()
-  const seenInFile = new Set<string>()
+  const seenInFile = new Map<string, string>()
   const occurrences = new Map<string, number>()
   const out: AnalyzedLine[] = []
   let from: string | undefined
@@ -199,19 +199,31 @@ export function analyze(lines: ParsedLine[], source: ImportSource, data: DataSta
     const occKey = `${day}|${signed}|${currency}|${norm}`
     const occ = occurrences.get(occKey) ?? 0
     occurrences.set(occKey, occ + 1)
-    const id = lineId(source.account, { fitid: line.fitid, day, signed, currency, norm }, occ)
+    const content = `${day}|${signed}|${currency}`
+    // A bank id used again for a different line (some banks reuse them): that line gets its own id.
+    const distinct = () => lineId(source.account, { fitid: `${line.fitid}|${content}|${norm}`, day, signed, currency, norm }, occ)
+    let id = lineId(source.account, { fitid: line.fitid, day, signed, currency, norm }, occ)
+    if (line.fitid && seenInFile.has(id) && seenInFile.get(id) !== content) id = distinct()
     const a: AnalyzedLine = { ...base, currency, id, status: 'new', note: '', locked: false }
     out.push(a)
 
-    if (seenInFile.has(id)) {
+    if (seenInFile.get(id) === content) {
       Object.assign(a, { status: 'duplicate', note: 'Esta linha aparece repetida no arquivo.', locked: true })
       return
     }
-    seenInFile.add(id)
+    seenInFile.set(id, content)
     const exact = byId.get(id) ?? byLine.get(id)
     if (exact) {
       consumed.add(exact.id)
-      Object.assign(a, { status: 'duplicate', dupOf: exact.id, note: exact.bank?.reconciled ? 'Esta linha já foi conciliada antes.' : 'Esta linha já foi importada antes.', locked: true })
+      const sameMoney = exact.type === type && exact.amount === amount && exact.currency === currency && (!exact.bank?.day || daysBetween(exact.bank.day, day) <= 3)
+      if (sameMoney) {
+        Object.assign(a, { status: 'duplicate', dupOf: exact.id, note: exact.bank?.reconciled ? 'Esta linha já foi conciliada antes.' : 'Esta linha já foi importada antes.', locked: true })
+      } else if (byId.has(distinct())) {
+        Object.assign(a, { id: distinct(), status: 'duplicate', dupOf: distinct(), note: 'Esta linha já foi importada antes.', locked: true })
+      } else {
+        // Same bank id, different value or date: never assumed to be the same — the person decides.
+        Object.assign(a, { id: distinct(), status: 'possible', dupOf: exact.id, note: `O banco usou o mesmo identificador numa linha diferente já importada (“${exact.reason}”).` })
+      }
       return
     }
     const mk = moneyKey(type, currency, amount)

@@ -12,7 +12,7 @@ import { EmptyState, SearchField, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { Chips, Segmented } from '../../ui/Segmented'
 import { useOpenParam } from '../useOpenParam'
-import { useRoute } from '../../app/router'
+import { navigate, useRoute } from '../../app/router'
 import { allCategories, categoryLabel, NO_CATEGORY } from '../../core/financeCategories'
 import { Select } from '../../ui/Field'
 import { FinanceGoalsSection } from './FinanceGoals'
@@ -112,7 +112,9 @@ function FinanceHome() {
         </div>
 
         <section>
-          <SectionTitle>Histórico</SectionTitle>
+          <SectionTitle action="Importar extrato" onAction={() => navigate('/import')}>
+            Histórico
+          </SectionTitle>
           <div className="mb-3">
             <SearchField value={query} onChange={setQuery} placeholder="Buscar por motivo ou valor" />
           </div>

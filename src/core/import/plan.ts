@@ -15,7 +15,7 @@ import { fingerprint } from '../rules/actions'
 import { MAX_RUNS_PER_WRITE } from '../rules/engine'
 import { hash16 } from '../rules/hash'
 import type { RuleCtx, RuleEvent } from '../rules/types'
-import type { Analysis, AnalyzedLine, LineAction } from './analyze'
+import { defaultAction, type Analysis, type AnalyzedLine, type LineAction } from './analyze'
 import { categoryOnly } from './categorize'
 
 export interface Decision {
@@ -51,6 +51,11 @@ export const bankFp = (t: Transaction): string => {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+/** What happens to a line: the person's choice, else the default (anything uncertain is left out). */
+export function actionOf(l: AnalyzedLine, d: Decision | undefined): LineAction {
+  return l.locked ? 'skip' : (d?.action ?? defaultAction(l))
+}
+
 export function categoryOf(l: AnalyzedLine, d: Decision | undefined): string | null {
   if (d && d.category !== undefined) return d.category
   return l.category?.id ?? null
@@ -69,7 +74,7 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
 
   for (const l of analysis.lines) {
     const d = decisions.get(l.i)
-    const action = l.locked ? 'skip' : (d?.action ?? (l.status === 'new' ? 'import' : l.status === 'reconciled' ? 'reconcile' : 'skip'))
+    const action = actionOf(l, d)
     if (action === 'skip') {
       if (l.line.error || !l.currency) info.errors++
       else if (l.status === 'duplicate') info.duplicates++

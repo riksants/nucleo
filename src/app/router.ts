@@ -32,6 +32,8 @@ export type RoutePath =
   | '/assistant'
   | '/automations'
   | '/rules'
+  | '/import'
+  | '/imports'
 
 export interface Route {
   path: RoutePath

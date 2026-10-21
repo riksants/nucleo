@@ -26,6 +26,18 @@ interface Props {
 }
 
 /** The fast "+ / −" flow: amount, reason, confirm. Also edits an existing entry. */
+/** Parte 3: the statement line behind a movement (original text and date kept as in the file). */
+function BankLine({ tx }: { tx: Transaction }) {
+  if (!tx.bank) return null
+  const b = tx.bank
+  return (
+    <p className="text-[13px] leading-relaxed text-faint [overflow-wrap:anywhere]">
+      {b.reconciled ? 'Confirmada pelo extrato' : 'Importada do extrato'}
+      {b.account ? ` (${b.account})` : ''}: “{b.raw}” · {b.date || b.day}
+    </p>
+  )
+}
+
 export function TransactionSheet({ open, onClose, type, editing }: Props) {
   const { data, displayCurrency, settings, convert, addTransaction, updateTransaction, remove } = useStore()
   const { toast, confirm } = useFeedback()
@@ -137,6 +149,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           <p className="num text-[28px] font-semibold text-expense">− {formatMoney(editing.amount, editing.currency)}</p>
           <p className="text-[15px]">{editing.reason}</p>
           <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
+          <BankLine tx={editing} />
           <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">Esta saída foi lançada pelo Núcleo porque a assinatura está marcada como “Considerar pago automaticamente”. Para desfazer, use Feito pelo Núcleo.</p>
         </div>
       </Sheet>
@@ -169,6 +182,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           <p className="num text-[28px] font-semibold text-income">+ {formatMoney(editing.amount, editing.currency)}</p>
           <p className="text-[15px]">{editing.reason}</p>
           <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
+          <BankLine tx={editing} />
           <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">
             Esta entrada veio de um pagamento registrado {kind === 'project' || kind === 'subscriber' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — o Financeiro acompanha.
           </p>
@@ -197,6 +211,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
       }
     >
       <form onSubmit={submit} noValidate className="space-y-6 pt-2">
+        {editing && <BankLine tx={editing} />}
         {orphan && <p className="rounded-2xl bg-raised p-4 text-[14px] leading-relaxed text-soft">Esta entrada veio de um pagamento que não existe mais (talvez excluído em outro aparelho). Ela pode ser editada ou excluída normalmente.</p>}
         <div>
           <label htmlFor="tx-amount" className="mb-2 block text-[13px] font-semibold text-soft">

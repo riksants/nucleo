@@ -257,7 +257,10 @@ export function guessMapping(sheet: CsvSheet): CsvGuess {
   }
 
   const dateValues = columns.date !== undefined ? values(columns.date) : []
-  const moneyValues = [columns.amount, columns.debit, columns.credit].flatMap((c) => (c === undefined ? [] : values(c)))
+  const guessed = [columns.amount, columns.debit, columns.credit].filter((c) => c !== undefined)
+  // No value column yet: the decimal separator comes from every column that holds numbers.
+  const moneyCols = guessed.length ? guessed : [...Array(width).keys()].filter((c) => c !== columns.date && amountShare(values(c)) >= 0.8)
+  const moneyValues = moneyCols.flatMap((c) => values(c))
   const missing: string[] = []
   if (columns.date === undefined) missing.push('data')
   if (columns.amount === undefined && columns.debit === undefined) missing.push('valor')

@@ -94,9 +94,12 @@ const KNOWN: [string, string][] = [
 ]
 
 export function knownGuess(type: 'in' | 'out', description: string, settings: Settings): CategoryGuess | null {
-  const text = ` ${plain(description).replace(/[^a-z0-9.]+/g, ' ')} `
+  const p = plain(description)
+  // "NETFLIX.COM" is Netflix; "booking.com" is only matched with its dot.
+  const words = ` ${p.replace(/[^a-z0-9]+/g, ' ')} `
+  const dotted = ` ${p.replace(/[^a-z0-9.]+/g, ' ')} `
   for (const [name, id] of KNOWN) {
-    if (!text.includes(` ${name} `) && !(name.includes('.') && text.includes(name))) continue
+    if (name.includes('.') ? !dotted.includes(name) : !words.includes(` ${name} `)) continue
     const cat = findCategory(settings, id)
     if (!cat || cat.type !== type || isCategoryHidden(settings, id)) continue
     return { id, source: 'known', why: `“${name}” costuma ser ${cat.label}`, apply: true }

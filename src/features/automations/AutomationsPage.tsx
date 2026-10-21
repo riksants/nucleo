@@ -60,7 +60,8 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
   const { undo, linkedRuns, undoOne, retry } = useAutomationActions()
   const { toast, confirm } = useFeedback()
   const isRule = run.automation === 'rule'
-  const path = isRule ? undefined : ORIGIN_PATH[run.origin.collection]
+  const isImport = run.automation === 'bankImport'
+  const path = isRule || isImport ? undefined : ORIGIN_PATH[run.origin.collection]
   const done = run.status === 'done'
   const goal = run.automation === 'goalSave'
   const ruleExists = isRule && run.rule && data.rules.some((r) => r.id === run.rule!.id)
@@ -171,6 +172,11 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
                 {run.origin.label}
               </button>
             )}
+            {isImport && (
+              <button type="button" className="font-medium text-accent-hi hover:text-ink" onClick={() => navigate('/imports', { open: run.id })}>
+                Ver importação
+              </button>
+            )}
             {ruleExists && (
               <button type="button" className="font-medium text-accent-hi hover:text-ink" onClick={() => navigate('/rules', { open: run.rule!.id })}>
                 Ver regra
@@ -193,7 +199,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
               Pular este mês
             </button>
           )}
-          {done && !goal && (
+          {done && !goal && !isImport && (
             <button type="button" className="text-[14px] font-medium text-soft hover:text-ink" onClick={doUndo}>
               {run.fromPending ? 'Desfazer confirmação' : run.automation === 'subscriberCharge' ? 'Não pagou · desfazer' : manyActions ? 'Desfazer tudo' : 'Desfazer'}
             </button>
