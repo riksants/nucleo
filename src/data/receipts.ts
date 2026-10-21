@@ -205,6 +205,8 @@ export function receiptTransaction(r: Receipt, ctx: ReceiptCtx, existing?: Trans
     reason: r.reason,
     category: r.category,
     source: { ...r.source },
+    // Confirmed by a bank statement (Parte 3): stays confirmed while the value is the same.
+    ...(existing?.bank && existing.amount === r.amount && existing.currency === r.currency ? { bank: existing.bank } : {}),
   }
 }
 

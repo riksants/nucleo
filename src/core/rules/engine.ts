@@ -64,6 +64,10 @@ export type Matcher = (r: Rule, ev: RuleEvent) => ConditionCheck
 export interface ExecuteOptions {
   /** Rules a chained event may reach (the write-time ones). Default: the same list. */
   chainRules?: Rule[]
+  /** Runs allowed in this write (default MAX_RUNS_PER_WRITE). A statement import allows one per line. */
+  maxRuns?: number
+  /** Rules left out for one event (an import already applied a rule's category itself). */
+  skip?: (rule: Rule, ev: RuleEvent) => boolean
 }
 
 interface ChainState {
@@ -116,14 +120,16 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
     }
     for (const rule of rules) {
       if (paused.has(rule.id) || state.path.some((p) => p.id === rule.id)) continue
+      if (opts.skip?.(rule, ev)) continue
       const check = match(rule, ev)
       if (check.ok === false) continue
       // A movement dated before the rule was turned on (e.g. an old payment whose income only now got a rate).
       if (ev.date < rule.since) continue
       const id = ruleRunId(rule.id, ev.key)
       if (work.get('automationRuns', id)) continue
-      if (state.budget.runs >= MAX_RUNS_PER_WRITE) {
-        if (!state.budget.stopped) work.put('automationRuns', stopRun(rule, ev, ctx, `Mais de ${MAX_RUNS_PER_WRITE} execuções numa só ação. Nada além disso foi feito.`))
+      const maxRuns = opts.maxRuns ?? MAX_RUNS_PER_WRITE
+      if (state.budget.runs >= maxRuns) {
+        if (!state.budget.stopped) work.put('automationRuns', stopRun(rule, ev, ctx, `Mais de ${maxRuns} execuções numa só ação. Nada além disso foi feito.`))
         state.budget.stopped = true
         return
       }
@@ -190,7 +196,7 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
  * The writes the rules add to one write of this device (`ops`, by `actor`), given the data just
  * before it. Empty when nothing matches, or the write was made by a rule or an undo.
  */
-export function planRulesForWrite(before: DataState, ops: BatchOp[], actor: WriteActor, ctx: RuleCtx): BatchOp[] {
+export function planRulesForWrite(before: DataState, ops: BatchOp[], actor: WriteActor, ctx: RuleCtx, opts: Pick<ExecuteOptions, 'maxRuns' | 'skip'> = {}): BatchOp[] {
   if (!EVENT_ACTORS.has(actor) || !ops.length) return []
   const rules = activeRules(before.rules ?? []).filter((r) => !triggerInfo(r.trigger.kind).scheduled)
   if (!rules.length) return []
@@ -198,7 +204,7 @@ export function planRulesForWrite(before: DataState, ops: BatchOp[], actor: Writ
   if (!events.length) return []
   const after = applyOps(before, ops)
   const work = new Work(after)
-  executeEvents(events, rules, work, ctx, matcherFor(ctx), { chainRules: rules })
+  executeEvents(events, rules, work, ctx, matcherFor(ctx), { ...opts, chainRules: rules })
   const extra = work.ops()
   assertNoInventedFacts(after, extra)
   return extra
@@ -227,11 +233,11 @@ export function engineErrorRun(ctx: RuleCtx): AutomationRun {
  * What the store adds to a write. If the engine fails, the write goes on without the rules — it
  * never blocks what the person is doing — and the failure is noted in "Feito pelo Núcleo".
  */
-export function safeRulesForWrite(before: DataState, settings: Settings, convert: Converter, ops: BatchOp[], actor: WriteActor, now = new Date()): BatchOp[] {
+export function safeRulesForWrite(before: DataState, settings: Settings, convert: Converter, ops: BatchOp[], actor: WriteActor, now = new Date(), opts: Pick<ExecuteOptions, 'maxRuns' | 'skip'> = {}): BatchOp[] {
   if (!settings.onboarded || !before.rules?.length) return []
   const ctx: RuleCtx = { settings, today: todayIn(zoneOf(settings), now), convert, now }
   try {
-    return planRulesForWrite(before, ops, actor, ctx)
+    return planRulesForWrite(before, ops, actor, ctx, opts)
   } catch (err) {
     console.error('Regras: falha no motor (a gravação segue sem as regras)', err)
     try {

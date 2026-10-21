@@ -159,7 +159,7 @@ function ConditionEditor({ c, trigger, onChange }: { c: RuleCondition; trigger: 
       return <MultiChips values={c.values} options={pickableCategories(settings, type).map((x) => ({ value: x.id, label: x.label }))} onChange={(values) => onChange({ ...c, values })} />
     }
     case 'origin':
-      return <MultiChips<MoneyOrigin> values={c.values} options={(Object.keys(ORIGIN_LABEL) as MoneyOrigin[]).filter((o) => (info.income ? o !== 'tool' : o === 'manual' || o === 'tool')).map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))} onChange={(values) => onChange({ ...c, values })} />
+      return <MultiChips<MoneyOrigin> values={c.values} options={(Object.keys(ORIGIN_LABEL) as MoneyOrigin[]).filter((o) => (info.income ? o !== 'tool' : o === 'manual' || o === 'tool' || o === 'import')).map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))} onChange={(values) => onChange({ ...c, values })} />
     case 'client':
       return data.clients.length ? <MultiChips values={c.values} options={data.clients.map((x) => ({ value: x.id, label: x.name }))} onChange={(values) => onChange({ ...c, values })} /> : <p className="text-sm text-faint">Nenhum cliente cadastrado ainda.</p>
     case 'project':

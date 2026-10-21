@@ -38,6 +38,38 @@ export interface Transaction extends Entity {
    * stays in Financeiro, no longer linked).
    */
   source?: ReceiptSource
+  /**
+   * Parte 3: the line of a bank statement behind this movement — created by an import, or an existing
+   * movement confirmed by the statement (`reconciled`). Missing on everything typed or created before.
+   */
+  bank?: BankRef
+}
+
+/** One line of an imported bank statement (CSV/OFX), as kept on the movement. */
+export interface BankRef {
+  /** The import (its run in automationRuns, id `import-…`). */
+  importId: string
+  /** The line's day, "YYYY-MM-DD", as read from the file. */
+  day: string
+  /** The date exactly as written in the file. */
+  date: string
+  /** The description exactly as written in the file (the movement's reason is a cleaned copy). */
+  raw: string
+  memo?: string
+  /** Bank id of the line (OFX FITID or an id column), when the file has one. */
+  fitid?: string
+  /** Account typed/recognized at import ("Sabadell", "Wise"). */
+  account?: string
+  /** Name of the saved model (CSV) used to read the file. */
+  template?: string
+  /** The category the Núcleo applied by itself (not chosen by the person) — not counted as learning. */
+  autoCategory?: string
+  /** An existing movement confirmed by this line (nothing was created). */
+  reconciled?: true
+  /** Reconciled: the line's own id (a created movement has it as its id), so the same line is known again. */
+  line?: string
+  /** Created movements: how it was written (an edit afterwards changes it, and undo keeps it). */
+  fp?: string
 }
 
 /** Where an automatic income came from. */
@@ -440,8 +472,49 @@ export interface Settings {
   automations?: Partial<Record<AutomationId, { on: boolean; since: string }>>
   /** Parte 2: what the person did with each rule suggestion (key → state). */
   ruleSuggestions?: Record<string, InsightMark>
+  /** Parte 3: saved ways of reading a bank's CSV ("Meu Sabadell"). */
+  importTemplates?: ImportTemplate[]
   /** Last change, used to resolve edits made on two devices. */
   updatedAt?: string
+}
+
+/** Which column holds what, in a CSV (0-based column indexes). */
+export interface CsvColumns {
+  date?: number
+  description?: number
+  memo?: number
+  /** One signed value column… */
+  amount?: number
+  /** …or separate debit/credit columns. */
+  debit?: number
+  credit?: number
+  /** D/C, débito/crédito… (with an unsigned value column). */
+  type?: number
+  currency?: number
+  balance?: number
+  id?: number
+}
+
+export interface CsvMapping {
+  delimiter: string
+  /** Row index of the header (-1 = the file has no header). */
+  headerRow: number
+  columns: CsvColumns
+  decimal: ',' | '.'
+  dateOrder: 'dmy' | 'mdy' | 'ymd'
+  /** Positive values are money going out (credit card statements). */
+  invert?: boolean
+}
+
+/** A CSV model saved by the person; applied by itself when a file with the same header comes. */
+export interface ImportTemplate extends CsvMapping {
+  id: string
+  name: string
+  /** Normalized header (or the column count, for files without header). */
+  signature: string
+  currency?: Currency
+  account?: string
+  createdAt: string
 }
 
 export interface FinanceCategory {
@@ -813,7 +886,7 @@ export interface InsightMark {
 /* ----------------------------- Automações ----------------------------- */
 
 /** `rule`: a run of one of the person's rules (Parte 2); it has no on/off of its own in settings. */
-export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule'
+export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule' | 'bankImport'
 export type AutomationRunStatus = 'pending' | 'done' | 'undone' | 'skipped'
 
 /**
@@ -852,6 +925,38 @@ export interface AutomationRun extends Entity {
   actions?: RunAction[]
   /** 2.1: run started by another rule's action ("Permitir que ações desta regra ativem outras regras"). */
   chain?: { rootRunId: string; path: { id: string; name: string }[]; depth: number }
+  /** Parte 3: an import of a bank statement (its movements carry `bank.importId` = this run's id). */
+  bankImport?: BankImportInfo
+}
+
+export interface BankImportInfo {
+  file: string
+  format: 'csv' | 'ofx'
+  template?: string
+  account?: string
+  /** Lines read from the file. */
+  lines: number
+  /** Movements created. */
+  created: number
+  /** Already in the Núcleo (same line imported before): ignored. */
+  duplicates: number
+  /** "Possível duplicada" left out by the person. */
+  possible: number
+  /** Existing movements confirmed by the statement (nothing created). */
+  reconciled: number
+  /** …of which reconciled by the Núcleo itself (very high confidence). */
+  autoReconciled: number
+  /** Created movements with a category. */
+  categorized: number
+  /** …of which with the category the Núcleo suggested by itself. */
+  autoCategorized: number
+  /** Lines that needed review and were left out (or could not be read). */
+  review: number
+  errors: number
+  /** First and last day of the lines. */
+  from?: string
+  to?: string
+  undone?: { at: string; removed: number; unlinked: number; rules: number; kept: { id: string; label: string; why: string }[] }
 }
 
 /** Why an action was not done. Only the `retryable` ones offer "Tentar de novo". */
@@ -883,7 +988,7 @@ export interface RunConversion {
 /* ----------------------------- Regras (Automações Parte 2) ----------------------------- */
 
 /** Where money came from (or went to): typed by hand, or a payment recorded elsewhere in the app. */
-export type MoneyOrigin = 'manual' | 'project' | 'sale' | 'subscriber' | 'tool'
+export type MoneyOrigin = 'manual' | 'project' | 'sale' | 'subscriber' | 'tool' | 'import'
 
 export type RuleTriggerKind =
   | 'moneyIn'

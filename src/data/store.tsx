@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { safeRulesForWrite } from '../core/rules/engine'
+import { safeRulesForWrite, type ExecuteOptions } from '../core/rules/engine'
 import type { WriteActor } from '../core/rules/types'
+import { applyOps } from '../core/rules/work'
 import { readPref, writePref } from '../lib/prefs'
 import { effectiveRates, fetchRates, makeConverter, RATES_MAX_AGE_MS, type Converter } from '../lib/rates'
 import { createIndexedDbRepository, type BatchOp, type Repository, type SyncStatus } from './repository'
@@ -48,6 +49,8 @@ export interface SaveOptions {
 export interface CommitOptions {
   /** Who is writing, for the rules: writes by rules and undos never trigger rules. Default: the person. */
   by?: WriteActor
+  /** Parte 3 (import of a statement): how the rules treat this write (more runs allowed, rules left out). */
+  rules?: Pick<ExecuteOptions, 'maxRuns' | 'skip'>
 }
 
 /** Same stamping as save(): a normal change clears the Assistant mark. */
@@ -60,15 +63,7 @@ function stampOps(ops: BatchOp[], now: string): BatchOp[] {
   })
 }
 
-function applyToState(prev: DataState, ops: BatchOp[]): DataState {
-  const next = { ...prev } as Record<CollectionName, Entity[]>
-  for (const o of ops) {
-    const list = next[o.collection]
-    if (o.op === 'remove') next[o.collection] = list.filter((x) => x.id !== o.id)
-    else next[o.collection] = list.some((x) => x.id === o.item.id) ? list.map((x) => (x.id === o.item.id ? o.item : x)) : [o.item, ...list]
-  }
-  return next as unknown as DataState
-}
+const applyToState = applyOps
 
 /** Optional details (Etapa 3). Left out = the record keeps exactly what it had. */
 export interface TransactionExtras {
@@ -217,7 +212,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
    * engine fails, the write goes on without the rules — it never blocks what the person is doing.
    */
   const rulesFor = useCallback(
-    (ops: BatchOp[], actor: WriteActor): BatchOp[] => safeRulesForWrite(dataRef.current, settingsRef.current, convertRef.current, ops, actor),
+    (ops: BatchOp[], actor: WriteActor, opts?: CommitOptions['rules']): BatchOp[] => safeRulesForWrite(dataRef.current, settingsRef.current, convertRef.current, ops, actor, new Date(), opts),
     [],
   )
 
@@ -301,7 +296,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
       if (!ops.length) return
       const now = new Date().toISOString()
       const stamped = stampOps(ops, now)
-      const all = [...stamped, ...stampOps(rulesFor(stamped, opts.by ?? 'person'), now)]
+      const all = [...stamped, ...stampOps(rulesFor(stamped, opts.by ?? 'person', opts.rules), now)]
       // The next write (even before React renders) must already see this one as "before".
       dataRef.current = applyToState(dataRef.current, all)
       setData((prev) => applyToState(prev, all))

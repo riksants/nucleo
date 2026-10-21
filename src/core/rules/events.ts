@@ -18,13 +18,26 @@ const ORIGIN_OF: Record<NonNullable<Transaction['source']>['kind'], MoneyOrigin>
   tool: 'tool',
 }
 
+/** Records of `before` by id, built per collection only when asked (a big write stays linear). */
+function indexer(before: DataState) {
+  const maps = new Map<CollectionName, Map<string, Entity>>()
+  return (collection: CollectionName, id: string): Entity | undefined => {
+    let m = maps.get(collection)
+    if (!m) {
+      m = new Map((before[collection] as Entity[]).map((x) => [x.id, x]))
+      maps.set(collection, m)
+    }
+    return m.get(id)
+  }
+}
+
 /** Looks a record up in the write first (its newest version), then in the data before it. */
-function finder(before: DataState, ops: BatchOp[]) {
+function finder(before: DataState, ops: BatchOp[], prevOf = indexer(before)) {
   const written = new Map<string, Entity>()
   for (const o of ops) if (o.op === 'put') written.set(`${o.collection}:${o.item.id}`, o.item)
   return <T extends Entity>(collection: CollectionName, id: string | null | undefined): T | undefined => {
     if (!id) return undefined
-    return (written.get(`${collection}:${id}`) ?? (before[collection] as Entity[]).find((x) => x.id === id)) as T | undefined
+    return (written.get(`${collection}:${id}`) ?? prevOf(collection, id)) as T | undefined
   }
 }
 
@@ -32,7 +45,7 @@ const buyerName = (sale: Sale, client: Client | undefined) => (sale.clientId ? (
 
 function moneyEvent(tx: Transaction, find: ReturnType<typeof finder>, ctx: RuleCtx): RuleEvent | null {
   if (tx.type !== 'in' && tx.type !== 'out') return null
-  const origin: MoneyOrigin = tx.source ? ORIGIN_OF[tx.source.kind] : 'manual'
+  const origin: MoneyOrigin = tx.source ? ORIGIN_OF[tx.source.kind] : tx.bank && !tx.bank.reconciled ? 'import' : 'manual'
   let clientId: string | null = null
   let projectId: string | null = null
   let cliente: string | undefined
@@ -75,7 +88,8 @@ function moneyEvent(tx: Transaction, find: ReturnType<typeof finder>, ctx: RuleC
 
 /** The events of one write (`ops`), given the data just before it. */
 export function detectEvents(before: DataState, ops: BatchOp[], ctx: RuleCtx): RuleEvent[] {
-  const find = finder(before, ops)
+  const prevOf = indexer(before)
+  const find = finder(before, ops, prevOf)
   const ms = ctx.now.getTime()
   const today = ctx.today
   const out: RuleEvent[] = []
@@ -84,7 +98,7 @@ export function detectEvents(before: DataState, ops: BatchOp[], ctx: RuleCtx): R
   for (const o of ops) if (o.op === 'put') last.set(`${o.collection}:${o.item.id}`, o)
 
   for (const o of last.values()) {
-    const prev = (before[o.collection] as Entity[]).find((x) => x.id === o.item.id)
+    const prev = prevOf(o.collection, o.item.id)
     switch (o.collection) {
       case 'transactions': {
         if (prev) break

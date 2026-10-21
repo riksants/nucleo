@@ -89,6 +89,7 @@ export const ORIGIN_LABEL: Record<MoneyOrigin, string> = {
   sale: 'pagamento de venda',
   subscriber: 'assinante',
   tool: 'assinatura/ferramenta',
+  import: 'importada de extrato',
 }
 
 export const WEEKDAY_LABEL = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
