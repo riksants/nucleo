@@ -264,3 +264,21 @@ describe('Regras (Automações Parte 2)', () => {
     expect((await as(A, `select data from records where id = 'rule-a'`)).rows[0].data.on).toBe(true)
   })
 })
+
+describe('Importação de extratos (Automações Parte 3)', () => {
+  it('B nunca vê, altera, apaga nem cria importações nem movimentações importadas de A (mesmo id fixo de linha)', async () => {
+    const run = { automation: 'bankImport', status: 'done', summary: 'Núcleo importou 2 movimentações', bankImport: { file: 'extrato-a.csv', lines: 2, created: 2 } }
+    const tx = { type: 'out', amount: 4530, currency: 'EUR', baseAmount: -4530, reason: 'Mercadona', bank: { importId: 'import-a', day: '2026-10-15', date: '15/10/2026', raw: 'MERCADONA VALENCIA', account: 'Sabadell' } }
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('automationRuns', 'import-a', $1, $2)`, [JSON.stringify(run), now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'bank-0123456789abcdef', $1, $2)`, [JSON.stringify(tx), now()])
+    expect((await as(B, `select * from records where data->>'automation' = 'bankImport' or data ? 'bank'`)).rows).toHaveLength(0)
+    expect((await as(B, `select * from records where id in ('import-a', 'bank-0123456789abcdef')`)).rows).toHaveLength(0)
+    expect((await as(B, `update records set data = '{}' where id = 'import-a'`)).affectedRows).toBe(0)
+    expect((await as(B, `delete from records where id = 'bank-0123456789abcdef'`)).affectedRows).toBe(0)
+    await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'automationRuns', 'import-b', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
+    // The same statement imported in B's account: same line id, separate rows.
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'bank-0123456789abcdef', '{"reason":"de B"}', $1)`, [now()])
+    expect((await as(A, `select data from records where id = 'bank-0123456789abcdef'`)).rows[0].data.reason).toBe('Mercadona')
+    expect((await as(B, `select data from records where id = 'bank-0123456789abcdef'`)).rows[0].data.reason).toBe('de B')
+  })
+})

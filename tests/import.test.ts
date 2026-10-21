@@ -250,6 +250,21 @@ describe('Deduplicação', () => {
     expect(analyzeText(two + '15/10/2026;CAFE;-2,00\n', after).lines.map((l) => l.status)).toEqual(['duplicate', 'duplicate', 'new'])
   })
 
+  it('banco que reutiliza o identificador em outra transação: nunca some como duplicada', () => {
+    // Same id in the file for two different lines: both are new.
+    let a = analyzeText(`Id;Fecha;Concepto;Importe\nA1;15/10/2026;X;-1,00\nA1;16/10/2026;Y;-9,00\n`)
+    expect(a.lines.map((l) => l.status)).toEqual(['new', 'new'])
+    expect(new Set(a.lines.map((l) => l.id)).size).toBe(2)
+    // Imported before; next month the bank uses A1 again for something else: possible, never a silent duplicate.
+    const { data: after } = importInto(data(), analyzeText(`Id;Fecha;Concepto;Importe\nA1;15/10/2026;X;-1,00\n`))
+    a = analyzeText(`Id;Fecha;Concepto;Importe\nA1;15/11/2026;Z;-50,00\n`, after)
+    expect(a.lines[0].status).toBe('possible')
+    const { data: both } = importInto(after, a, new Map([[0, { action: 'import' }]]), 'import-2')
+    expect(both.transactions).toHaveLength(2)
+    // And that one is then known: importing it again is a duplicate.
+    expect(analyzeText(`Id;Fecha;Concepto;Importe\nA1;15/11/2026;Z;-50,00\n`, both).lines[0].status).toBe('duplicate')
+  })
+
   it('FITID repetido no mesmo arquivo: a segunda é duplicada', () => {
     const a = analyzeText(`Id;Fecha;Concepto;Importe\nA1;15/10/2026;X;-1,00\nA1;15/10/2026;X;-1,00\n`)
     expect(a.lines.map((l) => l.status)).toEqual(['new', 'duplicate'])
@@ -349,6 +364,16 @@ describe('Categoria automática e aprendizado', () => {
     const a = analyzeText(csvSemicolon)
     expect(a.lines.map((l) => l.category?.id)).toEqual(['food', 'salary', 'transport'])
     expect(a.counts.categorized).toBe(3)
+  })
+
+  it('nome conhecido com domínio e códigos (NETFLIX.COM, AMAZON.ES*1234)', () => {
+    const a = analyzeText(`Fecha;Concepto;Importe\n15/10/2026;NETFLIX.COM;-15,99\n16/10/2026;AMAZON.ES*AB12CD;-20,00\n17/10/2026;BOOKING.COM HOTEL;-90,00\n`)
+    expect(a.lines.map((l) => l.category?.id)).toEqual(['subscriptions', 'shopping', 'travel'])
+  })
+
+  it('decimal com vírgula reconhecido mesmo quando a coluna de valor ainda não foi escolhida', () => {
+    const r = readFile(enc(`Quando|O que|Quanto|Codigo\n15/10/2026|LIDL|-30,00|12345\n`), 'x.csv')
+    expect(r.kind === 'csv' && r.mapping.decimal).toBe(',')
   })
 
   it('regra explícita vem primeiro', () => {
