@@ -113,7 +113,7 @@ export function MigrationOffer({ summary, onDone }: { summary: LocalSummary; onD
       await repository.syncNow?.()
       const skipped = result.skipped.transactions ? ` ${result.skipped.transactions} movimentações ficaram só no aparelho (moeda do saldo diferente).` : ''
       toast(`${result.verified} registros enviados e conferidos`)
-      if (skipped) await confirm({ title: 'Migração concluída', message: `Tudo foi conferido no servidor. A cópia deste aparelho foi mantida.${skipped}`, confirmLabel: 'Ok' })
+      if (skipped) await confirm({ title: 'Migração concluída', message: `Tudo foi conferido no servidor.${skipped}`, confirmLabel: 'Ok' })
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

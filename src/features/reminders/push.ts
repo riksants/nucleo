@@ -75,6 +75,18 @@ export async function forgetPushOnThisDevice(): Promise<void> {
 }
 
 /**
+ * Ends push on this device and closes the notifications already shown. No server call, so it
+ * also works after the session ended (the dispatcher drops the dead endpoint on its next send).
+ */
+export async function silencePushOnThisDevice(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return
+  const reg = await navigator.serviceWorker.getRegistration()
+  if (!reg) return
+  for (const n of await reg.getNotifications()) n.close()
+  await (await reg.pushManager.getSubscription())?.unsubscribe()
+}
+
+/**
  * Mirrors the next 14 days of reminders to the server, so they can be sent
  * with the app closed. Removed or changed sources disappear from the server
  * too. Keys are unique per account, so running this on two devices is harmless.

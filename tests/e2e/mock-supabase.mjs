@@ -60,6 +60,12 @@ const server = createServer(async (req, res) => {
 
   // ---- test control
   if (url.pathname === '/__state') return send(200, { users: [...users.values()], records: [...records.values()], settings: [...settings.entries()], requests: requests.slice(-60) })
+  // The server stops accepting this person's session (revoked elsewhere, user removed…).
+  if (url.pathname === '/__revoke') {
+    const u = users.get(url.searchParams.get('email'))
+    if (u) u.revoked = true
+    return send(200, { revoked: Boolean(u) })
+  }
   if (url.pathname === '/__offline') {
     server.offline = url.searchParams.get('v') === '1'
     return send(200, { offline: server.offline })
@@ -80,9 +86,12 @@ const server = createServer(async (req, res) => {
     return send(200, session(u))
   }
   if (url.pathname === '/auth/v1/token') {
+    // Refreshing a session is never accepted here: a stored session that expired cannot be renewed.
+    if (url.searchParams.get('grant_type') === 'refresh_token') return send(400, { code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' })
     const u = users.get(json.email)
     if (!u || u.password !== json.password) return send(400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
     if (!u.confirmed) return send(400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' })
+    u.revoked = false
     return send(200, session(u))
   }
   if (url.pathname === '/auth/v1/user') {
@@ -90,6 +99,7 @@ const server = createServer(async (req, res) => {
     const u = [...users.values()].find((x) => x.id === id)
     // updateUser (new password after recovery) really changes it, so the next sign-in can be tested.
     if (u && req.method === 'PUT' && json?.password) u.password = json.password
+    if (u?.revoked) return send(403, { code: 403, error_code: 'session_not_found', msg: 'Session from session_id claim in JWT does not exist' })
     return u ? send(200, session(u).user) : send(401, { msg: 'invalid' })
   }
   if (url.pathname === '/auth/v1/logout') return send(204)

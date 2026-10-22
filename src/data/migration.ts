@@ -1,4 +1,5 @@
-import { LOCAL_DB, META, openDatabase, readAll, readMeta, SETTINGS_KEY, writeMeta } from './repository'
+import type { MigrationMark } from './deviceCleanup'
+import { done, LOCAL_DB, META, openDatabase, readAll, readMeta, SETTINGS_KEY, writeMeta } from './repository'
 import type { RemoteApi } from './sync'
 import { COLLECTION_NAMES, type Account, type CollectionName, type DataState, type Entity, type Settings, type Transaction } from './types'
 
@@ -15,7 +16,7 @@ export async function readLocal(): Promise<{ data: DataState; settings: Settings
   const db = await openDatabase(LOCAL_DB)
   try {
     const { data, settings } = await readAll(db)
-    const migrated = (await readMeta<{ uid: string; at: string }[]>(db, 'migratedTo')) ?? []
+    const migrated = (await readMeta<MigrationMark[]>(db, 'migratedTo')) ?? []
     return { data, settings, migratedTo: migrated.map((m) => m.uid) }
   } finally {
     db.close()
@@ -65,7 +66,9 @@ export interface MigrationResult {
  * - Same ids are upserted, so running it twice never duplicates anything.
  * - Plain-text passwords are sealed by `sealAccount` before leaving the device.
  * - Every record is read back from the server; only then the device is marked
- *   as migrated. The local copy is never deleted here.
+ *   as migrated (with what was sent) and the plain-text passwords are removed
+ *   from the local copy. The rest of the local copy is removed when this
+ *   account's session ends (deviceCleanup), never here.
  */
 export async function migrateLocalToAccount(opts: {
   uid: string
@@ -78,12 +81,15 @@ export async function migrateLocalToAccount(opts: {
   const { data, settings } = await readLocal()
   const skipped: MigrationResult['skipped'] = {}
   const rows: { collection: CollectionName; item: Entity }[] = []
+  const sentCollections: CollectionName[] = []
+  const sentAccounts = new Map(data.accounts.map((a) => [a.id, a.updatedAt]))
 
   for (const name of COLLECTION_NAMES) {
     if (name === 'transactions' && !plan.moveTransactions) {
       if (data.transactions.length) skipped.transactions = data.transactions.length
       continue
     }
+    sentCollections.push(name)
     for (const item of data[name] as Entity[]) {
       const ready = name === 'accounts' ? await opts.sealAccount(item as Account) : item
       if (name === 'accounts' && (ready as Account).password) throw new Error('Uma senha ainda está sem criptografia.')
@@ -138,8 +144,16 @@ export async function migrateLocalToAccount(opts: {
 
   const db = await openDatabase(LOCAL_DB)
   try {
-    const list = (await readMeta<{ uid: string; at: string }[]>(db, 'migratedTo')) ?? []
-    await writeMeta(db, 'migratedTo', [...list.filter((m) => m.uid !== uid), { uid, at: new Date().toISOString() }])
+    const list = (await readMeta<MigrationMark[]>(db, 'migratedTo')) ?? []
+    const mark: MigrationMark = { uid, at: new Date().toISOString(), sent: sentCollections, settingsCopied: plan.settings === 'copy' && Boolean(settings) }
+    // The passwords now live sealed in the account: no plain-text copy stays on the device.
+    const { data: current } = await readAll(db)
+    const tx = db.transaction(['accounts', META], 'readwrite')
+    for (const a of current.accounts) {
+      if (a.password && sentAccounts.get(a.id) === a.updatedAt) tx.objectStore('accounts').put({ ...a, password: '' })
+    }
+    tx.objectStore(META).put([...list.filter((m) => m.uid !== uid), mark], 'migratedTo')
+    await done(tx)
   } finally {
     db.close()
   }

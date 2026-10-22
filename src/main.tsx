@@ -3,6 +3,7 @@ import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { playOpening } from './app/opening'
+import { onAccountRemoval, rememberAccountOnDevice } from './data/deviceCleanup'
 import { createIndexedDbRepository, type Repository } from './data/repository'
 import { StoreProvider } from './data/store'
 import { createSupabaseRemote, createSyncedRepository } from './data/sync'
@@ -24,14 +25,22 @@ function repositoryFor(userId: string | null): Repository {
   const key = userId ?? 'local'
   let repo = repositories.get(key)
   if (!repo) {
+    // Every account that gets a cache here is remembered, so it is always found and removed when its session ends.
+    if (userId && supabase) rememberAccountOnDevice(userId)
     repo = userId && supabase ? createSyncedRepository(userId, createSupabaseRemote(supabase, userId)) : createIndexedDbRepository()
     repositories.set(key, repo)
   }
   return repo
 }
 
+// An account being removed from the device stops syncing before its database goes away.
+onAccountRemoval((uid) => {
+  repositories.get(uid)?.dispose?.()
+  repositories.delete(uid)
+})
+
 function Root() {
-  const { checked, userId, screen } = useSession()
+  const { checked, clearing, userId, screen } = useSession()
   const repository = repositoryFor(userId)
   // Switching account (or signing out) stops the previous account's sync.
   useEffect(() => {
@@ -43,7 +52,8 @@ function Root() {
     }
   }, [userId])
 
-  if (!checked) return null
+  // Nothing on screen while the session is checked or an ended account is being removed.
+  if (!checked || clearing) return null
   if (screen && (screen !== 'newPassword' || userId)) return <AuthScreen />
   return (
     <StoreProvider key={userId ?? 'local'} repository={repository}>

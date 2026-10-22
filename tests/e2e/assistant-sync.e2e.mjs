@@ -9,7 +9,7 @@ const BASE = 'http://localhost:4318/nucleo/'
 const MOCK = 'http://localhost:54399'
 const r = reporter()
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms))
-const procs = [spawn(process.execPath, ['tests/e2e/mock-supabase.mjs'], { stdio: 'ignore' }), spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e-cloud', '--port', '4318', '--strictPort'], { stdio: 'ignore' })]
+const procs = [spawn(process.execPath, ['tests/e2e/mock-supabase.mjs'], { stdio: 'ignore' }), spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e-cloud', '--port', '4318', '--strictPort'], { stdio: 'ignore', env: { ...process.env, NUCLEO_BASE: '/nucleo/' } })]
 for (let i = 0; i < 40; i++) {
   try {
     if ((await fetch(BASE)).ok && (await fetch(MOCK + '/__state')).ok) break
@@ -18,9 +18,14 @@ for (let i = 0; i < 40; i++) {
 }
 const state = async () => (await fetch(MOCK + '/__state')).json()
 
-async function signUp(b, email) {
+/** The sign-in screen: straight after leaving an account (Etapa 1), or from the welcome screen. */
+async function openAuth(b) {
   await b.goto(BASE)
-  await b.click('Entrar ou criar conta')
+  if (!(await b.text()).includes('Esqueci minha senha')) await b.click('Entrar ou criar conta')
+}
+
+async function signUp(b, email) {
+  await openAuth(b)
   await b.click('Criar conta')
   await b.fill('E-mail', email)
   await b.fill('Senha', 'senha1234')
@@ -38,8 +43,7 @@ async function signUp(b, email) {
 }
 
 async function signIn(b, email) {
-  await b.goto(BASE)
-  await b.click('Entrar ou criar conta')
+  await openAuth(b)
   await b.fill('E-mail', email)
   await b.fill('Senha', 'senha1234')
   await b.click('Entrar', 'button[type=submit]')
@@ -103,7 +107,8 @@ try {
   await A.goto(BASE + '#/account')
   await A.click('Sair desta conta')
   await A.click('Sair', 'button')
-  await A.sleep(1500)
+  // The account is removed from the device, then the page restarts on the sign-in screen.
+  for (let i = 0; i < 40 && !(await A.text().catch(() => '')).includes('Esqueci minha senha'); i++) await A.sleep(500)
   await signUp(A, 'ivo@teste.com')
   await A.goto(BASE + '#/assistant')
   await A.sleep(800)

@@ -9,7 +9,7 @@ const BASE = 'http://localhost:4318/nucleo/'
 const MOCK = 'http://localhost:54399'
 const r = reporter()
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms))
-const procs = [spawn(process.execPath, ['tests/e2e/mock-supabase.mjs'], { stdio: 'ignore' }), spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e-cloud', '--port', '4318', '--strictPort'], { stdio: 'ignore' })]
+const procs = [spawn(process.execPath, ['tests/e2e/mock-supabase.mjs'], { stdio: 'ignore' }), spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e-cloud', '--port', '4318', '--strictPort'], { stdio: 'ignore', env: { ...process.env, NUCLEO_BASE: '/nucleo/' } })]
 for (let i = 0; i < 40; i++) {
   try {
     if ((await fetch(BASE)).ok && (await fetch(MOCK + '/__state')).ok) break

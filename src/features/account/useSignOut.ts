@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { useStore } from '../../data/store'
-import { deleteCache } from '../../data/sync'
 import { useFeedback } from '../../ui/Feedback'
 import { useVault } from '../accounts/vault'
 import { forgetPushOnThisDevice } from '../reminders/push'
 import { useSession } from './session'
 
 /**
- * "Sair da conta" — same steps as always (sync first, confirm, lock the vault,
- * stop push on this device, end the session, remove this account's copy from
- * the device). Afterwards the sign-in screen opens, so another account can sign
- * in right away (or go back to use the app without an account).
+ * "Sair da conta": sync first, confirm, lock the vault, stop push on this device (while the
+ * session can still remove it from the server), then end the session. Removing the account's
+ * data from the device is the same for every way a session ends (session.tsx → deviceCleanup);
+ * afterwards the page starts fresh on the sign-in screen.
  */
 export function useSignOut() {
   const auth = useSession()
@@ -35,10 +34,7 @@ export function useSignOut() {
       if (!ok) return
       vault.lock()
       await forgetPushOnThisDevice().catch(() => {})
-      const uid = auth.userId!
       await auth.signOut()
-      await deleteCache(uid).catch(() => {})
-      auth.openAuth('signin')
     } finally {
       setBusy(false)
     }

@@ -415,8 +415,9 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         else setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending, rejected: 0 })
         if (changed && !disposed) emit({ type: 'data' })
       } catch (err) {
+        if (disposed) return // the account left this device: its database may already be gone
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false
-        setStatus({ state: offline ? 'offline' : 'error', error: err instanceof Error ? err.message : String(err), pending: await pendingCount() })
+        setStatus({ state: offline ? 'offline' : 'error', error: err instanceof Error ? err.message : String(err), pending: await pendingCount().catch(() => status.pending) })
       }
     })().finally(() => {
       running = null
