@@ -13,6 +13,7 @@ import {
   type Repository,
   type SyncStatus,
 } from './repository'
+import { parseQuota, quotaSyncMessage } from './quota'
 import { COLLECTION_NAMES, type CollectionName, type Entity, type Settings } from './types'
 
 export interface RemoteRow {
@@ -76,6 +77,8 @@ const EPOCH = '1970-01-01T00:00:00.000Z'
 /** Re-reads a few seconds back so rows committed slightly out of order are not missed. */
 const CURSOR_OVERLAP_MS = 5000
 const BATCH = 200
+/** Items refused for an account limit are tried again after this long (the limit may have been raised). */
+export const QUOTA_RETRY_MS = 6 * 60 * 60 * 1000
 /** Rows per download request. */
 export const PAGE = 1000
 
@@ -216,6 +219,16 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
     return (await outbox()).filter((e) => e.rejected).length
   }
 
+  /** The account limit behind the most recent refusal, if any. */
+  async function quotaHit() {
+    const hits = (await outbox()).filter((e) => e.rejected).sort((a, b) => b.rejected!.at.localeCompare(a.rejected!.at))
+    for (const e of hits) {
+      const hit = parseQuota(e.rejected!.reason)
+      if (hit) return hit
+    }
+    return null
+  }
+
   async function enqueue(collection: CollectionName, id: string, data: Entity | null) {
     const db = await database.get()
     const tx = db.transaction([collection, OUTBOX], 'readwrite')
@@ -242,8 +255,14 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
   /** Pushes queued changes. Entries edited again while sending stay queued. */
   async function flush() {
     const db = await database.get()
-    // Versions the server refused for good wait until the record changes again.
-    const entries = (await outbox()).filter((e) => !e.rejected)
+    // Versions the server refused for good wait until the record changes again. Those refused only
+    // for an account limit go again (last, after the deletions that free space) when something is
+    // being deleted now, or after a while.
+    const queued = await outbox()
+    const fresh = queued.filter((e) => !e.rejected)
+    const freeing = fresh.some((e) => e.deleted)
+    const retry = queued.filter((e) => e.rejected && parseQuota(e.rejected.reason) && (freeing || Date.now() - Date.parse(e.rejected.at) >= QUOTA_RETRY_MS))
+    const entries = [...fresh, ...retry]
     const rejected: string[] = []
     const refused: { entry: OutboxEntry; reason: string }[] = []
     for (let i = 0; i < entries.length; i += BATCH) {
@@ -410,7 +429,9 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         const changed = (await pull()) || settingsMerged
         const pending = await pendingCount()
         const refusedNow = await rejectedCount()
-        if (refusedNow) setStatus({ state: 'error', error: `${refusedNow} ${refusedNow === 1 ? 'item não pôde ser enviado' : 'itens não puderam ser enviados'} ao servidor. ${refusedNow === 1 ? 'Ele continua' : 'Eles continuam'} salvo${refusedNow === 1 ? '' : 's'} neste aparelho; o restante sincronizou normalmente.`, lastSyncAt: new Date().toISOString(), pending, rejected: refusedNow })
+        const quota = refusedNow ? await quotaHit() : null
+        if (quota) setStatus({ state: 'error', error: quotaSyncMessage(quota, refusedNow), lastSyncAt: new Date().toISOString(), pending, rejected: refusedNow })
+        else if (refusedNow) setStatus({ state: 'error', error: `${refusedNow} ${refusedNow === 1 ? 'item não pôde ser enviado' : 'itens não puderam ser enviados'} ao servidor. ${refusedNow === 1 ? 'Ele continua' : 'Eles continuam'} salvo${refusedNow === 1 ? '' : 's'} neste aparelho; o restante sincronizou normalmente.`, lastSyncAt: new Date().toISOString(), pending, rejected: refusedNow })
         else if (outdated) setStatus({ state: 'error', error: new ServerOutdatedError().message, lastSyncAt: new Date().toISOString(), pending })
         else setStatus({ state: 'idle', error: null, lastSyncAt: new Date().toISOString(), pending, rejected: 0 })
         if (changed && !disposed) emit({ type: 'data' })

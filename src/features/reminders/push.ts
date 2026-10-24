@@ -5,6 +5,7 @@
  *   Screen; the permission must be requested from a tap.
  * Scheduling happens on the server (pg_cron → push-dispatch), never with page timers.
  */
+import { parseQuota, quotaMessage } from '../../data/quota'
 import { supabase } from '../../lib/supabase'
 import type { Occurrence } from './engine'
 
@@ -63,7 +64,10 @@ export async function enablePush(): Promise<void> {
   const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(VAPID_PUBLIC_KEY) }))
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
   const { error } = await supabase.rpc('claim_push_endpoint', { p_endpoint: json.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth })
-  if (error) throw new Error(error.message)
+  if (error) {
+    const quota = parseQuota(error.message)
+    throw new Error(quota ? quotaMessage(quota) : error.message)
+  }
 }
 
 /** Stops this device from receiving this account's notifications (used on logout too). */

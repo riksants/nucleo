@@ -22,6 +22,36 @@ Registrado em 2026-10-22, na Etapa 2 da auditoria.
 - **Endurecimento futuro, não implementar sem autorização:** políticas RLS que exigem a sessão viva em
   `auth.sessions` (token revogado deixaria de valer na hora, sem esperar expirar). Precisa de migration.
 
+## Cotas por conta (Etapa 3)
+
+Registrado em 2026-10-24. Migração `20261024000000_cotas.sql` (**ainda não aplicada no Supabase**).
+
+- Ajustar um limite, sem migração nova (SQL Editor):
+  `update public.quota_limits set max_value = 30000 where key = 'records.tasks';`
+- Ver o uso de uma conta: `select * from public.quota_usage where user_id = '…' order by scope;`
+- O uso é mantido pelos gatilhos. Só fica errado se alguém mexer direto em `quota_usage` ou usar
+  `truncate` em `records`. Para recalcular tudo do zero (não toca em nenhum registro):
+
+  ```sql
+  begin;
+  lock table public.records in share row exclusive mode;
+  update public.quota_usage set live = 0, total = 0, bytes = 0;
+  insert into public.quota_usage (user_id, scope, live, total, bytes)
+  select user_id, collection, count(*) filter (where not deleted), count(*), sum(octet_length(data::text))
+    from public.records group by user_id, collection
+  union all
+  select user_id, '*', count(*) filter (where not deleted), count(*), sum(octet_length(data::text))
+    from public.records group by user_id
+  on conflict (user_id, scope) do update set live = excluded.live, total = excluded.total, bytes = excluded.bytes;
+  commit;
+  ```
+- **A acompanhar:** "Feito pelo Núcleo" (`automationRuns`) nunca é limpo pelo app. Com muitas regras ativas, é
+  a coleção que mais cresce e a que primeiro chegaria ao limite de itens ou de 25 MB. Ao atingir, o
+  histórico novo fica só no aparelho (as regras continuam rodando). Solução futura: apagar o histórico antigo.
+- **A acompanhar:** apagar no app deixa uma "lápide" que conta nas 200.000 linhas da conta. Não há como o
+  usuário liberar isso pelo app; se uma conta chegar perto, o dono do projeto aumenta o limite.
+- Criar várias contas continua sendo possível: a defesa contra isso é o CAPTCHA no Supabase (ainda desligado).
+
 ## Segurança: senhas em texto puro no modo sem conta
 
 Registrado em 2026-10-22, ao fechar a Etapa 1 da auditoria. Tratar numa etapa própria.

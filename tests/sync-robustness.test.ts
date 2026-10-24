@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
-import { describe, expect, it } from 'vitest'
-import { createSyncedRepository, isRowRejection, PAGE, RejectedRowError, type RemoteApi, type RemoteRow } from '../src/data/sync'
+import { describe, expect, it, vi } from 'vitest'
+import { parseQuota, quotaMessage, quotaSyncMessage } from '../src/data/quota'
+import { createSyncedRepository, isRowRejection, PAGE, QUOTA_RETRY_MS, RejectedRowError, type RemoteApi, type RemoteRow } from '../src/data/sync'
 import type { Note, Settings, Task } from '../src/data/types'
 
 /** In-memory server with the SQL rules: per user, stale writes ignored. `offline` simulates no network. */
@@ -186,5 +187,106 @@ describe('um registro recusado não trava a sincronização', () => {
     expect(isRowRejection({ code: 'PGRST301', message: 'JWT expired' })).toBe(false)
     expect(isRowRejection({ message: 'Failed to fetch' })).toBe(false)
     expect(isRowRejection({ code: '42501', message: 'new row violates row-level security policy' })).toBe(false)
+  })
+})
+
+describe('limite da conta (cotas no servidor)', () => {
+  /** Server with a limit of `max` active notes, refusing the whole request like Postgres does. */
+  function limited(max: number) {
+    const server = fakeServer()
+    const upsert = server.api.upsert
+    let calls = 0
+    server.api.upsert = async (list) => {
+      calls++
+      const after = new Map([...server.rows].filter(([k]) => k.startsWith('notes:')).map(([k, r]) => [k, !r.deleted]))
+      for (const r of list) if (r.collection === 'notes') after.set(`notes:${r.id}`, !r.deleted)
+      if ([...after.values()].filter(Boolean).length > max) throw new RejectedRowError(`quota_exceeded:records.notes:${max}`)
+      return upsert(list)
+    }
+    return { server, calls: () => calls }
+  }
+
+  it('o que passa do limite fica salvo no aparelho, com a mensagem do limite; o resto sobe', async () => {
+    const { server } = limited(2)
+    const repo = createSyncedRepository('quota-1', server.api, { autoSync: false })
+    await repo.load()
+    for (const id of ['a', 'b', 'c']) await repo.put('notes', note(id))
+    await repo.put('tasks', { id: 't', createdAt: '2026-10-02T10:00:00.000Z', updatedAt: '2026-10-02T10:00:00.000Z', title: 't', projectId: null, dueDate: '', priority: 'none', status: 'todo', completedAt: null })
+    await repo.syncNow!()
+    expect([...server.rows.keys()].sort()).toEqual(['notes:a', 'notes:b', 'tasks:t'])
+    expect((await repo.load()).data.notes.map((n) => n.id).sort()).toEqual(['a', 'b', 'c'])
+    expect(repo.status!()).toMatchObject({ state: 'error', rejected: 1 })
+    expect(repo.status!().error).toBe('Limite de 2 itens em “Anotações” atingido nesta conta. 1 item continua salvo só neste aparelho. Apague itens antigos para liberar espaço: o envio é retomado sozinho.')
+  })
+
+  it('sem apagar nada, não fica reenviando; ao apagar um item, o que esperava sobe sozinho', async () => {
+    const { server, calls } = limited(2)
+    const repo = createSyncedRepository('quota-2', server.api, { autoSync: false })
+    await repo.load()
+    for (const id of ['a', 'b', 'c']) await repo.put('notes', note(id))
+    await repo.flush()
+    const before = calls()
+    await repo.put('tasks', { id: 't', createdAt: '2026-10-02T10:00:00.000Z', updatedAt: '2026-10-02T10:00:00.000Z', title: 't', projectId: null, dueDate: '', priority: 'none', status: 'todo', completedAt: null })
+    await repo.flush()
+    expect(calls()).toBe(before + 1) // só a tarefa
+    await repo.remove('notes', 'a')
+    await repo.syncNow!()
+    expect(server.rows.get('notes:c')?.deleted).toBe(false)
+    expect(server.rows.get('notes:a')?.deleted).toBe(true)
+    expect(await repo.pendingCount()).toBe(0)
+    expect(repo.status!()).toMatchObject({ state: 'idle', rejected: 0 })
+  })
+
+  it('sem apagar, tenta de novo depois de algumas horas (o limite pode ter sido aumentado)', async () => {
+    const { server } = limited(2)
+    const repo = createSyncedRepository('quota-3', server.api, { autoSync: false })
+    await repo.load()
+    for (const id of ['a', 'b', 'c']) await repo.put('notes', note(id))
+    await repo.flush()
+    expect(await repo.pendingCount()).toBe(1)
+    // The owner raised the limit on the server.
+    server.api.upsert = async (list) => {
+      for (const r of list) server.rows.set(`${r.collection}:${r.id}`, { ...r, server_updated_at: new Date().toISOString() })
+    }
+    const real = Date.now()
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(real + QUOTA_RETRY_MS - 60_000)
+    await repo.flush()
+    expect(await repo.pendingCount()).toBe(1) // ainda cedo
+    spy.mockReturnValue(real + QUOTA_RETRY_MS + 1000)
+    await repo.flush()
+    spy.mockRestore()
+    expect(server.rows.has('notes:c')).toBe(true)
+    expect(await repo.pendingCount()).toBe(0)
+  })
+
+  it('outras recusas (item grande demais) continuam esperando uma edição, mesmo apagando algo', async () => {
+    const server = fakeServer()
+    const upsert = server.api.upsert
+    let tries = 0
+    server.api.upsert = async (list) => {
+      if (list.some((r) => (r.data as Note | null)?.body === 'GRANDE')) {
+        tries++
+        throw new RejectedRowError('violates check constraint "records_data_size"')
+      }
+      return upsert(list)
+    }
+    const repo = createSyncedRepository('quota-4', server.api, { autoSync: false })
+    await repo.load()
+    await repo.put('notes', note('g', { body: 'GRANDE' }))
+    await repo.put('notes', note('x'))
+    await repo.flush()
+    const before = tries
+    await repo.remove('notes', 'x')
+    await repo.flush()
+    expect(tries).toBe(before)
+  })
+
+  it('mensagens de cada limite', () => {
+    expect(parseQuota('quota_exceeded:records.transactions:50000')).toEqual({ key: 'records.transactions', limit: 50000 })
+    expect(parseQuota('violates check constraint "records_data_size"')).toBeNull()
+    expect(quotaMessage({ key: 'records.transactions', limit: 50000 })).toBe('Limite de 50.000 itens em “Movimentações” atingido nesta conta.')
+    expect(quotaMessage({ key: 'account.bytes', limit: 26214400 })).toBe('Limite de espaço da conta (25 MB) atingido.')
+    expect(quotaMessage({ key: 'push.devices', limit: 10 })).toMatch(/10 aparelhos/)
+    expect(quotaSyncMessage({ key: 'account.rows', limit: 200000 }, 3)).toBe('Limite de 200.000 registros da conta atingido. 3 itens continuam salvos só neste aparelho.')
   })
 })

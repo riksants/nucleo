@@ -1,4 +1,4 @@
-import type { ClientStatus, ProjectKind, ProjectStatus, TaskPriority, TaskStatus, ToolBilling, ToolStatus } from './types'
+import type { ClientStatus, CollectionName, ProjectKind, ProjectStatus, TaskPriority, TaskStatus, ToolBilling, ToolStatus } from './types'
 
 export type Tone = 'neutral' | 'accent' | 'positive' | 'negative' | 'warn' | 'goal'
 
@@ -79,4 +79,40 @@ export const TONE_BADGE: Record<Tone, string> = {
   negative: 'bg-expense/12 text-expense',
   warn: 'bg-warn/12 text-warn',
   goal: 'bg-goal/14 text-goal',
+}
+
+export const COLLECTION_LABELS: Record<CollectionName, string> = {
+  transactions: 'Movimentações',
+  goals: 'Metas de compra',
+  clients: 'Clientes',
+  projects: 'Projetos de trabalho',
+  tasks: 'Tarefas',
+  tools: 'Assinaturas',
+  accounts: 'Senhas',
+  notes: 'Anotações',
+  portfolio: 'Portfólio',
+  sales: 'Vendas',
+  offerings: 'Produtos de assinatura',
+  subPlans: 'Planos',
+  subscribers: 'Assinantes',
+  plannerProfiles: 'Questionários',
+  routinePlans: 'Rotinas',
+  mealPlans: 'Planos alimentares',
+  inbox: 'Caixa de entrada',
+  habits: 'Hábitos',
+  recurring: 'Recorrentes',
+  completions: 'Marcações do dia',
+  events: 'Compromissos',
+  focusSessions: 'Sessões de foco',
+  weeklyGoals: 'Metas semanais',
+  challenges: 'Desafios',
+  weekCheckins: 'Check-ins semanais',
+  weekSnapshots: 'Resumos de semanas fechadas',
+  financeGoals: 'Metas financeiras',
+  lifePlans: 'Projetos pessoais e objetivos',
+  planSteps: 'Etapas de projetos e objetivos',
+  meals: 'Refeições planejadas',
+  shoppingItems: 'Lista de compras',
+  automationRuns: 'Feito pelo Núcleo',
+  rules: 'Minhas regras',
 }

@@ -18,6 +18,8 @@ let EMAIL_EVERY_MS = 60_000 // Supabase: one e-mail per address per minute
 const captcha = { required: false, reject: false, used: new Set(), log: [] } // log: { path, token }
 const TEST_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX'
 const records = new Map() // `${uid}|${collection}|${id}` -> row
+// Active items allowed per collection, per account (like quota_limits on the real database).
+const quotas = new Map() // collection -> limit
 const settings = new Map() // uid -> { data, client_updated_at }
 const requests = []
 let clock = Date.UTC(2026, 9, 1, 12)
@@ -102,6 +104,13 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/__sessions') {
     const u = users.get(url.searchParams.get('email'))
     return send(200, [...sessions.entries()].filter(([, x]) => x.uid === u?.id).map(([id, x]) => ({ id, revoked: x.revoked })))
+  }
+  if (url.pathname === '/__quota') {
+    const collection = url.searchParams.get('collection')
+    const limit = url.searchParams.get('limit')
+    if (limit === null) quotas.delete(collection)
+    else quotas.set(collection, Number(limit))
+    return send(200, Object.fromEntries(quotas))
   }
   if (url.pathname === '/__offline') {
     server.offline = url.searchParams.get('v') === '1'
@@ -203,6 +212,12 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST') {
       // Like Postgres: one bad row fails the whole statement (records_data_size; 200 KB stands in for 3 MB here).
       if (json.some((r) => JSON.stringify(r.data ?? {}).length > 200_000)) return send(400, { code: '23514', message: 'new row for relation "records" violates check constraint "records_data_size"', details: null, hint: null })
+      // Like the quota trigger: the whole statement is refused when it would go over a limit.
+      for (const [collection, limit] of quotas) {
+        const live = new Map([...records.values()].filter((x) => x.user_id === uid && x.collection === collection).map((x) => [x.id, !x.deleted]))
+        for (const r of json) if (r.collection === collection && r.user_id === uid) live.set(r.id, !r.deleted)
+        if ([...live.values()].filter(Boolean).length > limit) return send(400, { code: '23514', message: `quota_exceeded:records.${collection}:${limit}`, details: null, hint: 'Limite da conta atingido. Apague itens antigos para liberar espaço.' })
+      }
       for (const r of json) {
         if (r.user_id !== uid) return send(403, { message: 'new row violates row-level security policy' })
         if (r.collection === 'accounts' && r.data?.password) return send(400, { message: 'violates check constraint "records_no_plain_password"' })
