@@ -6,6 +6,8 @@ import { Logo } from '../../app/Shell'
 import { Button, IconButton } from '../../ui/Button'
 import { Field, TextInput } from '../../ui/Field'
 import { loginPasswordProblem } from './authRules'
+import { Captcha } from './Captcha'
+import { captchaOn } from './captchaKey'
 import { useSession } from './session'
 
 type Step = 'signin' | 'signup' | 'confirm' | 'forgot' | 'resetCode' | 'newPassword'
@@ -57,11 +59,29 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(auth.notice)
   const [busy, setBusy] = useState(false)
+  // Turnstile token for the next request; a new check after each use (`captchaRound`).
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaRound, setCaptchaRound] = useState(0)
+  const captchaReady = !captchaOn || captchaToken !== null
 
   const go = (next: Step) => {
     setError(null)
     setInfo(null)
+    setCaptchaToken(null)
     setStep(next)
+  }
+
+  /** Runs a request that needs the security check; the token is spent either way. */
+  const withCaptcha = async <T,>(request: (token: string | undefined) => Promise<T>): Promise<T> => {
+    if (!captchaReady) throw new Error('Aguarde a verificação de segurança terminar.')
+    try {
+      return await request(captchaToken ?? undefined)
+    } finally {
+      if (captchaOn) {
+        setCaptchaToken(null)
+        setCaptchaRound((n) => n + 1)
+      }
+    }
   }
 
   const run = (fn: () => Promise<void>) => async (e?: FormEvent) => {
@@ -82,7 +102,7 @@ export function AuthScreen() {
 
   const signIn = run(async () => {
     if (!validEmail) throw new Error('Digite um e-mail válido.')
-    await auth.signIn(email.trim(), password)
+    await withCaptcha((token) => auth.signIn(email.trim(), password, token))
     auth.clearNotice()
   })
 
@@ -91,7 +111,7 @@ export function AuthScreen() {
     const problem = loginPasswordProblem(password, email)
     if (problem) throw new Error(problem)
     if (password !== password2) throw new Error('As senhas não são iguais.')
-    const { needsConfirmation } = await auth.signUp(email.trim(), password)
+    const { needsConfirmation } = await withCaptcha((token) => auth.signUp(email.trim(), password, token))
     if (needsConfirmation) go('confirm')
     else auth.closeAuth()
   })
@@ -102,7 +122,7 @@ export function AuthScreen() {
 
   const forgot = run(async () => {
     if (!validEmail) throw new Error('Digite um e-mail válido.')
-    await auth.sendReset(email.trim())
+    await withCaptcha((token) => auth.sendReset(email.trim(), token))
     go('resetCode')
   })
 
@@ -135,6 +155,8 @@ export function AuthScreen() {
     </Field>
   )
 
+  const captcha = captchaOn && <Captcha key={`${step}-${captchaRound}`} onToken={setCaptchaToken} />
+
   const codeField = (
     <Field label="Código do e-mail" hint="6 dígitos">
       <TextInput inputMode="numeric" autoComplete="one-time-code" className="num text-[22px]! tracking-[0.3em]" maxLength={8} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
@@ -152,7 +174,7 @@ export function AuthScreen() {
               onBack={auth.closeAuth}
               footer={
                 <>
-                  <Button type="submit" size="lg" block disabled={busy}>
+                  <Button type="submit" size="lg" block disabled={busy || !captchaReady}>
                     {busy ? 'Entrando…' : 'Entrar'}
                   </Button>
                   <Button size="lg" variant="ghost" block onClick={() => go('signup')}>
@@ -169,6 +191,7 @@ export function AuthScreen() {
               <button type="button" onClick={() => go('forgot')} className="hit relative text-[15px] font-medium text-accent-hi hover:text-ink">
                 Esqueci minha senha
               </button>
+              {captcha}
             </Frame>
           </form>
         )
@@ -180,7 +203,7 @@ export function AuthScreen() {
               text="Você vai receber um e-mail para confirmar o endereço."
               onBack={() => go('signin')}
               footer={
-                <Button type="submit" size="lg" block disabled={busy}>
+                <Button type="submit" size="lg" block disabled={busy || !captchaReady}>
                   {busy ? 'Criando…' : 'Criar conta'}
                 </Button>
               }
@@ -196,6 +219,7 @@ export function AuthScreen() {
               <p className="text-[13px] leading-relaxed text-faint">
                 Esta é a senha de login. As senhas guardadas em “Contas” ficam num cofre separado, com outra senha.
               </p>
+              {captcha}
             </Frame>
           </form>
         )
@@ -215,7 +239,7 @@ export function AuthScreen() {
                   <Button type="submit" size="lg" block disabled={busy || code.replace(/\D/g, '').length < 6}>
                     Confirmar
                   </Button>
-                  <Button size="lg" variant="ghost" block onClick={run(async () => { await auth.resendConfirmation(email.trim()); setInfo('E-mail reenviado.') })}>
+                  <Button size="lg" variant="ghost" block disabled={busy || !captchaReady} onClick={run(async () => { await withCaptcha((token) => auth.resendConfirmation(email.trim(), token)); setInfo('E-mail reenviado.') })}>
                     Reenviar e-mail
                   </Button>
                 </>
@@ -226,6 +250,7 @@ export function AuthScreen() {
               </div>
               {messages}
               {codeField}
+              {captcha}
             </Frame>
           </form>
         )
@@ -237,13 +262,14 @@ export function AuthScreen() {
               text="Enviaremos um código para criar uma nova senha de login. Isso não abre o cofre de senhas: ele tem senha própria."
               onBack={() => go('signin')}
               footer={
-                <Button type="submit" size="lg" block disabled={busy}>
+                <Button type="submit" size="lg" block disabled={busy || !captchaReady}>
                   Enviar código
                 </Button>
               }
             >
               {messages}
               {emailField}
+              {captcha}
             </Frame>
           </form>
         )

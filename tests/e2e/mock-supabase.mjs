@@ -12,6 +12,11 @@ const sessions = new Map() // session id -> { uid, revoked }
 let signInLimit = Infinity
 let signInAttempts = 0
 let EMAIL_EVERY_MS = 60_000 // Supabase: one e-mail per address per minute
+// CAPTCHA (Supabase Auth → Attack Protection, Turnstile). Off unless a test turns it on. Like
+// Cloudflare's siteverify, a token works once — except the official test token, which the test
+// secret key always accepts. `reject` stands for Cloudflare refusing every token.
+const captcha = { required: false, reject: false, used: new Set(), log: [] } // log: { path, token }
+const TEST_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX'
 const records = new Map() // `${uid}|${collection}|${id}` -> row
 const settings = new Map() // uid -> { data, client_updated_at }
 const requests = []
@@ -76,7 +81,12 @@ const server = createServer(async (req, res) => {
   requests.push(`${req.method} ${url.pathname}${url.search}`)
 
   // ---- test control
-  if (url.pathname === '/__state') return send(200, { users: [...users.values()], records: [...records.values()], settings: [...settings.entries()], requests: requests.slice(-60) })
+  if (url.pathname === '/__state') return send(200, { users: [...users.values()], records: [...records.values()], settings: [...settings.entries()], requests: requests.slice(-60), captcha: captcha.log })
+  if (url.pathname === '/__captcha') {
+    captcha.required = url.searchParams.get('on') === '1'
+    captcha.reject = url.searchParams.get('reject') === '1'
+    return send(200, { required: captcha.required, reject: captcha.reject })
+  }
   // The server stops accepting this person's session (revoked elsewhere, user removed…).
   if (url.pathname === '/__revoke') {
     const u = users.get(url.searchParams.get('email'))
@@ -101,6 +111,17 @@ const server = createServer(async (req, res) => {
 
   // ---- auth
   const tooSoon = (sentAt) => sentAt && Date.now() - sentAt < EMAIL_EVERY_MS
+  // Every request Supabase protects with the CAPTCHA: sign-up, password sign-in, recovery, resend.
+  const guarded = (url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'password') || ['/auth/v1/signup', '/auth/v1/recover', '/auth/v1/resend', '/auth/v1/otp'].includes(url.pathname)
+  if (guarded) {
+    const token = json?.gotrue_meta_security?.captcha_token ?? null
+    captcha.log.push({ path: url.pathname, token })
+    if (captcha.required) {
+      const ok = token && !captcha.reject && (token === TEST_TOKEN || !captcha.used.has(token))
+      if (token) captcha.used.add(token)
+      if (!ok) return send(400, { code: 400, error_code: 'captcha_failed', msg: `captcha protection: request disallowed (${token ? 'timeout-or-duplicate' : 'no captcha response'})` })
+    }
+  }
   const waitEmail = () => send(429, { code: 429, error_code: 'over_email_send_rate_limit', msg: 'For security purposes, you can only request this after 59 seconds.' })
   if (url.pathname === '/auth/v1/signup') {
     const known = users.get(json.email)
@@ -112,6 +133,13 @@ const server = createServer(async (req, res) => {
     u.confirmationSentAt = Date.now()
     users.set(json.email, u)
     return send(200, { id: u.id, email: u.email, aud: 'authenticated', role: 'authenticated', confirmation_sent_at: new Date().toISOString() })
+  }
+  if (url.pathname === '/auth/v1/resend') {
+    const u = users.get(json.email)
+    if (!u || u.confirmed) return send(200, {})
+    if (tooSoon(u.confirmationSentAt)) return waitEmail()
+    u.confirmationSentAt = Date.now()
+    return send(200, {})
   }
   if (url.pathname === '/auth/v1/verify') {
     const u = users.get(json.email)

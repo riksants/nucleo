@@ -3,7 +3,8 @@
 // Against the LOCAL mock of Supabase (tests/e2e/mock-supabase.mjs), never the real project. The mock
 // follows Supabase Auth: sessions by session_id, logout scopes, a new password ends the other
 // sessions, one e-mail per address per minute, made-up answer for a sign-up of an existing address.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud.
+// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud, and with
+// VITE_TURNSTILE_SITE_KEY= (empty: .env.local has the test key) — the CAPTCHA has its own test, auth-captcha.
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter } from './helpers.mjs'
@@ -79,6 +80,7 @@ try {
 
   // ------------------------------------------------ Política de senha no cadastro
   await openSignIn(A)
+  r.check('sem VITE_TURNSTILE_SITE_KEY: nada da Cloudflare e "Entrar" liberado como antes', !(await A.eval(`Boolean(document.querySelector('script[src*="challenges.cloudflare.com"]') || window.turnstile)`)) && !(await A.text()).includes('Verificação de segurança') && (await A.eval(`!document.querySelector('button[type=submit]').disabled`)))
   await A.click('Criar conta')
   await A.fill('E-mail', EMAIL)
   for (const [weak, expected] of [['', 'pelo menos 8'], ['abc1', 'pelo menos 8'], ['somenteletras', 'Misture letras e números'], ['Senha123', 'muito comum'], ['carla2024x', 'e-mail na senha']]) {
@@ -131,6 +133,8 @@ try {
   await signInHere(A, EMAIL, PASS)
   r.check('com o limite ativo, nem a senha certa entra (bloqueio no servidor)', (await errorText(A)).includes('Muitas tentativas') && !(await hasSession(A)))
   await mock('/__limits?email=600000')
+
+  r.check('sem VITE_TURNSTILE_SITE_KEY: nenhum token de CAPTCHA é enviado', (await state()).captcha.every((x) => x.token === null))
 
   // ------------------------------------------------ 1. Login correto
   await signInHere(A, EMAIL, PASS)

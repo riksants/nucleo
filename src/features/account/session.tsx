@@ -21,8 +21,9 @@ interface SessionApi {
   notice: string | null
   openAuth(screen: Exclude<AuthScreen, null>): void
   closeAuth(): void
-  signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>
-  signIn(email: string, password: string): Promise<void>
+  // `captchaToken`: from the Turnstile check (Captcha.tsx); one per request, when it's configured.
+  signUp(email: string, password: string, captchaToken?: string): Promise<{ needsConfirmation: boolean }>
+  signIn(email: string, password: string, captchaToken?: string): Promise<void>
   signOut(): Promise<void>
   /**
    * Ends every session of the account on the server: the other devices first, then this one.
@@ -30,10 +31,10 @@ interface SessionApi {
    * changed, when the server can't be reached.
    */
   signOutEverywhere(opts?: { beforeThisDevice?(): Promise<void> }): Promise<void>
-  sendReset(email: string): Promise<void>
+  sendReset(email: string, captchaToken?: string): Promise<void>
   /** 6-digit code from the e-mail. Works inside the installed iPhone app, where links open in Safari. */
   verifyCode(email: string, code: string, kind: 'signup' | 'recovery'): Promise<void>
-  resendConfirmation(email: string): Promise<void>
+  resendConfirmation(email: string, captchaToken?: string): Promise<void>
   setNewPassword(password: string): Promise<void>
   clearNotice(): void
 }
@@ -226,8 +227,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [checked, signedIn])
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } })
+  const signUp = useCallback(async (email: string, password: string, captchaToken?: string) => {
+    const { data, error } = await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: appUrl(), captchaToken } })
     // "Wait a minute" only comes for an address that already started a sign-up: answering like
     // any other sign-up keeps the screen from telling who has an account.
     if (error && !(isEmailThrottle(error) && error.message.toLowerCase().includes('for security purposes'))) throw new Error(authMessage(error))
@@ -235,8 +236,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return { needsConfirmation: !data.session }
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase!.auth.signInWithPassword({ email, password })
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string) => {
+    const { error } = await supabase!.auth.signInWithPassword({ email, password, options: { captchaToken } })
     if (error) throw new Error(authMessage(error))
     setScreen(null)
   }, [])
@@ -265,8 +266,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await ending.current
   }, [])
 
-  const sendReset = useCallback(async (email: string) => {
-    const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: appUrl() })
+  const sendReset = useCallback(async (email: string, captchaToken?: string) => {
+    const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: appUrl(), captchaToken })
     // The server answers an unknown address with success but an existing one, asked again too
     // soon, with "wait": both get the same screen ("if an account exists…"), so it can't be used
     // to find out who has an account. The server still limits the e-mails.
@@ -280,8 +281,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setScreen(kind === 'recovery' ? 'newPassword' : null)
   }, [])
 
-  const resendConfirmation = useCallback(async (email: string) => {
-    const { error } = await supabase!.auth.resend({ type: 'signup', email, options: { emailRedirectTo: appUrl() } })
+  const resendConfirmation = useCallback(async (email: string, captchaToken?: string) => {
+    const { error } = await supabase!.auth.resend({ type: 'signup', email, options: { emailRedirectTo: appUrl(), captchaToken } })
     if (error) throw new Error(authMessage(error))
   }, [])
 

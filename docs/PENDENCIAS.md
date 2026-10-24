@@ -7,9 +7,15 @@ Registrado em 2026-10-22, na Etapa 2 da auditoria.
 - **Aplicado pelo dono do projeto em 2026-10-24:** senha mínima 8 + "Letters and digits", "Secure password
   change", validade do código por e-mail 1800 s, token de acesso 900 s, limites (Rate Limits) conferidos,
   Site URL `https://hellonucleo.app/`; Redirect URLs: localhost, `hellonucleo.app` e `www.hellonucleo.app`.
-- **Captcha — pendente** (Authentication → Attack Protection; Cloudflare Turnstile): única proteção real
-  contra tentativas distribuídas, cadastros em massa e spam de e-mail. Precisa antes de mudança no app
-  (`captchaToken` no cadastro, login, recuperação e reenvio), publicada **antes** de ligar no Supabase.
+- **Captcha — app pronto, Supabase ainda desligado** (Authentication → Attack Protection; Cloudflare
+  Turnstile): única proteção real contra tentativas distribuídas, cadastros em massa e spam de e-mail. O app
+  (`Captcha.tsx`, `VITE_TURNSTILE_SITE_KEY`) manda o token em Entrar, Criar conta, Recuperar senha e
+  Reenviar e-mail. Ordem: publicar o app, conferir em produção, esperar os aparelhos atualizarem, e só
+  então ligar no Supabase com a Secret Key. Desfazer = desligar a opção no Supabase.
+  - Depois de ligado, o `.env.local` com a chave de **teste** não entra no projeto real (o Supabase recusa
+    o token de teste): para testar localmente contra produção, use a Site Key real com `localhost` no widget.
+  - Builds de e2e: `dist-e2e-cloud` com `VITE_TURNSTILE_SITE_KEY=` (vazio, senão o Vite pega a chave do
+    `.env.local`); `dist-e2e-captcha` com a chave de teste (comando no topo de `auth-captcha.e2e.mjs`).
 - **Risco que continua:** depois de "Sair de todos os aparelhos" ou de trocar a senha, um token já emitido
   continua aceito pela API de dados até expirar (agora no máximo 15 min).
 - "Prevent use of leaked passwords" só existe no plano Pro.

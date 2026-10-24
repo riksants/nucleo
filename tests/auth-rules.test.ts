@@ -54,4 +54,9 @@ describe('mensagens de erro do servidor', () => {
     expect(isEmailThrottle(apiError('Request rate limit reached', 'over_request_rate_limit', 429))).toBe(false)
     expect(isEmailThrottle(apiError('Invalid login credentials', 'invalid_credentials'))).toBe(false)
   })
+
+  it('explica quando o servidor recusa o CAPTCHA (Turnstile)', () => {
+    expect(authMessage(apiError('captcha protection: request disallowed (no captcha response)', 'captcha_failed'))).toBe('A verificação de segurança falhou. Tente de novo.')
+    expect(authMessage(apiError('captcha protection: request disallowed (timeout-or-duplicate)', 'captcha_failed'))).toMatch(/verificação de segurança/)
+  })
 })

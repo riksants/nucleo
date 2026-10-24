@@ -53,6 +53,7 @@ export function authMessage(err: unknown): string {
   if (m.includes('known to be weak') || m.includes('pwned')) return 'Essa senha aparece em vazamentos conhecidos. Escolha outra.'
   if (m.includes('cannot be longer than')) return `Use no máximo ${MAX_LOGIN_PASSWORD} caracteres.`
   if (code === 'weak_password' || m.includes('password should be') || m.includes('weak password')) return 'Senha fraca: use pelo menos 8 caracteres, com letras e números.'
+  if (code === 'captcha_failed' || m.includes('captcha')) return 'A verificação de segurança falhou. Tente de novo.'
   if (isEmailThrottle(err)) return 'Por segurança, espere um minuto antes de pedir outro e-mail.'
   if (code === 'over_request_rate_limit' || m.includes('rate limit') || m.includes('too many')) return 'Muitas tentativas. Espere alguns minutos e tente de novo.'
   if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor.'

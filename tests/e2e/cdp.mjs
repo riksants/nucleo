@@ -33,8 +33,10 @@ async function connect(port, page, onClose) {
   let id = 0
   const pending = new Map()
   const logs = []
+  const listeners = new Map() // CDP event -> handlers
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data)
+    for (const fn of listeners.get(msg.method) ?? []) fn(msg.params)
     if (msg.id && pending.has(msg.id)) {
       pending.get(msg.id)(msg)
       pending.delete(msg.id)
@@ -63,6 +65,10 @@ async function connect(port, page, onClose) {
   const api = {
     logs,
     send,
+    /** Calls `fn(params)` for every CDP event `method` (e.g. 'Fetch.requestPaused'). */
+    on(method, fn) {
+      listeners.set(method, [...(listeners.get(method) ?? []), fn])
+    },
     async eval(expr) {
       const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })
       if (r.result?.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description ?? 'eval error')
