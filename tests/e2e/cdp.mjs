@@ -19,7 +19,15 @@ export async function launch(port = 9333) {
     } catch {}
     await sleep(200)
   }
-  const page = targets.find((t) => t.type === 'page')
+  return connect(port, targets.find((t) => t.type === 'page'), () => {
+    try {
+      process.kill(proc.pid)
+    } catch {}
+  })
+}
+
+/** Drives one tab. `newTab()` opens another tab of the same browser (same storage, same profile). */
+async function connect(port, page, onClose) {
   const ws = new WebSocket(page.webSocketDebuggerUrl)
   await new Promise((r) => (ws.onopen = r))
   let id = 0
@@ -115,9 +123,11 @@ export async function launch(port = 9333) {
     sleep,
     close() {
       ws.close()
-      try {
-        process.kill(proc.pid)
-      } catch {}
+      onClose?.()
+    },
+    async newTab() {
+      const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json()
+      return connect(port, target, null)
     },
   }
   return api

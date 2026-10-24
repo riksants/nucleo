@@ -1,5 +1,21 @@
 # Pendências
 
+## Auth: configurações do painel do Supabase (Etapa 2)
+
+Registrado em 2026-10-22, na Etapa 2 da auditoria.
+
+- **Aplicado pelo dono do projeto em 2026-10-24:** senha mínima 8 + "Letters and digits", "Secure password
+  change", validade do código por e-mail 1800 s, token de acesso 900 s, limites (Rate Limits) conferidos,
+  Site URL `https://hellonucleo.app/`; Redirect URLs: localhost, `hellonucleo.app` e `www.hellonucleo.app`.
+- **Captcha — pendente** (Authentication → Attack Protection; Cloudflare Turnstile): única proteção real
+  contra tentativas distribuídas, cadastros em massa e spam de e-mail. Precisa antes de mudança no app
+  (`captchaToken` no cadastro, login, recuperação e reenvio), publicada **antes** de ligar no Supabase.
+- **Risco que continua:** depois de "Sair de todos os aparelhos" ou de trocar a senha, um token já emitido
+  continua aceito pela API de dados até expirar (agora no máximo 15 min).
+- "Prevent use of leaked passwords" só existe no plano Pro.
+- **Endurecimento futuro, não implementar sem autorização:** políticas RLS que exigem a sessão viva em
+  `auth.sessions` (token revogado deixaria de valer na hora, sem esperar expirar). Precisa de migration.
+
 ## Segurança: senhas em texto puro no modo sem conta
 
 Registrado em 2026-10-22, ao fechar a Etapa 1 da auditoria. Tratar numa etapa própria.
@@ -19,8 +35,11 @@ Registrado em 2026-10-21, na publicação da Parte 2.1. Revisto em 2026-10-22 (E
   responde 404 e a tela fica em branco (`receipts-sync` e `sales-sync` já passavam a variável; os demais
   dependiam de quem rodava o teste). Agora todos os e2e com `dist-e2e-cloud` passam a variável sozinhos.
   `finance-sync` passa 8/8.
-- **Ainda falha, igual no `main`:** `assistant-sync` — "ao reconectar: sobe uma única tarefa, com o user_id certo
-  e a marca do Assistente" e "outro aparelho mostra 'Alterado pelo Assistente'" (4/6). Não envolve sessão.
+- **Intermitente, também no `main`:** `assistant-sync` — "ao reconectar: sobe uma única tarefa, com o user_id certo
+  e a marca do Assistente" e "outro aparelho mostra 'Alterado pelo Assistente'" (4/6). Em 2026-10-22: `main` passou
+  1 de 2 vezes; a Etapa 2, 1 de 4 rodadas válidas (mais uma que travou no cadastro por lentidão). Quando passa, a tarefa chega certa ao
+  servidor: o teste confere 1,5 s depois de "Agora", e nesta máquina a sincronização às vezes demora mais. Não
+  envolve sessão (o "offline" do teste é do mock, não dispara o evento `online` do navegador).
 - **Teste desatualizado, igual no `main`:** `daily-sync` procura o "+" da Caixa de entrada na tela inicial
   (`Capturar na caixa de entrada`), que saiu de lá no commit `20d69b3` ("um '+' por tela"). 2/4.
 - **Não revisto:** `regression-account-sync` (`SecurityError` ao acessar o IndexedDB; usa outro build).

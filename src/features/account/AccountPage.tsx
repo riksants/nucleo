@@ -1,4 +1,4 @@
-import { Cloud, HardDrive, HardDriveUpload, LogOut, RefreshCw, Trash2 } from 'lucide-react'
+import { Cloud, HardDrive, HardDriveUpload, LogOut, MonitorSmartphone, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearLocalData, localSummary, type LocalSummary } from '../../data/migration'
@@ -25,7 +25,7 @@ export function AccountPage() {
   const auth = useSession()
   const { syncStatus, repository } = useStore()
   // Same sign-out everywhere (also in Configurações → Conta).
-  const { signOut, busy: signingOut } = useSignOut()
+  const { signOut, signOutEverywhere, busy: signingOut } = useSignOut()
   const { toast, confirm } = useFeedback()
   const [local, setLocal] = useState<LocalSummary | null>(null)
   const [offer, setOffer] = useState(false)
@@ -137,13 +137,17 @@ export function AccountPage() {
 
         <section>
           <SectionTitle>Sessão</SectionTitle>
-          <div className="card overflow-hidden">
+          <div className="card divide-y divide-line overflow-hidden">
             <button type="button" disabled={signingOut} onClick={signOut} className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-tint/[0.03] tap">
               <LogOut size={18} className="text-soft" />
               <span className="text-[15px]">Sair desta conta</span>
             </button>
+            <button type="button" disabled={signingOut} onClick={signOutEverywhere} className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-expense hover:bg-tint/[0.03] tap">
+              <MonitorSmartphone size={18} />
+              <span className="text-[15px]">Sair de todos os aparelhos</span>
+            </button>
           </div>
-          <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">A sessão fica salva neste aparelho até você sair. Para trocar a senha de login, saia e use “Esqueci minha senha”.</p>
+          <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">A sessão fica salva neste aparelho até você sair. Para trocar a senha de login, saia e use “Esqueci minha senha” — a troca encerra a sessão nos outros aparelhos.</p>
         </section>
       </div>
     </>

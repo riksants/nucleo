@@ -3,23 +3,40 @@
 import { createServer } from 'node:http'
 
 const PORT = 54399
-const users = new Map() // email -> { id, password, confirmed }
+const users = new Map() // email -> { id, password, confirmed, recoveryPending, recoverySentAt, confirmationSentAt }
+// Like Supabase Auth: every sign-in is a session (session_id claim in the JWT); revoking one makes
+// /auth/v1/user answer 403 session_not_found. The data API keeps accepting a signed JWT until it
+// expires, as PostgREST does (it never looks at sessions).
+const sessions = new Map() // session id -> { uid, revoked }
+// Server-side limit for password sign-ins (Supabase: "sign ups and sign ins" per IP). Off unless a test sets it.
+let signInLimit = Infinity
+let signInAttempts = 0
+let EMAIL_EVERY_MS = 60_000 // Supabase: one e-mail per address per minute
 const records = new Map() // `${uid}|${collection}|${id}` -> row
 const settings = new Map() // uid -> { data, client_updated_at }
 const requests = []
 let clock = Date.UTC(2026, 9, 1, 12)
 const stamp = () => new Date((clock += 1000)).toISOString()
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
-const jwt = (u) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: u.id, email: u.email, role: 'authenticated', aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`
-const sub = (req) => {
+const jwt = (u, sid) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: u.id, email: u.email, session_id: sid, role: 'authenticated', aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`
+const claims = (req) => {
   const token = (req.headers.authorization ?? '').replace('Bearer ', '')
   try {
-    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub ?? null
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
   } catch {
-    return null
+    return {}
   }
 }
-const session = (u) => ({ access_token: jwt(u), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r-' + u.id, user: { id: u.id, email: u.email, aud: 'authenticated', role: 'authenticated', email_confirmed_at: new Date().toISOString(), app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() } })
+const sub = (req) => claims(req).sub ?? null
+const revokeAll = (uid, except = null) => {
+  for (const [sid, x] of sessions) if (x.uid === uid && sid !== except) x.revoked = true
+}
+const userOf = (u) => ({ id: u.id, email: u.email, aud: 'authenticated', role: 'authenticated', email_confirmed_at: new Date().toISOString(), app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() })
+const session = (u) => {
+  const sid = crypto.randomUUID()
+  sessions.set(sid, { uid: u.id, revoked: false })
+  return { access_token: jwt(u, sid), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r-' + sid, user: userOf(u) }
+}
 
 function filters(url) {
   const out = []
@@ -63,8 +80,18 @@ const server = createServer(async (req, res) => {
   // The server stops accepting this person's session (revoked elsewhere, user removed…).
   if (url.pathname === '/__revoke') {
     const u = users.get(url.searchParams.get('email'))
-    if (u) u.revoked = true
+    if (u) revokeAll(u.id)
     return send(200, { revoked: Boolean(u) })
+  }
+  if (url.pathname === '/__limits') {
+    signInLimit = Number(url.searchParams.get('signin') ?? Infinity)
+    signInAttempts = 0
+    EMAIL_EVERY_MS = Number(url.searchParams.get('email') ?? 60_000)
+    return send(200, { signInLimit, EMAIL_EVERY_MS })
+  }
+  if (url.pathname === '/__sessions') {
+    const u = users.get(url.searchParams.get('email'))
+    return send(200, [...sessions.entries()].filter(([, x]) => x.uid === u?.id).map(([id, x]) => ({ id, revoked: x.revoked })))
   }
   if (url.pathname === '/__offline') {
     server.offline = url.searchParams.get('v') === '1'
@@ -73,37 +100,73 @@ const server = createServer(async (req, res) => {
   if (server.offline && url.pathname.startsWith('/rest')) return res.destroy()
 
   // ---- auth
+  const tooSoon = (sentAt) => sentAt && Date.now() - sentAt < EMAIL_EVERY_MS
+  const waitEmail = () => send(429, { code: 429, error_code: 'over_email_send_rate_limit', msg: 'For security purposes, you can only request this after 59 seconds.' })
   if (url.pathname === '/auth/v1/signup') {
-    if (users.has(json.email)) return send(400, { code: 400, error_code: 'user_already_exists', msg: 'User already registered' })
-    const u = { id: crypto.randomUUID(), email: json.email, password: json.password, confirmed: false }
+    const known = users.get(json.email)
+    // With e-mail confirmation on, Supabase answers an address that already has an account with a
+    // made-up user (no session, no e-mail sent), the same as a new sign-up.
+    if (known?.confirmed) return send(200, { id: crypto.randomUUID(), email: json.email, aud: 'authenticated', role: 'authenticated', identities: [] })
+    if (known && tooSoon(known.confirmationSentAt)) return waitEmail()
+    const u = known ?? { id: crypto.randomUUID(), email: json.email, password: json.password, confirmed: false }
+    u.confirmationSentAt = Date.now()
     users.set(json.email, u)
     return send(200, { id: u.id, email: u.email, aud: 'authenticated', role: 'authenticated', confirmation_sent_at: new Date().toISOString() })
   }
   if (url.pathname === '/auth/v1/verify') {
     const u = users.get(json.email)
-    if (!u || json.token !== '123456') return send(403, { code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' })
+    const bad = () => send(403, { code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' })
+    if (!u || json.token !== '123456') return bad()
+    // A recovery code works once, and only after it was asked for.
+    if (json.type === 'recovery') {
+      if (!u.recoveryPending) return bad()
+      u.recoveryPending = false
+    }
     u.confirmed = true
     return send(200, session(u))
   }
   if (url.pathname === '/auth/v1/token') {
     // Refreshing a session is never accepted here: a stored session that expired cannot be renewed.
     if (url.searchParams.get('grant_type') === 'refresh_token') return send(400, { code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' })
+    if (++signInAttempts > signInLimit) return send(429, { code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' })
     const u = users.get(json.email)
     if (!u || u.password !== json.password) return send(400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
     if (!u.confirmed) return send(400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' })
-    u.revoked = false
     return send(200, session(u))
   }
-  if (url.pathname === '/auth/v1/user') {
-    const id = sub(req)
-    const u = [...users.values()].find((x) => x.id === id)
-    // updateUser (new password after recovery) really changes it, so the next sign-in can be tested.
-    if (u && req.method === 'PUT' && json?.password) u.password = json.password
-    if (u?.revoked) return send(403, { code: 403, error_code: 'session_not_found', msg: 'Session from session_id claim in JWT does not exist' })
-    return u ? send(200, session(u).user) : send(401, { msg: 'invalid' })
+  // Endpoints that need a live session (Supabase looks the session_id claim up).
+  const { sub: who, session_id: sid } = claims(req)
+  const live = sessions.get(sid)
+  const me = [...users.values()].find((x) => x.id === who)
+  if (url.pathname === '/auth/v1/user' || url.pathname === '/auth/v1/logout') {
+    if (!me) return send(401, { msg: 'invalid' })
+    if (!live || live.revoked) return send(403, { code: 403, error_code: 'session_not_found', msg: 'Session from session_id claim in JWT does not exist' })
   }
-  if (url.pathname === '/auth/v1/logout') return send(204)
-  if (url.pathname === '/auth/v1/recover') return send(200, {})
+  if (url.pathname === '/auth/v1/user') {
+    if (req.method === 'PUT' && json?.password) {
+      if (json.password === me.password) return send(422, { code: 422, error_code: 'same_password', msg: 'New password should be different from the old password.' })
+      me.password = json.password
+      // Supabase: a new password ends every other session and voids pending e-mail codes.
+      revokeAll(me.id, sid)
+      me.recoveryPending = false
+    }
+    return send(200, userOf(me))
+  }
+  if (url.pathname === '/auth/v1/logout') {
+    const scope = url.searchParams.get('scope') || 'global'
+    if (scope === 'local') live.revoked = true
+    else revokeAll(me.id, scope === 'others' ? sid : null)
+    return send(204)
+  }
+  if (url.pathname === '/auth/v1/recover') {
+    const u = users.get(json.email)
+    // Unknown address: the same empty success. A known one asked again too soon: "wait".
+    if (!u) return send(200, {})
+    if (tooSoon(u.recoverySentAt)) return waitEmail()
+    u.recoverySentAt = Date.now()
+    u.recoveryPending = true
+    return send(200, {})
+  }
 
   // ---- rest
   const uid = sub(req)

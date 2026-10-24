@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { accountsOnDevice, removeAccountFromDevice } from '../../data/deviceCleanup'
 import { appUrl, cloudConfigured, supabase } from '../../lib/supabase'
 import { silencePushOnThisDevice } from '../reminders/push'
+import { authMessage, isEmailThrottle } from './authRules'
 
 export type AuthScreen = null | 'signin' | 'signup' | 'forgot' | 'newPassword'
 
@@ -23,6 +24,12 @@ interface SessionApi {
   signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
+  /**
+   * Ends every session of the account on the server: the other devices first, then this one.
+   * `beforeThisDevice` runs in between, while this session is still valid. Throws, with nothing
+   * changed, when the server can't be reached.
+   */
+  signOutEverywhere(opts?: { beforeThisDevice?(): Promise<void> }): Promise<void>
   sendReset(email: string): Promise<void>
   /** 6-digit code from the e-mail. Works inside the installed iPhone app, where links open in Safari. */
   verifyCode(email: string, code: string, kind: 'signup' | 'recovery'): Promise<void>
@@ -33,26 +40,14 @@ interface SessionApi {
 
 const SessionContext = createContext<SessionApi | null>(null)
 
-/** Turns Supabase auth errors into short Portuguese messages. */
-export function authMessage(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err)
-  const m = raw.toLowerCase()
-  if (m.includes('invalid login credentials')) return 'E-mail ou senha incorretos.'
-  if (m.includes('email not confirmed')) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.'
-  if (m.includes('user already registered')) return 'Já existe uma conta com este e-mail.'
-  if (m.includes('password should be at least') || m.includes('weak password')) return 'Senha fraca: use pelo menos 8 caracteres, com letras e números.'
-  if (m.includes('rate limit') || m.includes('too many')) return 'Muitas tentativas. Espere alguns minutos e tente de novo.'
-  if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor.'
-  if (m.includes('same as the old') || m.includes('different from the old')) return 'A nova senha precisa ser diferente da atual.'
-  return raw
-}
-
 /** Survives the restart that follows a cleanup, so the sign-in screen can say what happened. */
 const ENDED_KEY = 'nucleo:sessionEnded'
 
 interface EndedNote {
   passive: boolean
   lost: number
+  /** "Sair de todos os aparelhos". */
+  everywhere?: boolean
 }
 
 function takeEndedNote(): EndedNote | null {
@@ -80,6 +75,8 @@ function sessionEndedMessage(lost: number): string {
   const lostText = lost ? ` ${lost} ${lost === 1 ? 'alteração que ainda não tinha chegado' : 'alterações que ainda não tinham chegado'} ao servidor ${lost === 1 ? 'foi descartada' : 'foram descartadas'}.` : ''
   return `Sua sessão terminou. Por segurança, os dados da conta foram removidos deste aparelho — tudo continua salvo na conta. Entre de novo para continuar.${lostText}`
 }
+
+const EVERYWHERE_MESSAGE = 'Você saiu da conta em todos os aparelhos. Nos outros, os dados da conta são removidos assim que o app for aberto ou voltar para a tela.'
 
 /**
  * Removes an account from this device. Signed out (nobody else here), also its preferences and
@@ -124,6 +121,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   /** The account the screen is showing; when the session stops being it, that account is removed. */
   const shownUid = useRef<string | null>(null)
   const manualSignOut = useRef(false)
+  const everywhere = useRef(false)
   const ending = useRef<Promise<void> | null>(null)
 
   /**
@@ -139,11 +137,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         removeFromDevice(uid, next)
           .then(
-            ({ pendingLost }) => leaveEndedNote({ passive, lost: passive ? pendingLost : 0 }),
+            ({ pendingLost }) => leaveEndedNote({ passive, lost: passive ? pendingLost : 0, everywhere: everywhere.current }),
             (err) => {
               // Whatever was left is found and removed when the app opens again.
               console.error('Conta: falha ao limpar o aparelho', err instanceof Error ? err.name : 'unknown')
-              leaveEndedNote({ passive, lost: 0 })
+              leaveEndedNote({ passive, lost: 0, everywhere: everywhere.current })
             },
           )
           .finally(() => {
@@ -182,7 +180,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         console.error('Conta: falha ao limpar o aparelho', err instanceof Error ? err.name : 'unknown')
       }
       if (!uid && (endedNote || leftovers.length)) {
-        if (endedNote?.passive !== false) setNotice(sessionEndedMessage(endedNote?.lost ?? 0))
+        if (endedNote?.everywhere) setNotice(EVERYWHERE_MESSAGE)
+        else if (endedNote?.passive !== false) setNotice(sessionEndedMessage(endedNote?.lost ?? 0))
         setScreen('signin')
       }
       if (linkError) setNotice(`Link inválido ou expirado: ${linkError}`)
@@ -199,8 +198,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => data.subscription.unsubscribe()
   }, [endAccount])
 
-  // A token the server no longer accepts (session revoked, user removed) ends the session here too.
-  // Checked when the app opens and when it comes back to the front; offline or a server problem never signs out.
+  // A token the server no longer accepts (session revoked by "Sair de todos os aparelhos" or a
+  // password change elsewhere, user removed) ends the session here too. Checked when the app opens,
+  // comes back to the front or back online, and every few minutes while it's on screen; offline or
+  // a server problem never signs out.
   const signedIn = session?.user.id ?? null
   useEffect(() => {
     if (!supabase || !checked || !signedIn) return
@@ -215,13 +216,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     verify()
     const onVisible = () => document.visibilityState === 'visible' && verify()
+    const timer = setInterval(onVisible, 5 * 60_000)
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onVisible)
+    }
   }, [checked, signedIn])
 
   const signUp = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } })
-    if (error) throw new Error(authMessage(error))
+    // "Wait a minute" only comes for an address that already started a sign-up: answering like
+    // any other sign-up keeps the screen from telling who has an account.
+    if (error && !(isEmailThrottle(error) && error.message.toLowerCase().includes('for security purposes'))) throw new Error(authMessage(error))
+    if (error) return { needsConfirmation: true }
     return { needsConfirmation: !data.session }
   }, [])
 
@@ -240,9 +250,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await ending.current
   }, [])
 
+  const signOutEverywhere = useCallback(async (opts?: { beforeThisDevice?(): Promise<void> }) => {
+    if (!supabase) return
+    // First every other session is revoked on the server (refresh tokens included); "others" keeps
+    // this one, so a failure (offline) changes nothing here and can be shown. "global" would drop
+    // this device's session even when the server never got the request.
+    const { error } = await supabase.auth.signOut({ scope: 'others' })
+    if (error) throw new Error(`${authMessage(error)} Nenhum aparelho foi desconectado.`)
+    await opts?.beforeThisDevice?.()
+    manualSignOut.current = true
+    everywhere.current = true
+    // Then this one, like "Sair". The other devices notice on their next check and clean up.
+    await supabase.auth.signOut({ scope: 'local' })
+    await ending.current
+  }, [])
+
   const sendReset = useCallback(async (email: string) => {
     const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: appUrl() })
-    if (error) throw new Error(authMessage(error))
+    // The server answers an unknown address with success but an existing one, asked again too
+    // soon, with "wait": both get the same screen ("if an account exists…"), so it can't be used
+    // to find out who has an account. The server still limits the e-mails.
+    if (error && !isEmailThrottle(error)) throw new Error(authMessage(error))
   }, [])
 
   const verifyCode = useCallback(async (email: string, code: string, kind: 'signup' | 'recovery') => {
@@ -258,6 +286,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setNewPassword = useCallback(async (password: string) => {
+    // The server also ends every other session of the account and voids pending e-mail codes.
     const { error } = await supabase!.auth.updateUser({ password })
     if (error) throw new Error(authMessage(error))
     setScreen(null)
@@ -278,13 +307,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signOut,
+      signOutEverywhere,
       sendReset,
       verifyCode,
       resendConfirmation,
       setNewPassword,
       clearNotice: () => setNotice(null),
     }),
-    [checked, clearing, session, screen, notice, signUp, signIn, signOut, sendReset, verifyCode, resendConfirmation, setNewPassword],
+    [checked, clearing, session, screen, notice, signUp, signIn, signOut, signOutEverywhere, sendReset, verifyCode, resendConfirmation, setNewPassword],
   )
 
   return <SessionContext.Provider value={api}>{children}</SessionContext.Provider>

@@ -5,17 +5,10 @@ import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Logo } from '../../app/Shell'
 import { Button, IconButton } from '../../ui/Button'
 import { Field, TextInput } from '../../ui/Field'
+import { loginPasswordProblem } from './authRules'
 import { useSession } from './session'
 
 type Step = 'signin' | 'signup' | 'confirm' | 'forgot' | 'resetCode' | 'newPassword'
-
-export const MIN_LOGIN_PASSWORD = 8
-
-export function loginPasswordProblem(password: string): string | null {
-  if (password.length < MIN_LOGIN_PASSWORD) return `Use pelo menos ${MIN_LOGIN_PASSWORD} caracteres.`
-  if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) return 'Misture letras e números.'
-  return null
-}
 
 function PasswordInput({ value, onChange, autoComplete, autoFocus }: { value: string; onChange(v: string): void; autoComplete: string; autoFocus?: boolean }) {
   const [show, setShow] = useState(false)
@@ -95,7 +88,7 @@ export function AuthScreen() {
 
   const signUp = run(async () => {
     if (!validEmail) throw new Error('Digite um e-mail válido.')
-    const problem = loginPasswordProblem(password)
+    const problem = loginPasswordProblem(password, email)
     if (problem) throw new Error(problem)
     if (password !== password2) throw new Error('As senhas não são iguais.')
     const { needsConfirmation } = await auth.signUp(email.trim(), password)
@@ -119,7 +112,7 @@ export function AuthScreen() {
   })
 
   const newPassword = run(async () => {
-    const problem = loginPasswordProblem(password)
+    const problem = loginPasswordProblem(password, auth.email ?? email)
     if (problem) throw new Error(problem)
     if (password !== password2) throw new Error('As senhas não são iguais.')
     await auth.setNewPassword(password)
@@ -261,7 +254,7 @@ export function AuthScreen() {
               title="Digite o código"
               text={
                 <>
-                  Se existir uma conta com <span className="text-ink">{email}</span>, o e-mail chega em instantes. Digite aqui o código de 6 dígitos do e-mail — não é preciso abrir o link.
+                  Se existir uma conta com <span className="text-ink">{email}</span>, o e-mail chega em instantes. Digite aqui o código de 6 dígitos do e-mail — não é preciso abrir o link. Se não chegar, confira o spam ou peça outro código daqui a um minuto.
                 </>
               }
               onBack={() => go('forgot')}

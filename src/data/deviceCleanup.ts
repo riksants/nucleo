@@ -151,7 +151,9 @@ export async function removeAccountCopyFromLocal(uid: string, cache?: CacheView 
  */
 export async function removeAccountFromDevice(uid: string, opts: { wholeDevice: boolean }): Promise<{ pendingLost: number }> {
   for (const release of releasers) release(uid)
-  const cache = await readCache(uid)
+  // Another tab may be deleting this cache right now (its connection closes under us): go on
+  // without it — only what the migration mark proves to be in the account leaves the local copy.
+  const cache = await readCache(uid).catch(() => null)
   await removeAccountCopyFromLocal(uid, cache)
   await deleteCache(uid)
   if (opts.wholeDevice) {

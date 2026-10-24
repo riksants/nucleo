@@ -23,8 +23,8 @@ async function signUp(b, email) {
   await b.click('Entrar ou criar conta')
   await b.click('Criar conta')
   await b.fill('E-mail', email)
-  await b.fill('Senha', 'senha1234')
-  await b.fill('Repita a senha', 'senha1234')
+  await b.fill('Senha', 'Nucleo-teste-42')
+  await b.fill('Repita a senha', 'Nucleo-teste-42')
   await b.click('Criar conta', 'button[type=submit]')
   await b.sleep(800)
   await b.fill('Código do e-mail', '123456')
@@ -41,7 +41,7 @@ async function signIn(b, email) {
   await b.goto(BASE)
   await b.click('Entrar ou criar conta')
   await b.fill('E-mail', email)
-  await b.fill('Senha', 'senha1234')
+  await b.fill('Senha', 'Nucleo-teste-42')
   await b.click('Entrar', 'button[type=submit]')
   await b.sleep(3000)
 }
@@ -76,7 +76,7 @@ async function signOutFromSettings(b) {
 }
 async function signInHere(b, email) {
   await b.fill('E-mail', email)
-  await b.fill('Senha', 'senha1234')
+  await b.fill('Senha', 'Nucleo-teste-42')
   await b.click('Entrar', 'button[type=submit]')
   await b.sleep(3000)
 }
@@ -124,8 +124,8 @@ try {
   await signOutFromSettings(A)
   await A.click('Criar conta')
   await A.fill('E-mail', 'bruno@conta.com')
-  await A.fill('Senha', 'senha1234')
-  await A.fill('Repita a senha', 'senha1234')
+  await A.fill('Senha', 'Nucleo-teste-42')
+  await A.fill('Repita a senha', 'Nucleo-teste-42')
   await A.click('Criar conta', 'button[type=submit]')
   await A.sleep(800)
   await A.fill('Código do e-mail', '123456')

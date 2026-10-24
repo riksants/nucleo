@@ -11,8 +11,8 @@ const setVal = (b, selector, value) =>
 async function signUpAndConfirm(b, email) {
   await b.click('Criar conta')
   await b.fill('E-mail', email)
-  await b.fill('Senha', 'senha1234')
-  await b.fill('Repita a senha', 'senha1234')
+  await b.fill('Senha', 'Nucleo-teste-42')
+  await b.fill('Repita a senha', 'Nucleo-teste-42')
   await b.click('Criar conta', 'button[type=submit]')
   await b.sleep(800)
   await b.fill('Código do e-mail', '123456')
@@ -22,7 +22,7 @@ async function signUpAndConfirm(b, email) {
 
 async function signIn(b, email) {
   await b.fill('E-mail', email)
-  await b.fill('Senha', 'senha1234')
+  await b.fill('Senha', 'Nucleo-teste-42')
   await b.click('Entrar', 'button[type=submit]')
   await b.sleep(2500)
 }
