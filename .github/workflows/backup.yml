@@ -1,0 +1,85 @@
+name: Backup
+
+# Daily encrypted copy of the Supabase data (scripts/backup/backup.sh, docs/BACKUP.md).
+# Needs, set by the owner (until then every run stops at the first step, without touching anything):
+#   Settings → Secrets → Actions:   NUCLEO_BACKUP_DB_URL  (read-only user nucleo_backup, Session pooler)
+#   Settings → Variables → Actions: NUCLEO_BACKUP_AGE_RECIPIENT  (PUBLIC key "age1..."; the private one never comes here)
+on:
+  schedule:
+    - cron: '17 6 * * *' # 03:17 in Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    # Forks never get the secret; this keeps them from even trying.
+    if: github.repository == 'riksants/nucleo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      # Throwaway database where every backup is restored and compared before it is kept.
+      verify:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: only-for-this-throwaway-container
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      # Not set up yet (neither value): the run ends here, green, with a notice. Half set up: it fails.
+      - name: Configuração presente
+        id: cfg
+        env:
+          HAS_URL: ${{ secrets.NUCLEO_BACKUP_DB_URL != '' }}
+          RECIPIENT: ${{ vars.NUCLEO_BACKUP_AGE_RECIPIENT }}
+        run: |
+          if [ "$HAS_URL" != "true" ] && [ -z "$RECIPIENT" ]; then
+            echo "::notice::Backup ainda não configurado (docs/BACKUP.md). Nada foi feito."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_URL" != "true" ] || [ -z "$RECIPIENT" ]; then
+            echo "::error::Configuração incompleta: falta NUCLEO_BACKUP_DB_URL (secret) ou NUCLEO_BACKUP_AGE_RECIPIENT (variável)."
+            exit 1
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: steps.cfg.outputs.ready == 'true'
+        with:
+          persist-credentials: false
+      - name: Ferramentas (psql, age)
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client age > /dev/null
+          psql --version
+          age --version
+      - name: Backup, restauração de conferência e criptografia
+        if: steps.cfg.outputs.ready == 'true'
+        id: backup
+        env:
+          NUCLEO_BACKUP_DB_URL: ${{ secrets.NUCLEO_BACKUP_DB_URL }}
+          NUCLEO_BACKUP_AGE_RECIPIENT: ${{ vars.NUCLEO_BACKUP_AGE_RECIPIENT }}
+          VERIFY_DB_URL: postgresql://postgres:only-for-this-throwaway-container@localhost:5432/postgres
+          OUT_DIR: backup-out
+          PGCONNECT_TIMEOUT: '20'
+        run: bash scripts/backup/backup.sh
+      # Only the encrypted file leaves the machine. The repository is public: anyone signed in to
+      # GitHub can download it, and without the owner's private key it is unreadable.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.cfg.outputs.ready == 'true'
+        with:
+          name: ${{ steps.backup.outputs.name }}
+          path: backup-out/*.age
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

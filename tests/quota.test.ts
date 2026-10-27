@@ -65,7 +65,7 @@ beforeAll(async () => {
   db = new PGlite()
   await db.exec(SUPABASE_STUB)
   const files = readdirSync('supabase/migrations').sort()
-  for (const file of files.filter((f) => f !== QUOTA_FILE)) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'))
+  for (const file of files.filter((f) => f < QUOTA_FILE)) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'))
   await db.exec(`grant select, insert, update, delete on all tables in schema public to service_role;`)
   await db.query(`insert into auth.users (id) values ($1), ($2), ($3)`, [A, B, C])
   // Data that already exists when the migration is applied (A has items, some deleted; B has nothing).
@@ -75,6 +75,8 @@ beforeAll(async () => {
   await as(A, `insert into scheduled_notifications (key, fire_at, title, body) values ('old', now() + interval '1 day', 'Núcleo', 'Lembrete')`)
   before = await snapshot()
   await db.exec(readFileSync(`supabase/migrations/${QUOTA_FILE}`, 'utf8'))
+  // The migrations after this one, as on Supabase (they change triggers the quotas work with).
+  for (const file of files.filter((f) => f > QUOTA_FILE)) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'))
   await db.exec(`grant select, insert, update, delete on all tables in schema public to service_role;`)
 }, 60_000)
 
@@ -163,12 +165,12 @@ describe('itens por coleção', () => {
     expect(await usage(B, 'tasks')).toMatchObject({ live: 1 })
   })
 
-  it('mudar um item de coleção pela API respeita o limite da coleção de destino', async () => {
+  it('mudar um item de coleção pela API é recusado (B4) e não mexe na contagem', async () => {
     for (const id of ['a', 'b', 'c']) await put(B, 'notes', id)
     await put(B, 'tasks', 't1')
     await expect(as(B, `update records set collection = 'notes' where id = 't1'`)).rejects.toMatchObject({ code: '23514' })
     await put(B, 'notes', 'c', {}, true)
-    await as(B, `update records set collection = 'notes' where id = 't1'`)
+    await expect(as(B, `update records set collection = 'notes' where id = 't1'`)).rejects.toMatchObject({ code: '23514' })
     expect(await stored(B)).toEqual(await recount(B))
   })
 
@@ -286,7 +288,8 @@ describe('notificações push', () => {
     await as(B, `select claim_push_endpoint('https://push.example/2', 'p2', 'a2')`)
     await expect(as(B, `select claim_push_endpoint('https://push.example/3', 'p', 'a')`)).rejects.toMatchObject({ message: 'quota_exceeded:push.devices:2' })
     await expect(as(B, `insert into push_subscriptions (endpoint, p256dh, auth) values ('https://push.example/4', 'p', 'a')`)).rejects.toMatchObject({ code: '23514' })
-    await as(C, `select claim_push_endpoint('https://push.example/2', 'p', 'a')`)
+    // The same device (same keys) signed in to another account (B3: the keys must match).
+    await as(C, `select claim_push_endpoint('https://push.example/2', 'p2', 'a')`)
     expect((await as(B, 'select endpoint from push_subscriptions')).rows).toEqual([{ endpoint: 'https://push.example/1' }])
     await as(B, `select claim_push_endpoint('https://push.example/3', 'p', 'a')`)
     await setLimit('push.devices', 10)

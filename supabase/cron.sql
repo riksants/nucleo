@@ -9,6 +9,10 @@ create extension if not exists pg_net;
 select vault.create_secret('https://SEU-PROJETO.supabase.co', 'nucleo_project_url');
 select vault.create_secret('MESMO-VALOR-DO-DISPATCH_SECRET', 'nucleo_dispatch_secret');
 
+-- Rodar de novo recria as tarefas em vez de duplicar (os dois create_secret acima falham se já
+-- existirem: nesse caso rode só daqui para baixo).
+select cron.unschedule(jobname) from cron.job where jobname in ('nucleo-push-dispatch', 'nucleo-push-cleanup');
+
 select cron.schedule(
   'nucleo-push-dispatch',
   '* * * * *',
