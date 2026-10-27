@@ -12,7 +12,7 @@ import { useSession } from './session'
 
 type Step = 'signin' | 'signup' | 'confirm' | 'forgot' | 'resetCode' | 'newPassword'
 
-function PasswordInput({ value, onChange, autoComplete, autoFocus }: { value: string; onChange(v: string): void; autoComplete: string; autoFocus?: boolean }) {
+export function PasswordInput({ value, onChange, autoComplete, autoFocus }: { value: string; onChange(v: string): void; autoComplete: string; autoFocus?: boolean }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative">

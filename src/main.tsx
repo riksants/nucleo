@@ -2,6 +2,7 @@ import { MotionConfig } from 'framer-motion'
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { AppErrorScreen, BareErrorScreen, ErrorBoundary } from './app/ErrorBoundary'
 import { playOpening } from './app/opening'
 import { onAccountRemoval, rememberAccountOnDevice } from './data/deviceCleanup'
 import { createIndexedDbRepository, type Repository } from './data/repository'
@@ -11,6 +12,7 @@ import { AuthScreen } from './features/account/AuthScreen'
 import { SessionProvider, useSession } from './features/account/session'
 import { VaultProvider } from './features/accounts/vault'
 import './index.css'
+import { installErrorLog } from './lib/errorLog'
 import { supabase } from './lib/supabase'
 import { FeedbackProvider } from './ui/Feedback'
 
@@ -58,11 +60,15 @@ function Root() {
   return (
     <StoreProvider key={userId ?? 'local'} repository={repository}>
       <VaultProvider>
-        <App />
+        <ErrorBoundary fallback={(error, retry) => <AppErrorScreen error={error} retry={retry} />}>
+          <App />
+        </ErrorBoundary>
       </VaultProvider>
     </StoreProvider>
   )
 }
+
+installErrorLog()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -70,7 +76,9 @@ createRoot(document.getElementById('root')!).render(
     <MotionConfig reducedMotion="user">
       <SessionProvider>
         <FeedbackProvider>
-          <Root />
+          <ErrorBoundary fallback={() => <BareErrorScreen />}>
+            <Root />
+          </ErrorBoundary>
         </FeedbackProvider>
       </SessionProvider>
     </MotionConfig>

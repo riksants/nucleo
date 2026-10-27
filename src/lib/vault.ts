@@ -60,7 +60,17 @@ export class WrongVaultSecretError extends Error {
   }
 }
 
+/**
+ * The iteration count comes with the vault (settings, a backup file): an absurd value would freeze the
+ * phone for minutes, a tiny one would make the password easy to guess (audit A6).
+ */
+export const MIN_ITERATIONS = 100_000
+export const MAX_ITERATIONS = 5_000_000
+
 async function unwrap(w: WrappedKey, secret: string, extractable = false): Promise<CryptoKey> {
+  if (!Number.isInteger(w?.iterations) || w.iterations < MIN_ITERATIONS || w.iterations > MAX_ITERATIONS || typeof w.salt !== 'string' || typeof w.iv !== 'string' || typeof w.ct !== 'string') {
+    throw new Error('Os dados do cofre estão danificados. Use um backup anterior ou o código de recuperação.')
+  }
   const kek = await deriveKek(secret, fromB64(w.salt), w.iterations)
   try {
     return await crypto.subtle.unwrapKey('raw', fromB64(w.ct), kek, { name: 'AES-GCM', iv: fromB64(w.iv) }, { name: 'AES-GCM', length: 256 }, extractable, [

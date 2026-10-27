@@ -36,6 +36,11 @@ interface SessionApi {
   verifyCode(email: string, code: string, kind: 'signup' | 'recovery'): Promise<void>
   resendConfirmation(email: string, captchaToken?: string): Promise<void>
   setNewPassword(password: string): Promise<void>
+  /**
+   * Deletes the account and everything in it, on the server (Etapa 9). Asks for the password again
+   * (the server only accepts it right after a sign-in), then removes the account from this device.
+   */
+  deleteAccount(password: string, captchaToken?: string): Promise<void>
   clearNotice(): void
 }
 
@@ -49,6 +54,8 @@ interface EndedNote {
   lost: number
   /** "Sair de todos os aparelhos". */
   everywhere?: boolean
+  /** "Excluir conta". */
+  deleted?: boolean
 }
 
 function takeEndedNote(): EndedNote | null {
@@ -75,6 +82,16 @@ const endedNote = typeof sessionStorage === 'undefined' ? null : takeEndedNote()
 function sessionEndedMessage(lost: number): string {
   const lostText = lost ? ` ${lost} ${lost === 1 ? 'alteração que ainda não tinha chegado' : 'alterações que ainda não tinham chegado'} ao servidor ${lost === 1 ? 'foi descartada' : 'foram descartadas'}.` : ''
   return `Sua sessão terminou. Por segurança, os dados da conta foram removidos deste aparelho — tudo continua salvo na conta. Entre de novo para continuar.${lostText}`
+}
+
+const DELETED_MESSAGE = 'Sua conta foi excluída. Todos os dados dela foram apagados do servidor e deste aparelho.'
+
+/** What the server says when deleting the account fails, in the person's words. */
+export function deleteAccountMessage(error: { code?: string; message?: string }): string {
+  const text = error.message ?? ''
+  if (error.code === 'PGRST202' || /delete_my_account/.test(text)) return 'A exclusão de conta ainda não está disponível no servidor. Nada foi apagado.'
+  if (text.includes('reauth_required')) return 'Confirme a senha de novo para excluir a conta. Nada foi apagado.'
+  return 'Não foi possível excluir a conta agora. Nada foi apagado; tente de novo com internet.'
 }
 
 const EVERYWHERE_MESSAGE = 'Você saiu da conta em todos os aparelhos. Nos outros, os dados da conta são removidos assim que o app for aberto ou voltar para a tela.'
@@ -123,6 +140,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const shownUid = useRef<string | null>(null)
   const manualSignOut = useRef(false)
   const everywhere = useRef(false)
+  const deleted = useRef(false)
   const ending = useRef<Promise<void> | null>(null)
 
   /**
@@ -138,11 +156,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         removeFromDevice(uid, next)
           .then(
-            ({ pendingLost }) => leaveEndedNote({ passive, lost: passive ? pendingLost : 0, everywhere: everywhere.current }),
+            ({ pendingLost }) => leaveEndedNote({ passive, lost: passive ? pendingLost : 0, everywhere: everywhere.current, deleted: deleted.current }),
             (err) => {
               // Whatever was left is found and removed when the app opens again.
               console.error('Conta: falha ao limpar o aparelho', err instanceof Error ? err.name : 'unknown')
-              leaveEndedNote({ passive, lost: 0, everywhere: everywhere.current })
+              leaveEndedNote({ passive, lost: 0, everywhere: everywhere.current, deleted: deleted.current })
             },
           )
           .finally(() => {
@@ -181,7 +199,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         console.error('Conta: falha ao limpar o aparelho', err instanceof Error ? err.name : 'unknown')
       }
       if (!uid && (endedNote || leftovers.length)) {
-        if (endedNote?.everywhere) setNotice(EVERYWHERE_MESSAGE)
+        if (endedNote?.deleted) setNotice(DELETED_MESSAGE)
+        else if (endedNote?.everywhere) setNotice(EVERYWHERE_MESSAGE)
         else if (endedNote?.passive !== false) setNotice(sessionEndedMessage(endedNote?.lost ?? 0))
         setScreen('signin')
       }
@@ -293,6 +312,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setScreen(null)
   }, [])
 
+  const email = session?.user.email ?? null
+  const deleteAccount = useCallback(
+    async (password: string, captchaToken?: string) => {
+      if (!supabase || !email) return
+      // A fresh sign-in with the password: the server refuses to delete without one in the last 10 minutes.
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
+      if (authError) throw new Error(`${authMessage(authError)} Nada foi apagado.`)
+      const { error } = await supabase.rpc('delete_my_account')
+      if (error) throw new Error(deleteAccountMessage(error))
+      // The account no longer exists: this device forgets it like after "Sair" (endAccount), and the
+      // sign-in screen says what happened.
+      manualSignOut.current = true
+      deleted.current = true
+      await supabase.auth.signOut({ scope: 'local' })
+      await ending.current
+    },
+    [email],
+  )
+
   const api = useMemo<SessionApi>(
     () => ({
       configured: cloudConfigured,
@@ -313,9 +351,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       verifyCode,
       resendConfirmation,
       setNewPassword,
+      deleteAccount,
       clearNotice: () => setNotice(null),
     }),
-    [checked, clearing, session, screen, notice, signUp, signIn, signOut, signOutEverywhere, sendReset, verifyCode, resendConfirmation, setNewPassword],
+    [checked, clearing, session, screen, notice, signUp, signIn, signOut, signOutEverywhere, sendReset, verifyCode, resendConfirmation, setNewPassword, deleteAccount],
   )
 
   return <SessionContext.Provider value={api}>{children}</SessionContext.Provider>

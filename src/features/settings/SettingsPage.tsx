@@ -7,6 +7,8 @@ import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
 import { COLLECTION_NAMES, type Account, type Currency, type DataState, type ModuleId } from '../../data/types'
 import { backupFileName, buildBackup, parseBackup, saveFile, type ParsedBackup } from '../../lib/backup'
+import { clearErrors, readErrors } from '../../lib/errorLog'
+import { copyText } from '../../lib/links'
 import { formatDateTime } from '../../lib/dates'
 import { amountToInput, currencyInfo, formatMoney, formatNumber } from '../../lib/money'
 import { vaultPasswordProblem } from '../../lib/vault'
@@ -63,6 +65,28 @@ function Group({ title, children, note, tone = 'purple' }: { title: string; chil
       </GroupTone.Provider>
       {note && <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">{note}</p>}
     </section>
+  )
+}
+
+/** The last errors of this device (only here, never sent): copy to describe a problem, or clear. */
+function DiagnosticsGroup() {
+  const { toast } = useFeedback()
+  const [errors, setErrors] = useState(readErrors)
+  if (!errors.length) return null
+  const copy = async () => {
+    const text = errors.map((e) => `${e.at} [${e.where}] ${e.message}`).join('\n')
+    toast((await copyText(text)) ? 'Copiado' : 'Não foi possível copiar', 'success')
+  }
+  const clear = () => {
+    clearErrors()
+    setErrors([])
+  }
+  return (
+    <Group title="Diagnóstico" tone="gray" note="Erros recentes deste aparelho. Ficam só aqui e não incluem seus dados; copie se precisar descrever um problema.">
+      <Row label="Erros recentes" value={String(errors.length)} detail={errors[0].message} />
+      <Row label="Copiar detalhes" onClick={copy} />
+      <Row label="Limpar" onClick={clear} />
+    </Group>
   )
 }
 
@@ -452,6 +476,8 @@ export function SettingsPage() {
           <Row label="Exportar dados" icon={<Download size={18} />} onClick={exportData} />
           <Row label="Importar dados" icon={<Upload size={18} />} onClick={() => fileRef.current?.click()} />
         </Group>
+
+        <DiagnosticsGroup />
       </div>
 
       <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} />

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Privacidade · NÚCLEO</title>
+<style>
+  :root { --bg: #f6f5f2; --ink: #1c1b19; --soft: #5d5a54; --line: #dedbd4; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #121211; --ink: #ecebe8; --soft: #a3a09a; --line: #2c2b29; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 8px; }
+  p, li { color: var(--soft); }
+  strong { color: var(--ink); }
+  ul { padding-left: 20px; }
+  .meta { font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  td, th { text-align: left; vertical-align: top; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); }
+  th { color: var(--ink); }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+<h1>Política de privacidade</h1>
+<p class="meta">NÚCLEO · hellonucleo.app · versão de 27 de outubro de 2026</p>
+
+<p>O NÚCLEO é um aplicativo pessoal de organização (dinheiro, tarefas, projetos, rotina). Esta página diz
+quais dados ele guarda, onde, por quanto tempo e como você os apaga.</p>
+
+<h2>Sem conta</h2>
+<p>Usando o app sem entrar numa conta, <strong>tudo fica só no seu aparelho</strong> (banco de dados do
+navegador). Nada é enviado a servidores do NÚCLEO.</p>
+
+<h2>Com conta</h2>
+<ul>
+  <li><strong>Conta:</strong> e-mail e senha (guardada pelo serviço de login em forma cifrada; ninguém do
+    NÚCLEO vê a senha).</li>
+  <li><strong>Seus dados:</strong> o que você registra no app (movimentações, tarefas, notas, clientes e o
+    resto), para sincronizar entre os seus aparelhos. As senhas da seção "Contas" só saem do aparelho
+    criptografadas pelo cofre, com uma senha que só você conhece.</li>
+  <li><strong>Notificações (se você ligar):</strong> o endereço de notificação do aparelho e os lembretes
+    agendados. Os textos que aparecem na tela bloqueada são genéricos, a menos que você permita detalhes;
+    valores e dados de saúde nunca vão nas notificações.</li>
+  <li><strong>Uso de IA (desligado por padrão):</strong> se você ligar, a frase digitada é enviada para
+    interpretação e só o tipo de pedido e a contagem de uso ficam registrados, nunca o texto.</li>
+</ul>
+<p>Cada conta só acessa os próprios dados: o banco recusa qualquer leitura ou alteração de outra conta.</p>
+
+<h2>Serviços usados</h2>
+<table>
+  <tr><th>Serviço</th><th>Para quê</th></tr>
+  <tr><td>Supabase</td><td>login e banco de dados das contas</td></tr>
+  <tr><td>GitHub Pages</td><td>hospedagem do app (como qualquer site, registra o acesso técnico); cópias de segurança criptografadas</td></tr>
+  <tr><td>Cloudflare Turnstile</td><td>verificação contra robôs nas telas de entrar e criar conta</td></tr>
+  <tr><td>open.er-api.com, jsDelivr</td><td>cotações de moedas, pedidas pelo seu aparelho (nenhum dado seu vai junto)</td></tr>
+  <tr><td>Anthropic</td><td>só se você ligar o uso de IA</td></tr>
+</table>
+<p>Não há anúncios, rastreadores nem venda de dados.</p>
+
+<h2>Por quanto tempo</h2>
+<ul>
+  <li>Seus dados ficam enquanto a conta existir.</li>
+  <li>Versões anteriores de itens editados ou apagados ficam até <strong>30 dias</strong>, para desfazer
+    um erro.</li>
+  <li>Cópias de segurança do servidor, criptografadas, ficam até <strong>30 dias</strong>.</li>
+</ul>
+
+<h2>Seus direitos</h2>
+<ul>
+  <li><strong>Ver e levar seus dados:</strong> Configurações → Backup → Exportar dados.</li>
+  <li><strong>Corrigir:</strong> edite no próprio app.</li>
+  <li><strong>Apagar tudo:</strong> Conta → Excluir conta. Apaga a conta e os dados no servidor e no aparelho
+    na hora; as cópias de segurança somem em até 30 dias.</li>
+</ul>
+
+<h2>Contato</h2>
+<p>[PREENCHER: nome do responsável e e-mail de contato]</p>
+</main>
+</body>
+</html>

@@ -4,6 +4,7 @@ import type { WriteActor } from '../core/rules/types'
 import { applyOps } from '../core/rules/work'
 import { readPref, writePref } from '../lib/prefs'
 import { effectiveRates, fetchRates, makeConverter, RATES_MAX_AGE_MS, type Converter } from '../lib/rates'
+import { DEFAULT_SETTINGS, normalizeSettings } from './normalize'
 import { createIndexedDbRepository, type BatchOp, type Repository, type SyncStatus } from './repository'
 import { balanceOf } from './selectors'
 import {
@@ -23,15 +24,7 @@ import {
 
 const EMPTY_DATA = Object.fromEntries(COLLECTION_NAMES.map((n) => [n, []])) as unknown as DataState
 
-export const DEFAULT_SETTINGS: Settings = {
-  onboarded: false,
-  baseCurrency: 'BRL',
-  initialBalance: 0,
-  startedAt: '',
-  rates: null,
-  manualRates: {},
-  lastBackupAt: null,
-}
+export { DEFAULT_SETTINGS }
 
 export function newId(): string {
   return crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -99,7 +92,30 @@ export function restoreBackup(incoming: Partial<DataState>, settings: Settings |
   for (const name of COLLECTION_NAMES) {
     ;(data as Record<string, Entity[]>)[name] = ((incoming[name] ?? []) as Entity[]).map((x) => ({ ...x, updatedAt: now }))
   }
-  return { data, settings: settings ? { ...DEFAULT_SETTINGS, ...settings, onboarded: true, updatedAt: now } : null }
+  return { data, settings: settings ? { ...normalizeSettings(settings), onboarded: true, updatedAt: now } : null }
+}
+
+/**
+ * "Mesclar" a backup: an item of the file wins only when it is newer than the one here. `changed` is
+ * just what the file brings new — the only part written (and, signed in, sent) again (M7).
+ */
+export function mergeImport(current: DataState, incoming: Partial<DataState>): { data: DataState; changed: Partial<DataState> } {
+  const data = { ...current }
+  const changed: Partial<DataState> = {}
+  for (const name of COLLECTION_NAMES) {
+    const byId = new Map((current[name] as Entity[]).map((x) => [x.id, x]))
+    const newer: Entity[] = []
+    for (const item of (incoming[name] ?? []) as Entity[]) {
+      const existing = byId.get(item.id)
+      if (!existing || existing.updatedAt < item.updatedAt) {
+        byId.set(item.id, item)
+        newer.push(item)
+      }
+    }
+    ;(data as Record<string, Entity[]>)[name] = [...byId.values()]
+    if (newer.length) (changed as Record<string, Entity[]>)[name] = newer
+  }
+  return { data, changed }
 }
 
 export class MissingRateError extends Error {
@@ -169,7 +185,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
       .then(({ data, settings }) => {
         if (!alive) return
         setData(data)
-        if (settings) setSettings({ ...DEFAULT_SETTINGS, ...settings })
+        if (settings) setSettings(normalizeSettings(settings))
         setReady(true)
       })
       .catch((err) => {
@@ -194,7 +210,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
         dataRef.current = data
         setData(data)
         if (settings) {
-          const next = { ...DEFAULT_SETTINGS, ...settings }
+          const next = normalizeSettings(settings)
           settingsRef.current = next
           setSettings(next)
         }
@@ -373,6 +389,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   const importData = useCallback(
     async (incoming: Partial<DataState>, incomingSettings: Settings | null, mode: 'merge' | 'replace') => {
       let nextData: DataState
+      let changed: Partial<DataState> = {}
       /** Only a restore with settings in the file writes settings; a merge keeps the account's as they are. */
       let writeSettings: Settings | null = null
       if (mode === 'replace') {
@@ -380,17 +397,12 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
         nextData = restored.data
         writeSettings = restored.settings
       } else {
-        nextData = { ...dataRef.current }
-        for (const name of COLLECTION_NAMES) {
-          const byId = new Map((dataRef.current[name] as Entity[]).map((x) => [x.id, x]))
-          for (const item of (incoming[name] ?? []) as Entity[]) {
-            const existing = byId.get(item.id)
-            if (!existing || existing.updatedAt < item.updatedAt) byId.set(item.id, item)
-          }
-          ;(nextData as Record<string, Entity[]>)[name] = [...byId.values()]
-        }
+        const merged = mergeImport(dataRef.current, incoming)
+        nextData = merged.data
+        changed = merged.changed
       }
-      await repo.bulkWrite(nextData, writeSettings, mode === 'replace')
+      // A merge writes (and, signed in, sends) only what the file brings new; the rest stays as it is (M7).
+      await repo.bulkWrite(mode === 'replace' ? nextData : changed, writeSettings, mode === 'replace')
       dataRef.current = nextData
       setData(nextData)
       if (writeSettings) {

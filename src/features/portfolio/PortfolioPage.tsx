@@ -5,7 +5,7 @@ import { useStore } from '../../data/store'
 import type { PortfolioItem, ProjectKind } from '../../data/types'
 import { formatDateValue, toDateInput } from '../../lib/dates'
 import { compressImage } from '../../lib/image'
-import { displayUrl, normalizeUrl } from '../../lib/links'
+import { displayUrl, normalizeUrl, safeImage } from '../../lib/links'
 import { EmptyState } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextArea, TextInput } from '../../ui/Field'
@@ -60,7 +60,7 @@ function PortfolioForm({ open, onClose, item }: { open: boolean; onClose(): void
         <Field label="Imagem" hint="opcional">
           {d.image ? (
             <div className="relative overflow-hidden rounded-2xl border border-line">
-              <img src={d.image} alt="" className="aspect-[16/10] w-full object-cover" />
+              <img src={safeImage(d.image)} alt="" className="aspect-[16/10] w-full object-cover" />
               <button type="button" onClick={() => set('image', '')} aria-label="Remover imagem" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/60 text-on-accent backdrop-blur reduce-transparency:bg-black reduce-transparency:backdrop-blur-none">
                 <X size={18} />
               </button>
@@ -126,7 +126,7 @@ export function PortfolioPage() {
             <article key={p.id} className="card overflow-hidden">
               <button type="button" onClick={() => form.show(p)} className="block w-full text-left">
                 {p.image ? (
-                  <img src={p.image} alt="" loading="lazy" className="aspect-[16/10] w-full object-cover" />
+                  <img src={safeImage(p.image)} alt="" loading="lazy" className="aspect-[16/10] w-full object-cover" />
                 ) : (
                   <div className="grid aspect-[16/10] place-items-center bg-raised text-4xl font-semibold text-tint/15">{p.name.slice(0, 1).toUpperCase()}</div>
                 )}

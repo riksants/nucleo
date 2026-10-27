@@ -1,3 +1,4 @@
+import { normalizeSettings } from '../data/normalize'
 import { COLLECTION_NAMES, type DataState, type Settings } from '../data/types'
 import { isCurrencyCode } from './money'
 
@@ -64,7 +65,9 @@ export function parseBackup(text: string): ParsedBackup {
     if (!Array.isArray(list) || !list.every((x) => isRecord(x) && typeof x.id === 'string' && typeof x.createdAt === 'string')) {
       throw new Error(`Dados inválidos em "${name}".`)
     }
-    ;(data as Record<string, unknown>)[name] = list
+    // An item without a date of change takes its creation date: sent to the server without one it
+    // would be refused (and a merge could never compare it).
+    ;(data as Record<string, unknown>)[name] = list.map((x) => (typeof x.updatedAt === 'string' ? x : { ...x, updatedAt: x.createdAt }))
     counts[name] = list.length
     total += list.length
   }
@@ -72,7 +75,7 @@ export function parseBackup(text: string): ParsedBackup {
   let settings: Settings | null = null
   if (isRecord(json.settings)) {
     const s = json.settings as unknown as Settings
-    if (typeof s.baseCurrency === 'string' && isCurrencyCode(s.baseCurrency) && typeof s.initialBalance === 'number') settings = s
+    if (typeof s.baseCurrency === 'string' && isCurrencyCode(s.baseCurrency) && typeof s.initialBalance === 'number') settings = normalizeSettings(s)
   }
 
   return { exportedAt: typeof json.exportedAt === 'string' ? json.exportedAt : '', settings, data, counts, total }

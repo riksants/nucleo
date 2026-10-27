@@ -13,6 +13,7 @@ import {
   type Repository,
   type SyncStatus,
 } from './repository'
+import { isStorableEntity } from './normalize'
 import { parseQuota, quotaSyncMessage } from './quota'
 import { COLLECTION_NAMES, type CollectionName, type Entity, type Settings } from './types'
 
@@ -74,8 +75,12 @@ export class PlainPasswordError extends Error {
 }
 
 const EPOCH = '1970-01-01T00:00:00.000Z'
-/** Re-reads a few seconds back so rows committed slightly out of order are not missed. */
-const CURSOR_OVERLAP_MS = 5000
+/**
+ * Re-reads this far back so rows committed out of order are not missed: the server stamps a row when
+ * it is written, not when its transaction commits, so a long write can land behind the cursor (M8).
+ * Rows already seen are deduplicated, so the overlap costs only the download of recent rows.
+ */
+const CURSOR_OVERLAP_MS = 60_000
 const BATCH = 200
 /** Items refused for an account limit are tried again after this long (the limit may have been raised). */
 export const QUOTA_RETRY_MS = 6 * 60 * 60 * 1000
@@ -316,7 +321,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
         const sent = batch.find((e) => e.collection === row.collection && e.id === row.id)
         if (!sent || row.client_updated_at <= sent.updatedAt) continue
         if (row.deleted || !row.data) tx.objectStore(row.collection).delete(row.id)
-        else tx.objectStore(row.collection).put(row.data)
+        else if (isStorableEntity(row.data, row.id)) tx.objectStore(row.collection).put(row.data)
       }
       await done(tx)
     }
@@ -373,6 +378,12 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
               tx.objectStore(row.collection).delete(row.id)
               changed = true
             }
+            return
+          }
+          // A malformed row (no id, not an object, another id inside) would fail the whole write and stop
+          // the cursor for good: it is skipped, the rest of the download goes on.
+          if (!isStorableEntity(row.data, row.id)) {
+            console.warn('Sincronização: registro inválido ignorado', row.collection)
             return
           }
           if (!local || local.updatedAt !== row.data.updatedAt || JSON.stringify(local) !== JSON.stringify(row.data)) {

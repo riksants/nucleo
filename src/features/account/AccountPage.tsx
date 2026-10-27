@@ -1,4 +1,4 @@
-import { Cloud, HardDrive, HardDriveUpload, LogOut, MonitorSmartphone, RefreshCw, Trash2 } from 'lucide-react'
+import { Cloud, HardDrive, HardDriveUpload, LogOut, MonitorSmartphone, RefreshCw, ShieldCheck, Trash2, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearLocalData, localSummary, type LocalSummary } from '../../data/migration'
@@ -7,6 +7,7 @@ import { formatDateTime } from '../../lib/dates'
 import { Button } from '../../ui/Button'
 import { SectionTitle } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
+import { DeleteAccountSheet } from './DeleteAccount'
 import { MigrationOffer } from './MigrationOffer'
 import { useSession } from './session'
 import { useSignOut } from './useSignOut'
@@ -29,6 +30,7 @@ export function AccountPage() {
   const { toast, confirm } = useFeedback()
   const [local, setLocal] = useState<LocalSummary | null>(null)
   const [offer, setOffer] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     localSummary().then(setLocal, () => setLocal(null))
@@ -149,7 +151,23 @@ export function AccountPage() {
           </div>
           <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">A sessão fica salva neste aparelho até você sair. Para trocar a senha de login, saia e use “Esqueci minha senha” — a troca encerra a sessão nos outros aparelhos.</p>
         </section>
+
+        <section>
+          <SectionTitle>Privacidade</SectionTitle>
+          <div className="card divide-y divide-line overflow-hidden">
+            <a href={`${import.meta.env.BASE_URL}privacidade.html`} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-tint/[0.03] tap">
+              <ShieldCheck size={18} className="text-soft" />
+              <span className="text-[15px]">Política de privacidade</span>
+            </a>
+            <button type="button" onClick={() => setDeleting(true)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-expense hover:bg-tint/[0.03] tap">
+              <UserX size={18} />
+              <span className="text-[15px]">Excluir conta</span>
+            </button>
+          </div>
+          <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">Excluir a conta apaga ela e todos os dados dela no servidor e neste aparelho.</p>
+        </section>
       </div>
+      <DeleteAccountSheet open={deleting} onClose={() => setDeleting(false)} />
     </>
   )
 }
