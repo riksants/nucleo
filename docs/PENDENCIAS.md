@@ -24,7 +24,10 @@ Registrado em 2026-10-22, na Etapa 2 da auditoria.
 
 ## Cotas por conta (Etapa 3)
 
-Registrado em 2026-10-24. Migração `20261024000000_cotas.sql` (**ainda não aplicada no Supabase**).
+Registrado em 2026-10-24. Migração `20261024000000_cotas.sql` **aplicada no Supabase em 2026-10-24** pelo dono
+do projeto (app publicado no commit `67955a1`). Conferido depois: `quota_usage` com 25 linhas e as duas contas com
+dados certas; em produção, criar uma anotação, sincronizar, apagar e sincronizar de novo funcionou sem erro.
+**Etapa 3 concluída.**
 
 - Ajustar um limite, sem migração nova (SQL Editor):
   `update public.quota_limits set max_value = 30000 where key = 'records.tasks';`
@@ -51,6 +54,19 @@ Registrado em 2026-10-24. Migração `20261024000000_cotas.sql` (**ainda não ap
 - **A acompanhar:** apagar no app deixa uma "lápide" que conta nas 200.000 linhas da conta. Não há como o
   usuário liberar isso pelo app; se uma conta chegar perto, o dono do projeto aumenta o limite.
 - Criar várias contas continua sendo possível: a defesa contra isso é o CAPTCHA no Supabase (ainda desligado).
+
+## Datas futuras e troca de collection/id (A3, B4 da auditoria)
+
+Registrado em 2026-10-25. O plano original da auditoria punha isto junto com as cotas, mas a Etapa 3 tratou só
+das cotas. Continua aberto:
+
+- **A3:** `client_updated_at` vem do relógio do aparelho, sem limite. Um registro gravado com data no futuro
+  (relógio adiantado ou backup "mesclar" com `updatedAt` alto) recusa em silêncio toda edição e exclusão depois.
+  Correção prevista: limitar a data no gatilho (`least(…, now() + 5 min)`) em `records` e `user_settings`,
+  recarimbar ou recusar datas futuras na importação de backup e corrigir as linhas que já estão no futuro.
+- **B4:** um UPDATE direto pela API pode trocar `collection`/`id` de uma linha da própria conta. O gatilho deveria
+  recusar.
+- Também previsto: CHECK de `fire_at` nos lembretes agendados.
 
 ## Segurança: senhas em texto puro no modo sem conta
 
