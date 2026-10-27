@@ -40,7 +40,10 @@ Nada disso fica no repositório. A chave privada nunca vai para o GitHub.
    - *Variables* → `NUCLEO_BACKUP_AGE_RECIPIENT`: a chave **pública** `age1...` do passo 1.
 4. **Primeiro backup:** GitHub → Actions → Backup → *Run workflow*. Verde = backup feito, restaurado num banco
    vazio, idêntico à origem e criptografado.
-5. **Limpeza diária do histórico:** rode `supabase/cron-manutencao.sql` no SQL Editor (precisa do pg_cron).
+5. **Limpeza diária do histórico (opcional):** precisa da extensão pg_cron, que **não está ligada** neste projeto
+   (conferido em 2026-10-27). Sem ela o histórico continua com os limites: cada conta apaga as próprias versões
+   com mais de 30 dias na próxima edição; só contas paradas guardam versões antigas por mais tempo. Para ligar:
+   Database → Extensions → pg_cron, e depois rode `supabase/cron-manutencao.sql` no SQL Editor.
 
 ## O que o backup faz a cada dia
 

@@ -65,11 +65,21 @@ que ficou da Etapa 3 (A3 datas futuras, B4 collection/id, janela de `fire_at`) e
 
 Depende do dono do projeto (nesta ordem):
 1. Aplicar a migração no SQL Editor; conferir com `select version from public.schema_version order by version;`.
-2. Rodar `supabase/cron-manutencao.sql` (limpeza diária do histórico; precisa do pg_cron).
+2. Opcional: ligar a extensão pg_cron (não está ligada) e rodar `supabase/cron-manutencao.sql` (limpeza diária
+   do histórico). Sem ela, cada conta limpa as próprias versões antigas ao editar.
 3. Backup: chave age, senha do `nucleo_backup`, secret e variável no GitHub (passo a passo em `docs/BACKUP.md`).
 4. Preencher o contato em `public/privacidade.html` antes de publicar.
 5. Antes de publicar as Edge Functions de IA: limite de gasto mensal no console da Anthropic.
 6. Opcional: `scripts/verify-rls.mjs` contra a produção com 2 contas de teste (cobre a migração nova).
+
+Conferido em produção (consulta somente leitura, 2026-10-27): Postgres 17.11; o usuário `postgres` cria papéis,
+ignora RLS e pode apagar em `auth.users` (o que a migração e `delete_my_account` precisam); `nucleo_backup` não
+existe; nenhuma data no futuro e nenhuma senha fora do formato do cofre (a migração não terá o que corrigir);
+as 10 migrations anteriores estão aplicadas; pg_cron e pg_net **não** estão ligados (o envio de lembretes
+pelo servidor, `supabase/cron.sql`, nunca foi agendado); 4 contas, 2 com dados; a conta que mais muda alterou
+91 itens (673 kB) em 30 dias, longe do limite de 25 MB do histórico.
+- Existe uma função `public.rls_auto_enable` que não está no repositório. Pelo nome, é a opção do Supabase de
+  ligar o RLS sozinho em tabelas novas; não atrapalha a migração (as tabelas novas já ligam o RLS).
 
 Ficou de fora, de propósito:
 - **M5** (relógio do servidor como referência e pagamentos como registros próprios): mexe no núcleo da
