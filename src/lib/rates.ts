@@ -29,13 +29,35 @@ export function clean(raw: Record<string, unknown> | undefined): RateTable | nul
   return table.BRL && table.AED ? table : null
 }
 
-export async function fetchRates(): Promise<Rates | null> {
+/** Largest move of a rate between two readings a few days apart that is believed (M6). */
+export const MAX_RATE_MOVE = 0.2
+const COMPARE_WITHIN_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * A free source that answers with a broken rate (a wrong decimal, a currency swapped) would be frozen
+ * into amounts by automations and imports. A reading is believed only when every currency the person
+ * uses moved less than 20% since the last reading (when that one is recent enough to compare).
+ */
+export function plausibleRates(next: RateTable, previous: Rates | null | undefined, watch: readonly Currency[], now = Date.now()): boolean {
+  if (!previous || now - new Date(previous.fetchedAt).getTime() > COMPARE_WITHIN_MS) return true
+  for (const code of new Set(watch)) {
+    const a = previous.values[code]
+    const b = next[code]
+    if (code === 'EUR' || !a || !b) continue
+    const ratio = b / a
+    if (ratio > 1 + MAX_RATE_MOVE || ratio < 1 / (1 + MAX_RATE_MOVE)) return false
+  }
+  return true
+}
+
+/** `previous` and `watch`: the last rates and the currencies the person uses (plausibility check). */
+export async function fetchRates(previous: Rates | null = null, watch: readonly Currency[] = []): Promise<Rates | null> {
   for (const source of SOURCES) {
     try {
       const res = await fetch(source.url, { cache: 'no-store' })
       if (!res.ok) continue
       const values = source.parse(await res.json())
-      if (values) return { values, fetchedAt: new Date().toISOString(), source: source.name }
+      if (values && plausibleRates(values, previous, watch)) return { values, fetchedAt: new Date().toISOString(), source: source.name }
     } catch {
       // offline or source unavailable: try the next one
     }

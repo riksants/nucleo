@@ -308,7 +308,12 @@ export interface CsvLines {
   lines: ParsedLine[]
   /** Balance/total lines left out ("SALDO ANTERIOR"). */
   ignored: number
+  /** Lines past MAX_IMPORT_LINES, not read (B6). */
+  tooMany?: number
 }
+
+/** A statement is a few hundred lines; past this the file is something else, or a whole history. */
+export const MAX_IMPORT_LINES = 20_000
 
 /** The statement lines, read with `mapping`. A line that can't be read comes with why. */
 export function readLines(sheet: CsvSheet, mapping: CsvMapping): CsvLines {
@@ -316,7 +321,8 @@ export function readLines(sheet: CsvSheet, mapping: CsvMapping): CsvLines {
   const lines: ParsedLine[] = []
   let ignored = 0
   const cell = (r: string[], i: number | undefined) => (i === undefined ? '' : (r[i] ?? '').trim())
-  for (let k = mapping.headerRow + 1; k < sheet.rows.length; k++) {
+  const end = Math.min(sheet.rows.length, mapping.headerRow + 1 + MAX_IMPORT_LINES)
+  for (let k = mapping.headerRow + 1; k < end; k++) {
     const r = sheet.rows[k]
     const rawDate = cell(r, c.date)
     const description = cell(r, c.description) || cell(r, c.memo)
@@ -359,5 +365,6 @@ export function readLines(sheet: CsvSheet, mapping: CsvMapping): CsvLines {
     else if (amount === 0) line.error = 'valor zerado'
     lines.push(line)
   }
-  return { lines, ignored }
+  const tooMany = sheet.rows.length - end
+  return tooMany > 0 ? { lines, ignored, tooMany } : { lines, ignored }
 }

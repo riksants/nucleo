@@ -37,14 +37,14 @@ export function readFile(bytes: Uint8Array, name: string, templates?: ImportTemp
 }
 
 /** Lines of a CSV with a mapping, or what is still missing to read it. */
-export function csvLines(sheet: CsvSheet, mapping: CsvMapping): { lines: ParsedLine[]; ignored: number; problems: string[] } {
+export function csvLines(sheet: CsvSheet, mapping: CsvMapping): { lines: ParsedLine[]; ignored: number; tooMany?: number; problems: string[] } {
   const problems = mappingProblems(mapping)
   if (problems.length) return { lines: [], ignored: 0, problems }
-  const { lines, ignored } = readLines(sheet, mapping)
+  const { lines, ignored, tooMany } = readLines(sheet, mapping)
   if (!lines.length) return { lines, ignored, problems: ['Não encontrei movimentações neste arquivo.'] }
   const bad = lines.filter((l) => l.error).length
   if (bad === lines.length) return { lines, ignored, problems: [bad === 1 ? 'Não consegui ler a única linha do arquivo com estas colunas.' : `Não consegui ler nenhuma das ${bad} linhas com estas colunas.`] }
-  return { lines, ignored, problems: [] }
+  return tooMany ? { lines, ignored, tooMany, problems: [] } : { lines, ignored, problems: [] }
 }
 
 export function templateOf(name: string, guess: Pick<CsvGuess, 'signature'>, mapping: CsvMapping, extra: { currency?: Currency | null; account?: string }, id: string, now: Date): ImportTemplate {

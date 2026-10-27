@@ -42,6 +42,9 @@ export function inferDecimal(values: string[]): Decimal {
 }
 
 /** Signed cents, or null when it is not a value. */
+/** Largest amount read from a statement (B6): 10 billion. Beyond that the column is not money. */
+export const MAX_IMPORT_CENTS = 1_000_000_000_000
+
 export function parseAmount(raw: string, decimal: Decimal): Cents | null {
   let s = (raw ?? '').trim()
   if (!s) return null
@@ -63,6 +66,7 @@ export function parseAmount(raw: string, decimal: Decimal): Cents | null {
   const v = Number(s)
   if (!Number.isFinite(v)) return null
   const cents = Math.round(v * 100)
+  if (cents > MAX_IMPORT_CENTS) return null
   return negative ? -cents : cents
 }
 

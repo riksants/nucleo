@@ -172,3 +172,28 @@ describe('automações não param em silêncio (M1)', () => {
     expect(automationPause({ ...base, state: 'syncing', pending: 2 })).toBeNull()
   })
 })
+
+describe('cotações e importação de extrato (M6, B6)', () => {
+  it('cotação que mudou mais de 20% numa moeda usada não é aceita', async () => {
+    const { plausibleRates } = await import('../src/lib/rates')
+    const previous = { values: { EUR: 1, BRL: 6.2, USD: 1.1, ARS: 1000 }, fetchedAt: new Date().toISOString(), source: 'x' }
+    expect(plausibleRates({ EUR: 1, BRL: 6.3, USD: 1.09 }, previous, ['BRL', 'USD'])).toBe(true)
+    expect(plausibleRates({ EUR: 1, BRL: 62, USD: 1.09 }, previous, ['BRL'])).toBe(false)
+    expect(plausibleRates({ EUR: 1, BRL: 0.62 }, previous, ['BRL'])).toBe(false)
+    // A currency the person doesn't use may move freely; an old reading is not compared.
+    expect(plausibleRates({ EUR: 1, BRL: 6.2, ARS: 2000 }, previous, ['BRL'])).toBe(true)
+    expect(plausibleRates({ EUR: 1, BRL: 62 }, { ...previous, fetchedAt: '2026-01-01T00:00:00.000Z' }, ['BRL'])).toBe(true)
+  })
+
+  it('valores absurdos e extratos gigantes não entram', async () => {
+    const { parseAmount } = await import('../src/core/import/values')
+    const { readLines, MAX_IMPORT_LINES } = await import('../src/core/import/csv')
+    expect(parseAmount('1.234,56', ',')).toBe(123456)
+    expect(parseAmount('1' + '0'.repeat(22), '.')).toBeNull()
+    const rows = [['data', 'descricao', 'valor'], ...Array.from({ length: MAX_IMPORT_LINES + 5 }, (_, i) => ['01/10/2026', `item ${i}`, '-1,00'])]
+    const sheet = { rows, lineNos: rows.map((_, i) => i + 1), delimiter: ';' } as never
+    const out = readLines(sheet, { delimiter: ';', headerRow: 0, columns: { date: 0, description: 1, amount: 2 }, decimal: ',', dateOrder: 'dmy' })
+    expect(out.lines).toHaveLength(MAX_IMPORT_LINES)
+    expect(out.tooMany).toBe(5)
+  })
+})

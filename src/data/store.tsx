@@ -244,7 +244,9 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
 
   const refreshRates = useCallback(async () => {
     setRatesLoading(true)
-    const fetched = await fetchRates()
+    const s = settingsRef.current
+    const watch = [s.baseCurrency, ...(s.displayCurrency ? [s.displayCurrency] : []), ...(s.currencies ?? [])]
+    const fetched = await fetchRates(s.rates, watch)
     setRatesLoading(false)
     if (fetched) await updateSettings({ rates: fetched })
     return fetched !== null

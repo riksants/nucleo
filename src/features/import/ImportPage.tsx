@@ -5,6 +5,7 @@ import { usePrimaryAction } from '../../app/primaryAction'
 import { PageHeader } from '../../app/Shell'
 import { analyze } from '../../core/import/analyze'
 import { csvLines, readFile, templateOf, type FileRead } from '../../core/import/read'
+import { MAX_IMPORT_LINES } from '../../core/import/csv'
 import { actionOf, type Decision } from '../../core/import/plan'
 import { newId, useStore } from '../../data/store'
 import type { AutomationRun, CsvMapping, Currency } from '../../data/types'
@@ -282,6 +283,7 @@ export function ImportPage() {
               </button>
             )}
             {lines && lines.ignored > 0 && <span>{lines.ignored === 1 ? '1 linha de saldo/total ignorada' : `${lines.ignored} linhas de saldo/total ignoradas`}</span>}
+            {lines?.tooMany ? <span>{`Só as primeiras ${MAX_IMPORT_LINES.toLocaleString('pt-BR')} linhas foram lidas; ${lines.tooMany.toLocaleString('pt-BR')} ficaram de fora. Importe um período menor.`}</span> : null}
           </div>
           {needsCurrency ? (
             <p className="card px-4 py-4 text-[15px] leading-relaxed">Este arquivo não diz em que moeda estão os valores. Escolha a moeda acima para ver a prévia.</p>
