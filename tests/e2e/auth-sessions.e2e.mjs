@@ -3,7 +3,7 @@
 // Against the LOCAL mock of Supabase (tests/e2e/mock-supabase.mjs), never the real project. The mock
 // follows Supabase Auth: sessions by session_id, logout scopes, a new password ends the other
 // sessions, one e-mail per address per minute, made-up answer for a sign-up of an existing address.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud, and with
+// Needs the mock build in dist-e2e-cloud: npm run build:e2e-cloud and with
 // VITE_TURNSTILE_SITE_KEY= (empty: .env.local has the test key) — the CAPTCHA has its own test, auth-captcha.
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'

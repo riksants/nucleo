@@ -1,7 +1,7 @@
 // Recebimentos → Financeiro pela sincronização real (mock local do Supabase, nunca o projeto real):
 // pagamento offline entra no Financeiro do aparelho e sobe uma vez ao reconectar; o outro aparelho vê a
 // mesma entrada; edição num aparelho e exclusão offline no outro; sync repetido não duplica; venda com
-// pagamento; outra conta não vê nada. Precisa do build dist-e2e-cloud (VITE_SUPABASE_URL=http://localhost:54399).
+// pagamento; outra conta não vê nada. Precisa do build dist-e2e-cloud (npm run build:e2e-cloud).
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter, setValue } from './helpers.mjs'

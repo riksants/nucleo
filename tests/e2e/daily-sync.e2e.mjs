@@ -1,6 +1,6 @@
 // Etapa 1 data through the real sync code, two devices, offline — against the LOCAL mock
 // of Supabase (tests/e2e/mock-supabase.mjs), never the real project.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud.
+// Needs the mock build in dist-e2e-cloud: npm run build:e2e-cloud
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter, setValue } from './helpers.mjs'
@@ -63,6 +63,9 @@ try {
   }
   await signUp(A, 'rita@teste.com')
   let text = await A.text()
+  // The inbox "+" lives on the inbox screen since "um '+' por tela" (20d69b3).
+  await A.goto(BASE + '#/inbox')
+  await A.sleep(800)
   r.check('conta nova: seções sugeridas incluem Caixa de entrada (botão +)', await A.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`))
 
   // A: habit + mark today
@@ -89,6 +92,8 @@ try {
   await fetch(MOCK + '/__offline?v=1')
   await B.click('Desmarcar Beber água')
   await B.sleep(300)
+  await B.goto(BASE + '#/inbox')
+  await B.sleep(800)
   await B.click('Capturar na caixa de entrada')
   await setValue(B, 'textarea[aria-label="O que você quer guardar?"]', 'Ideia offline')
   await B.click('Guardar para organizar depois')

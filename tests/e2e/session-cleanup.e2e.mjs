@@ -1,7 +1,7 @@
 // Etapa 1 da auditoria (A1/A2): quando a sessão termina — "Sair", token revogado com o app aberto,
 // sessão expirada com o app fechado — nada da conta fica no aparelho nem aparece para a próxima pessoa.
 // Against the LOCAL mock of Supabase (tests/e2e/mock-supabase.mjs), never the real project.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud.
+// Needs the mock build in dist-e2e-cloud: npm run build:e2e-cloud
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter } from './helpers.mjs'

@@ -9,8 +9,29 @@ import { attemptId, planRetry } from '../core/rules/retry'
 import { planScheduledRules } from '../core/rules/schedule'
 import { todayIn, useToday, zoneOf } from '../core/period'
 import { applyOps } from '../core/rules/work'
+import type { SyncStatus } from './repository'
 import { useStore } from './store'
 import type { AutomationId, AutomationRun, Cents } from './types'
+
+/**
+ * Whether the device has the account's latest data, so automations can act on it: the last sync
+ * downloaded everything and nothing of this device waits to be sent. Items the server refused for
+ * good (too large, account limit) stay on the device and no longer pause the automations (M1):
+ * the sync around them completed.
+ */
+export function syncAllowsAutomations(s: SyncStatus | null): boolean {
+  if (!s) return true
+  const refused = s.rejected ?? 0
+  return s.pending - refused <= 0 && (s.state === 'idle' || (s.state === 'error' && refused > 0))
+}
+
+/** Why the automations are waiting, in the person's words, or null when they run (or are about to). */
+export function automationPause(s: SyncStatus | null): string | null {
+  if (syncAllowsAutomations(s) || !s || s.state === 'syncing') return null
+  if (s.state === 'offline') return 'Automações pausadas: sem internet. Voltam a rodar quando este aparelho sincronizar.'
+  if (s.state === 'error') return `Automações pausadas até a sincronização terminar: ${s.error ?? 'erro ao sincronizar'}`
+  return null
+}
 
 /**
  * Runs the date-based automations: when the app opens, when the day turns, when data changes
@@ -20,7 +41,7 @@ import type { AutomationId, AutomationRun, Cents } from './types'
  */
 export function useAutomations() {
   const { ready, data, settings, convert, commit, updateSettings, syncStatus } = useStore()
-  const idle = !syncStatus || (syncStatus.state === 'idle' && syncStatus.pending === 0)
+  const idle = syncAllowsAutomations(syncStatus)
   const today = useToday(zoneOf(settings))
   const running = useRef(false)
 
@@ -137,7 +158,7 @@ export function useAutomationActions() {
    */
   const retry = useCallback(
     async (run: AutomationRun, i: number): Promise<{ ok: boolean; text: string }> => {
-      const syncSafe = !syncStatus || (syncStatus.state === 'idle' && syncStatus.pending === 0 && navigator.onLine !== false)
+      const syncSafe = syncAllowsAutomations(syncStatus) && navigator.onLine !== false
       const id = attemptId(run, i)
       if (sent.current.has(id)) return { ok: false, text: 'Esta tentativa já foi feita.' }
       const now = new Date()

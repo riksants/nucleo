@@ -1,6 +1,6 @@
 // Etapa 3 (cotas): o que passa do limite da conta fica no aparelho, com aviso claro, e sobe sozinho
 // quando se apaga algo. Two accounts — against the LOCAL mock of Supabase (tests/e2e/mock-supabase.mjs), never the real project.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud.
+// Needs the mock build in dist-e2e-cloud: npm run build:e2e-cloud
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter, setValue } from './helpers.mjs'

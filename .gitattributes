@@ -1,0 +1,3 @@
+# Scripts rodam no Linux (GitHub Actions) e no Git Bash: sempre LF.
+*.sh text eol=lf
+*.sql text eol=lf

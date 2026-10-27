@@ -1,6 +1,6 @@
 // Vendas por pessoa pelo código real de sincronização: venda, pagamento geral e específico offline,
 // reconexão sem duplicar, segundo aparelho e outra conta — contra o mock LOCAL do Supabase, nunca o projeto real.
-// Needs a build made with VITE_SUPABASE_URL=http://localhost:54399 in dist-e2e-cloud (and NUCLEO_BASE=/nucleo/).
+// Needs the mock build in dist-e2e-cloud: npm run build:e2e-cloud(and NUCLEO_BASE=/nucleo/).
 import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 import { reporter } from './helpers.mjs'

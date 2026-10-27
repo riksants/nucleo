@@ -104,6 +104,44 @@ const mRead = await b.from('records').select('*').eq('id', mid)
 check('B não lê refeições de A', !mRead.error && mRead.data.length === 0)
 await a.from('records').delete().eq('id', mid)
 
+// Automações e regras (20261012000000_automacoes.sql, 20261019000000_regras.sql)
+for (const collection of ['automationRuns', 'rules']) {
+  const xid = `rls-${collection}-${Date.now()}`
+  const xIns = await a.from('records').insert({ user_id: aId, collection, id: xid, data: { id: xid }, client_updated_at: now })
+  check(`servidor aceita ${collection} (migração executada)`, !xIns.error, xIns.error?.message)
+  const xRead = await b.from('records').select('*').eq('id', xid)
+  check(`B não lê ${collection} de A`, !xRead.error && xRead.data.length === 0)
+  await a.from('records').delete().eq('id', xid)
+}
+
+// Cotas (20261024000000_cotas.sql): cada conta lê só o próprio uso; ninguém do app altera.
+const qa = await a.from('quota_usage').select('user_id')
+check('cotas: A lê só o próprio uso', !qa.error && qa.data.every((r) => r.user_id === aId), qa.error?.message)
+const qUpd = await a.from('quota_usage').update({ live: 0 }).eq('user_id', aId).select()
+check('cotas: o app não altera o uso', Boolean(qUpd.error) || (qUpd.data ?? []).length === 0)
+const qLim = await a.from('quota_limits').update({ max_value: 999999999 }).eq('key', 'records.notes').select()
+check('cotas: o app não altera os limites', Boolean(qLim.error) || (qLim.data ?? []).length === 0)
+
+// Etapas 4–10 (20261027000000_auditoria_etapas_4_10.sql)
+const hid = `rls-hist-${Date.now()}`
+await a.from('records').insert({ user_id: aId, collection: 'notes', id: hid, data: { id: hid, v: 1 }, client_updated_at: now })
+await a.from('records').update({ data: { id: hid, v: 2 }, client_updated_at: new Date().toISOString() }).eq('id', hid)
+for (const [table, who] of [['records_history', a], ['records_history_usage', a], ['schema_version', a], ['records_history', anon]]) {
+  const r = await who.from(table).select('*').limit(1)
+  check(`${table} não é acessível pelo app`, Boolean(r.error) || r.data.length === 0, r.error ? '' : `${r.data.length} linha(s)`)
+}
+const future = await a.from('records').upsert({ user_id: aId, collection: 'notes', id: hid, data: { id: hid, v: 3 }, client_updated_at: '2099-01-01T00:00:00Z' }, { onConflict: 'user_id,collection,id' }).select('client_updated_at').single()
+check('data no futuro fica no máximo 5 min à frente', !future.error && new Date(future.data.client_updated_at).getTime() < Date.now() + 6 * 60_000, future.error?.message)
+const move = await a.from('records').update({ collection: 'tasks' }).eq('id', hid).select()
+check('collection de uma linha não pode ser trocada', Boolean(move.error))
+await a.from('records').delete().eq('id', hid)
+for (const [fn, args] of [['backup_accounts', {}], ['ai_reserve', { p_user: aId, p_kind: 'routine', p_request_id: 'rls-check-1', p_daily_limit: 99, p_busy_seconds: 1 }], ['records_history_restore', { p_version_id: 1 }], ['records_history_cleanup', {}]]) {
+  const r = await a.rpc(fn, args)
+  check(`o app não chama ${fn}`, Boolean(r.error))
+}
+const anonDelete = await anon.rpc('delete_my_account')
+check('sem login não exclui conta', Boolean(anonDelete.error))
+
 const stillThere = await a.from('records').select('data').eq('id', id).single()
 check('registro de A continua intacto', stillThere.data?.data?.title === 'privado de A')
 await a.from('records').delete().eq('id', id)

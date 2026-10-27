@@ -4,7 +4,7 @@
 // Browser A swaps Cloudflare's script for a stand-in (one distinct token per check, can fail or be
 // blocked). Browser B loads the real script with Cloudflare's official test site key (needs internet).
 // Needs a build with the test site key in dist-e2e-captcha:
-//   MSYS2_ENV_CONV_EXCL='NUCLEO_BASE' NUCLEO_BASE=/nucleo/ VITE_SUPABASE_URL=http://localhost:54399 VITE_SUPABASE_ANON_KEY=sb_publishable_mock VITE_VAPID_PUBLIC_KEY= VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA npx vite build --outDir dist-e2e-captcha --emptyOutDir
+//   npm run build:e2e-captcha
 import { spawn } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { launch } from './cdp.mjs'

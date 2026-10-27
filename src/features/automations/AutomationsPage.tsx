@@ -4,7 +4,7 @@ import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { AUTOMATIONS, automationSince } from '../../core/automation/engine'
 import { useStore } from '../../data/store'
-import { useAutomationActions } from '../../data/useAutomations'
+import { automationPause, useAutomationActions } from '../../data/useAutomations'
 import type { AutomationRun } from '../../data/types'
 import { parseMoney } from '../../lib/calc'
 import { formatDateValue } from '../../lib/dates'
@@ -235,7 +235,8 @@ export function AutomationSettings() {
 }
 
 export function AutomationsPage() {
-  const { data } = useStore()
+  const { data, syncStatus } = useStore()
+  const pause = automationPause(syncStatus)
   const monthSheet = useSheet<AutomationRun>()
   const route = useRoute()
   const onlyRule = route.params.get('rule')
@@ -246,6 +247,7 @@ export function AutomationsPage() {
   return (
     <>
       <PageHeader title="Feito pelo Núcleo" subtitle="O que o Núcleo fez sozinho, e o que espera você" />
+      {pause && <p className="card mb-6 px-4 py-3 text-[14px] leading-relaxed text-warn">{pause}</p>}
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
         <div className="space-y-7">
           {pending.length > 0 && !onlyRule && (

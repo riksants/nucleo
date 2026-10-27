@@ -155,3 +155,20 @@ describe('links e imagens (B1, B2)', () => {
     expect(safeImage(undefined)).toBeUndefined()
   })
 })
+
+describe('automações não param em silêncio (M1)', () => {
+  it('itens recusados de vez não pausam as automações; o resto da fila pausa', async () => {
+    const { syncAllowsAutomations, automationPause } = await import('../src/data/useAutomations')
+    const base = { lastSyncAt: '2026-10-27T10:00:00.000Z', error: null }
+    expect(syncAllowsAutomations(null)).toBe(true)
+    expect(syncAllowsAutomations({ ...base, state: 'idle', pending: 0 })).toBe(true)
+    // One image too large was refused; everything else synced.
+    expect(syncAllowsAutomations({ ...base, state: 'error', pending: 1, rejected: 1, error: '1 item não pôde ser enviado' })).toBe(true)
+    // Something of this device is still waiting to be sent, or the sync failed.
+    expect(syncAllowsAutomations({ ...base, state: 'error', pending: 3, rejected: 1, error: 'x' })).toBe(false)
+    expect(syncAllowsAutomations({ ...base, state: 'error', pending: 0, error: 'Failed to fetch' })).toBe(false)
+    expect(automationPause({ ...base, state: 'error', pending: 0, error: 'Failed to fetch' })).toMatch(/pausadas.*Failed to fetch/)
+    expect(automationPause({ ...base, state: 'offline', pending: 2 })).toMatch(/sem internet/)
+    expect(automationPause({ ...base, state: 'syncing', pending: 2 })).toBeNull()
+  })
+})
