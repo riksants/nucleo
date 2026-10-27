@@ -68,7 +68,8 @@ Depende do dono do projeto (nesta ordem):
 2. Opcional: ligar a extensão pg_cron (não está ligada) e rodar `supabase/cron-manutencao.sql` (limpeza diária
    do histórico). Sem ela, cada conta limpa as próprias versões antigas ao editar.
 3. Backup: chave age, senha do `nucleo_backup`, secret e variável no GitHub (passo a passo em `docs/BACKUP.md`).
-4. Preencher o contato em `public/privacidade.html` antes de publicar.
+4. Política de privacidade: rascunho em `docs/privacidade-rascunho.html`, **fora do site** até o dono definir o
+   e-mail público de contato. Depois: preencher, mover para `public/privacidade.html` e voltar o link em Conta.
 5. Antes de publicar as Edge Functions de IA: limite de gasto mensal no console da Anthropic.
 6. Opcional: `scripts/verify-rls.mjs` contra a produção com 2 contas de teste (cobre a migração nova).
 

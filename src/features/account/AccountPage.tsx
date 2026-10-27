@@ -1,4 +1,4 @@
-import { Cloud, HardDrive, HardDriveUpload, LogOut, MonitorSmartphone, RefreshCw, ShieldCheck, Trash2, UserX } from 'lucide-react'
+import { Cloud, HardDrive, HardDriveUpload, LogOut, MonitorSmartphone, RefreshCw, Trash2, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearLocalData, localSummary, type LocalSummary } from '../../data/migration'
@@ -155,10 +155,6 @@ export function AccountPage() {
         <section>
           <SectionTitle>Privacidade</SectionTitle>
           <div className="card divide-y divide-line overflow-hidden">
-            <a href={`${import.meta.env.BASE_URL}privacidade.html`} target="_blank" rel="noreferrer" className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-tint/[0.03] tap">
-              <ShieldCheck size={18} className="text-soft" />
-              <span className="text-[15px]">Política de privacidade</span>
-            </a>
             <button type="button" onClick={() => setDeleting(true)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-expense hover:bg-tint/[0.03] tap">
               <UserX size={18} />
               <span className="text-[15px]">Excluir conta</span>
