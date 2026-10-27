@@ -118,6 +118,12 @@ describe('backup importado (A6, M7)', () => {
     expect(parsed.data.notes![0].updatedAt).toBe('2026-10-01T00:00:00.000Z')
   })
 
+  it('data de alteração no futuro vira agora (não vence todas as edições depois) (A3)', () => {
+    const parsed = parseBackup(file({ notes: [{ id: 'n1', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '9999-01-01T00:00:00.000Z' }, note('n2')] }))
+    expect(parsed.data.notes![0].updatedAt < '2100').toBe(true)
+    expect(parsed.data.notes![1].updatedAt).toBe('2026-10-02T10:00:00.000Z')
+  })
+
   it('configurações do arquivo passam pela mesma checagem', () => {
     const parsed = parseBackup(file({}, { baseCurrency: 'EUR', initialBalance: 0, manualRates: null, tabs: 'x' }))
     expect(parsed.settings!.manualRates).toEqual({})

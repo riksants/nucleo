@@ -55,18 +55,32 @@ dados certas; em produção, criar uma anotação, sincronizar, apagar e sincron
   usuário liberar isso pelo app; se uma conta chegar perto, o dono do projeto aumenta o limite.
 - Criar várias contas continua sendo possível: a defesa contra isso é o CAPTCHA no Supabase (ainda desligado).
 
-## Datas futuras e troca de collection/id (A3, B4 da auditoria)
+## Auditoria, Etapas 4 a 10 (branch `fix/etapas-4-10`)
 
-Registrado em 2026-10-25. O plano original da auditoria punha isto junto com as cotas, mas a Etapa 3 tratou só
-das cotas. Continua aberto:
+Registrado em 2026-10-27. Tudo implementado e testado localmente; **nada aplicado em produção**.
+Migração `20261027000000_auditoria_etapas_4_10.sql` (**ainda não aplicada no Supabase**). Ela também resolve o
+que ficou da Etapa 3 (A3 datas futuras, B4 collection/id, janela de `fire_at`) e corrige um defeito das cotas:
+**excluir uma conta com 2 ou mais registros falha hoje em produção** (erro de chave estrangeira em
+`quota_usage`, inclusive pelo painel do Supabase). Confirmado no Postgres 17 com o esquema atual.
 
-- **A3:** `client_updated_at` vem do relógio do aparelho, sem limite. Um registro gravado com data no futuro
-  (relógio adiantado ou backup "mesclar" com `updatedAt` alto) recusa em silêncio toda edição e exclusão depois.
-  Correção prevista: limitar a data no gatilho (`least(…, now() + 5 min)`) em `records` e `user_settings`,
-  recarimbar ou recusar datas futuras na importação de backup e corrigir as linhas que já estão no futuro.
-- **B4:** um UPDATE direto pela API pode trocar `collection`/`id` de uma linha da própria conta. O gatilho deveria
-  recusar.
-- Também previsto: CHECK de `fire_at` nos lembretes agendados.
+Depende do dono do projeto (nesta ordem):
+1. Aplicar a migração no SQL Editor; conferir com `select version from public.schema_version order by version;`.
+2. Rodar `supabase/cron-manutencao.sql` (limpeza diária do histórico; precisa do pg_cron).
+3. Backup: chave age, senha do `nucleo_backup`, secret e variável no GitHub (passo a passo em `docs/BACKUP.md`).
+4. Preencher o contato em `public/privacidade.html` antes de publicar.
+5. Antes de publicar as Edge Functions de IA: limite de gasto mensal no console da Anthropic.
+6. Opcional: `scripts/verify-rls.mjs` contra a produção com 2 contas de teste (cobre a migração nova).
+
+Ficou de fora, de propósito:
+- **M5** (relógio do servidor como referência e pagamentos como registros próprios): mexe no núcleo da
+  sincronização; o teto de 5 min no servidor já tira o pior caso (registro congelado). Tratar numa etapa própria.
+- **Monitoramento externo (Sentry ou similar):** exige conta no serviço e entra na política de privacidade.
+  Por enquanto: registro local de erros (Configurações → Diagnóstico), e-mail do GitHub quando o backup falha,
+  e a contagem de falhas do cron na consulta de diagnóstico.
+- **Proteção da branch `main`** (exigir os testes antes do merge): configuração do GitHub, decisão do dono.
+  O deploy já não publica se os testes falharem.
+- **Tombstones eternos (B8):** apagá-los arriscaria "ressuscitar" itens em aparelhos que ficaram meses offline.
+  Contam nas 200.000 linhas da conta; o limite pode subir se preciso.
 
 ## Segurança: senhas em texto puro no modo sem conta
 
@@ -92,6 +106,12 @@ Registrado em 2026-10-21, na publicação da Parte 2.1. Revisto em 2026-10-22 (E
   1 de 2 vezes; a Etapa 2, 1 de 4 rodadas válidas (mais uma que travou no cadastro por lentidão). Quando passa, a tarefa chega certa ao
   servidor: o teste confere 1,5 s depois de "Agora", e nesta máquina a sincronização às vezes demora mais. Não
   envolve sessão (o "offline" do teste é do mock, não dispara o evento `online` do navegador).
-- **Teste desatualizado, igual no `main`:** `daily-sync` procura o "+" da Caixa de entrada na tela inicial
-  (`Capturar na caixa de entrada`), que saiu de lá no commit `20d69b3` ("um '+' por tela"). 2/4.
-- **Não revisto:** `regression-account-sync` (`SecurityError` ao acessar o IndexedDB; usa outro build).
+- **Resolvido em 2026-10-27:** `daily-sync` procurava o "+" da Caixa de entrada na tela inicial; agora vai à
+  própria tela. 9/9.
+- **Iguais no `main` (2026-10-27, rodados um por vez):** `home-switch` 7–8/9 (deslocamento de 0,045 ao voltar
+  para a Início), `transitions-a11y` 6–7/7 (o passo entra em 205–225 ms, limite 200: depende da carga da
+  máquina), `assistant-sync` 4/6 (acima).
+- **Não revisto, igual no `main`:** `regression-account-sync`, `regression-existing-user` e `regression-new-user`
+  terminam sem resumo (`SecurityError` ao acessar o IndexedDB; usam outro build).
+- Rodar a suíte inteira de uma vez nesta máquina dá falhas falsas por falta de memória: rode em grupos de ~5
+  e repita isoladamente o que falhar antes de tratar como regressão.

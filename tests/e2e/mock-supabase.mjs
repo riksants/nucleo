@@ -25,7 +25,8 @@ const requests = []
 let clock = Date.UTC(2026, 9, 1, 12)
 const stamp = () => new Date((clock += 1000)).toISOString()
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
-const jwt = (u, sid) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: u.id, email: u.email, session_id: sid, role: 'authenticated', aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`
+// amr: how and when the session signed in (Supabase keeps it across refreshes); delete_my_account looks at it.
+const jwt = (u, sid) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: u.id, email: u.email, session_id: sid, role: 'authenticated', aud: 'authenticated', amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) }], exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`
 const claims = (req) => {
   const token = (req.headers.authorization ?? '').replace('Bearer ', '')
   try {
@@ -248,6 +249,16 @@ const server = createServer(async (req, res) => {
     return send(200, rows)
   }
   if (url.pathname === '/rest/v1/scheduled_notifications') return send(200, [])
+  // Like the SQL function (migration 20261027000000): only right after a sign-in, then everything goes.
+  if (url.pathname === '/rest/v1/rpc/delete_my_account') {
+    const amr = claims(req).amr ?? []
+    if (!amr.some((a) => a.timestamp > Date.now() / 1000 - 600)) return send(403, { code: '42501', message: 'reauth_required' })
+    for (const [email, u] of users) if (u.id === uid) users.delete(email)
+    for (const key of [...records.keys()]) if (key.startsWith(uid + '|')) records.delete(key)
+    settings.delete(uid)
+    revokeAll(uid)
+    return send(200, null)
+  }
   if (url.pathname === '/functions/v1/planner') {
     // Deliberately bad answer: one overlapping block + one allergen, to check the app's own validation.
     return send(200, {

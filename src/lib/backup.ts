@@ -57,6 +57,8 @@ export function parseBackup(text: string): ParsedBackup {
   if (!isRecord(json.data)) throw new Error('Backup sem dados.')
 
   const data: Partial<DataState> = {}
+  const now = new Date().toISOString()
+  const future = new Date(Date.now() + 5 * 60_000).toISOString()
   const counts: Record<string, number> = {}
   let total = 0
   for (const name of COLLECTION_NAMES) {
@@ -66,8 +68,12 @@ export function parseBackup(text: string): ParsedBackup {
       throw new Error(`Dados inválidos em "${name}".`)
     }
     // An item without a date of change takes its creation date: sent to the server without one it
-    // would be refused (and a merge could never compare it).
-    ;(data as Record<string, unknown>)[name] = list.map((x) => (typeof x.updatedAt === 'string' ? x : { ...x, updatedAt: x.createdAt }))
+    // would be refused (and a merge could never compare it). A date in the future (a file edited by
+    // hand, a device with a wrong clock) becomes now: it would win every later edit (A3).
+    ;(data as Record<string, unknown>)[name] = list.map((x) => {
+      const updatedAt = typeof x.updatedAt === 'string' ? x.updatedAt : (x.createdAt as string)
+      return updatedAt === x.updatedAt && updatedAt <= future ? x : { ...x, updatedAt: updatedAt > future ? now : updatedAt }
+    })
     counts[name] = list.length
     total += list.length
   }
