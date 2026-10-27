@@ -27,7 +27,7 @@ import type { MealAnswers, RoutineAnswers } from '../_shared/planner/types.ts'
 import type { z } from 'zod'
 
 const DAILY_LIMIT = Number(Deno.env.get('PLANNER_DAILY_LIMIT') ?? '10')
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://riksants.github.io,http://localhost:5173').split(',')
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hellonucleo.app,http://localhost:5173').split(',')
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -77,30 +77,23 @@ Deno.serve(async (req) => {
 
   const admin = createClient(url, service, { auth: { persistSession: false } })
 
-  // Same request again (retry, double tap): return what was already produced.
-  const { data: existing } = await admin.from('ai_usage').select('status,result').eq('user_id', userId).eq('request_id', body.requestId).maybeSingle()
-  if (existing?.status === 'ok') return json(req, 200, { ...existing.result, replayed: true })
-  if (existing?.status === 'pending') return json(req, 409, { error: 'busy', message: 'Essa geração já está em andamento.' })
-
-  const since = new Date(Date.now() - 24 * 3600_000).toISOString()
-  const { count } = await admin.from('ai_usage').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since).neq('status', 'error')
-  if ((count ?? 0) >= DAILY_LIMIT) return json(req, 429, { error: 'limit', message: `Limite de ${DAILY_LIMIT} gerações por dia atingido. Você ainda pode editar o plano à mão.` })
-
-  const { data: running } = await admin
-    .from('ai_usage')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('status', 'pending')
-    .gte('created_at', new Date(Date.now() - 3 * 60_000).toISOString())
-    .limit(1)
-  if (running?.length) return json(req, 409, { error: 'busy', message: 'Já existe uma geração em andamento. Aguarde terminar.' })
-
-  // The unique (user_id, request_id) constraint makes a concurrent duplicate fail here.
-  const { data: row, error: insertError } = await admin.from('ai_usage').insert({ user_id: userId, kind: body.mode, request_id: body.requestId, status: 'pending' }).select('id').single()
-  if (insertError || !row) return json(req, 409, { error: 'busy', message: 'Essa geração já está em andamento.' })
+  // One atomic step in the database (migration 20261027000000): the same request again returns what
+  // was produced, one generation at a time per person, failed ones count in the daily limit, and a
+  // daily ceiling for all accounts together. Simultaneous requests can't all pass the check.
+  const { data: reserved, error: reserveError } = await admin
+    .rpc('ai_reserve', { p_user: userId, p_kind: body.mode, p_request_id: body.requestId, p_daily_limit: DAILY_LIMIT, p_busy_seconds: 180 })
+    .single<{ outcome: string; usage_id: number | null; result: Record<string, unknown> | null }>()
+  if (reserveError || !reserved) return json(req, 503, { error: 'busy', message: 'Não foi possível começar agora. Tente em alguns minutos.' })
+  if (reserved.outcome === 'replay') return json(req, 200, { ...reserved.result, replayed: true })
+  if (reserved.outcome === 'busy') return json(req, 409, { error: 'busy', message: 'Já existe uma geração em andamento. Aguarde terminar.' })
+  if (reserved.outcome === 'duplicate') return json(req, 409, { error: 'duplicate', message: 'Esse pedido já foi feito. Gere de novo.' })
+  if (reserved.outcome === 'limit') return json(req, 429, { error: 'limit', message: `Limite de ${DAILY_LIMIT} gerações por dia atingido. Você ainda pode editar o plano à mão.` })
+  if (reserved.outcome === 'global-limit') return json(req, 503, { error: 'limit', message: 'A IA atingiu o limite do dia. Tente amanhã; você ainda pode editar o plano à mão.' })
+  const row = { id: reserved.usage_id! }
 
   try {
-    const client = new Anthropic({ apiKey, maxRetries: 1, timeout: 120_000 })
+    // Ends before the function's own time limit (150 s), so the reservation is always closed as ok or error.
+    const client = new Anthropic({ apiKey, maxRetries: 0, timeout: 110_000 })
     const { output, model } = await callPlanner(client, body)
     const result: Record<string, unknown> = { model, generatedAt: new Date().toISOString() }
     const routineOut = body.mode === 'both' ? (output as z.infer<typeof BothOutput>).routine : body.mode === 'routine' ? (output as z.infer<typeof RoutineOutput>) : null

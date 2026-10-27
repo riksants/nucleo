@@ -9,7 +9,10 @@ Precisam de configuração: **conta + sincronização**, **IA** e **notificaçõ
 ## 1. Criar o projeto no Supabase (plano gratuito)
 
 1. Crie uma conta em https://supabase.com e um projeto novo (região mais próxima, ex.: São Paulo).
-2. **SQL Editor** → cole e rode `supabase/migrations/20261001000000_nucleo_init.sql`.
+2. **SQL Editor** → rode **todos** os arquivos de `supabase/migrations/`, um por vez, **na ordem do nome**
+   (a data no começo). Cada um diz no topo o que muda e como desfazer. A partir de
+   `20261027000000_auditoria_etapas_4_10.sql`, o banco registra o que já rodou: confira com
+   `select version from public.schema_version order by version;` (deve listar todos os arquivos da pasta).
 3. **Authentication → Sign In / Providers → Email**: deixe “Confirm email” ligado.
 4. **Authentication → URL Configuration**:
    - Site URL: `https://hellonucleo.app/`
@@ -63,7 +66,7 @@ Cadastre os segredos das funções:
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...            # https://console.anthropic.com
 supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:seu-email
 supabase secrets set DISPATCH_SECRET=$(openssl rand -hex 32)  # anote o valor
-supabase secrets set ALLOWED_ORIGINS=https://riksants.github.io,http://localhost:5173
+supabase secrets set ALLOWED_ORIGINS=https://hellonucleo.app,http://localhost:5173
 # opcional: supabase secrets set PLANNER_DAILY_LIMIT=10
 ```
 
@@ -84,8 +87,10 @@ Ele dispara o envio a cada minuto com `pg_cron` + `pg_net`.
   Plano Pro: US$ 25/mês, se um dia precisar.
 - **IA (Anthropic, modelo Claude Opus 5.5)**: cobrada por uso — US$ 4 por milhão de tokens de entrada e
   US$ 20 por milhão de saída. Uma geração de rotina + alimentação costuma usar poucos milhares de
-  tokens (centavos de dólar). O limite padrão é 10 gerações por pessoa por dia. Defina um limite de
-  gasto mensal no console da Anthropic.
+  tokens (centavos de dólar). O limite padrão é 10 gerações por pessoa por dia (também contam as
+  que deram erro) e 200 por dia somando todas as contas (`quota_limits`, chave `ai.global_daily`).
+  **Antes de publicar as funções, defina um limite de gasto mensal no console da Anthropic**
+  (Settings → Limits): é o único teto que vale mesmo se algo no app falhar.
 - **Notificações (Web Push)**: grátis (serviços da Apple/Google/Mozilla).
 
 ## Assistente — interpretador opcional com IA (desligado por padrão)

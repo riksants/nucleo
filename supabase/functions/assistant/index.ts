@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js'
 import { AssistantRequest, callInterpreter, InterpreterRefusal } from '../_shared/assistant/ai.ts'
 
 const DAILY_LIMIT = Number(Deno.env.get('ASSISTANT_DAILY_LIMIT') ?? '30')
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://riksants.github.io,http://localhost:5173').split(',')
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hellonucleo.app,http://localhost:5173').split(',')
 
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -56,22 +56,22 @@ Deno.serve(async (req) => {
   }
 
   const admin = createClient(url, service, { auth: { persistSession: false } })
-  // Same request again (retry, double tap): never runs twice. The text is not stored, so it is not replayed either.
-  const { data: existing } = await admin.from('ai_usage').select('status').eq('user_id', userId).eq('request_id', body.requestId).maybeSingle()
-  if (existing) return json(req, 409, { error: 'duplicate', message: 'Esse pedido já foi feito.' })
-
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-  const { count } = await admin.from('ai_usage').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('kind', 'assistant').gte('created_at', since).neq('status', 'error')
-  if ((count ?? 0) >= DAILY_LIMIT) return json(req, 429, { error: 'limit', message: `Limite de ${DAILY_LIMIT} interpretações por dia atingido. Os comandos do Assistente continuam funcionando.` })
-  // One at a time per person (no loops).
-  const { data: running } = await admin.from('ai_usage').select('id').eq('user_id', userId).eq('kind', 'assistant').eq('status', 'pending').gte('created_at', new Date(Date.now() - 60_000).toISOString()).limit(1)
-  if (running?.length) return json(req, 429, { error: 'busy', message: 'Aguarde a interpretação anterior terminar.' })
-
-  const { data: row, error: insertError } = await admin.from('ai_usage').insert({ user_id: userId, kind: 'assistant', request_id: body.requestId, status: 'pending' }).select('id').single()
-  if (insertError || !row) return json(req, 409, { error: 'duplicate', message: 'Esse pedido já foi feito.' })
+  // One atomic step in the database (migration 20261027000000): the same request never runs twice (the
+  // text is not stored, so it is not replayed either), one at a time per person, failed ones count in
+  // the daily limit, and a daily ceiling for all accounts together.
+  const { data: reserved, error: reserveError } = await admin
+    .rpc('ai_reserve', { p_user: userId, p_kind: 'assistant', p_request_id: body.requestId, p_daily_limit: DAILY_LIMIT, p_busy_seconds: 60 })
+    .single<{ outcome: string; usage_id: number | null }>()
+  if (reserveError || !reserved) return json(req, 503, { error: 'busy', message: 'A IA não respondeu agora. Os comandos do Assistente continuam funcionando.' })
+  if (reserved.outcome === 'replay' || reserved.outcome === 'duplicate') return json(req, 409, { error: 'duplicate', message: 'Esse pedido já foi feito.' })
+  if (reserved.outcome === 'busy') return json(req, 429, { error: 'busy', message: 'Aguarde a interpretação anterior terminar.' })
+  if (reserved.outcome === 'limit') return json(req, 429, { error: 'limit', message: `Limite de ${DAILY_LIMIT} interpretações por dia atingido. Os comandos do Assistente continuam funcionando.` })
+  if (reserved.outcome === 'global-limit') return json(req, 503, { error: 'limit', message: 'A IA atingiu o limite do dia. Os comandos do Assistente continuam funcionando.' })
+  const row = { id: reserved.usage_id! }
 
   try {
-    const client = new Anthropic({ apiKey })
+    // A short sentence: a slow answer is not worth waiting for, and a retry would be charged twice.
+    const client = new Anthropic({ apiKey, maxRetries: 0, timeout: 30_000 })
     const { intent, model, inputTokens, outputTokens } = await callInterpreter(client, body)
     // Only the kind of intent and token counts are kept — never the sentence or the answer.
     await admin.from('ai_usage').update({ status: 'ok', result: { type: intent.type, model }, input_tokens: inputTokens, output_tokens: outputTokens }).eq('id', row.id)
