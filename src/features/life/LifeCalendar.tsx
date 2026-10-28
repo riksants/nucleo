@@ -95,7 +95,7 @@ export function LifeCalendar() {
                 aria-selected={isSel}
                 aria-label={`${formatDateValue(d)}${ind.length ? ': ' + ind.map((x) => x.label).join(', ') : ''}`}
                 onClick={() => setSelected(d)}
-                className={`flex min-h-14 min-w-0 flex-col items-stretch rounded-xl border p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 ${isSel ? 'border-accent-hi/60 bg-accent/10' : 'border-transparent hover:bg-tint/[0.04] tap'} ${inMonth ? '' : 'opacity-40'}`}
+                className={`flex min-h-14 min-w-0 flex-col items-stretch rounded-xl border p-1 text-left transition-colors sm:min-h-20 sm:p-1.5 ${isSel ? 'border-ink/70 bg-tint/[0.06]' : 'border-transparent hover:bg-tint/[0.04] tap'} ${inMonth ? '' : 'opacity-40'}`}
               >
                 <span className={`num grid size-6 place-items-center self-center rounded-full text-[13px] sm:self-start ${isToday ? 'bg-accent font-semibold text-on-accent' : ''}`}>{Number(d.slice(8, 10))}</span>
                 {/* Phone: dots. Wider screens: short labels. */}

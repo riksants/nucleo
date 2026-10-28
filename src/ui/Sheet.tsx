@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsDesktop, usePrefersReducedMotion, useScrollLock, useVisualViewport } from '../lib/hooks'
 import { IconButton } from './Button'
+import { EASE_OUT_SOFT } from '../lib/motion'
 
 interface SheetProps {
   open: boolean
@@ -155,7 +156,7 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
           initial: { opacity: 0, transform: 'translateY(8px) scale(0.97)' },
           animate: { opacity: 1, transform: 'translateY(0px) scale(1)' },
           exit: { opacity: 0, transform: 'translateY(4px) scale(0.98)' },
-          transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] as const },
+          transition: { duration: 0.18, ease: EASE_OUT_SOFT },
         }
       : { initial: { transform: 'translateY(100%)' }, animate: { transform: 'translateY(0%)' }, exit: { transform: 'translateY(100%)' }, transition: SPRING }
 
@@ -176,7 +177,7 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
             <div
               ref={panel}
               style={vv ? { maxHeight: `calc(${vv.height}px - env(safe-area-inset-top) - 8px)` } : undefined}
-              className="flex w-full flex-col border border-line bg-sheet shadow-[inset_0_1px_0_var(--color-card-edge),0_25px_50px_-12px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.75rem] lg:max-h-[86dvh] lg:rounded-[1.75rem]"
+              className="flex w-full flex-col border border-line-strong bg-sheet shadow-[0_24px_48px_-16px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.5rem] lg:max-h-[86dvh] lg:rounded-[1.5rem]"
             >
               <header ref={header} className="shrink-0 touch-none px-5 pb-2 lg:touch-auto lg:px-6 lg:pt-5">
                 {!desktop && <div className="mx-auto mt-2.5 mb-3 h-1.5 w-10 rounded-full bg-tint/15" aria-hidden />}

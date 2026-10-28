@@ -3,10 +3,11 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'md' | 'lg'
 
+// The site's buttons: a vermilion pill for the action, a hairline pill for the alternative.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-accent text-on-accent hover:brightness-[0.96] disabled:bg-accent/40 disabled:text-on-accent/60',
-  secondary: 'bg-raised text-ink border border-line hover:bg-elevated',
-  ghost: 'text-soft hover:text-ink hover:bg-tint/[0.04]',
+  primary: 'bg-accent text-on-accent hover:bg-accent-soft disabled:bg-accent/40 disabled:text-on-accent/60',
+  secondary: 'text-ink ring-1 ring-inset ring-line-strong hover:bg-tint/[0.05] hover:ring-tint/30',
+  ghost: 'text-soft hover:text-ink hover:bg-tint/[0.05]',
   danger: 'bg-expense/12 text-expense hover:bg-expense/20',
 }
 
@@ -26,7 +27,7 @@ export function Button({ variant = 'primary', size = 'md', icon, block, classNam
   return (
     <button
       type="button"
-      className={`press inline-flex items-center justify-center gap-2 font-semibold select-none disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
+      className={`press inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] select-none disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
       {...rest}
     >
       {icon}
@@ -42,9 +43,9 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const ICON_TONES = {
-  plain: 'text-soft hover:text-ink hover:bg-tint/[0.05]',
+  plain: 'text-soft hover:text-ink hover:bg-tint/[0.06]',
   raised: 'bg-raised border border-line text-ink hover:bg-elevated',
-  accent: 'bg-accent text-on-accent hover:brightness-[0.96]',
+  accent: 'bg-accent text-on-accent hover:bg-accent-soft',
 }
 
 export function IconButton({ label, tone = 'plain', size = 'md', className = '', children, ...rest }: IconButtonProps) {

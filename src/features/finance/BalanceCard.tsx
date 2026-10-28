@@ -1,7 +1,7 @@
-import { AnimatePresence, animate, motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
 import { usePrefersReducedMotion } from '../../lib/hooks'
 import { Minus, Plus } from 'lucide-react'
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { reserveSummary } from '../../core/reserved'
 import { useStore } from '../../data/store'
 import type { Cents, Currency } from '../../data/types'
@@ -10,6 +10,7 @@ import { currencyInfo, formatMoney, formatNumber } from '../../lib/money'
 import { useSheet } from '../../ui/formHooks'
 import { CurrencyPicker } from '../../ui/Field'
 import { TransactionSheet } from './TransactionSheet'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 /** Big balance number: muted currency symbol and cents, prominent whole part. */
 function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
@@ -23,7 +24,7 @@ function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
     <span className="num inline-flex items-baseline gap-1.5 whitespace-nowrap" aria-label={formatMoney(cents, currency)}>
       {cents < 0 && <span className="text-[44px] leading-none font-semibold lg:text-[56px]">−</span>}
       {!suffix && <span className={small}>{symbol}</span>}
-      <span className={`${big} font-display leading-none font-bold tracking-[-0.05em]`}>
+      <span className={`${big} font-display leading-none font-semibold tracking-[-0.042em]`}>
         {whole}
         <span className={small}>,{decimals}</span>
       </span>
@@ -44,62 +45,23 @@ function useCountTo(target: Cents) {
       setShown(target)
       return
     }
-    const controls = animate(mv, target, { duration: 0.75, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => setShown(Math.round(v)) })
+    const controls = animate(mv, target, { duration: 0.75, ease: EASE_OUT_SOFT, onUpdate: (v) => setShown(Math.round(v)) })
     return () => controls.stop()
   }, [target, mv, reduce])
   return shown
 }
 
 /**
- * Purple card with depth for Financeiro: layered shadow, top highlight, a soft sheen and a slight 3D tilt that
- * follows the finger or the mouse (springs back on release). Reduced motion: flat, no tilt.
+ * Financeiro's balance block: a flat vermilion slab with coal type, like the site's primary button grown into a
+ * surface. No tilt or sheen: the figure is data you read, so it stays still.
  */
-function Card3D({ children }: { children: ReactNode }) {
-  const reduce = usePrefersReducedMotion()
-  const rx = useMotionValue(0)
-  const ry = useMotionValue(0)
-  const springX = useSpring(rx, { stiffness: 220, damping: 22 })
-  const springY = useSpring(ry, { stiffness: 220, damping: 22 })
-  const sheenX = useTransform(springY, [-8, 8], [20, 80])
-  const sheen = useMotionTemplate`linear-gradient(110deg, transparent ${useTransform(sheenX, (v) => v - 22)}%, rgb(255 255 255 / 0.16) ${sheenX}%, transparent ${useTransform(sheenX, (v) => v + 22)}%)`
-  const move = (e: PointerEvent<HTMLDivElement>) => {
-    if (reduce || (e.pointerType !== 'mouse' && e.buttons === 0)) return
-    const r = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - r.left) / r.width - 0.5
-    const py = (e.clientY - r.top) / r.height - 0.5
-    ry.set(px * 12)
-    rx.set(-py * 10)
-  }
-  const reset = () => {
-    rx.set(0)
-    ry.set(0)
-  }
-  return (
-    <div style={{ perspective: 1000 }}>
-      <motion.div
-        onPointerMove={move}
-        onPointerLeave={reset}
-        onPointerUp={reset}
-        onPointerCancel={reset}
-        style={reduce ? undefined : { rotateX: springX, rotateY: springY }}
-        className="relative overflow-clip rounded-[1.75rem] border border-white/15 p-5 text-white shadow-[0_28px_56px_-20px_rgb(76_35_214/0.6),0_10px_20px_-10px_rgb(20_10_60/0.45),inset_0_1px_0_rgb(255_255_255/0.35)] lg:p-7"
-      >
-        {/* Body: deep purple with a lit top-left, and two embossed rings for depth. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_12%_0%,#a07dff_0%,transparent_55%),linear-gradient(140deg,#7a48ff_0%,#5a2be6_48%,#34128f_100%)]" />
-        <div aria-hidden className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full border border-white/12 bg-white/[0.04]" />
-        <div aria-hidden className="pointer-events-none absolute -right-6 -bottom-28 size-64 rounded-full border border-white/10 bg-white/[0.03]" />
-        {!reduce && <motion.div aria-hidden className="pointer-events-none absolute inset-0" style={{ backgroundImage: sheen }} />}
-        <div className="relative">
-          {children}
-        </div>
-      </motion.div>
-    </div>
-  )
+function AccentCard({ children }: { children: ReactNode }) {
+  return <div className="relative overflow-clip rounded-[1.5rem] bg-accent p-5 text-coal lg:p-7">{children}</div>
 }
 
 /**
  * The balance.
- * - "card" (Financeiro): the purple 3D card with Adicionar / Retirar.
+ * - "card" (Financeiro): the vermilion block with Adicionar / Retirar.
  * - "hero" (Início): the figure on the page itself, without a box; the page puts the actions under it as round buttons.
  * `note`: a line under the figure (e.g. "+€267,61 em outubro"), shown when there is no fresh change to announce.
  */
@@ -142,46 +104,47 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
   const reserve = reserveSummary(data.financeGoals, balance, settings.baseCurrency, convert)
   const inShown = (cents: Cents) => formatMoney(convert(cents, settings.baseCurrency, currency) ?? cents, convert(cents, settings.baseCurrency, currency) === null ? settings.baseCurrency : currency)
   const reserveBlock = reserve.hasReserve && (
-    <div className={`mt-3 border-t pt-3 ${hero ? 'border-line' : 'border-white/20'}`}>
+    <div className={`mt-3 border-t pt-3 ${hero ? 'border-line' : 'border-coal/20'}`}>
       <div className="grid grid-cols-2 gap-3">
         <div className="min-w-0">
-          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-white/75'}`}>Reservado para metas</p>
+          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-coal/80'}`}>Reservado para metas</p>
           <p className="num text-[17px] font-semibold [overflow-wrap:anywhere]">{inShown(reserve.reserved)}</p>
         </div>
         <div className="min-w-0">
-          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-white/75'}`}>Disponível</p>
+          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-coal/80'}`}>Disponível</p>
           <p className={`num text-[17px] font-semibold [overflow-wrap:anywhere] ${reserve.available < 0 && hero ? 'text-expense' : ''}`}>{inShown(reserve.available)}</p>
         </div>
       </div>
       {reserve.missing.length > 0 && (
-        <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-white/70'}`}>
+        <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-coal/80'}`}>
           Reserva em {reserve.missing.join(', ')} ainda sem cotação: o Disponível ainda não a considera.
         </p>
       )}
-      {reserve.available < 0 && <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-white/70'}`}>As metas têm mais reservado do que o saldo atual.</p>}
+      {reserve.available < 0 && <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-coal/80'}`}>As metas têm mais reservado do que o saldo atual.</p>}
     </div>
   )
 
-  const ink = hero ? 'var(--color-ink)' : '#ffffff'
+  const ink = hero ? 'var(--color-ink)' : 'var(--color-coal)'
   const content = (
     <>
       <div className="flex min-w-0 items-center justify-between gap-3">
-        <span className={`shrink-0 text-[14px] font-semibold ${hero ? 'text-soft' : 'text-white/80'}`}>{hero ? 'Saldo total' : 'Saldo'}</span>
+        <span className={`shrink-0 text-[14px] font-semibold ${hero ? 'text-soft' : 'text-coal/80'}`}>{hero ? 'Saldo total' : 'Saldo'}</span>
         <CurrencyPicker
           size="sm"
           label="Moeda de exibição"
           value={currency}
           onChange={setDisplayCurrency}
-          tone={hero ? 'default' : 'glass'}
+          tone={hero ? 'default' : 'onAccent'}
           isDisabled={(c) => c !== settings.baseCurrency && convert(100, settings.baseCurrency, c) === null}
         />
       </div>
 
       <motion.div
         key={delta?.id ?? 'idle'}
-        className={hero ? 'mt-3 mb-1' : 'mt-6 mb-1 lg:mt-8 [&_.text-soft]:text-white/70'}
+        className={hero ? 'mt-3 mb-1' : 'mt-6 mb-1 lg:mt-8 [&_.text-soft]:text-coal/75'}
         style={{ color: ink }}
-        animate={delta ? { color: [ink, delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', ink] } : undefined}
+        // On the vermilion card the figure keeps its coal: green or red on vermilion would not read.
+        animate={delta && hero ? { color: [ink, delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', ink] } : undefined}
         transition={{ duration: 1.1, times: [0, 0.25, 1] }}
       >
         <Figure cents={shown} currency={currency} />
@@ -195,12 +158,12 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
               initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(-4px)' }}
               animate={{ opacity: 1, transform: 'translateY(0px)' }}
               exit={{ opacity: 0 }}
-              className={`num text-[15px] font-semibold ${hero ? (delta.cents > 0 ? 'text-income' : 'text-expense') : 'text-white'}`}
+              className={`num text-[15px] font-semibold ${hero ? (delta.cents > 0 ? 'text-income' : 'text-expense') : 'text-coal'}`}
             >
               {formatMoney(delta.cents, currency, { sign: true })}
             </motion.span>
           ) : rateLine ? (
-            <motion.span key="rate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-[13px] ${hero ? 'text-faint' : 'text-white/70'}`}>
+            <motion.span key="rate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-[13px] ${hero ? 'text-faint' : 'text-coal/80'}`}>
               {rateLine}
             </motion.span>
           ) : (
@@ -220,7 +183,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
           <button
             type="button"
             onClick={() => sheet.show('in')}
-            className="press flex h-13 items-center justify-center gap-2 rounded-full bg-white text-base font-bold text-accent-on-white shadow-sm shadow-black/20 hover:bg-white/90"
+            className="press flex h-13 items-center justify-center gap-2 rounded-full bg-coal text-base font-medium tracking-[-0.01em] text-paper hover:bg-coal/85"
           >
             <Plus size={20} strokeWidth={2.4} />
             Adicionar
@@ -228,7 +191,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
           <button
             type="button"
             onClick={() => sheet.show('out')}
-            className="press flex h-13 items-center justify-center gap-2 rounded-full border border-white/40 bg-white/[0.06] text-base font-bold text-white hover:bg-white/12"
+            className="press flex h-13 items-center justify-center gap-2 rounded-full text-base font-medium tracking-[-0.01em] text-coal ring-1 ring-coal/35 ring-inset hover:bg-coal/[0.08]"
           >
             <Minus size={20} strokeWidth={2.4} />
             Retirar
@@ -240,7 +203,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
 
   return (
     <section aria-label="Saldo" className="relative">
-      {hero ? content : <Card3D>{content}</Card3D>}
+      {hero ? content : <AccentCard>{content}</AccentCard>}
       {!hero && <TransactionSheet type={sheet.item ?? 'in'} open={sheet.open} onClose={sheet.close} />}
     </section>
   )

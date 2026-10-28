@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
-        // ?v=3: new logo (Oct 2026, v3) — new icon URLs so browsers and installed apps don't keep the old one.
+        // ?v=4: the "N" mark (Oct 2026, v4) — new icon URLs so browsers and installed apps don't keep the old one.
         manifest: {
           name: 'Núcleo',
           short_name: 'Núcleo',
@@ -69,12 +69,12 @@ export default defineConfig(({ mode }) => {
           scope: BASE,
           display: 'standalone',
           orientation: 'portrait',
-          background_color: '#09090b',
-          theme_color: '#09090b',
+          background_color: '#0a0a0b',
+          theme_color: '#0a0a0b',
           icons: [
-            { src: 'icon-192.png?v=3', sizes: '192x192', type: 'image/png' },
-            { src: 'icon-512.png?v=3', sizes: '512x512', type: 'image/png' },
-            { src: 'icon-maskable-512.png?v=3', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: 'icon-192.png?v=4', sizes: '192x192', type: 'image/png' },
+            { src: 'icon-512.png?v=4', sizes: '512x512', type: 'image/png' },
+            { src: 'icon-maskable-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
         },
         workbox: {

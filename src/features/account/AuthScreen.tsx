@@ -9,6 +9,7 @@ import { loginPasswordProblem } from './authRules'
 import { Captcha } from './Captcha'
 import { captchaOn } from './captchaKey'
 import { useSession } from './session'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 type Step = 'signin' | 'signup' | 'confirm' | 'forgot' | 'resetCode' | 'newPassword'
 
@@ -140,7 +141,7 @@ export function AuthScreen() {
 
   const messages = (
     <>
-      {info && <p className="rounded-2xl bg-accent/10 px-4 py-3 text-[15px] leading-relaxed text-accent-hi">{info}</p>}
+      {info && <p className="flex items-start gap-2.5 rounded-[var(--radius-field)] bg-tint/[0.06] px-4 py-3 text-[15px] leading-relaxed text-ink"><span aria-hidden className="pixel mt-[0.55em] shrink-0" />{info}</p>}
       {error && (
         <p role="alert" className="rounded-2xl bg-expense/10 px-4 py-3 text-[15px] leading-relaxed text-expense">
           {error}
@@ -245,7 +246,7 @@ export function AuthScreen() {
                 </>
               }
             >
-              <div className="grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+              <div className="grid size-12 place-items-center rounded-2xl icon-tile">
                 <MailCheck size={24} />
               </div>
               {messages}
@@ -324,8 +325,8 @@ export function AuthScreen() {
       <motion.div
         key={step}
         initial={{ opacity: 0, transform: reduce ? 'translateX(0px)' : 'translateX(16px)' }}
-        animate={{ opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } }}
-        exit={{ opacity: 0, transform: reduce ? 'translateX(0px)' : 'translateX(-16px)', transition: { duration: 0.12, ease: [0.22, 1, 0.36, 1] } }}
+        animate={{ opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.22, ease: EASE_OUT_SOFT } }}
+        exit={{ opacity: 0, transform: reduce ? 'translateX(0px)' : 'translateX(-16px)', transition: { duration: 0.12, ease: EASE_OUT_SOFT } }}
       >
         {content}
       </motion.div>

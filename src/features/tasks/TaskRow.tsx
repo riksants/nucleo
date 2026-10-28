@@ -7,6 +7,7 @@ import type { Task } from '../../data/types'
 import { useFeedback } from '../../ui/Feedback'
 import { DueLabel } from '../projects/ProjectCard'
 import { useNames } from '../shared/useNames'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 // Priority is said in words (with a flag), never by color alone; the color only reinforces it.
 const PRIORITY_TEXT = { none: '', low: 'text-faint', medium: 'text-accent-hi', high: 'font-semibold text-expense' }
@@ -21,7 +22,7 @@ function CheckCircle({ checked }: { checked: boolean }) {
         borderColor: checked ? 'var(--color-accent)' : 'var(--color-check-line)',
         scale: checked ? [1, 1.1, 1] : 1,
       }}
-      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
     >
       <svg viewBox="0 0 24 24" className="size-4 stroke-on-accent" fill="none" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
         <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }} transition={{ duration: 0.16, delay: checked ? 0.04 : 0 }} />
@@ -55,8 +56,8 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
       layout
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
-      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      exit={{ opacity: 0, height: 0, transition: { duration: 0.2, ease: EASE_OUT_SOFT } }}
+      transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
       className="overflow-hidden"
     >
       <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
@@ -72,7 +73,12 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
                 style={{ transform: `scaleX(${checked ? 1 : 0})` }}
               />
             </span>
-            {task.status === 'doing' && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-medium text-accent-hi">Fazendo</span>}
+            {task.status === 'doing' && (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-tint/[0.08] px-2 py-0.5 text-[12px] font-medium text-ink">
+                <span aria-hidden className="pixel" />
+                Fazendo
+              </span>
+            )}
           </span>
           {(project || (task.dueDate && !done) || task.changedBy || (task.priority !== 'none' && !done)) && (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-faint">
@@ -84,7 +90,7 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
                 </span>
               )}
               {project && <span className="truncate">{project}</span>}
-              {task.changedBy === 'assistant' && <span className="text-accent-hi/80">Alterado pelo Assistente</span>}
+              {task.changedBy === 'assistant' && <span className="text-soft">Alterado pelo Assistente</span>}
               {task.dueDate && !done && <DueLabel date={task.dueDate} />}
               {task.dueDate && task.dueTime && !done && <span className="num">{task.dueTime}</span>}
             </span>

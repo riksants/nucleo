@@ -107,11 +107,11 @@ export function HomePage() {
       <header className="mb-6 flex items-center justify-between gap-3 lg:mb-7">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-full border border-card-border bg-surface lg:hidden">
-            <Logo />
+            <Logo className="size-6" />
           </span>
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-soft first-letter:uppercase">{formatWeekday(today)}</p>
-            <h1 className="text-[26px] leading-tight font-bold tracking-[-0.03em] lg:text-[36px]">{greeting(today)}</h1>
+            <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.04em] lg:text-[40px]">{greeting(today)}</h1>
           </div>
         </div>
         <div className="flex gap-2">
@@ -149,7 +149,7 @@ export function HomePage() {
 
           {doneLately.length > 0 && (
             <button type="button" onClick={() => navigate('/automations')} className="card flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-hi">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full icon-tile">
                 <Sparkles size={18} />
               </span>
               <span className="min-w-0 flex-1">
@@ -202,7 +202,7 @@ export function HomePage() {
             // Início is the overview; the list itself lives in Hoje.
             <Block title="Hoje">
               <button type="button" onClick={() => navigate('/today')} className="card tap flex w-full items-center gap-3.5 p-4 text-left">
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent/14 text-accent-hi">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full icon-tile">
                   <CalendarCheck size={20} />
                 </span>
                 <span className="min-w-0 flex-1">

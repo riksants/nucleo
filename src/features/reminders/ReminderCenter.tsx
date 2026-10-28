@@ -7,6 +7,7 @@ import { readPref, writePref } from '../../lib/prefs'
 import { useSession } from '../account/session'
 import { buildOccurrences, reminderPrefs, type Occurrence } from './engine'
 import { currentSubscription, syncSchedule } from './push'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 const SHOWN_KEY = 'shownReminders'
 
@@ -69,7 +70,7 @@ export function ReminderCenter() {
             initial={{ opacity: 0, transform: reduce ? 'translateY(0px)' : 'translateY(-12px)' }}
             animate={{ opacity: 1, transform: 'translateY(0px)' }}
             exit={{ opacity: 0, transform: reduce ? 'translateY(0px)' : 'translateY(-8px)' }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.22, ease: EASE_OUT_SOFT }}
             className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.25rem] border border-line-strong bg-elevated/95 py-2.5 pr-2 pl-3.5 shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
             role="status"
           >

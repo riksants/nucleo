@@ -71,7 +71,7 @@ export function ProjectsPage() {
             </div>
             <div className="card p-4">
               <p className="text-[13px] text-soft">A receber</p>
-              <p className={`num mt-1 text-[24px] font-semibold ${receivable.total > 0 ? 'text-accent-hi' : ''}`}>
+              <p className="num mt-1 text-[24px] font-semibold tracking-[-0.03em]">
                 {formatMoney(receivable.total, displayCurrency, { compact: true })}
               </p>
             </div>

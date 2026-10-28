@@ -74,7 +74,8 @@ export const TONE_TEXT: Record<Tone, string> = {
 
 export const TONE_BADGE: Record<Tone, string> = {
   neutral: 'bg-tint/[0.06] text-soft',
-  accent: 'bg-accent/15 text-accent-hi',
+  // Live / in progress: a neutral chip carrying the site's vermilion pixel (Badge draws it), not a vermilion chip.
+  accent: 'bg-tint/[0.08] text-ink',
   positive: 'bg-income/12 text-income',
   negative: 'bg-expense/12 text-expense',
   warn: 'bg-warn/12 text-warn',

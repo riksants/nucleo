@@ -11,7 +11,7 @@ export function ScoreCard({ overall, areas, previous, version, details }: { over
   return (
     <section className="card p-5">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl icon-tile">
           <Gauge size={20} />
         </span>
         <div className="min-w-0 flex-1">

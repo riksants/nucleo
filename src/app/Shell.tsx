@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
-import { LOGO_PIECES } from './logoMark'
+import { LOGO_ACCENT, LOGO_LIGHT, LOGO_VIEWBOX } from './logoMark'
 import { isEnabled, MODULE_BY_ID, MODULE_BY_PATH, MODULE_GROUPS } from './modules'
 import { usePrimaryAction, type PrimaryAction } from './primaryAction'
 import { ChevronLeft, Plus } from 'lucide-react'
@@ -19,29 +19,20 @@ function isActive(section: Section, path: RoutePath, primary: Section[]) {
 /** Active-tab indicator: critically damped (damping ratio ≈ 1), so it settles in ~0.2 s without overshooting. */
 const INDICATOR_SPRING = { type: 'spring', stiffness: 500, damping: 45 } as const
 
-/** The NÚCLEO mark — the same drawing as the app icon and the opening. */
-export function Logo() {
-  // Gradient ids must be unique on the page (the logo can appear more than once).
-  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+/** The NÚCLEO "N" — the same drawing as the app icon and the opening. The light piece follows the text color,
+ *  so the mark reads on both themes; the other piece is the accent. */
+export function Logo({ className = 'size-8' }: { className?: string }) {
   return (
-    <svg viewBox="-500 -500 1000 1000" className="size-8" aria-hidden>
-      <defs>
-        <linearGradient id={`${id}p`} gradientUnits="userSpaceOnUse" x1="-800" y1="-700" x2="800" y2="800">
-          <stop offset="0" stopColor="#7565ff" />
-          <stop offset=".5" stopColor="#5c50ff" />
-          <stop offset="1" stopColor="#4d41ed" />
-        </linearGradient>
-        <linearGradient id={`${id}l`} gradientUnits="userSpaceOnUse" x1="-800" y1="-700" x2="800" y2="800">
-          <stop offset="0" stopColor="#d4ccff" />
-          <stop offset=".6" stopColor="#bcb2fc" />
-          <stop offset="1" stopColor="#a99aee" />
-        </linearGradient>
-      </defs>
-      {LOGO_PIECES.map((p, i) => (
-        <path key={i} d={p.d} fill={`url(#${id}${p.tone === 'purple' ? 'p' : 'l'})`} />
-      ))}
+    <svg viewBox={LOGO_VIEWBOX} className={className} aria-hidden>
+      <path d={LOGO_LIGHT} fill="currentColor" />
+      <path d={LOGO_ACCENT} fill="var(--color-accent)" />
     </svg>
   )
+}
+
+/** "NÚCLEO" set like the site's wordmark: tight caps, wide tracking. */
+export function Wordmark({ className = '' }: { className?: string }) {
+  return <span className={`font-semibold tracking-[0.14em] ${className}`}>NÚCLEO</span>
 }
 
 function BottomNav({ path }: { path: RoutePath }) {
@@ -58,13 +49,14 @@ function BottomNav({ path }: { path: RoutePath }) {
               key={s.path}
               href={`#${s.path}`}
               aria-current={active ? 'page' : undefined}
-              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] ${active ? 'font-bold text-ink' : 'font-medium text-faint'}`}
+              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] tracking-[-0.01em] ${active ? 'font-semibold text-ink' : 'font-medium text-faint'}`}
             >
               <span className="relative grid h-8 w-14 place-items-center">
+                {/* Where you are: a paper pill (the site's light button); vermilion stays for actions. */}
                 {active && (
-                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-accent" transition={INDICATOR_SPRING} />
+                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-ink" transition={INDICATOR_SPRING} />
                 )}
-                <Icon size={24} strokeWidth={active ? 2.4 : 2} className={`relative ${active ? 'text-on-accent' : ''}`} />
+                <Icon size={24} strokeWidth={active ? 2.4 : 2} className={`relative transition-colors duration-150 ${active ? 'text-bg' : ''}`} />
               </span>
               {s.shortLabel ?? s.label}
             </a>
@@ -82,13 +74,18 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
     <a
       href={`#${section.path}`}
       aria-current={active ? 'page' : undefined}
-      className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors ${
+      className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium tracking-[-0.01em] transition-colors ${
         active ? 'text-ink' : 'text-soft hover:bg-tint/[0.03] tap hover:text-ink'
       }`}
     >
-      {active && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-tint/[0.06]" transition={INDICATOR_SPRING} />}
-      <Icon size={20} className={`relative ${active ? 'text-accent-hi' : ''}`} />
-      <span className="relative">{section.label}</span>
+      {/* The pill carries the site's vermilion pixel, so both slide to the new item together. */}
+      {active && (
+        <motion.span layoutId="side-pill" className="absolute inset-0 flex items-center justify-end rounded-xl bg-tint/[0.07] pr-3.5" transition={INDICATOR_SPRING}>
+          <span aria-hidden className="pixel" />
+        </motion.span>
+      )}
+      <Icon size={20} strokeWidth={active ? 2.4 : 2} className="relative" />
+      <span className="relative min-w-0 flex-1 truncate pr-3">{section.label}</span>
     </a>
   )
 }
@@ -100,18 +97,18 @@ function Sidebar({ path }: { path: RoutePath }) {
   const groups = MODULE_GROUPS.map((g) => ({ title: g.title, sections: g.ids.map((id) => MODULE_BY_ID[id]).filter((m) => here.has(m.path)) })).filter((g) => g.sections.length > 0)
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg px-4 py-6 lg:flex" aria-label="Navegação">
-      <div className="mb-6 flex items-center gap-3 px-2">
-        <Logo />
-        <span className="font-display text-[19px] font-bold tracking-[-0.02em]">Núcleo</span>
+      <div className="mb-7 flex items-center gap-3 px-2">
+        <Logo className="size-7 text-ink" />
+        <Wordmark className="text-[15px]" />
       </div>
       <button
         type="button"
         onClick={() => navigate('/search')}
-        className="mb-5 flex h-10 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-sm text-faint transition-colors hover:text-soft"
+        className="mb-5 flex h-10 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-sm text-faint transition-colors hover:border-line-strong hover:text-soft"
       >
         <SEARCH.icon size={16} />
         Buscar em tudo
-        <kbd className="ml-auto rounded-md border border-line px-1.5 text-[11px]">/</kbd>
+        <kbd className="ml-auto rounded-md border border-line px-1.5 font-mono text-[11px]">/</kbd>
       </button>
       <SidebarCapture />
       <nav className="flex flex-col gap-0.5">
@@ -123,7 +120,7 @@ function Sidebar({ path }: { path: RoutePath }) {
       <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
         {groups.map((g) => (
           <div key={g.title}>
-            <div className="mt-5 mb-2 px-3 text-[13px] font-semibold text-faint">{g.title}</div>
+            <div className="label-mono mt-6 mb-2 px-3 text-faint">{g.title}</div>
             <nav className="flex flex-col gap-0.5" aria-label={g.title}>
               {g.sections.map((s) => (
                 <SideLink key={s.path} section={s} path={path} />
@@ -202,7 +199,7 @@ function CompactBar({ title, visible }: { title: string; visible: boolean }) {
             <ChevronLeft size={20} strokeWidth={2.4} />
           </button>
         )}
-        <span className="truncate font-display text-[17px] font-bold tracking-[-0.01em]">{title}</span>
+        <span className="truncate font-display text-[17px] font-semibold tracking-[-0.02em]">{title}</span>
       </div>
     </div>
   )
@@ -230,7 +227,7 @@ export function PageHeader({ title, subtitle, actions, primary }: { title: strin
     <BackLink />
     <header className="mb-6 flex items-end justify-between gap-4 lg:mb-8">
       <div className="min-w-0">
-        <h1 ref={titleRef} className="text-[32px] leading-tight font-bold tracking-[-0.035em] lg:text-[36px]">{title}</h1>
+        <h1 ref={titleRef} className="text-[32px] leading-[1.08] font-semibold tracking-[-0.045em] lg:text-[40px]">{title}</h1>
         {subtitle && <p className="mt-1 text-[15px] text-soft">{subtitle}</p>}
       </div>
       {(actions || primary) && (

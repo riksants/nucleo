@@ -103,7 +103,7 @@ export function AccountPage() {
           <SectionTitle>Sincronização</SectionTitle>
           <div className="card divide-y divide-line overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3.5">
-              <span className="grid size-9 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+              <span className="grid size-9 place-items-center rounded-xl icon-tile">
                 <Cloud size={18} />
               </span>
               <span className="flex-1 text-[15px]">{syncLabel(syncStatus)}</span>

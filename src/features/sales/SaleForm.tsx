@@ -172,7 +172,7 @@ export function PaymentKind({ general }: { general: boolean }) {
   return general ? (
     <span className="rounded-full bg-tint/[0.06] px-2 py-0.5 text-[12px] font-medium text-soft">Pagamento geral</span>
   ) : (
-    <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[12px] font-medium text-accent-hi">Pagamento específico</span>
+    <span className="rounded-full bg-tint/[0.08] px-2 py-0.5 text-[12px] font-medium text-ink">Pagamento específico</span>
   )
 }
 

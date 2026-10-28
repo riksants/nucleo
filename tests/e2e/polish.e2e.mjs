@@ -40,8 +40,8 @@ try {
   await b.send('Page.addScriptToEvaluateOnNewDocument', { source: `document.addEventListener('DOMContentLoaded', () => document.getElementById('splash')?.remove())` })
   await b.goto(BASE)
   await sleep(1500)
-  const onboardLogo = await b.eval(`(() => { const svgs = [...document.querySelectorAll('#root svg[viewBox="-500 -500 1000 1000"]')]; return { count: svgs.length, pieces: svgs[0]?.querySelectorAll('path').length ?? 0, oldRing: !!document.querySelector('#root svg circle[r="15"]') } })()`)
-  r.check('onboarding mostra a logo nova (4 peças), não o círculo antigo', onboardLogo.count >= 1 && onboardLogo.pieces === 4 && !onboardLogo.oldRing, JSON.stringify(onboardLogo))
+  const onboardLogo = await b.eval(`(() => { const svgs = [...document.querySelectorAll('#root svg[viewBox="254 254 746 746"]')]; return { count: svgs.length, pieces: svgs[0]?.querySelectorAll('path').length ?? 0, oldRing: !!document.querySelector('#root svg circle[r="15"]') } })()`)
+  r.check('onboarding mostra o "N" (2 peças), não o círculo antigo', onboardLogo.count >= 1 && onboardLogo.pieces === 2 && !onboardLogo.oldRing, JSON.stringify(onboardLogo))
 
   // Onboarding already created the database in the current version: start from scratch for the seeded user.
   await b.goto(BASE + 'favicon.svg')
@@ -162,8 +162,8 @@ try {
   await b.desktop()
   await b.goto(BASE + '#/')
   await sleep(1200)
-  const side = await b.eval(`(() => { const s = document.querySelector('aside svg[viewBox="-500 -500 1000 1000"]'); return { pieces: s ? s.querySelectorAll('path').length : 0, oldRing: !!document.querySelector('aside svg circle[r="15"]') } })()`)
-  r.check('barra lateral (computador) com a logo nova', side.pieces === 4 && !side.oldRing, JSON.stringify(side))
+  const side = await b.eval(`(() => { const s = document.querySelector('aside svg[viewBox="254 254 746 746"]'); return { pieces: s ? s.querySelectorAll('path').length : 0, oldRing: !!document.querySelector('aside svg circle[r="15"]') } })()`)
+  r.check('barra lateral (computador) com o "N"', side.pieces === 2 && !side.oldRing, JSON.stringify(side))
 } catch (err) {
   r.results.push('ERROR ' + err.message)
   await b.shot('polish-erro').catch(() => {})

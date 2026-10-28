@@ -69,7 +69,7 @@ function Part({ text, open, onToggle, onRemove, children, placeholder }: { text:
 }
 
 function Heading({ children }: { children: ReactNode }) {
-  return <p className="mb-2 text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">{children}</p>
+  return <p className="mb-2 label-mono text-faint">{children}</p>
 }
 
 function TokenChips({ kinds, onAdd }: { kinds: RuleTriggerKind; onAdd(token: string): void }) {
@@ -517,8 +517,8 @@ export function RuleBuilder({ open, onClose, initial, existing, onSaved }: { ope
           {draft.chain && <p className="mt-2 text-[13px] leading-relaxed text-warn">Atenção: o que esta regra fizer (uma tarefa criada, um status mudado, uma reserva) poderá iniciar outras regras. No máximo 3 regras em sequência, nenhuma repetida; se houver risco de repetição, a cadeia para.</p>}
         </section>
 
-        <section className="rounded-[var(--radius-field)] bg-accent/8 px-4 py-3.5">
-          <p className="text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Em resumo</p>
+        <section className="rounded-[var(--radius-field)] border border-line bg-tint/[0.04] px-4 py-3.5">
+          <p className="label-mono text-faint">Em resumo</p>
           <p className="mt-1 text-[15px] leading-relaxed">{sentence.summary}</p>
           {warn.map((w) => (
             <p key={w} className="mt-2 text-[13px] leading-relaxed text-soft">

@@ -1,5 +1,5 @@
-// Abertura (referência em vídeo): logo parada → cápsula roxa estreita sobe (cabeça com mini logo) → coluna →
-// alarga até a tela inteira → o roxo sobe e sai revelando o app real. App carrega por baixo, nada sobra depois,
+// Abertura (referência em vídeo): "N" parado → cápsula vermelhão estreita sobe (cabeça com mini "N") → coluna →
+// alarga até a tela inteira → o vermelhão sobe e sai revelando o app real. App carrega por baixo, nada sobra depois,
 // não repete ao trocar de seção, toque pula, "reduzir movimento" e sem flash branco. Modo local.
 import { writeFileSync } from 'node:fs'
 import { launch, OUT } from './cdp.mjs'
@@ -77,7 +77,7 @@ try {
   await sleep(350)
   await shot('intro-1-logo')
   const early = await b.eval(`(() => { const l = document.querySelector('#splash .nl-logo'); const r = l.getBoundingClientRect(); return { bg: getComputedStyle(document.body).backgroundColor, logo: Math.round(r.width), pieces: document.querySelectorAll('#nl-mark path').length, vw: innerWidth } })()`)
-  r.check('abre com a logo inteira (4 peças) parada sobre o fundo escuro', early.bg === 'rgb(11, 10, 16)' && early.pieces === 4 && early.logo > early.vw * 0.18 && early.logo < early.vw * 0.27, JSON.stringify(early))
+  r.check('abre com o "N" inteiro (2 peças) parado sobre o fundo escuro', early.bg === 'rgb(10, 10, 11)' && early.pieces === 2 && early.logo > early.vw * 0.18 && early.logo < early.vw * 0.27, JSON.stringify(early))
   await until(`window.__open.end !== null`)
   await sleep(150)
   await shot('intro-2-app')
@@ -88,7 +88,7 @@ try {
   r.check('o app carregou por baixo durante a animação', t.appUnder)
   r.check('sem flash branco', !t.white)
   r.check('revelação só depois de alargar e com o app pronto (≥ 2,1 s, sem espera extra)', t.leave - t.splashAt >= 2050 && t.leave - Math.max(t.splashAt + 2100, t.readyAt) < 400, `revelou em ${Math.round(t.leave - t.splashAt)} ms (app pronto em ${Math.round(t.readyAt - t.splashAt)} ms)`)
-  r.check('o roxo sai pelo topo em ~0,56 s', t.end - t.leave >= 400 && t.end - t.leave <= 950, `${Math.round(t.end - t.leave)} ms`)
+  r.check('o vermelhão sai pelo topo em ~0,56 s', t.end - t.leave >= 400 && t.end - t.leave <= 950, `${Math.round(t.end - t.leave)} ms`)
   const after = await b.eval(`(() => { const root = document.getElementById('root'); return { splash: !!document.getElementById('splash'), rootStyle: root.getAttribute('style') || '' } })()`)
   r.check('no fim: nenhuma logo ou camada sobrando e o app intacto', !after.splash && after.rootStyle === '', JSON.stringify(after))
   r.check('revela direto a tela principal real (Início)', /Início/.test(await b.text()) && /SALDO|Saldo/.test(await b.text()))

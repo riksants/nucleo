@@ -6,6 +6,7 @@ import { computeInsights, HOME_LIMIT, markInsight, visibleInsights, type Insight
 import { addDaysToDate, useToday, weekStart, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import { Badge } from '../../ui/Display'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 const TONE: Record<InsightPriority, 'warn' | 'accent' | 'neutral'> = { high: 'warn', medium: 'accent', low: 'neutral' }
 const LABEL: Record<InsightPriority, string> = { high: 'alta', medium: 'média', low: 'baixa' }
@@ -98,7 +99,7 @@ export function AttentionCard() {
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
         >
           <AttentionButton all={all} top={top} />
         </motion.div>
@@ -111,7 +112,7 @@ function AttentionButton({ all, top }: { all: Insight[]; top: Insight[] }) {
   return (
     <button type="button" onClick={() => navigate('/assistant')} className="card block w-full p-4 text-left hover:border-line-strong">
       <span className="flex items-center gap-2.5">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warn/15 text-[13px] font-bold text-warn">{Math.min(all.length, 8)}</span>
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warn/15 text-[13px] font-semibold text-warn">{Math.min(all.length, 8)}</span>
         <span className="min-w-0 flex-1 text-[15px] font-semibold">
           {all.length === 1 ? '1 coisa pode precisar da sua atenção' : `${Math.min(all.length, 8)} coisas podem precisar da sua atenção`}
         </span>

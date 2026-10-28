@@ -23,7 +23,7 @@ function SectionRow({ section, count }: { section: ModuleDef; count?: number }) 
   const Icon = section.icon
   return (
     <a href={`#${section.path}`} className="tap flex min-h-16 items-center gap-3 px-4 py-2.5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl icon-tile">
         <Icon size={20} />
       </span>
       <span className="min-w-0 flex-1">

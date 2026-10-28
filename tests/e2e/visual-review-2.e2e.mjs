@@ -1,5 +1,5 @@
-// Revisão visual (itens 7–9): prioridade dita em palavras (não só pela cor); Configurações com ícones coloridos
-// por grupo e valores longos embaixo do rótulo (nada espremido); tema escuro com profundidade clara
+// Revisão visual (itens 7–9): prioridade dita em palavras (não só pela cor); Configurações com ícones graphite
+// (identidade RIMERA, out/2026; só sair/apagar em vermelho) e valores longos embaixo do rótulo (nada espremido); tema escuro com profundidade clara
 // (fundo < cartão < folha) e borda de luz no topo dos cartões. Modo local.
 import { launch } from './cdp.mjs'
 import { BASE, reporter, seedExistingUser } from './helpers.mjs'
@@ -60,9 +60,10 @@ try {
   await b.goto(BASE + '#/settings')
   await sleep(1200)
   const tiles = await b.eval(`(() => [...document.querySelectorAll('main [data-tile]')].map((t) => ({ tone: t.dataset.tile, bg: getComputedStyle(t).backgroundColor, icon: getComputedStyle(t).color })))()`)
-  const tones = new Set(tiles.map((t) => t.bg))
-  r.check('ícones com cor por grupo (≥ 5 cores diferentes)', tones.size >= 5, [...tones].join(' '))
-  r.check('glifo branco com contraste ≥ 3:1 em todos os ícones', tiles.every((t) => t.icon === 'rgb(255, 255, 255)' && contrast(t.icon, t.bg) >= 3), JSON.stringify(tiles.filter((t) => contrast(t.icon, t.bg) < 3)))
+  const ink = await b.eval(`getComputedStyle(document.querySelector('main h1')).color`)
+  const neutral = tiles.filter((t) => t.tone !== 'red')
+  r.check('ícones graphite com o glifo na cor do texto (contraste alto)', neutral.length >= 5 && neutral.every((t) => t.icon === ink), JSON.stringify(neutral.filter((t) => t.icon !== ink)))
+  r.check('só sair/apagar tem ícone vermelho, com glifo branco ≥ 3:1', tiles.filter((t) => t.tone === 'red').every((t) => t.icon === 'rgb(255, 255, 255)' && contrast(t.icon, t.bg) >= 3), JSON.stringify(tiles.filter((t) => t.tone === 'red')))
   const lineOf = (label) => b.eval(`(() => { const el = [...document.querySelectorAll('main span')].find((x) => x.textContent.trim() === ${JSON.stringify(label)} && !x.children.length); if (!el) return null; const r = el.getBoundingClientRect(); return { h: Math.round(r.height), bottom: r.bottom, lh: parseFloat(getComputedStyle(el).lineHeight) || 22 } })()`)
   const nav = await lineOf('Barra de navegação')
   r.check('"Barra de navegação" numa linha só', nav && nav.h <= nav.lh + 2, JSON.stringify(nav))

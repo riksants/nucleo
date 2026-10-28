@@ -68,7 +68,7 @@ export function MoneyCard({ week, today, isCurrent, snapshot, flat, prevFlat }: 
         {count ? (
           <div>
             <p className="text-[13px] text-soft">Saldo da semana</p>
-            <p className={`num mt-0.5 text-[28px] leading-tight font-bold [overflow-wrap:anywhere] ${net < 0 ? 'text-expense' : net > 0 ? 'text-income' : ''}`}>{formatMoney(net, cur, { sign: true })}</p>
+            <p className={`num mt-0.5 text-[28px] leading-tight font-semibold [overflow-wrap:anywhere] ${net < 0 ? 'text-expense' : net > 0 ? 'text-income' : ''}`}>{formatMoney(net, cur, { sign: true })}</p>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3">
               <Stat label="Gastou" value={formatMoney(expense, cur)} tone={expense ? 'text-expense' : ''} />
               <Stat label="Recebeu" value={formatMoney(income, cur)} tone={income ? 'text-income' : ''} />

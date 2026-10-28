@@ -88,7 +88,7 @@ function FinanceHome() {
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[14px] text-soft">Resultado do período</p>
-                <p className={`display-num mt-1 text-[30px] leading-tight font-bold ${totals.net < 0 ? 'text-expense' : totals.net > 0 ? 'text-income' : 'text-ink'}`}>
+                <p className={`display-num mt-1 text-[30px] leading-tight font-semibold ${totals.net < 0 ? 'text-expense' : totals.net > 0 ? 'text-income' : 'text-ink'}`}>
                   {totals.net > 0 ? '+' : ''}
                   {show(totals.net)}
                 </p>

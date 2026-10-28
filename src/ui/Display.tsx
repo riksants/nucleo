@@ -5,10 +5,12 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { TONE_BADGE, type Tone } from '../data/labels'
 import type { Cents, Currency } from '../data/types'
 import { formatMoney } from '../lib/money'
+import { EASE_OUT_SOFT } from '../lib/motion'
 
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {
   return (
-    <span className={`inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap ${TONE_BADGE[tone]}`}>
+    <span className={`inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ${TONE_BADGE[tone]}`}>
+      {tone === 'accent' && <span aria-hidden className="pixel" />}
       {children}
     </span>
   )
@@ -47,7 +49,7 @@ export function AnimatedMoney({ cents, currency, className }: { cents: Cents; cu
     }
     const controls = animate(mv, cents, {
       duration: 0.7,
-      ease: [0.22, 1, 0.36, 1],
+      ease: EASE_OUT_SOFT,
       onUpdate: (v) => setShown(Math.round(v)),
     })
     return () => controls.stop()
@@ -76,15 +78,15 @@ export function EmptyState({
     <motion.div
       initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }}
       animate={{ opacity: 1, transform: 'translateY(0px)' }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
       data-empty
       className={`flex flex-col items-center rounded-[var(--radius-card)] bg-tint/[0.03] text-center ${compact ? 'px-5 py-5' : 'px-6 py-7'}`}
     >
-      <div aria-hidden className={`mb-3 grid place-items-center rounded-xl bg-accent/12 text-accent-hi ${compact ? 'size-9 [&_svg]:size-[18px]' : 'size-10 [&_svg]:size-5'}`}>{icon}</div>
-      <p className="text-[16px] font-semibold tracking-tight">{title}</p>
-      {text && <p className="mt-1 max-w-72 text-[14px] leading-relaxed text-soft">{text}</p>}
+      <div aria-hidden className={`icon-tile mb-3 grid place-items-center rounded-xl ${compact ? 'size-9 [&_svg]:size-[18px]' : 'size-11 [&_svg]:size-5'}`}>{icon}</div>
+      <p className="text-[16px] font-semibold tracking-[-0.02em]">{title}</p>
+      {text && <p className="mt-1 max-w-72 text-[14px] leading-relaxed text-pretty text-soft">{text}</p>}
       {action && onAction && (
-        <button type="button" onClick={onAction} className="press mt-4 inline-flex h-11 items-center rounded-full bg-accent/12 px-5 text-[15px] font-semibold text-accent-hi hover:bg-accent/18">
+        <button type="button" onClick={onAction} className="press mt-4 inline-flex h-11 items-center rounded-full px-5 text-[15px] font-medium tracking-[-0.01em] text-ink ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]">
           {action}
         </button>
       )}
@@ -103,7 +105,7 @@ export function SearchField({ value, onChange, placeholder = 'Buscar', autoFocus
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         enterKeyHint="search"
-        className="h-12 w-full rounded-2xl border border-line bg-surface pr-10 pl-10 text-ink placeholder:text-faint focus:border-accent-hi/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+        className="h-12 w-full rounded-[var(--radius-field)] border border-line bg-surface pr-10 pl-10 text-ink transition-colors placeholder:text-faint focus:border-accent/70 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
       />
       {value && (
         <button type="button" aria-label="Limpar busca" onClick={() => onChange('')} className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-faint hover:text-ink">
@@ -118,7 +120,7 @@ export function SearchField({ value, onChange, placeholder = 'Buscar', autoFocus
 export function SectionTitle({ children, action, onAction }: { children: ReactNode; action?: string; onAction?(): void }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
-      <h2 className="text-[19px] leading-tight font-bold">{children}</h2>
+      <h2 className="text-[19px] leading-tight font-semibold tracking-[-0.03em]">{children}</h2>
       {action && (
         <button type="button" onClick={onAction} className="hit relative shrink-0 text-[14px] font-semibold text-soft underline decoration-line-strong underline-offset-4 hover:text-ink">
           {action}

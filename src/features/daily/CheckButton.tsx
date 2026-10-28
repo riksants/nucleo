@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Minus } from 'lucide-react'
 import type { OccurrenceStatus } from '../../core/completions'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 /** Same circle as tasks, plus a neutral "skipped" state (never shown as done). */
 export function CheckButton({ status, onClick, label }: { status: OccurrenceStatus; onClick(): void; label: string }) {
@@ -15,7 +16,7 @@ export function CheckButton({ status, onClick, label }: { status: OccurrenceStat
           borderColor: done ? 'var(--color-accent)' : status === 'skipped' ? 'var(--color-check-line-soft)' : 'var(--color-check-line)',
           scale: done ? [1, 1.1, 1] : 1,
         }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
       >
         {status === 'skipped' ? (
           <Minus size={14} className="text-faint" strokeWidth={2.6} />

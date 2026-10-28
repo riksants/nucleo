@@ -105,7 +105,7 @@ export function MigrationOffer({ summary, onDone }: { summary: LocalSummary; onD
     <div className="flex min-h-dvh flex-col px-6 pt-[calc(env(safe-area-inset-top)+28px)] pb-[calc(env(safe-area-inset-bottom)+24px)]">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex-1">
-          <div className="grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+          <div className="grid size-12 place-items-center rounded-2xl icon-tile">
             <HardDriveUpload size={24} />
           </div>
           <h1 className="mt-6 text-[28px] leading-tight font-semibold tracking-[-0.03em]">Dados neste aparelho</h1>

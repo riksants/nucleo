@@ -27,6 +27,7 @@ import { useStore } from '../../data/store'
 import type { Transaction } from '../../data/types'
 import { formatDateTime, formatDay } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 const TYPE_ICON = { in: ArrowDownLeft, out: ArrowUpRight, adjust: SlidersHorizontal }
 
@@ -71,7 +72,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
   return (
     <button type="button" onClick={() => onOpen(tx)} className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-3 text-left transition-colors hover:bg-tint/[0.03] active:bg-tint/[0.04]">
       {tx.source ? (
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent/14 font-display text-[14px] font-extrabold text-accent-hi">{initials(tx)}</span>
+        <span className="grid size-11 shrink-0 place-items-center rounded-full icon-tile text-[14px] font-semibold tracking-[-0.02em]">{initials(tx)}</span>
       ) : (
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-raised text-ink">
           <Icon size={20} />
@@ -104,8 +105,8 @@ export function GroupedTransactions({ items, onOpen }: { items: Transaction[]; o
   return (
     <div className="space-y-5">
       {groups.map((g) => (
-        <motion.section key={g.day} initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
-          <h3 className="mb-1 px-2 font-sans text-[13px] font-bold tracking-normal text-faint">{g.day}</h3>
+        <motion.section key={g.day} initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}>
+          <h3 className="mb-1 px-2 font-sans text-[13px] font-semibold tracking-normal text-faint">{g.day}</h3>
           <div className="divide-y divide-line">
             {g.items.map((tx) => (
               <TransactionRow key={tx.id} tx={tx} onOpen={onOpen} showDay={false} />

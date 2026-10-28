@@ -1,98 +1,106 @@
-@import '@fontsource-variable/figtree';
-@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 @import 'tailwindcss';
 
 /* "Reduzir transparência" on the device: glass surfaces become solid (same color, no blur). */
 @custom-variant reduce-transparency (@media (prefers-reduced-transparency: reduce));
 
 /*
- * Two themes, one language: dark (default values below) and light (:root[data-theme='light']).
- * index.html sets data-theme before the first paint (device setting, or the choice in Configurações).
- * - accent: the fill (strong purple) in both themes; text on it uses on-accent (white).
- * - accent-hi: accent as TEXT/lines — light lavender on dark, deep purple on light.
- * - tint: the color of hover/press overlays and soft fills — white on dark, ink on light.
- * - depth (dark): bg < surface (cards) < sheet (things that come over the page); cards carry a faint light
- *   top edge, like light from above. Light theme: white cards with a soft shadow instead.
+ * Identity shared with the RIMERA studio site: warm near-black, paper-white text, one vermilion accent, Geist.
+ * Two themes, one language: dark (default values below) and light (:root[data-theme='light'], the site's
+ * "paper" sections). index.html sets data-theme before the first paint (device setting, or Configurações).
+ * - accent: the vermilion FILL — actions (primary buttons, "+"), "on" states (done, switched on) and the
+ *   brand pixel. Where you ARE (tab, segment, tab underline) is a paper/ink pill instead, like the site's
+ *   light button, so vermilion always means "act". Text on it is ink (on-accent), never white
+ *   (white on vermilion is 3.1:1; ink is 6.4:1).
+ * - accent-hi: accent as TEXT/lines — vermilion on dark, a deeper burnt orange on paper (≥4.5:1).
+ * - tint: the color of hover/press overlays and soft fills — paper on dark, ink on light.
+ * - depth: bg < surface (cards) < sheet (things that come over the page) < raised (fields) < elevated.
+ *   Flat like the site: surfaces separate by a step in tone and a hairline (cards ≥1.15:1 against the page,
+ *   plus a faint light top edge in dark), not by drop shadows.
+ * - income / expense / warn / goal keep their meaning and stay apart from the accent (expense is a
+ *   rose red, warn an amber; neither is the vermilion of actions).
  */
 @theme {
-  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', monospace;
 
-  --color-bg: #0b0a10;
-  --color-surface: #1c1b27;
-  --color-sheet: #22202e;
-  --color-raised: #262433;
-  --color-elevated: #2e2b3c;
-  --color-line: rgb(255 255 255 / 0.08);
-  --color-line-strong: rgb(255 255 255 / 0.13);
-  --color-card-border: rgb(255 255 255 / 0.05);
-  --color-card-edge: rgb(255 255 255 / 0.07);
+  --color-bg: #0a0a0b;
+  --color-surface: #1c1c1f;
+  --color-sheet: #212124;
+  --color-raised: #262629;
+  --color-elevated: #2e2e32;
+  --color-line: rgb(237 235 230 / 0.08);
+  --color-line-strong: rgb(237 235 230 / 0.15);
+  --color-card-border: rgb(237 235 230 / 0.07);
+  --color-card-edge: rgb(237 235 230 / 0.06);
   --card-shadow: inset 0 1px 0 var(--color-card-edge);
-  --color-nav: #0b0a10;
-  --color-check-line: rgb(255 255 255 / 0.24);
-  --color-check-line-soft: rgb(255 255 255 / 0.12);
+  --color-nav: #0a0a0b;
+  --color-check-line: rgb(237 235 230 / 0.28);
+  --color-check-line-soft: rgb(237 235 230 / 0.13);
 
-  --color-ink: #f2f1f8;
-  --color-soft: #aba8bc;
-  --color-faint: #8c899f; /* ≥4.5:1 on the app surfaces (WCAG AA for small text) */
+  --color-ink: #edebe6;
+  --color-soft: #b5b2ab;
+  --color-faint: #9b9993; /* ≥4.5:1 on every app surface (WCAG AA for small text) */
 
-  --color-accent: #6d3bff;
-  --color-accent-hi: #b9a3ff;
-  --color-accent-deep: #261a52;
-  --color-on-accent: #ffffff;
-  --color-accent-on-white: #5a2ee6;
-  --color-tint: #ffffff;
+  --color-accent: #ff5b2e;
+  --color-accent-soft: #ff7a52;
+  --color-accent-hi: #ff6b3d;
+  --color-accent-deep: #2a140c;
+  --color-on-accent: #0a0a0b;
+  /* Fixed, theme-independent: the site's two base tones, for things drawn on the vermilion. */
+  --color-coal: #0a0a0b;
+  --color-paper: #edebe6;
+  --color-tint: #edebe6;
   --color-shade: #000000;
-  --color-income: #5fdc9c;
-  --color-expense: #ff8a7a;
-  --color-warn: #ffc357;
-  --color-goal: #67d4f0;
+  --color-income: #4cd38a;
+  --color-expense: #ff6584;
+  --color-warn: #f5b23d;
+  --color-goal: #5ccfe6;
 
-  /* Settings icon tiles (same in both themes; white glyph on top, ≥3:1). */
-  --color-tile-blue: #2563eb;
-  --color-tile-teal: #0d9488;
-  --color-tile-green: #16a34a;
-  --color-tile-orange: #ea580c;
-  --color-tile-sky: #0284c7;
-  --color-tile-gray: #64748b;
+  /* Settings: the one solid icon tile (leaving or erasing), white glyph on top (≥3:1). The rest are icon-tile. */
   --color-tile-red: #e11d48;
 
-  --radius-card: 1.5rem;
-  --radius-field: 1rem;
+  --radius-card: 1.125rem;
+  --radius-field: 0.875rem;
 
-  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Motion vocabulary: the site's expo ease-out for things arriving or answering. */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 :root[data-theme='light'] {
-  --color-bg: #f4f3f8;
-  --color-surface: #ffffff;
-  --color-sheet: #ffffff;
-  --color-raised: #efeef5;
+  --color-bg: #efede8;
+  --color-surface: #fbfaf7;
+  --color-sheet: #fbfaf7;
+  --color-raised: #e7e4dd;
   --color-elevated: #ffffff;
-  --color-line: rgb(21 19 31 / 0.09);
-  --color-line-strong: rgb(21 19 31 / 0.16);
-  --color-card-border: transparent;
+  --color-line: rgb(10 10 11 / 0.09);
+  --color-line-strong: rgb(10 10 11 / 0.17);
+  --color-card-border: rgb(10 10 11 / 0.07);
   --color-card-edge: transparent;
-  --card-shadow: 0 1px 2px rgb(21 19 31 / 0.05), 0 0 0 1px rgb(21 19 31 / 0.03);
-  --color-nav: #ffffff;
-  --color-check-line: rgb(21 19 31 / 0.3);
-  --color-check-line-soft: rgb(21 19 31 / 0.14);
+  --card-shadow: none;
+  --color-nav: #fbfaf7;
+  --color-check-line: rgb(10 10 11 / 0.32);
+  --color-check-line-soft: rgb(10 10 11 / 0.15);
 
-  --color-ink: #15131f;
-  --color-soft: #4e4b5e;
-  --color-faint: #625f73;
+  --color-ink: #0a0a0b;
+  --color-soft: #4a4843;
+  --color-faint: #615e58;
 
-  --color-accent: #6d3bff;
-  --color-accent-hi: #5a2ee6;
-  --color-accent-deep: #ece5ff;
-  --color-on-accent: #ffffff;
-  --color-accent-on-white: #5a2ee6;
-  --color-tint: #15131f;
-  --color-shade: rgb(21 19 31 / 0.35);
-  --color-income: #157a4a;
-  --color-expense: #c0392b;
-  --color-warn: #9a5b00;
-  --color-goal: #0e7490;
+  --color-accent: #ff5b2e;
+  --color-accent-soft: #ff7a52;
+  --color-accent-hi: #b8350c;
+  --color-accent-deep: #fde4d9;
+  --color-on-accent: #0a0a0b;
+  --color-tint: #0a0a0b;
+  --color-shade: rgb(10 10 11 / 0.3);
+  --color-income: #0f6e43;
+  --color-expense: #c42149;
+  --color-warn: #8a5800;
+  --color-goal: #0b6a85;
 }
 
 @layer base {
@@ -114,14 +122,23 @@
     background: var(--color-bg);
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    caret-color: var(--color-accent);
   }
 
-  /* Headings speak in the display face; the body stays in Figtree. */
+  /* One family (Geist, like the site): headings get their presence from weight and tight tracking,
+     which tightens further as the size grows (set per heading). */
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  * {
+    scrollbar-color: var(--color-line-strong) transparent;
   }
 
   button {
@@ -143,16 +160,51 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-accent) 45%, transparent);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  /* Theme switch (lib/theme.ts): a quick cross-fade, so a dark↔light change never flashes. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 220ms;
+    animation-timing-function: ease;
   }
 }
 
-/* Money has two voices only: display-num for THE big number of a screen (balance, period result);
-   every other amount uses num (the body face, tabular) — same font in lists, tiles and summaries. */
+/* Money has two voices only: display-num for THE big number of a screen (balance, period result), set
+   heavy and tight like the site's display lines; every other amount uses num (tabular, same weight as
+   the text around it) — same voice in lists, tiles and summaries. */
 @utility display-num {
   font-family: var(--font-display);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.042em;
+}
+
+/* Small structural label in the site's mono voice (group names, field groups), never above a heading. */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Neutral icon tile (lists, empty states): graphite, so the vermilion stays for actions and the current choice. */
+@utility icon-tile {
+  background: color-mix(in oklab, var(--color-tint) 6%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+  color: var(--color-ink);
+}
+
+/* The site's mark: a small vermilion square (wordmark, current item). */
+@utility pixel {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  background: var(--color-accent);
 }
 
 @utility num {
@@ -183,9 +235,15 @@
 }
 
 @utility press {
-  transition: transform 120ms var(--ease-out-soft), background-color 150ms, opacity 150ms;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
   &:active {
     transform: scale(0.97);
+    transition-duration: 100ms;
   }
 }
 

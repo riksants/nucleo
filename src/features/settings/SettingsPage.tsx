@@ -33,24 +33,28 @@ import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
 
 
-/** Icon tiles in the iOS way: one solid color per group, white glyph — the groups read apart at a glance. */
+/**
+ * Icon tiles: graphite with a paper glyph, the same tile as Mais — the groups read apart by their headings, and
+ * color stays for meaning. Only red (leaving or erasing) keeps a solid fill.
+ */
 type TileTone = 'blue' | 'purple' | 'teal' | 'green' | 'orange' | 'sky' | 'gray' | 'red'
+const NEUTRAL = 'icon-tile'
 const TILE: Record<TileTone, string> = {
-  blue: 'bg-tile-blue',
-  purple: 'bg-accent',
-  teal: 'bg-tile-teal',
-  green: 'bg-tile-green',
-  orange: 'bg-tile-orange',
-  sky: 'bg-tile-sky',
-  gray: 'bg-tile-gray',
-  red: 'bg-tile-red',
+  blue: NEUTRAL,
+  purple: NEUTRAL,
+  teal: NEUTRAL,
+  green: NEUTRAL,
+  orange: NEUTRAL,
+  sky: NEUTRAL,
+  gray: NEUTRAL,
+  red: 'bg-tile-red text-white',
 }
 const GroupTone = createContext<TileTone>('purple')
 
 function Tile({ children, tone }: { children: ReactNode; tone?: TileTone }) {
   const groupTone = useContext(GroupTone)
   return (
-    <span aria-hidden data-tile={tone ?? groupTone} className={`grid size-8 shrink-0 place-items-center rounded-[9px] text-white ${TILE[tone ?? groupTone]}`}>
+    <span aria-hidden data-tile={tone ?? groupTone} className={`grid size-8 shrink-0 place-items-center rounded-[9px] ${TILE[tone ?? groupTone]}`}>
       {children}
     </span>
   )
@@ -450,7 +454,7 @@ export function SettingsPage() {
             />
           ))}
           <Row label={ratesLoading ? 'Atualizando…' : 'Atualizar cotação'} icon={<RefreshCw size={18} className={ratesLoading ? 'animate-spin' : ''} />} onClick={update} />
-          <Row label="Definir taxa manual" icon={<span className="text-[16px] font-bold">≈</span>} onClick={() => setSheet('rates')} />
+          <Row label="Definir taxa manual" icon={<span className="text-[16px] font-semibold">≈</span>} onClick={() => setSheet('rates')} />
         </Group>
 
         {isEnabled(settings, 'accounts') && vault.exists && (

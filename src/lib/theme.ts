@@ -14,7 +14,7 @@ export const THEME_OPTIONS: { value: ThemePref; label: string }[] = [
 ]
 
 /** Browser chrome color (status bar / tab) per theme: the page background. */
-const CHROME = { dark: '#0b0a10', light: '#f4f3f8' } as const
+const CHROME = { dark: '#0a0a0b', light: '#efede8' } as const
 const QUERY = '(prefers-color-scheme: dark)'
 
 let current: ThemePref = readPref<ThemePref>('theme', 'auto')
@@ -30,7 +30,11 @@ function apply(pref: ThemePref) {
 export function setThemePref(pref: ThemePref) {
   current = pref
   writePref('theme', pref)
-  apply(pref)
+  // A short cross-fade instead of a hard jump between dark and light (opacity only, so it also suits
+  // "Reduzir movimento"; index.css sets its 220 ms). Browsers without view transitions switch at once.
+  const doc = document as Document & { startViewTransition?: (update: () => void) => unknown }
+  if (typeof doc.startViewTransition === 'function') doc.startViewTransition(() => apply(pref))
+  else apply(pref)
   listeners.forEach((l) => l())
 }
 

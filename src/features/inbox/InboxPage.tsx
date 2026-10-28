@@ -26,7 +26,7 @@ type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective
 function Choice({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint: string; onClick(): void }) {
   return (
     <button type="button" onClick={onClick} className="flex min-h-15 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent-hi">{icon}</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl icon-tile">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-medium">{label}</span>
         <span className="block text-[13px] text-faint">{hint}</span>

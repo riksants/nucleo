@@ -37,10 +37,12 @@ try {
     const tile = [...document.querySelectorAll('main .card p')].find((p) => p.previousElementSibling?.textContent.startsWith('Entrou em'))
     const hero = [...document.querySelectorAll('main span')].find((s) => /font-display/.test(s.className) && /\\d/.test(s.textContent))
     const row = [...document.querySelectorAll('main .num')].find((x) => /€/.test(x.textContent) && !x.closest('.grid-cols-2'))
-    return { tile: tile && ${family('tile')}, hero: hero && ${family('hero')}, row: row && ${family('row')} }
+    const voice = (el) => el && { family: getComputedStyle(el).fontFamily, weight: getComputedStyle(el).fontWeight, size: parseFloat(getComputedStyle(el).fontSize), tracking: parseFloat(getComputedStyle(el).letterSpacing) / parseFloat(getComputedStyle(el).fontSize) }
+    return { tile: voice(tile), hero: voice(hero), row: voice(row) }
   })()`)
-  r.check('só o saldo grande usa a fonte de destaque', /Bricolage/.test(fonts.hero ?? ''), JSON.stringify(fonts))
-  r.check('valores dos blocos usam a mesma fonte das listas', fonts.tile && fonts.row && fonts.tile === fonts.row && !/Bricolage/.test(fonts.tile), JSON.stringify(fonts))
+  // One family (Geist) everywhere; the big balance is the only display voice: large, semibold, tracked tight.
+  r.check('só o saldo grande usa a voz de destaque (grande, 600, espaçamento bem fechado)', fonts.hero && /Geist/.test(fonts.hero.family) && fonts.hero.weight === '600' && fonts.hero.size >= 40 && fonts.hero.tracking <= -0.04 && fonts.tile.tracking > -0.04 && fonts.row.tracking > -0.04, JSON.stringify(fonts))
+  r.check('valores dos blocos usam a mesma fonte das listas', fonts.tile && fonts.row && fonts.tile.family === fonts.row.family && /Geist/.test(fonts.tile.family), JSON.stringify(fonts))
 
   await b.goto(BASE + '#/week')
   await sleep(1600)
@@ -54,7 +56,7 @@ try {
   })()`)
   r.check('Semana: "+€ 1.154,10" numa linha só', week && week.value.includes('1.154,10') && week.h <= week.lh + 2, JSON.stringify(week))
   r.check('Semana: rótulos inteiros (nada de "saldo da sema…")', week && week.cut.length === 0, JSON.stringify(week?.cut))
-  r.check('Semana: mesma fonte dos outros valores', week && week.font === fonts.row, week?.font)
+  r.check('Semana: mesma fonte dos outros valores', week && week.font === fonts.row?.family, week?.font)
   await b.shot('visual-review-3-week')
 
   // ---------- 12) Empty states

@@ -10,9 +10,12 @@ interface SegmentedProps<V extends string> {
   label?: string
   /** pill (default): a sliding pill in a track · underline: tabs with a sliding underline (period of Financeiro). */
   variant?: 'pill' | 'underline'
-  /** glass: for the colored balance card (white on purple). */
-  tone?: 'default' | 'glass'
+  /** onAccent: drawn on the vermilion balance card (coal on vermilion). */
+  tone?: 'default' | 'onAccent'
 }
+
+/** Critically damped: the indicator settles in ~0.2 s without overshoot. */
+const SLIDE = { type: 'spring', stiffness: 500, damping: 45 } as const
 
 export function Segmented<V extends string>({ value, onChange, options, size = 'md', block, label, variant = 'pill', tone = 'default' }: SegmentedProps<V>) {
   const id = useId()
@@ -33,16 +36,16 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
               className={`relative flex h-11 shrink-0 items-end pb-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors disabled:opacity-35 ${active ? 'text-ink' : 'text-faint hover:text-soft'}`}
             >
               {o.label}
-              {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-accent" transition={{ type: 'spring', stiffness: 500, damping: 45 }} />}
+              {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[2px] bg-ink" transition={SLIDE} />}
             </button>
           )
         })}
       </div>
     )
   }
-  const glass = tone === 'glass'
+  const onAccent = tone === 'onAccent'
   return (
-    <div role="radiogroup" aria-label={label} className={`flex shrink-0 rounded-full border p-1 ${glass ? 'border-white/20 bg-white/12' : 'border-line bg-raised'} ${block ? 'w-full' : 'w-fit'}`}>
+    <div role="radiogroup" aria-label={label} className={`flex shrink-0 rounded-full border p-1 ${onAccent ? 'border-coal/15 bg-coal/[0.08]' : 'border-line bg-raised'} ${block ? 'w-full' : 'w-fit'}`}>
       {options.map((o) => {
         const active = o.value === value
         return (
@@ -53,15 +56,10 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
             aria-checked={active}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
-            className={`hit relative rounded-full font-semibold whitespace-nowrap transition-colors disabled:opacity-35 ${h} ${block ? 'flex-1' : ''} ${glass ? (active ? 'text-accent-on-white' : 'text-white/75 hover:text-white') : active ? 'text-ink' : 'text-faint hover:text-soft'}`}
+            className={`hit relative rounded-full font-medium whitespace-nowrap transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'flex-1' : ''} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-bg' : 'text-faint hover:text-soft'}`}
           >
-            {active && (
-              <motion.span
-                layoutId={id}
-                className={`absolute inset-0 rounded-full ${glass ? 'bg-white shadow-sm shadow-black/20' : 'bg-elevated shadow-sm shadow-shade/40 ring-1 ring-tint/[0.06]'}`}
-                transition={{ type: 'spring', stiffness: 500, damping: 45 }}
-              />
-            )}
+            {/* The current choice is a solid pill (paper on dark, ink on light; coal on the vermilion card). */}
+            {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-ink'}`} transition={SLIDE} />}
             <span className="relative">{o.label}</span>
           </button>
         )

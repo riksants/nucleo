@@ -199,7 +199,7 @@ function ModeChoice({ onPick }: { onPick(mode: PlannerMode): void }) {
     <div className="space-y-3">
       {options.map((o) => (
         <button key={o.mode} type="button" onClick={() => onPick(o.mode)} className="card press flex w-full items-center gap-4 p-5 text-left hover:border-line-strong">
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">{o.icon}</span>
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl icon-tile">{o.icon}</span>
           <span>
             <span className="block text-[17px] font-semibold tracking-tight">{o.title}</span>
             <span className="text-[14px] text-soft">{o.text}</span>

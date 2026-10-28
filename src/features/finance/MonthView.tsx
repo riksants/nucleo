@@ -159,7 +159,7 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
                       <span className="num shrink-0 font-medium">{formatMoney(c.amount, cur)}</span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-tint/[0.06]">
-                      <div className="h-full rounded-full bg-accent/70" style={{ width: `${max ? Math.max(3, Math.round((c.amount / max) * 100)) : 0}%` }} />
+                      <div className="h-full rounded-full bg-tint/45" style={{ width: `${max ? Math.max(3, Math.round((c.amount / max) * 100)) : 0}%` }} />
                     </div>
                   </div>
                 ))}

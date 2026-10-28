@@ -61,11 +61,11 @@ function ReplyView({ reply, onFollow, onChoose }: { reply: Reply; onFollow(text:
       )}
       {reply.rule && (
         <div className="card mt-2 space-y-2 px-4 py-3.5">
-          <p className="text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Quando</p>
+          <p className="label-mono text-faint">Quando</p>
           <p className="text-[15px] leading-snug first-letter:uppercase">{reply.rule.when}</p>
           {reply.rule.ifs.length > 0 && (
             <>
-              <p className="pt-1 text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Se</p>
+              <p className="pt-1 label-mono text-faint">Se</p>
               {reply.rule.ifs.map((x) => (
                 <p key={x} className="text-[15px] leading-snug first-letter:uppercase">
                   {x}
@@ -73,7 +73,7 @@ function ReplyView({ reply, onFollow, onChoose }: { reply: Reply; onFollow(text:
               ))}
             </>
           )}
-          <p className="pt-1 text-[12px] font-bold tracking-[0.12em] text-accent-hi uppercase">Faça</p>
+          <p className="pt-1 label-mono text-faint">Faça</p>
           {reply.rule.dos.map((x) => (
             <p key={x} className="text-[15px] leading-snug first-letter:uppercase">
               → {x}
@@ -206,7 +206,7 @@ export function AssistantPage() {
           )}
           {messages.map((m) =>
             m.from === 'me' ? (
-              <p key={m.id} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-accent/15 px-4 py-2.5 text-[15px] break-words">
+              <p key={m.id} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-[15px] break-words text-bg">
                 {m.text}
               </p>
             ) : (

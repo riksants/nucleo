@@ -7,12 +7,12 @@ import { Segmented } from './Segmented'
 import { AmountField } from './AmountField'
 
 const CONTROL =
-  'w-full rounded-[var(--radius-field)] border border-line bg-raised px-4 text-ink placeholder:text-faint transition-colors focus:border-accent-hi/70 focus:bg-elevated focus:outline-none'
+  'w-full rounded-[var(--radius-field)] border border-line bg-raised px-4 text-ink placeholder:text-faint transition-colors duration-150 focus:border-accent/80 focus:bg-elevated focus:outline-none'
 
 export function Field({ label, hint, error, children }: { label: string; hint?: ReactNode; error?: string | null; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-baseline justify-between gap-2 text-[13px] font-semibold text-soft">
+      <span className="mb-2 flex items-baseline justify-between gap-2 text-[13px] font-medium text-soft">
         {label}
         {hint && <span className="text-xs font-normal tracking-normal text-faint normal-case">{hint}</span>}
       </span>
@@ -81,7 +81,7 @@ export function CurrencyPicker({
   label?: string
   isDisabled?(c: Currency): boolean
   format?(c: Currency): string
-  tone?: 'default' | 'glass'
+  tone?: 'default' | 'onAccent'
 }) {
   const { settings } = useStore()
   const [searching, setSearching] = useState(false)
@@ -98,7 +98,7 @@ export function CurrencyPicker({
         aria-label="Outras moedas"
         title="Outras moedas"
         onClick={() => setSearching(true)}
-        className={`press hit relative grid shrink-0 place-items-center rounded-full border ${tone === 'glass' ? 'border-white/20 bg-white/12 text-white/85 hover:text-white' : 'border-line bg-raised text-soft hover:text-ink'} ${size === 'sm' ? 'size-10' : 'size-12'}`}
+        className={`press hit relative grid shrink-0 place-items-center rounded-full border ${tone === 'onAccent' ? 'border-coal/15 bg-coal/[0.08] text-coal/80 hover:text-coal' : 'border-line bg-raised text-soft hover:text-ink'} ${size === 'sm' ? 'size-10' : 'size-12'}`}
       >
         <Ellipsis size={18} />
       </button>

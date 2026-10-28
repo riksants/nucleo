@@ -12,7 +12,7 @@ export function SuggestionCard({ s, onCreate, compact }: { s: RuleSuggestion; on
   return (
     <div className="card px-4 py-4">
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-hi">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full icon-tile">
           <Lightbulb size={18} />
         </span>
         <span className="min-w-0 flex-1">

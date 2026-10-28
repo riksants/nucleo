@@ -12,9 +12,10 @@ import { useSession } from '../account/session'
 import { ModulePicker, starterModules } from '../settings/ModulePicker'
 import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
+import { EASE_OUT_SOFT } from '../../lib/motion'
 
 /** Step transitions on the GPU: the old step leaves quickly (120 ms), the new one settles in (220 ms). Reduced motion: fades only. */
-const STEP_EASE = [0.22, 1, 0.36, 1] as const
+const STEP_EASE = EASE_OUT_SOFT
 function stepVariants(reduce: boolean) {
   const shift = (px: number) => (reduce ? 'translateX(0px)' : `translateX(${px}px)`)
   return {
@@ -89,7 +90,7 @@ export function Onboarding() {
                   <ul className="mt-8 space-y-3">
                     {points.map((p) => (
                       <li key={p} className="flex items-center gap-3 text-[16px]">
-                        <span className="grid size-6 place-items-center rounded-full bg-accent/15 text-accent-hi">
+                        <span className="grid size-6 place-items-center rounded-full icon-tile">
                           <Check size={14} strokeWidth={2.6} />
                         </span>
                         {p}
@@ -126,7 +127,7 @@ export function Onboarding() {
                           aria-checked={active}
                           onClick={() => setCurrency(c)}
                           className={`press flex h-18 w-full items-center gap-4 rounded-[1.25rem] border px-5 text-left transition-colors ${
-                            active ? 'border-accent-hi bg-accent/10' : 'border-line bg-surface hover:border-line-strong'
+                            active ? 'border-ink bg-tint/[0.06]' : 'border-line bg-surface hover:border-line-strong'
                           }`}
                         >
                           <span className="grid h-11 min-w-11 place-items-center rounded-2xl bg-elevated px-1.5 text-[15px] font-semibold">{currencyInfo(c).symbol}</span>

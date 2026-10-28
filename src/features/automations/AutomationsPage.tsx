@@ -279,7 +279,7 @@ export function AutomationsPage() {
           <SectionTitle>Automações</SectionTitle>
           <AutomationSettings />
           <button type="button" onClick={() => navigate('/rules')} className="card mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent/12 text-accent-hi">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full icon-tile">
               <Wand2 size={18} />
             </span>
             <span className="min-w-0 flex-1">

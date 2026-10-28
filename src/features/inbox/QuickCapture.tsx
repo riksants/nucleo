@@ -108,7 +108,7 @@ export function QuickCaptureButton() {
         disabled={action?.disabled}
         onClick={() => (action ? action.onPress() : setOpen(true))}
         data-hidden={hidden}
-        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:brightness-[0.96] disabled:opacity-40 lg:hidden"
+        className="fab fixed right-4 z-40 grid size-14 place-items-center rounded-full bg-accent text-on-accent shadow-xl shadow-shade/50 hover:bg-accent-soft disabled:opacity-40 lg:hidden"
         style={{ bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 84px)' }}
       >
         <Plus size={24} strokeWidth={2.4} />
@@ -128,7 +128,7 @@ export function SidebarCapture() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-5 flex h-10 w-full items-center gap-2.5 rounded-xl bg-accent/12 px-3 text-sm font-medium text-accent-hi transition-colors hover:bg-accent/20"
+        className="press mb-5 flex h-10 w-full items-center gap-2.5 rounded-full bg-accent px-4 text-sm font-medium tracking-[-0.01em] text-on-accent hover:bg-accent-soft"
       >
         <Plus size={16} />
         Capturar

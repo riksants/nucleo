@@ -212,7 +212,7 @@ export function ImportPage() {
       {step === 'pick' && (
         <div className="max-w-xl space-y-5">
           <button type="button" onClick={() => input.current?.click()} className="card flex w-full flex-col items-center gap-3 border-dashed px-6 py-10 text-center transition-colors hover:bg-tint/[0.03]">
-            <span className="grid size-12 place-items-center rounded-full bg-accent/12 text-accent-hi">
+            <span className="grid size-12 place-items-center rounded-full icon-tile">
               <FileUp size={24} />
             </span>
             <span className="text-[17px] font-semibold">Escolher arquivo</span>

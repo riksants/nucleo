@@ -83,7 +83,7 @@ export function WeekPage() {
 
       {suggestPlan && (
         <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card mb-5 flex w-full items-center gap-3 border-accent-hi/30 p-4 text-left hover:border-accent-hi/50">
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl icon-tile">
             <MessageCircle size={20} />
           </span>
           <span className="min-w-0 flex-1">
@@ -166,7 +166,7 @@ export function WeekPage() {
 
           {isEnabled(settings, 'life') && (
             <button type="button" onClick={() => navigate('/life', { view: 'changes' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl icon-tile">
                 <GitCompareArrows size={20} />
               </span>
               <span className="min-w-0 flex-1">
@@ -179,7 +179,7 @@ export function WeekPage() {
 
           {w.isCurrent && (
             <button type="button" onClick={() => navigate('/week', { view: 'plan' })} className="card flex w-full items-center gap-3 p-4 text-left hover:border-line-strong">
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent-hi">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl icon-tile">
                 <CalendarRange size={20} />
               </span>
               <span className="min-w-0 flex-1">
