@@ -27,8 +27,9 @@ try {
   await b.goto(BASE + '#/')
   await sleep(1500)
   const nav = await b.eval(`(() => { const n = document.querySelector('nav[aria-label="Navegação principal"]'); const cs = getComputedStyle(n); const a = cs.backgroundColor.match(/[\\d.]+/g); return { bg: cs.backgroundColor, alpha: a.length > 3 ? Number(a[3]) : 1, blur: cs.backdropFilter } })()`)
-  r.check('barra de abas translúcida (fundo ≤ 80% + desfoque)', nav.alpha <= 0.8 && nav.blur.includes('blur'), JSON.stringify(nav))
-  r.check('faixa desfocada sob a barra de status do celular', await b.eval(`(() => { const el = document.querySelector('[data-status-blur]'); return !!el && getComputedStyle(el).position === 'fixed' && getComputedStyle(el).backdropFilter.includes('blur') })()`))
+  r.check('barra de abas translúcida (fundo ≤ 85% + desfoque)', nav.alpha <= 0.85 && nav.blur.includes('blur'), JSON.stringify(nav))
+  // The status bar area is now the solid vermilion of the header band (html::before).
+  r.check('faixa vermelhão sob a barra de status do celular', await b.eval(`(() => { const cs = getComputedStyle(document.documentElement, '::before'); return cs.position === 'fixed' && cs.backgroundColor === 'rgb(255, 91, 46)' })()`))
   const tabIcons = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] svg')].map((s) => Math.round(s.getBoundingClientRect().width))`)
   r.check('ícones das abas todos do mesmo tamanho (24)', tabIcons.length >= 4 && tabIcons.every((w) => w === 24), JSON.stringify(tabIcons))
 

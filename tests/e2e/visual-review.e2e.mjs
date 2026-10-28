@@ -44,7 +44,7 @@ try {
   await b.eval(`window.scrollTo(0, 600)`)
   await sleep(400)
   s = await bar()
-  r.check('ao rolar, aparece a barra compacta translúcida com o nome da tela', s && s.opacity === '1' && s.blur.includes('blur'), JSON.stringify(s))
+  r.check('ao rolar, aparece a barra compacta vermelhão com o nome da tela', s && s.opacity === '1' && s.pe === 'auto', JSON.stringify(s))
   await b.eval(`window.scrollTo(0, 0)`)
   await sleep(400)
   r.check('voltando ao topo, ela some de novo', (await bar()).opacity === '0')

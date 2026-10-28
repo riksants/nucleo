@@ -61,7 +61,7 @@ try {
   await sleep(1200)
   const rowSel = 'main button.tap'
   const before = await b.eval(`getComputedStyle(document.querySelector(${JSON.stringify(rowSel)})).boxShadow`)
-  const rc = await b.eval(`(() => { const r = document.querySelector(${JSON.stringify(rowSel)}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })()`)
+  const rc = await b.eval(`(() => { const el = document.querySelector(${JSON.stringify(rowSel)}); el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })()`)
   // Same :active state a finger produces on iOS (React registers touch listeners, which iOS needs for :active).
   await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: rc.x, y: rc.y })
   await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rc.x, y: rc.y, button: 'left', clickCount: 1 })

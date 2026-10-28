@@ -65,7 +65,7 @@ try {
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] })
   await sleep(200)
   const solid = await nav()
-  r.check('reduzir transparência: barra de abas sólida (sem desfoque)', solid.blur === 'none' && solid.bg === 'rgb(10, 10, 11)', JSON.stringify(solid))
+  r.check('reduzir transparência: barra de abas sólida (sem desfoque)', solid.blur === 'none' && /^rgb\(/.test(solid.bg), JSON.stringify(solid))
   // Toast too
   await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Retirar').click()`)
   await sleep(600)

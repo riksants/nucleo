@@ -62,7 +62,8 @@ try {
   const tiles = await b.eval(`(() => [...document.querySelectorAll('main [data-tile]')].map((t) => ({ tone: t.dataset.tile, bg: getComputedStyle(t).backgroundColor, icon: getComputedStyle(t).color })))()`)
   const ink = await b.eval(`getComputedStyle(document.querySelector('main h1')).color`)
   const neutral = tiles.filter((t) => t.tone !== 'red')
-  r.check('ícones graphite com o glifo na cor do texto (contraste alto)', neutral.length >= 5 && neutral.every((t) => t.icon === ink), JSON.stringify(neutral.filter((t) => t.icon !== ink)))
+  // Menu lateral redesign: tiles are a soft vermilion tint with a vermilion glyph, the same on every row.
+  r.check('ícones com o mesmo tom vermelhão suave em todas as linhas', neutral.length >= 5 && neutral.every((t) => t.icon === neutral[0].icon && t.bg === neutral[0].bg) && neutral[0].icon !== ink, JSON.stringify(neutral[0]))
   r.check('só sair/apagar tem ícone vermelho, com glifo branco ≥ 3:1', tiles.filter((t) => t.tone === 'red').every((t) => t.icon === 'rgb(255, 255, 255)' && contrast(t.icon, t.bg) >= 3), JSON.stringify(tiles.filter((t) => t.tone === 'red')))
   const lineOf = (label) => b.eval(`(() => { const el = [...document.querySelectorAll('main span')].find((x) => x.textContent.trim() === ${JSON.stringify(label)} && !x.children.length); if (!el) return null; const r = el.getBoundingClientRect(); return { h: Math.round(r.height), bottom: r.bottom, lh: parseFloat(getComputedStyle(el).lineHeight) || 22 } })()`)
   const nav = await lineOf('Barra de navegação')
