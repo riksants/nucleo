@@ -7,8 +7,9 @@ Registrado em 2026-10-22, na Etapa 2 da auditoria.
 - **Aplicado pelo dono do projeto em 2026-10-24:** senha mínima 8 + "Letters and digits", "Secure password
   change", validade do código por e-mail 1800 s, token de acesso 900 s, limites (Rate Limits) conferidos,
   Site URL `https://hellonucleo.app/`; Redirect URLs: localhost, `hellonucleo.app` e `www.hellonucleo.app`.
-- **Captcha — app pronto, Supabase ainda desligado** (Authentication → Attack Protection; Cloudflare
-  Turnstile): única proteção real contra tentativas distribuídas, cadastros em massa e spam de e-mail. O app
+- **Captcha ligado no Supabase em 2026-10-28** (Authentication → Attack Protection; Cloudflare Turnstile).
+  Conferido em produção: sem token (ou com token falso) entrar, criar conta, recuperar senha e OTP são recusados;
+  pelo app, o token real passa nos três. É a única proteção real contra tentativas distribuídas, cadastros em massa e spam de e-mail. O app
   (`Captcha.tsx`, `VITE_TURNSTILE_SITE_KEY`) manda o token em Entrar, Criar conta, Recuperar senha e
   Reenviar e-mail. Ordem: publicar o app, conferir em produção, esperar os aparelhos atualizarem, e só
   então ligar no Supabase com a Secret Key. Desfazer = desligar a opção no Supabase.
@@ -53,7 +54,7 @@ dados certas; em produção, criar uma anotação, sincronizar, apagar e sincron
   histórico novo fica só no aparelho (as regras continuam rodando). Solução futura: apagar o histórico antigo.
 - **A acompanhar:** apagar no app deixa uma "lápide" que conta nas 200.000 linhas da conta. Não há como o
   usuário liberar isso pelo app; se uma conta chegar perto, o dono do projeto aumenta o limite.
-- Criar várias contas continua sendo possível: a defesa contra isso é o CAPTCHA no Supabase (ainda desligado).
+- Criar várias contas: a defesa é o CAPTCHA no Supabase (ligado em 2026-10-28).
 
 ## Auditoria, Etapas 4 a 10 (fechamento da Parte 1)
 
@@ -70,7 +71,6 @@ Falta, do dono do projeto:
 1. **Política de privacidade:** rascunho em `docs/privacidade-rascunho.html` (responsável: Riquelme Santos Lima),
    **fora do site** até existir um e-mail público de contato (o projeto não tem nenhum; `hellonucleo.app` não recebe
    e-mail). Depois: preencher, mover para `public/privacidade.html` e voltar o link em Conta.
-2. **CAPTCHA no Supabase** (seção Auth, acima): o app em produção já manda o token com a Site Key real.
 
 Opcional:
 - Ligar a extensão pg_cron e rodar `supabase/cron-manutencao.sql` (limpeza diária do histórico). Sem ela, cada
