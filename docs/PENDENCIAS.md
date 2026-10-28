@@ -55,23 +55,27 @@ dados certas; em produção, criar uma anotação, sincronizar, apagar e sincron
   usuário liberar isso pelo app; se uma conta chegar perto, o dono do projeto aumenta o limite.
 - Criar várias contas continua sendo possível: a defesa contra isso é o CAPTCHA no Supabase (ainda desligado).
 
-## Auditoria, Etapas 4 a 10 (branch `fix/etapas-4-10`)
+## Auditoria, Etapas 4 a 10 (fechamento da Parte 1)
 
-Registrado em 2026-10-27. Tudo implementado e testado localmente; **nada aplicado em produção**.
-Migração `20261027000000_auditoria_etapas_4_10.sql` (**ainda não aplicada no Supabase**). Ela também resolve o
-que ficou da Etapa 3 (A3 datas futuras, B4 collection/id, janela de `fire_at`) e corrige um defeito das cotas:
-**excluir uma conta com 2 ou mais registros falha hoje em produção** (erro de chave estrangeira em
-`quota_usage`, inclusive pelo painel do Supabase). Confirmado no Postgres 17 com o esquema atual.
+Registrado em 2026-10-27; **em produção desde 2026-10-28** (app no commit `dfebec7`).
+- Migração `20261027000000_auditoria_etapas_4_10.sql` aplicada pelo dono do projeto (`schema_version` com 11
+  linhas). Ela também fechou o que ficou da Etapa 3 (A3, B4, janela de `fire_at`) e corrigiu o defeito que impedia
+  excluir uma conta com 2 ou mais registros.
+- Backup diário ligado (secret `NUCLEO_BACKUP_DB_URL`, variável `NUCLEO_BACKUP_AGE_RECIPIENT`). O primeiro, em
+  2026-10-28, restaurou idêntico num banco vazio e também com a chave privada do dono, num Postgres local.
+- `scripts/verify-rls.mjs` contra a produção, com 2 contas de teste: 42/42. "Excluir conta" em produção, nas mesmas
+  contas (3 itens, uma edição com histórico, configurações e cotas): 15/15; as contas não entram mais e nada sobra.
 
-Depende do dono do projeto (nesta ordem):
-1. Aplicar a migração no SQL Editor; conferir com `select version from public.schema_version order by version;`.
-2. Opcional: ligar a extensão pg_cron (não está ligada) e rodar `supabase/cron-manutencao.sql` (limpeza diária
-   do histórico). Sem ela, cada conta limpa as próprias versões antigas ao editar.
-3. Backup: chave age, senha do `nucleo_backup`, secret e variável no GitHub (passo a passo em `docs/BACKUP.md`).
-4. Política de privacidade: rascunho em `docs/privacidade-rascunho.html`, **fora do site** até o dono definir o
-   e-mail público de contato. Depois: preencher, mover para `public/privacidade.html` e voltar o link em Conta.
-5. Antes de publicar as Edge Functions de IA: limite de gasto mensal no console da Anthropic.
-6. Opcional: `scripts/verify-rls.mjs` contra a produção com 2 contas de teste (cobre a migração nova).
+Falta, do dono do projeto:
+1. **Política de privacidade:** rascunho em `docs/privacidade-rascunho.html` (responsável: Riquelme Santos Lima),
+   **fora do site** até existir um e-mail público de contato (o projeto não tem nenhum; `hellonucleo.app` não recebe
+   e-mail). Depois: preencher, mover para `public/privacidade.html` e voltar o link em Conta.
+2. **CAPTCHA no Supabase** (seção Auth, acima): o app em produção já manda o token com a Site Key real.
+
+Opcional:
+- Ligar a extensão pg_cron e rodar `supabase/cron-manutencao.sql` (limpeza diária do histórico). Sem ela, cada
+  conta limpa as próprias versões antigas ao editar.
+- Antes de publicar as Edge Functions de IA: limite de gasto mensal no console da Anthropic.
 
 Conferido em produção (consulta somente leitura, 2026-10-27): Postgres 17.11; o usuário `postgres` cria papéis,
 ignora RLS e pode apagar em `auth.users` (o que a migração e `delete_my_account` precisam); `nucleo_backup` não
