@@ -74,7 +74,7 @@ try {
 
   await A.goto(BASE + '#/account')
   await A.sleep(600)
-  r.check('Conta mostra "Excluir conta"', (await A.text()).includes('Excluir conta'))
+  r.check('Conta mostra "Excluir conta" e a política de privacidade', (await A.text()).includes('Excluir conta') && (await A.text()).includes('Política de privacidade'))
   await A.click('Excluir conta', 'button')
   await A.sleep(500)
   r.check('a tela explica o que será apagado', (await A.text()).includes('Não dá para desfazer'))

@@ -67,10 +67,8 @@ Registrado em 2026-10-27; **em produção desde 2026-10-28** (app no commit `dfe
 - `scripts/verify-rls.mjs` contra a produção, com 2 contas de teste: 42/42. "Excluir conta" em produção, nas mesmas
   contas (3 itens, uma edição com histórico, configurações e cotas): 15/15; as contas não entram mais e nada sobra.
 
-Falta, do dono do projeto:
-1. **Política de privacidade:** rascunho em `docs/privacidade-rascunho.html` (responsável: Riquelme Santos Lima),
-   **fora do site** até existir um e-mail público de contato (o projeto não tem nenhum; `hellonucleo.app` não recebe
-   e-mail). Depois: preencher, mover para `public/privacidade.html` e voltar o link em Conta.
+**Parte 1 encerrada em 2026-10-28.** Política de privacidade publicada em `/privacidade.html` (responsável:
+Riquelme Santos Lima, contato supportnucleo@gmail.com), com link em Conta.
 
 Opcional:
 - Ligar a extensão pg_cron e rodar `supabase/cron-manutencao.sql` (limpeza diária do histórico). Sem ela, cada
