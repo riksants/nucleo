@@ -10,7 +10,7 @@ interface SegmentedProps<V extends string> {
   label?: string
   /** pill (default): a sliding pill in a track · underline: tabs with a sliding underline (period of Financeiro). */
   variant?: 'pill' | 'underline'
-  /** onAccent: drawn on the vermilion balance card (coal on vermilion). */
+  /** onAccent: drawn on the vermilion header band (coal on vermilion). */
   tone?: 'default' | 'onAccent'
 }
 
@@ -36,7 +36,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
               className={`relative flex h-11 shrink-0 items-end pb-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors disabled:opacity-35 ${active ? 'text-ink' : 'text-faint hover:text-soft'}`}
             >
               {o.label}
-              {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[2px] bg-ink" transition={SLIDE} />}
+              {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[3px] rounded-t-full bg-accent" transition={SLIDE} />}
             </button>
           )
         })}
@@ -56,10 +56,10 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
             aria-checked={active}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
-            className={`hit relative rounded-full font-medium whitespace-nowrap transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'flex-1' : ''} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-bg' : 'text-faint hover:text-soft'}`}
+            className={`hit relative rounded-full font-medium whitespace-nowrap transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'flex-1' : ''} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-accent-hi' : 'text-faint hover:text-soft'}`}
           >
-            {/* The current choice is a solid pill (paper on dark, ink on light; coal on the vermilion card). */}
-            {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-ink'}`} transition={SLIDE} />}
+            {/* The current choice: a soft vermilion pill with vermilion text (a coal pill on the vermilion band). */}
+            {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-accent/[0.14] ring-1 ring-accent/35 ring-inset'}`} transition={SLIDE} />}
             <span className="relative">{o.label}</span>
           </button>
         )
@@ -81,7 +81,7 @@ export function Chips<V extends string>({ value, onChange, options }: Omit<Segme
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={`press hit relative h-9 shrink-0 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${
-              active ? 'border-transparent bg-ink text-bg' : 'border-line bg-surface text-soft hover:text-ink'
+              active ? 'border-accent/40 bg-accent/[0.14] text-accent-hi' : 'border-line bg-surface text-soft hover:text-ink'
             }`}
           >
             {o.label}

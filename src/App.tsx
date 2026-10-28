@@ -4,6 +4,7 @@ import { lazyPage, whenIdle, type PreloadablePage } from './app/lazyPage'
 import { ALL_MODULE_IDS, enabledModules, isRouteAllowed, MODULE_BY_PATH, unseenModules } from './app/modules'
 import { navigate, useRoute, type RoutePath } from './app/router'
 import { Shell } from './app/Shell'
+import { openMenu } from './app/menu'
 import { DATABASE_BLOCKED } from './data/repository'
 import { useStore } from './data/store'
 import { useReceiptReconciler } from './data/useReceipts'
@@ -17,7 +18,6 @@ import { ClientsPage } from './features/clients/ClientsPage'
 import { FinancePage } from './features/finance/FinancePage'
 import { GoalsPage } from './features/goals/GoalsPage'
 import { HomePage } from './features/home/HomePage'
-import { MorePage } from './features/more/MorePage'
 import { NotesPage } from './features/notes/NotesPage'
 import { Onboarding } from './features/onboarding/Onboarding'
 import { PlannerPage } from './features/planner/PlannerPage'
@@ -60,7 +60,7 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/finance': FinancePage,
   '/projects': ProjectsPage,
   '/tasks': TasksPage,
-  '/more': MorePage,
+  '/more': MoreRedirect,
   '/clients': ClientsPage,
   '/goals': GoalsPage,
   '/tools': ToolsPage,
@@ -89,6 +89,18 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/rules': RulesPage,
   '/import': ImportPage,
   '/imports': ImportsPage,
+}
+
+/**
+ * "Mais" became the side menu. Old links and bookmarks to #/more land on Início with the menu open (phone);
+ * on the computer the sidebar already shows everything.
+ */
+function MoreRedirect() {
+  useEffect(() => {
+    if (!window.matchMedia('(min-width: 1024px)').matches) openMenu()
+    location.replace(`${location.pathname}${location.search}#/`)
+  }, [])
+  return null
 }
 
 function useSearchShortcut() {
@@ -255,7 +267,7 @@ export function App() {
       {/* Switching sections is instant (core navigation, many times a day — no transition). */}
       <div key={path}>
         {hiddenLabel && (
-          <p className="mb-5 rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft">
+          <p className="mt-[calc(env(safe-area-inset-top)+12px)] mb-5 rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft lg:mt-0">
             A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
           </p>
         )}

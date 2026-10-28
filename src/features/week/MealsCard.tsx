@@ -27,7 +27,7 @@ export function MealsCard({ flat, isCurrent }: { flat: FlatMetrics; isCurrent: b
               {days} {days === 1 ? 'dia' : 'dias'} com planejamento · {pct}%
             </span>
           </span>
-          <ChevronRight size={18} className="shrink-0 text-faint" />
+          <ChevronRight size={18} className="shrink-0 text-accent-hi" />
         </span>
         <span className="mt-3 block">
           <Progress value={pct} tone="positive" />

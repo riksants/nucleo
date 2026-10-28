@@ -1,4 +1,4 @@
-import { CircleEllipsis, House, MessageCircle, Search, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
+import { House, MessageCircle, Search, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
 import type { ModuleId, Settings } from '../data/types'
 import { enabledModules, isEnabled } from './modules'
 import type { RoutePath } from './router'
@@ -11,9 +11,8 @@ export interface Section {
 }
 
 export const HOME: Section = { path: '/', label: 'Início', icon: House }
-export const MORE: Section = { path: '/more', label: 'Mais', icon: CircleEllipsis }
 export const SEARCH: Section = { path: '/search', label: 'Buscar', icon: Search }
-/** Always available (not a hideable section): Hoje, Início, Mais and the sidebar link to it. */
+/** Always available (not a hideable section): Início, the side menu and the sidebar link to it. */
 export const ASSISTANT: Section = { path: '/assistant', label: 'Assistente', icon: MessageCircle }
 export const SETTINGS: Section = { path: '/settings', label: 'Configurações', icon: SettingsIcon }
 
@@ -34,7 +33,7 @@ export function primarySections(settings: Pick<Settings, 'modules' | 'tabs'>): S
   return [HOME, ...picked.map((id) => enabled.find((m) => m.id === id)!)]
 }
 
-/** Everything enabled that is not in the tab bar, shown under "Mais" and in the sidebar group. */
+/** Everything enabled that is not in the tab bar, shown in the side menu (phone) and the sidebar groups (computer). */
 export function secondarySections(settings: Pick<Settings, 'modules' | 'tabs'>): Section[] {
   const primary = new Set(primarySections(settings).map((s) => s.path))
   return enabledModules(settings).filter((m) => !primary.has(m.path))

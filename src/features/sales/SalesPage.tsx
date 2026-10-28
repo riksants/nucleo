@@ -106,7 +106,7 @@ function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
         )}
         <span className="block text-[12px] text-faint">{owing.length ? 'pendente' : 'comprado'}</span>
       </span>
-      <ChevronRight size={16} className="shrink-0 text-faint" />
+      <ChevronRight size={16} className="shrink-0 text-accent-hi" />
     </button>
   )
 }

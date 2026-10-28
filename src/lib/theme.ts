@@ -13,8 +13,8 @@ export const THEME_OPTIONS: { value: ThemePref; label: string }[] = [
   { value: 'dark', label: 'Escuro' },
 ]
 
-/** Browser chrome color (status bar / tab) per theme: the page background. */
-const CHROME = { dark: '#0a0a0b', light: '#efede8' } as const
+/** Browser chrome color (status bar / tab): the vermilion of the header band, in both themes. */
+const CHROME = { dark: '#ff5b2e', light: '#ff5b2e' } as const
 const QUERY = '(prefers-color-scheme: dark)'
 
 let current: ThemePref = readPref<ThemePref>('theme', 'auto')

@@ -111,7 +111,7 @@ export function MorningView({ plan, greeting }: { plan: DayPlan; greeting: strin
                   <span className="text-[13px] text-faint">{m.direction === 'pay' ? 'Você paga' : 'Você recebe'} · {m.detail}</span>
                 </span>
                 <span className={`num shrink-0 text-[15px] font-semibold ${m.direction === 'receive' ? 'text-income' : ''}`}>{formatMoney(m.cents, m.currency)}</span>
-                <ChevronRight size={16} className="shrink-0 text-faint" />
+                <ChevronRight size={16} className="shrink-0 text-accent-hi" />
               </button>
             ))}
           </div>

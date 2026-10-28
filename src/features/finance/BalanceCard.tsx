@@ -52,17 +52,24 @@ function useCountTo(target: Cents) {
 }
 
 /**
- * Financeiro's balance block: a flat vermilion slab with coal type, like the site's primary button grown into a
- * surface. No tilt or sheen: the figure is data you read, so it stays still.
+ * Financeiro's balance card: a neutral surface that sits half over the vermilion header band, so the brand frames it
+ * instead of filling it. The figure is the hero; the brand shows in a short vermilion rule on top, the pixel by the
+ * label and the main action. No tilt or sheen: the figure is data you read, so it stays still.
  */
-function AccentCard({ children }: { children: ReactNode }) {
-  return <div className="relative overflow-clip rounded-[1.5rem] bg-accent p-5 text-coal lg:p-7">{children}</div>
+function BalanceSurface({ children }: { children: ReactNode }) {
+  return (
+    <div className="card relative overflow-clip rounded-[1.5rem]! p-5 shadow-[0_20px_44px_-28px_var(--color-shade)]! lg:p-6">
+      <span aria-hidden className="absolute top-0 left-5 h-[3px] w-12 rounded-b-full bg-brand lg:left-6" />
+      {children}
+    </div>
+  )
 }
 
 /**
  * The balance.
- * - "card" (Financeiro): the vermilion block with Adicionar / Retirar.
- * - "hero" (Início): the figure on the page itself, without a box; the page puts the actions under it as round buttons.
+ * - "card" (Financeiro): the balance card with Adicionar / Retirar.
+ * - "hero" (Início): the figure on the vermilion header band, without a box; the page puts the actions under it as
+ *   round buttons. The band re-points the colors, so the same classes read coal on vermilion there.
  * `note`: a line under the figure (e.g. "+€267,61 em outubro"), shown when there is no fresh change to announce.
  */
 export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'hero'; note?: ReactNode }) {
@@ -104,47 +111,50 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
   const reserve = reserveSummary(data.financeGoals, balance, settings.baseCurrency, convert)
   const inShown = (cents: Cents) => formatMoney(convert(cents, settings.baseCurrency, currency) ?? cents, convert(cents, settings.baseCurrency, currency) === null ? settings.baseCurrency : currency)
   const reserveBlock = reserve.hasReserve && (
-    <div className={`mt-3 border-t pt-3 ${hero ? 'border-line' : 'border-coal/20'}`}>
+    <div className="mt-3 border-t border-line pt-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="min-w-0">
-          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-coal/80'}`}>Reservado para metas</p>
+          <p className="text-[13px] text-soft">Reservado para metas</p>
           <p className="num text-[17px] font-semibold [overflow-wrap:anywhere]">{inShown(reserve.reserved)}</p>
         </div>
         <div className="min-w-0">
-          <p className={`text-[13px] ${hero ? 'text-soft' : 'text-coal/80'}`}>Disponível</p>
-          <p className={`num text-[17px] font-semibold [overflow-wrap:anywhere] ${reserve.available < 0 && hero ? 'text-expense' : ''}`}>{inShown(reserve.available)}</p>
+          <p className="text-[13px] text-soft">Disponível</p>
+          <p className={`num text-[17px] font-semibold [overflow-wrap:anywhere] ${reserve.available < 0 ? 'text-expense' : ''}`}>{inShown(reserve.available)}</p>
         </div>
       </div>
       {reserve.missing.length > 0 && (
-        <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-coal/80'}`}>
+        <p className="mt-2 text-[12px] leading-snug text-faint">
           Reserva em {reserve.missing.join(', ')} ainda sem cotação: o Disponível ainda não a considera.
         </p>
       )}
-      {reserve.available < 0 && <p className={`mt-2 text-[12px] leading-snug ${hero ? 'text-faint' : 'text-coal/80'}`}>As metas têm mais reservado do que o saldo atual.</p>}
+      {reserve.available < 0 && <p className="mt-2 text-[12px] leading-snug text-faint">As metas têm mais reservado do que o saldo atual.</p>}
     </div>
   )
 
-  const ink = hero ? 'var(--color-ink)' : 'var(--color-coal)'
+  const ink = 'var(--color-ink)'
   const content = (
     <>
       <div className="flex min-w-0 items-center justify-between gap-3">
-        <span className={`shrink-0 text-[14px] font-semibold ${hero ? 'text-soft' : 'text-coal/80'}`}>{hero ? 'Saldo total' : 'Saldo'}</span>
+        <span className="flex shrink-0 items-center gap-2 text-[14px] font-semibold text-soft">
+          {!hero && <span aria-hidden className="pixel" />}
+          {hero ? 'Saldo total' : 'Saldo'}
+        </span>
         <CurrencyPicker
           size="sm"
           label="Moeda de exibição"
           value={currency}
           onChange={setDisplayCurrency}
-          tone={hero ? 'default' : 'onAccent'}
+          tone={hero ? 'onAccent' : 'default'}
           isDisabled={(c) => c !== settings.baseCurrency && convert(100, settings.baseCurrency, c) === null}
         />
       </div>
 
       <motion.div
         key={delta?.id ?? 'idle'}
-        className={hero ? 'mt-3 mb-1' : 'mt-6 mb-1 lg:mt-8 [&_.text-soft]:text-coal/75'}
+        className={hero ? 'mt-3 mb-1' : 'mt-4 mb-1 lg:mt-6'}
         style={{ color: ink }}
-        // On the vermilion card the figure keeps its coal: green or red on vermilion would not read.
-        animate={delta && hero ? { color: [ink, delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', ink] } : undefined}
+        // On the band income/expense are coal (green or red on vermilion would not read), so there it stays still.
+        animate={delta ? { color: [ink, delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', ink] } : undefined}
         transition={{ duration: 1.1, times: [0, 0.25, 1] }}
       >
         <Figure cents={shown} currency={currency} />
@@ -158,12 +168,12 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
               initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(-4px)' }}
               animate={{ opacity: 1, transform: 'translateY(0px)' }}
               exit={{ opacity: 0 }}
-              className={`num text-[15px] font-semibold ${hero ? (delta.cents > 0 ? 'text-income' : 'text-expense') : 'text-coal'}`}
+              className={`num text-[15px] font-semibold ${delta.cents > 0 ? 'text-income' : 'text-expense'}`}
             >
               {formatMoney(delta.cents, currency, { sign: true })}
             </motion.span>
           ) : rateLine ? (
-            <motion.span key="rate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-[13px] ${hero ? 'text-faint' : 'text-coal/80'}`}>
+            <motion.span key="rate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[13px] text-faint">
               {rateLine}
             </motion.span>
           ) : (
@@ -179,11 +189,11 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
       {reserveBlock}
 
       {!hero && (
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-4">
           <button
             type="button"
             onClick={() => sheet.show('in')}
-            className="press flex h-13 items-center justify-center gap-2 rounded-full bg-coal text-base font-medium tracking-[-0.01em] text-paper hover:bg-coal/85"
+            className="press flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold tracking-[-0.01em] text-on-accent hover:bg-accent-soft"
           >
             <Plus size={20} strokeWidth={2.4} />
             Adicionar
@@ -191,7 +201,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
           <button
             type="button"
             onClick={() => sheet.show('out')}
-            className="press flex h-13 items-center justify-center gap-2 rounded-full text-base font-medium tracking-[-0.01em] text-coal ring-1 ring-coal/35 ring-inset hover:bg-coal/[0.08]"
+            className="press flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-semibold tracking-[-0.01em] text-ink ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]"
           >
             <Minus size={20} strokeWidth={2.4} />
             Retirar
@@ -203,7 +213,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
 
   return (
     <section aria-label="Saldo" className="relative">
-      {hero ? content : <AccentCard>{content}</AccentCard>}
+      {hero ? content : <BalanceSurface>{content}</BalanceSurface>}
       {!hero && <TransactionSheet type={sheet.item ?? 'in'} open={sheet.open} onClose={sheet.close} />}
     </section>
   )

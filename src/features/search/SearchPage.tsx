@@ -104,7 +104,7 @@ export function SearchPage() {
                       <span className="block truncate text-[15px] font-medium">{h.title}</span>
                       {h.subtitle && <span className="block truncate text-[13px] text-faint">{h.subtitle}</span>}
                     </span>
-                    <ChevronRight size={16} className="shrink-0 text-faint" />
+                    <ChevronRight size={16} className="shrink-0 text-accent-hi" />
                   </button>
                 ))}
                 {g.hits.length > MAX_PER_GROUP && !all && (

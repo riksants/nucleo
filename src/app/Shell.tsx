@@ -5,27 +5,24 @@ import { useStore } from '../data/store'
 import { LOGO_ACCENT, LOGO_LIGHT, LOGO_VIEWBOX } from './logoMark'
 import { isEnabled, MODULE_BY_ID, MODULE_BY_PATH, MODULE_GROUPS } from './modules'
 import { usePrimaryAction, type PrimaryAction } from './primaryAction'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, Menu, Plus } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
-import { ASSISTANT, MORE, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
-
-function isActive(section: Section, path: RoutePath, primary: Section[]) {
-  if (section.path === '/more') return !primary.some((s) => s.path === path)
-  return section.path === path
-}
+import { ASSISTANT, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
+import { openMenu, useMenuOpen } from './menu'
+import { LogoTile, SideMenu } from './SideMenu'
 
 /** Active-tab indicator: critically damped (damping ratio ≈ 1), so it settles in ~0.2 s without overshooting. */
 const INDICATOR_SPRING = { type: 'spring', stiffness: 500, damping: 45 } as const
 
 /** The NÚCLEO "N" — the same drawing as the app icon and the opening. The light piece follows the text color,
- *  so the mark reads on both themes; the other piece is the accent. */
+ *  so the mark reads on both themes; the other piece is always the brand vermilion. */
 export function Logo({ className = 'size-8' }: { className?: string }) {
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} aria-hidden>
       <path d={LOGO_LIGHT} fill="currentColor" />
-      <path d={LOGO_ACCENT} fill="var(--color-accent)" />
+      <path d={LOGO_ACCENT} fill="var(--color-brand)" />
     </svg>
   )
 }
@@ -35,29 +32,28 @@ export function Wordmark({ className = '' }: { className?: string }) {
   return <span className={`font-semibold tracking-[0.14em] ${className}`}>NÚCLEO</span>
 }
 
+/**
+ * Tab bar (phone): Início + the sections the person chose. Light: icons and names in a quiet tone, the current one
+ * in vermilion with a short bar on top that slides between tabs. Everything else lives in the side menu.
+ */
 function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
   const primary = primarySections(settings)
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/75 backdrop-blur-xl backdrop-saturate-150 reduce-transparency:bg-nav reduce-transparency:backdrop-filter-none lg:hidden" aria-label="Navegação principal">
-      <div className="mx-auto grid max-w-lg px-2 pt-1.5" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length + 1}, minmax(0, 1fr))` }}>
-        {[...primary, MORE].map((s) => {
-          const active = isActive(s, path, primary)
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/85 backdrop-blur-xl backdrop-saturate-150 reduce-transparency:bg-nav reduce-transparency:backdrop-filter-none lg:hidden" aria-label="Navegação principal">
+      <div className="mx-auto grid max-w-lg px-2" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length}, minmax(0, 1fr))` }}>
+        {primary.map((s) => {
+          const active = s.path === path
           const Icon = s.icon
           return (
             <a
               key={s.path}
               href={`#${s.path}`}
               aria-current={active ? 'page' : undefined}
-              className={`press flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[12px] tracking-[-0.01em] ${active ? 'font-semibold text-ink' : 'font-medium text-faint'}`}
+              className={`press relative flex flex-col items-center gap-1 pt-2.5 pb-1.5 text-[12px] tracking-[-0.01em] transition-colors duration-150 ${active ? 'font-semibold text-accent-hi' : 'font-medium text-faint'}`}
             >
-              <span className="relative grid h-8 w-14 place-items-center">
-                {/* Where you are: a paper pill (the site's light button); vermilion stays for actions. */}
-                {active && (
-                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-ink" transition={INDICATOR_SPRING} />
-                )}
-                <Icon size={24} strokeWidth={active ? 2.4 : 2} className={`relative transition-colors duration-150 ${active ? 'text-bg' : ''}`} />
-              </span>
+              {active && <motion.span layoutId="nav-bar" aria-hidden className="absolute top-0 h-[3px] w-10 rounded-b-full bg-accent" transition={INDICATOR_SPRING} />}
+              <Icon size={24} strokeWidth={active ? 2.4 : 2} />
               {s.shortLabel ?? s.label}
             </a>
           )
@@ -75,13 +71,13 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
       href={`#${section.path}`}
       aria-current={active ? 'page' : undefined}
       className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium tracking-[-0.01em] transition-colors ${
-        active ? 'text-ink' : 'text-soft hover:bg-tint/[0.03] tap hover:text-ink'
+        active ? 'text-accent-hi' : 'text-soft hover:bg-tint/[0.03] tap hover:text-ink'
       }`}
     >
-      {/* The pill carries the site's vermilion pixel, so both slide to the new item together. */}
+      {/* Where you are: a soft vermilion tint with a bar on the left, sliding to the new item. */}
       {active && (
-        <motion.span layoutId="side-pill" className="absolute inset-0 flex items-center justify-end rounded-xl bg-tint/[0.07] pr-3.5" transition={INDICATOR_SPRING}>
-          <span aria-hidden className="pixel" />
+        <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-accent/[0.1]" transition={INDICATOR_SPRING}>
+          <span aria-hidden className="absolute inset-y-2.5 left-0 w-[3px] rounded-r-full bg-accent" />
         </motion.span>
       )}
       <Icon size={20} strokeWidth={active ? 2.4 : 2} className="relative" />
@@ -90,48 +86,50 @@ function SideLink({ section, path }: { section: Section; path: RoutePath }) {
   )
 }
 
+/** Computer: the same organization as the side menu, always open on the left. */
 function Sidebar({ path }: { path: RoutePath }) {
   const { settings } = useStore()
-  // Same groups as "Mais" (by what each section is for).
   const here = new Set(secondarySections(settings).map((s) => s.path))
   const groups = MODULE_GROUPS.map((g) => ({ title: g.title, sections: g.ids.map((id) => MODULE_BY_ID[id]).filter((m) => here.has(m.path)) })).filter((g) => g.sections.length > 0)
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg px-4 py-6 lg:flex" aria-label="Navegação">
-      <div className="mb-7 flex items-center gap-3 px-2">
-        <Logo className="size-7 text-ink" />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg lg:flex" aria-label="Navegação">
+      <div className="band flex items-center gap-3 px-6 py-5">
+        <LogoTile className="size-8" />
         <Wordmark className="text-[15px]" />
       </div>
-      <button
-        type="button"
-        onClick={() => navigate('/search')}
-        className="mb-5 flex h-10 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-sm text-faint transition-colors hover:border-line-strong hover:text-soft"
-      >
-        <SEARCH.icon size={16} />
-        Buscar em tudo
-        <kbd className="ml-auto rounded-md border border-line px-1.5 font-mono text-[11px]">/</kbd>
-      </button>
-      <SidebarCapture />
-      <nav className="flex flex-col gap-0.5">
-        <SideLink section={ASSISTANT} path={path} />
-        {primarySections(settings).map((s) => (
-          <SideLink key={s.path} section={s} path={path} />
-        ))}
-      </nav>
-      <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
-        {groups.map((g) => (
-          <div key={g.title}>
-            <div className="label-mono mt-6 mb-2 px-3 text-faint">{g.title}</div>
-            <nav className="flex flex-col gap-0.5" aria-label={g.title}>
-              {g.sections.map((s) => (
-                <SideLink key={s.path} section={s} path={path} />
-              ))}
-            </nav>
-          </div>
-        ))}
-      </div>
-      <div className="space-y-2 pt-4">
-        <SyncBadge />
-        <SideLink section={SETTINGS} path={path} />
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-6">
+        <button
+          type="button"
+          onClick={() => navigate('/search')}
+          className="mb-5 flex h-10 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-sm text-faint transition-colors hover:border-line-strong hover:text-soft"
+        >
+          <SEARCH.icon size={16} className="text-accent-hi" />
+          Buscar em tudo
+          <kbd className="ml-auto rounded-md border border-line px-1.5 font-mono text-[11px]">/</kbd>
+        </button>
+        <SidebarCapture />
+        <nav className="flex flex-col gap-0.5">
+          <SideLink section={ASSISTANT} path={path} />
+          {primarySections(settings).map((s) => (
+            <SideLink key={s.path} section={s} path={path} />
+          ))}
+        </nav>
+        <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
+          {groups.map((g) => (
+            <div key={g.title}>
+              <div className="mt-6 mb-2 px-3 text-[13px] font-semibold text-ink">{g.title}</div>
+              <nav className="flex flex-col gap-0.5" aria-label={g.title}>
+                {g.sections.map((s) => (
+                  <SideLink key={s.path} section={s} path={path} />
+                ))}
+              </nav>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2 pt-4">
+          <SyncBadge />
+          <SideLink section={SETTINGS} path={path} />
+        </div>
       </div>
     </aside>
   )
@@ -144,72 +142,80 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh">
       <Sidebar path={path} />
       <main
-        className={`px-5 pt-[calc(env(safe-area-inset-top)+14px)] lg:ml-64 lg:px-10 lg:pt-10 lg:pb-16 ${
+        className={`px-5 lg:ml-64 lg:px-10 lg:pt-10 lg:pb-16 ${
           // Extra room so the quick-capture button never covers the end of a list.
-          isEnabled(settings, 'inbox') ? 'pb-[calc(env(safe-area-inset-bottom)+172px)]' : 'pb-[calc(env(safe-area-inset-bottom)+104px)]'
+          isEnabled(settings, 'inbox') ? 'pb-[calc(env(safe-area-inset-bottom)+164px)]' : 'pb-[calc(env(safe-area-inset-bottom)+96px)]'
         }`}
       >
         <div className="mx-auto w-full max-w-lg lg:max-w-5xl">{children}</div>
       </main>
-      {/* Under the phone status bar: whatever scrolls up there is blurred, never sharp behind the clock. */}
-      <div aria-hidden data-status-blur className="pointer-events-none fixed inset-x-0 top-0 z-20 h-[env(safe-area-inset-top)] bg-bg/75 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-filter-none lg:hidden" />
       <QuickCaptureButton />
       <BottomNav path={path} />
+      <SideMenu />
     </div>
   )
 }
 
 /**
- * On the phone, screens that are not in the tab bar get a way back: sections that live in "Mais" go
- * back to Mais (where they are), other screens (Configurações, Busca, Conta…) go back where you came from.
+ * The phone's way around: Início, the tab-bar sections and every section of the menu open the menu (top-level
+ * screens); other screens (Configurações, Busca, Conta, Automações…) go back where you came from, and a view
+ * inside a section goes back to the section.
  */
 function useBack(): { label: string; go(): void } | null {
-  const { path } = useRoute()
+  const { path, params } = useRoute()
   const { settings } = useStore()
-  if (path === '/' || path === '/more' || primarySections(settings).some((s) => s.path === path)) return null
-  const inMore = Boolean(MODULE_BY_PATH[path])
-  return { label: inMore ? 'Mais' : 'Voltar', go: () => (inMore ? navigate('/more') : history.length > 1 ? history.back() : navigate('/')) }
+  // A view inside a section (Financeiro → Resumo do mês, Semana → Planejar) goes back to the section.
+  if (params.get('view')) return { label: 'Voltar', go: () => navigate(path) }
+  if (path === '/' || MODULE_BY_PATH[path] || primarySections(settings).some((s) => s.path === path)) return null
+  return { label: 'Voltar', go: () => (history.length > 1 ? history.back() : navigate('/')) }
 }
 
-function BackLink() {
+/** Menu (☰) on top-level screens, back (‹) on inner ones. Phone only: the computer has the sidebar. */
+export function HeaderNavButton({ className = '' }: { className?: string }) {
   const back = useBack()
-  if (!back) return null
-  return (
-    <button type="button" onClick={back.go} className="hit relative -ml-1.5 mb-1 flex h-9 items-center gap-0.5 text-[15px] font-semibold text-accent-hi lg:hidden">
-      <ChevronLeft size={20} strokeWidth={2.4} />
+  const open = useMenuOpen()
+  return back ? (
+    <button type="button" onClick={back.go} aria-label={back.label} className={`press hit relative -ml-2 flex h-10 items-center gap-0.5 rounded-full pr-2 text-[16px] font-semibold lg:hidden ${className}`}>
+      <ChevronLeft size={24} strokeWidth={2.4} />
       {back.label}
+    </button>
+  ) : (
+    <button type="button" onClick={openMenu} aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={open} className={`press hit relative -ml-2 grid size-10 place-items-center rounded-full hover:bg-coal/[0.08] lg:hidden ${className}`}>
+      <Menu size={24} />
     </button>
   )
 }
 
 /**
- * Phone: once the big title scrolls away, a compact translucent bar with the screen's name (and the way
- * back) stays at the top — the content passes underneath, blurred. Reduced transparency: solid.
+ * Phone: once the big title scrolls away, a compact vermilion bar with the screen's name (and the menu or the way
+ * back) stays at the top.
  */
 function CompactBar({ title, visible }: { title: string; visible: boolean }) {
-  const back = useBack()
   return (
     <div
       aria-hidden={!visible}
-      className={`fixed inset-x-0 top-0 z-30 border-b border-line bg-bg/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 transition-opacity duration-200 reduce-transparency:bg-bg reduce-transparency:backdrop-filter-none lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      inert={!visible}
+      className={`band fixed inset-x-0 top-0 z-30 pt-[env(safe-area-inset-top)] shadow-[0_6px_16px_-10px_rgb(0_0_0/0.45)] transition-opacity duration-200 lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
     >
-      <div className="relative mx-auto flex h-11 max-w-lg items-center justify-center px-12">
-        {back && (
-          <button type="button" tabIndex={visible ? 0 : -1} onClick={back.go} className="hit absolute left-3 flex items-center text-[15px] font-semibold text-accent-hi" aria-label={back.label}>
-            <ChevronLeft size={20} strokeWidth={2.4} />
-          </button>
+      <div className="relative mx-auto flex h-12 max-w-lg items-center justify-center px-14">
+        {/* Only while shown, so the page never has a second, invisible menu/back button. */}
+        {visible && (
+          <span className="absolute left-5">
+            <HeaderNavButton />
+          </span>
         )}
-        <span className="truncate font-display text-[17px] font-semibold tracking-[-0.02em]">{title}</span>
+        <span className="truncate text-[17px] font-semibold tracking-[-0.02em]">{title}</span>
       </div>
     </div>
   )
 }
 
 /**
- * Standard page header: big title, optional subtitle and actions.
+ * Standard page header: the vermilion band with the menu (or back), big title, optional subtitle and actions.
  * `primary`: what this screen creates — the floating "+" on the phone, a button here on the computer.
+ * `overlap`: the band leaves room at the bottom for a card that sits half over it (Financeiro's balance).
  */
-export function PageHeader({ title, subtitle, actions, primary }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction }) {
+export function PageHeader({ title, subtitle, actions, primary, overlap }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction; overlap?: boolean }) {
   usePrimaryAction(primary)
   // The compact bar shows once the big title has scrolled under the top edge.
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -217,33 +223,43 @@ export function PageHeader({ title, subtitle, actions, primary }: { title: strin
   useEffect(() => {
     const el = titleRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(([e]) => setCollapsed(!e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: '-48px 0px 0px 0px' })
+    const io = new IntersectionObserver(([e]) => setCollapsed(!e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: '-56px 0px 0px 0px' })
     io.observe(el)
     return () => io.disconnect()
   }, [])
   return (
     <>
-    <CompactBar title={title} visible={collapsed} />
-    <BackLink />
-    <header className="mb-6 flex items-end justify-between gap-4 lg:mb-8">
-      <div className="min-w-0">
-        <h1 ref={titleRef} className="text-[32px] leading-[1.08] font-semibold tracking-[-0.045em] lg:text-[40px]">{title}</h1>
-        {subtitle && <p className="mt-1 text-[15px] text-soft">{subtitle}</p>}
-      </div>
-      {(actions || primary) && (
-        <div className="flex shrink-0 items-center gap-2">
-          {actions}
-          {/* On the phone this action is the floating "+" (one per screen). */}
-          {primary && (
-            <span className="hidden lg:block">
-              <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
-                {primary.label}
-              </Button>
-            </span>
+      <CompactBar title={title} visible={collapsed} />
+      <header
+        className={`band -mx-5 px-5 pt-[calc(env(safe-area-inset-top)+6px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 ${
+          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-6 pb-6 lg:mb-8 lg:pb-8'
+        }`}
+      >
+        <div className="flex h-12 items-center lg:hidden">
+          <HeaderNavButton />
+        </div>
+        <div className="mt-1 flex items-end justify-between gap-4 lg:mt-0">
+          <div className="min-w-0">
+            <h1 ref={titleRef} className="text-[30px] leading-[1.08] font-semibold tracking-[-0.04em] lg:text-[40px]">
+              {title}
+            </h1>
+            {subtitle && <p className="mt-1 text-[15px] text-coal/75">{subtitle}</p>}
+          </div>
+          {(actions || primary) && (
+            <div className="flex shrink-0 items-center gap-2">
+              {actions}
+              {/* On the phone this action is the floating "+" (one per screen). */}
+              {primary && (
+                <span className="hidden lg:block">
+                  <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
+                    {primary.label}
+                  </Button>
+                </span>
+              )}
+            </div>
           )}
         </div>
-      )}
-    </header>
+      </header>
     </>
   )
 }

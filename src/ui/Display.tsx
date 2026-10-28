@@ -1,6 +1,6 @@
 import { animate, motion, useMotionValue } from 'framer-motion'
 import { usePrefersReducedMotion } from '../lib/hooks'
-import { Search, X } from 'lucide-react'
+import { ChevronRight, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { TONE_BADGE, type Tone } from '../data/labels'
 import type { Cents, Currency } from '../data/types'
@@ -119,11 +119,12 @@ export function SearchField({ value, onChange, placeholder = 'Buscar', autoFocus
 /** Section heading (display face, sentence case) + optional right-side link, above a group of content. */
 export function SectionTitle({ children, action, onAction }: { children: ReactNode; action?: string; onAction?(): void }) {
   return (
-    <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
-      <h2 className="text-[19px] leading-tight font-semibold tracking-[-0.03em]">{children}</h2>
+    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+      <h2 className="text-[20px] leading-tight font-semibold tracking-[-0.03em]">{children}</h2>
       {action && (
-        <button type="button" onClick={onAction} className="hit relative shrink-0 text-[14px] font-semibold text-soft underline decoration-line-strong underline-offset-4 hover:text-ink">
+        <button type="button" onClick={onAction} className="hit relative flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-accent-hi hover:opacity-80">
           {action}
+          <ChevronRight size={16} strokeWidth={2.4} aria-hidden />
         </button>
       )}
     </div>

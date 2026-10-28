@@ -17,12 +17,12 @@ try {
   r.check('usuário existente: nada é ligado sozinho (sem botão +)', !(await b.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`)))
   await b.click('Caixa de entrada', '[role=switch]')
   await b.click('Pronto')
-  // Início has no floating "+" (it has its own actions): the capture shows on screens like Mais.
-  await b.goto(BASE + '#/more')
+  // Início has no floating "+" (it has its own actions): the capture shows on screens like Configurações.
+  await b.goto(BASE + '#/settings')
   await b.sleep(600)
   r.check('ao ligar a seção, o botão + aparece', await b.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`))
   const nav = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
-  r.check('abas inferiores continuam as mesmas', JSON.stringify(nav) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas', 'Mais']), JSON.stringify(nav))
+  r.check('abas inferiores continuam as mesmas', JSON.stringify(nav) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas']), JSON.stringify(nav))
   const oldTask = await idb(b, 'tasks', 'old1')
   r.check('tarefa antiga intacta e sem campo novo obrigatório', oldTask.title === 'Tarefa antiga' && !('notes' in oldTask))
   await b.goto(BASE)
@@ -30,7 +30,7 @@ try {
   r.check('aviso aparece só uma vez', !text.includes('Chegaram seções novas'))
 
   // ---------- Quick capture
-  await b.goto(BASE + '#/more')
+  await b.goto(BASE + '#/settings')
   await b.sleep(600)
   await b.click('Capturar na caixa de entrada')
   await setValue(b, 'textarea[aria-label="O que você quer guardar?"]', 'Ligar para João amanhã')

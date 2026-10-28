@@ -58,7 +58,7 @@ export function WeekPage() {
   if (view === 'plan') {
     return (
       <>
-        <PageHeader title="Planejar semana" subtitle={weekLabel(nextWeek)} actions={<Button variant="secondary" onClick={() => navigate('/week')}>Voltar</Button>} />
+        <PageHeader title="Planejar semana" subtitle={weekLabel(nextWeek)} actions={<span className="hidden lg:block"><Button variant="secondary" onClick={() => navigate('/week')}>Voltar</Button></span>} />
         <PlanWeek week={nextWeek} currentWeek={w.current} today={w.today} />
       </>
     )
@@ -90,7 +90,7 @@ export function WeekPage() {
             <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
             <span className="text-[13px] text-faint">Tarefas, compromissos, metas e prioridades — leva poucos minutos.</span>
           </span>
-          <ChevronRight size={18} className="text-faint" />
+          <ChevronRight size={18} className="text-accent-hi" />
         </button>
       )}
 
@@ -160,7 +160,7 @@ export function WeekPage() {
                 <span className="block text-[15px] font-medium">{checkinDone ? 'Check-in feito' : 'Como foi sua semana?'}</span>
                 <span className="text-[13px] text-faint">{checkinDone ? 'Toque para rever ou ajustar' : 'Energia, sono, humor… 1 minuto, opcional'}</span>
               </span>
-              <ChevronRight size={18} className="text-faint" />
+              <ChevronRight size={18} className="text-accent-hi" />
             </button>
           </section>
 
@@ -173,7 +173,7 @@ export function WeekPage() {
                 <span className="block text-[15px] font-medium">O que mudou?</span>
                 <span className="text-[13px] text-faint">Você em relação à semana e ao mês anteriores</span>
               </span>
-              <ChevronRight size={18} className="text-faint" />
+              <ChevronRight size={18} className="text-accent-hi" />
             </button>
           )}
 
@@ -186,7 +186,7 @@ export function WeekPage() {
                 <span className="block text-[15px] font-medium">Planejar a próxima semana</span>
                 <span className="text-[13px] text-faint">{weekLabel(nextWeek)}</span>
               </span>
-              <ChevronRight size={18} className="text-faint" />
+              <ChevronRight size={18} className="text-accent-hi" />
             </button>
           )}
         </div>

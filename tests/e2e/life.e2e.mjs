@@ -34,12 +34,14 @@ try {
     { modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL, startedAt: ago(90) },
   )
 
-  // Navigation: "Vida" in Mais, not a new bottom tab; work projects renamed visually
+  // Navigation: "Vida" in the side menu, not a new bottom tab; work projects renamed visually
   await b.goto(BASE + '#/more')
-  await b.sleep(800)
-  let text = await b.text()
+  await b.sleep(900)
+  let text = await b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await b.sleep(400)
   const tabs = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
-  r.check('"Vida" fica em Mais e não vira aba nova na barra inferior', text.includes('Vida') && !tabs.includes('Vida') && tabs.length === 5, tabs.join(','))
+  r.check('"Vida" fica no menu lateral e não vira aba nova na barra inferior', text.includes('Vida') && !tabs.includes('Vida') && tabs.length === 4, tabs.join(','))
   await b.goto(BASE + '#/projects')
   await b.sleep(500)
   r.check('Projetos (de trabalho) com título curto e o "de trabalho" no subtítulo', (await b.text()).includes('De trabalho') && (await b.eval(`document.querySelector('main h1')?.textContent.trim()`)) === 'Projetos' && tabs.includes('Projetos'))

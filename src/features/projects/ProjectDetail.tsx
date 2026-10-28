@@ -111,7 +111,7 @@ export function ProjectDetail({ project, open, onClose, onEdit }: { project: Pro
                   </span>
                 </span>
                 {isPending(receiptTxId('project', p.id)) && <Badge tone="warn">aguardando cotação</Badge>}
-                <ChevronRight size={18} className="shrink-0 text-faint" />
+                <ChevronRight size={18} className="shrink-0 text-accent-hi" />
               </button>
             ))}
             {current.received > 0 && (

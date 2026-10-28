@@ -1,6 +1,6 @@
 // Revisão de organização (itens 1–3): um "+" por tela, que cria o item daquela tela (no computador vira o botão do
 // topo); Início e Financeiro sem "+" flutuante (já têm Adicionar/Retirar); Início = visão geral (avisos + resumo que
-// abre o Hoje), Hoje = o que fazer (sem repetir os avisos); telas fora da barra têm "‹ Mais" / "‹ Voltar". Modo local.
+// abre o Hoje), Hoje = o que fazer (sem repetir os avisos); seções têm o menu (☰), telas internas "‹ Voltar". Modo local.
 import { launch } from './cdp.mjs'
 import { BASE, reporter, seedExistingUser } from './helpers.mjs'
 
@@ -67,18 +67,57 @@ try {
   r.check('o resumo abre o Hoje', (await b.eval('location.hash')).startsWith('#/today'))
   r.check('Hoje não repete os avisos', !/precisar da sua atenção/.test(await b.text()))
 
-  // ---------- 3) A way back on screens outside the tab bar
-  await b.goto(BASE + '#/more')
-  await sleep(800)
-  await b.click('Vendas', 'main a')
-  await sleep(900)
-  r.check('Vendas (em Mais) tem "‹ Mais" no topo', (await visibleText('Mais')) >= 1)
-  await b.click('Mais', 'main button')
-  await sleep(700)
-  r.check('"‹ Mais" volta para o Mais', (await b.eval('location.hash')) === '#/more')
+  // ---------- 3) Side menu (☰) on top-level screens, "‹ Voltar" on inner ones
+  const menuBtn = () => b.eval(`(() => { const e = document.querySelector('main button[aria-label="Abrir menu"]'); return !!e && e.offsetParent !== null })()`)
+  const menu = () => b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? null`)
+  const openIt = () => b.eval(`document.querySelector('main button[aria-label="Abrir menu"]').click()`)
   await b.goto(BASE + '#/finance')
   await sleep(700)
-  r.check('abas da barra não têm botão de voltar', (await visibleText('Mais')) === 0 && (await visibleText('Voltar')) === 0)
+  r.check('abas da barra têm o menu (☰) e nenhum "Voltar"', (await menuBtn()) && (await visibleText('Voltar')) === 0)
+  r.check('barra inferior sem "Mais"', !(await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].some((a) => a.textContent.trim() === 'Mais')`)))
+  await openIt()
+  await sleep(700)
+  r.check('☰ abre o menu lateral', ((await menu()) ?? '').includes('Vendas'))
+  r.check('o foco vai para dentro do menu', await b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]').contains(document.activeElement)`))
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await sleep(600)
+  r.check('Esc fecha o menu', (await menu()) === null)
+  await openIt()
+  await sleep(700)
+  // A tap outside (on the dim, right of the panel) closes it.
+  await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 375, y: 400, button: 'left', clickCount: 1 })
+  await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 375, y: 400, button: 'left', clickCount: 1 })
+  await sleep(600)
+  r.check('toque fora fecha o menu', (await menu()) === null)
+  await openIt()
+  await sleep(700)
+  r.check('o "X" do menu tem nome acessível', await b.eval(`!!document.querySelector('[aria-label="Menu"] button[aria-label="Fechar menu"]')`))
+  await b.click('Vendas', '[role=dialog] a')
+  await sleep(900)
+  r.check('escolher no menu abre a seção e fecha o menu', (await b.eval('location.hash')) === '#/sales' && (await menu()) === null)
+  r.check('Vendas (do menu) também tem o ☰', (await menuBtn()) && (await visibleText('Voltar')) === 0)
+  // Swipe left on the panel closes it.
+  await openIt()
+  await sleep(700)
+  for (const [type, x] of [['touchStart', 250], ['touchMove', 235], ['touchMove', 200], ['touchMove', 150], ['touchMove', 90], ['touchMove', 50], ['touchEnd', 50]]) {
+    await b.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y: 560 }] })
+    await sleep(25)
+  }
+  await sleep(700)
+  r.check('deslizar para a esquerda fecha o menu', (await menu()) === null)
+  // Old links to #/more land on Início with the menu open.
+  await b.goto(BASE + '#/more')
+  await sleep(900)
+  r.check('link antigo #/more abre Início com o menu', ['#/', ''].includes(await b.eval('location.hash')) && (await menu()) !== null)
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await sleep(500)
+  // A view inside a section goes back to the section.
+  await b.goto(BASE + '#/finance?view=month')
+  await sleep(900)
+  r.check('Resumo do mês tem "‹ Voltar" (e não o ☰)', (await visibleText('Voltar')) === 1 && !(await menuBtn()))
+  await b.click('Voltar', 'main button')
+  await sleep(700)
+  r.check('"‹ Voltar" do Resumo volta para o Financeiro', (await b.eval('location.hash')) === '#/finance')
   await b.goto(BASE + '#/')
   await sleep(700)
   await b.click('Configurações', 'button')
@@ -93,7 +132,7 @@ try {
   await b.goto(BASE + '#/tasks')
   await sleep(1000)
   r.check('computador: "Nova" no topo e nenhum "+" flutuante', (await visibleText('Nova')) === 1 && (await fab()) === null)
-  r.check('computador: sem "‹ Mais"/"‹ Voltar" (a barra lateral orienta)', (await visibleText('Voltar')) === 0)
+  r.check('computador: sem ☰ nem "‹ Voltar" (a barra lateral orienta)', (await visibleText('Voltar')) === 0 && !(await menuBtn()))
 } catch (err) {
   r.results.push('ERROR ' + err.message)
   await b.shot('navigation-erro').catch(() => {})

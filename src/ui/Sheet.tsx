@@ -184,7 +184,7 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
                 <div className="flex items-center gap-3">
                   <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">{title}</h2>
                   {actions}
-                  <IconButton label="Fechar" size="sm" onClick={onClose}>
+                  <IconButton label="Fechar" size="sm" tone="raised" onClick={onClose}>
                     <X size={20} />
                   </IconButton>
                 </div>

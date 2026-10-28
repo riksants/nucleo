@@ -116,7 +116,7 @@ function AttentionButton({ all, top }: { all: Insight[]; top: Insight[] }) {
         <span className="min-w-0 flex-1 text-[15px] font-semibold">
           {all.length === 1 ? '1 coisa pode precisar da sua atenção' : `${Math.min(all.length, 8)} coisas podem precisar da sua atenção`}
         </span>
-        <ChevronRight size={18} className="shrink-0 text-faint" />
+        <ChevronRight size={18} className="shrink-0 text-accent-hi" />
       </span>
       <span className="mt-2 block space-y-1">
         {top.map((i) => (

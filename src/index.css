@@ -21,6 +21,13 @@
  * - income / expense / warn / goal keep their meaning and stay apart from the accent (expense is a
  *   rose red, warn an amber; neither is the vermilion of actions).
  */
+/*
+ * 2026-10 (menu lateral): the vermilion also carries the STRUCTURE, like a bank app — every screen opens
+ * with a vermilion header band (title, menu/back, the screen's actions; on Início the balance and quick
+ * actions), the status bar is vermilion, arrows and links are vermilion text (accent-hi), and the current
+ * choice is a soft vermilion tint (accent-deep + accent-hi). Content below stays on neutral surfaces.
+ * Inside the band (.band) the tokens are re-pointed to coal-on-vermilion, so any control placed there reads.
+ */
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: var(--font-sans);
@@ -36,7 +43,7 @@
   --color-card-border: rgb(237 235 230 / 0.07);
   --color-card-edge: rgb(237 235 230 / 0.06);
   --card-shadow: inset 0 1px 0 var(--color-card-edge);
-  --color-nav: #0a0a0b;
+  --color-nav: #141416;
   --color-check-line: rgb(237 235 230 / 0.28);
   --color-check-line-soft: rgb(237 235 230 / 0.13);
 
@@ -52,6 +59,8 @@
   /* Fixed, theme-independent: the site's two base tones, for things drawn on the vermilion. */
   --color-coal: #0a0a0b;
   --color-paper: #edebe6;
+  /* The brand vermilion, never re-pointed (the logo's piece, the band, the status bar). */
+  --color-brand: #ff5b2e;
   --color-tint: #edebe6;
   --color-shade: #000000;
   --color-income: #4cd38a;
@@ -81,7 +90,7 @@
   --color-line-strong: rgb(10 10 11 / 0.17);
   --color-card-border: rgb(10 10 11 / 0.07);
   --color-card-edge: transparent;
-  --card-shadow: none;
+  --card-shadow: 0 1px 2px rgb(10 10 11 / 0.04), 0 8px 24px -14px rgb(10 10 11 / 0.16);
   --color-nav: #fbfaf7;
   --color-check-line: rgb(10 10 11 / 0.32);
   --color-check-line-soft: rgb(10 10 11 / 0.15);
@@ -164,6 +173,19 @@
     color: var(--color-on-accent);
   }
 
+  /* The status bar area (phone, installed app) is always vermilion, like the band under it. Above the tab
+     bar and the floating "+", under sheets and the menu (their dim covers it too). */
+  html::before {
+    content: '';
+    position: fixed;
+    inset-inline: 0;
+    top: 0;
+    height: env(safe-area-inset-top);
+    background: var(--color-brand);
+    z-index: 45;
+    pointer-events: none;
+  }
+
   /* Theme switch (lib/theme.ts): a quick cross-fade, so a dark↔light change never flashes. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
@@ -192,11 +214,41 @@
   text-transform: uppercase;
 }
 
-/* Neutral icon tile (lists, empty states): graphite, so the vermilion stays for actions and the current choice. */
+/* Icon tile (lists, menu, empty states): a soft vermilion tint with a vermilion stroke glyph — the bank-app
+   "brand icon", quieter than an action (no solid fill). */
 @utility icon-tile {
-  background: color-mix(in oklab, var(--color-tint) 6%, transparent);
-  box-shadow: inset 0 0 0 1px var(--color-line);
-  color: var(--color-ink);
+  background: color-mix(in oklab, var(--color-accent) 13%, transparent);
+  color: var(--color-accent-hi);
+}
+
+/* The header band: vermilion, coal type. Tokens are re-pointed inside it so ordinary controls (icon buttons,
+   secondary buttons, links, the primary button) read on the vermilion without per-screen styling. */
+@utility band {
+  background: var(--color-brand);
+  color: var(--color-coal);
+  --color-ink: #0a0a0b;
+  --color-soft: rgb(10 10 11 / 0.8);
+  --color-faint: rgb(10 10 11 / 0.76); /* ≥4.5:1 on the vermilion */
+  --color-line: rgb(10 10 11 / 0.14);
+  --color-line-strong: rgb(10 10 11 / 0.3);
+  --color-tint: #0a0a0b;
+  --color-surface: rgb(255 255 255 / 0.22);
+  --color-raised: rgb(255 255 255 / 0.22);
+  --color-elevated: rgb(255 255 255 / 0.32);
+  --color-card-border: rgb(10 10 11 / 0.1);
+  --card-shadow: none;
+  --color-accent: #0a0a0b;
+  --color-accent-soft: #26262a;
+  --color-accent-hi: #0a0a0b;
+  --color-on-accent: #edebe6;
+  --color-income: #0a0a0b;
+  --color-expense: #0a0a0b;
+  --color-warn: #0a0a0b;
+  --color-goal: #0a0a0b;
+  ::selection {
+    background: var(--color-coal);
+    color: var(--color-paper);
+  }
 }
 
 /* The site's mark: a small vermilion square (wordmark, current item). */

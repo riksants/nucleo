@@ -104,7 +104,7 @@ function Row({ label, value, detail, icon, onClick }: { label: string; value?: R
         {detail !== undefined && <span className="block text-[13px] leading-snug text-faint [overflow-wrap:anywhere]">{detail}</span>}
       </span>
       {value !== undefined && <span className="num shrink-0 text-right text-[15px] text-soft">{value}</span>}
-      {onClick && <ChevronRight size={18} className="shrink-0 text-faint" />}
+      {onClick && <ChevronRight size={18} className="shrink-0 text-accent-hi" />}
     </>
   )
   const cls = 'flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left'
@@ -512,11 +512,11 @@ function TabsSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   return (
     <Sheet open={open} onClose={onClose} title="Barra de navegação">
       <p className="pb-4 text-[15px] leading-relaxed text-soft">
-        Escolha até {MAX_TABS} seções para ficar na barra de baixo, ao lado de Início e Mais. As outras continuam em Mais.
+        Escolha até {MAX_TABS} seções para ficar na barra de baixo, ao lado de Início. As outras continuam no menu (☰, no alto da tela).
       </p>
       <div className="card mb-4 flex flex-wrap items-center justify-center gap-1.5 px-3 py-3 text-[13px] text-soft" aria-label="Prévia da barra">
-        {['Início', ...primarySections(settings).slice(1).map((s) => s.shortLabel ?? s.label), 'Mais'].map((l, i) => (
-          <span key={i} className={`rounded-full px-2.5 py-1 whitespace-nowrap ${i === 0 || l === 'Mais' ? 'text-faint' : 'bg-accent/12 text-accent-hi'}`}>
+        {['Início', ...primarySections(settings).slice(1).map((s) => s.shortLabel ?? s.label)].map((l, i) => (
+          <span key={i} className={`rounded-full px-2.5 py-1 whitespace-nowrap ${i === 0 ? 'text-faint' : 'bg-accent/12 text-accent-hi'}`}>
             {l}
           </span>
         ))}
@@ -562,7 +562,7 @@ function ModulesSheet({ open, onClose, onTabs }: { open: boolean; onClose(): voi
           <span className="block text-[15px] font-medium">Barra de navegação</span>
           <span className="block truncate text-[13px] text-faint">Escolha quais seções ficam na barra de baixo</span>
         </span>
-        <ChevronRight size={18} className="shrink-0 text-faint" />
+        <ChevronRight size={18} className="shrink-0 text-accent-hi" />
       </button>
       <ModulePicker value={settings.modules ?? {}} onChange={set} isOn={(id) => isEnabled(settings, id)} />
     </Sheet>

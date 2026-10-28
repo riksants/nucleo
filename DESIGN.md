@@ -1,7 +1,8 @@
 # Sistema visual do NÚCLEO
 
 Identidade compartilhada com o site da RIMERA (rimera.digital): preto quente, texto cor de papel, um único
-vermelhão e a fonte Geist. Adaptada para um app de uso diário: a mesma linguagem, sem efeitos de landing page.
+vermelhão e a fonte Geist. Organização de app de banco: cada tela abre com uma faixa vermelhão (cabeçalho), o
+conteúdo fica em superfícies neutras abaixo, e o resto do app mora num menu lateral (☰).
 Tudo mora em `src/index.css` (tokens e utilitários) e nos componentes de `src/ui/`; telas usam os tokens, nunca
 cores soltas.
 
@@ -14,25 +15,36 @@ cores soltas.
 | `raised` / `elevated` | #262629 / #2e2e32 | #e7e4dd / #ffffff | campos / camada acima |
 | `ink` / `soft` / `faint` | #edebe6 / #b5b2ab / #9b9993 | #0a0a0b / #4a4843 / #615e58 | texto (todos ≥ 4,5:1) |
 | `accent` | #ff5b2e | #ff5b2e | **ação** e estado "ligado" |
+| `brand` | #ff5b2e | #ff5b2e | fixo: faixa do cabeçalho, barra de status, peça da logo |
 | `accent-hi` | #ff6b3d | #b8350c | vermelhão como texto (links de ação) |
 | `income` / `expense` / `warn` / `goal` | verde / rosa-vermelho / âmbar / ciano | versões escuras | significado, nunca decoração |
 
 Regras:
-- **Vermelhão = agir.** Botão principal, "+", texto de ação, interruptor ligado, tarefa feita, o quadradinho da marca.
-- **Onde você está = pílula clara** (papel no escuro, tinta no claro): aba ativa, segmento escolhido, sublinhado
-  das abas, opção selecionada. Não usa vermelhão.
-- Texto sobre o vermelhão é sempre `coal` (#0a0a0b, 6,4:1), nunca branco (3,1:1).
+- **Faixa vermelhão (`band`)** no topo de toda tela: menu ☰ (seções) ou ‹ Voltar (telas internas), título,
+  ações da tela. Em Início ela leva saudação, saldo e as ações rápidas (discos brancos com ícone vermelhão).
+  Dentro da faixa os tokens são reapontados para carvão sobre vermelhão, então botões e links comuns funcionam
+  sem estilo próprio. A barra de status (iPhone) é vermelhão nos dois temas; ao rolar, uma barra compacta
+  vermelhão com o nome da tela fica no topo.
+- **Vermelhão = agir.** Botão principal, "+", texto de ação, setas (›) e links de seção, interruptor ligado.
+- **Onde você está = vermelhão suave**: aba da barra inferior em vermelhão com um traço no topo; segmento e
+  chip escolhidos com fundo vermelhão translúcido e texto `accent-hi`; sublinhado das abas em vermelhão; item
+  atual do menu com fundo suave e barra à esquerda. Na faixa, o segmento escolhido é uma pílula carvão.
+- Texto sobre o vermelhão é sempre `coal` (#0a0a0b, 6,4:1), nunca branco (3,1:1). A logo nunca fica direto no
+  vermelhão: vai no quadrado carvão (`LogoTile`), igual ao ícone do app.
 - Despesa (rosa-vermelho) e aviso (âmbar) ficam longe do vermelhão de ação; valores levam sinal e rótulo.
-- Ícones de lista e de estado vazio usam `icon-tile` (graphite). Selo "em andamento/ativo" é neutro com o
-  quadradinho vermelhão (`Badge tone="accent"`).
-- Superfícies se separam por um degrau de tom e uma linha fina (no escuro, uma luz fina no topo do cartão), sem
-  sombras projetadas (só folhas e o "+" têm sombra).
+- Ícones de lista e de estado vazio usam `icon-tile` (fundo vermelhão translúcido, traço vermelhão). No menu,
+  ícones de traço em tom neutro e seta vermelhão. Selo "em andamento/ativo" é neutro com o quadradinho
+  vermelhão (`Badge tone="accent"`).
+- Superfícies se separam por um degrau de tom e uma linha fina (no escuro, uma luz fina no topo do cartão); no
+  claro, cartões têm sombra curta e suave. Evitar cartão dentro de cartão.
+- Cartão do saldo (Financeiro): superfície neutra que sobe metade sobre a faixa, traço vermelhão curto no topo,
+  quadradinho ao lado de "Saldo", Adicionar (vermelhão) e Retirar (contorno) separados por uma linha fina.
 
 ## Tipografia
 
 Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-mono`).
-- Títulos de tela: 32 px (40 px no computador), peso 600, espaçamento −0,045em.
-- Títulos de seção: 19 px, 600, −0,03em. Corpo: 15–16 px, 400/500.
+- Títulos de tela (na faixa): 30 px (40 px no computador), peso 600, espaçamento −0,04em.
+- Títulos de seção: 20 px, 600, −0,03em; a ação à direita em `accent-hi` com seta. Corpo: 15–16 px, 400/500.
 - O saldo grande (`display-num`): 600, −0,042em, números tabulares. Os outros valores usam `num`.
 - Rótulos mono só para nomes de grupo (barra lateral, construtor de regras), nunca acima de um título.
 - Pesos: 400, 500 e 600. Sem 700/800.
@@ -41,8 +53,18 @@ Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-m
 
 - Botões: pílula. Principal = vermelhão com texto `coal`; secundário = contorno fino (`ring-line-strong`).
 - Raios: cartão 18 px (`--radius-card`), campo 14 px (`--radius-field`), folha 24 px, pílulas totalmente redondas.
-- Marca: o "N" (`src/app/logoMark.ts`); a peça clara segue a cor do texto, a outra é o vermelhão. Na barra
-  lateral, o "N" + "NÚCLEO" em caixa alta espaçada, como a marca RIMERA.
+- Marca: o "N" (`src/app/logoMark.ts`); a peça clara segue a cor do texto, a outra é sempre `brand`. Na faixa
+  e no menu, o "N" branco e vermelhão no quadrado carvão + "NÚCLEO" em caixa alta espaçada.
+
+## Navegação
+
+- Celular: barra inferior com Início + até 3 seções (padrão Financeiro, Projetos, Tarefas). Não há mais "Mais".
+- Menu lateral (`src/app/SideMenu.tsx`): abre pela esquerda sobre um escurecido; perfil na faixa do topo, busca,
+  grupos Dia a dia · Dinheiro · Trabalho · Planejamento · Guardados (só seções ligadas e fora da barra),
+  Automações e Conta e preferências. Fecha no X, tocando fora, Esc, deslizando para a esquerda ou ao escolher.
+  Links antigos para `#/more` abrem Início com o menu aberto.
+- Seções têm ☰; telas internas (Configurações, Busca, Conta, Automações, Resumo do mês…) têm ‹ Voltar.
+- Computador: barra lateral fixa com a mesma organização.
 
 ## Movimento
 
@@ -50,7 +72,8 @@ Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-m
   `src/lib/motion.ts`). Interface abaixo de 300 ms.
 - Toque: `press` (escala 0,97 em 100 ms ao pressionar). Linhas e cartões: `tap` (tom por baixo).
 - Indicadores (aba, segmento, item da barra lateral com o quadradinho) deslizam com mola sem rebote.
-- Folhas: mola sem rebote, arrastar para fechar com elástico no limite. Avisos entram e saem por baixo,
+- Menu lateral: entra em 320 ms (expo ease-out), sai em 220 ms (ease-in), segue o dedo ao deslizar.
+- Folhas: mola sem rebote, arrastar para fechar com elástico no limite; botão Fechar sempre visível. Avisos entram e saem por baixo,
   saindo mais rápido do que entram. Troca de tema: esmaecimento de 220 ms.
 - Abertura: "N" parado → cápsula vermelhão sobe e alarga → sai pelo topo (`index.html`, `src/app/opening.ts`).
 - "Reduzir movimento": só opacidade, sem deslocamento. "Reduzir transparência": barras sólidas.

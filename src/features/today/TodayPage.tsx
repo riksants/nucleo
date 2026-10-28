@@ -212,7 +212,7 @@ function DayView({ today }: { today: string }) {
                         </span>
                       </span>
                       {d.amount && <span className={`num shrink-0 text-[15px] font-semibold ${d.tone === 'in' ? 'text-income' : ''}`}>{d.amount}</span>}
-                      <ChevronRight size={16} className="shrink-0 text-faint" />
+                      <ChevronRight size={16} className="shrink-0 text-accent-hi" />
                     </button>
                   )
                 })}

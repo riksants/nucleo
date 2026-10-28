@@ -104,9 +104,12 @@ export function MonthSummaryView({ month: requested }: { month: string | null })
             <IconButton label="Próximo mês" size="sm" disabled={month >= current} onClick={() => go(addMonthsTo(month, 1))}>
               <ChevronRight size={18} />
             </IconButton>
-            <Button variant="secondary" onClick={() => navigate('/finance')}>
-              Voltar
-            </Button>
+            {/* Phone: "‹ Voltar" sits at the top of the band. */}
+            <span className="hidden lg:block">
+              <Button variant="secondary" onClick={() => navigate('/finance')}>
+                Voltar
+              </Button>
+            </span>
           </div>
         }
       />

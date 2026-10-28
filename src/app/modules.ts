@@ -60,7 +60,7 @@ export const MODULES: ModuleDef[] = [
 ]
 
 /**
- * How sections are grouped under "Mais" (by what they are for), so each one is easy to find and understand.
+ * How sections are grouped in the side menu (by what they are for), so each one is easy to find and understand.
  * Every section belongs to exactly one group.
  */
 export const MODULE_GROUPS: { title: string; ids: ModuleId[] }[] = [

@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
           display: 'standalone',
           orientation: 'portrait',
           background_color: '#0a0a0b',
-          theme_color: '#0a0a0b',
+          theme_color: '#ff5b2e',
           icons: [
             { src: 'icon-192.png?v=4', sizes: '192x192', type: 'image/png' },
             { src: 'icon-512.png?v=4', sizes: '512x512', type: 'image/png' },

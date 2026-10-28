@@ -6,7 +6,8 @@ import { BASE, idb, reporter, seedExistingUser } from './helpers.mjs'
 const r = reporter()
 const b = await launch(9385)
 const sidebar = () => b.eval(`[...document.querySelectorAll('aside a')].map(a => a.textContent.trim())`)
-const moreLinks = () => b.eval(`[...document.querySelectorAll('main a, main button')].map(a => a.textContent.trim())`)
+// The side menu (phone; old #/more links open it) — on the computer the same list is the sidebar.
+const moreLinks = () => b.eval(`[...document.querySelectorAll('[role=dialog][aria-label="Menu"] a, aside a')].map(a => a.textContent.trim())`)
 const settings = () => idb(b, 'meta', 'settings')
 async function toggle(label) {
   await b.goto(BASE + '#/settings')
@@ -55,7 +56,7 @@ try {
   r.check('Vendas some do menu na hora', !(await sidebar()).includes('Vendas'))
   await b.goto(BASE + '#/more')
   await b.sleep(600)
-  r.check('Vendas some também de "Mais"', !(await moreLinks()).some((t) => t.startsWith('Vendas')))
+  r.check('Vendas some também do menu', !(await moreLinks()).some((t) => t.startsWith('Vendas')))
   await b.goto(BASE + '#/sales')
   await b.sleep(800)
   r.check('endereço de seção desativada não abre a seção', !(await b.text()).includes('Total vendido'))
@@ -83,7 +84,7 @@ try {
   await toggle('Hoje')
   r.check('…e desligado de novo', !(await sidebar()).includes('Hoje'))
 
-  // Always available: Início, Mais/Configurações, Busca are not sections
+  // Always available: Início, the menu/Configurações, Busca are not sections
   await b.goto(BASE + '#/settings')
   await b.sleep(600)
   await b.click('Seções visíveis')
@@ -100,12 +101,11 @@ try {
   await toggle('Vendas')
   await b.goto(BASE + '#/more')
   await b.sleep(600)
-  r.check('celular: Vendas desativada não aparece em Mais', !(await moreLinks()).some((t) => t.startsWith('Vendas')))
+  r.check('celular: Vendas desativada não aparece no menu lateral', !(await moreLinks()).some((t) => t.startsWith('Vendas')))
   await toggle('Vendas')
   await b.goto(BASE + '#/more')
-  await b.sleep(600)
-  text = await b.text()
-  r.check('celular: Vendas reativada aparece de novo', text.includes('Vendas'))
+  await b.sleep(900)
+  r.check('celular: Vendas reativada aparece de novo', (await moreLinks()).some((t) => t.startsWith('Vendas')))
 } catch (err) {
   r.results.push('ERROR ' + err.message)
   await b.shot('secoes-erro').catch(() => {})

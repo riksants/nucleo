@@ -2,7 +2,8 @@ import { AnimatePresence } from 'framer-motion'
 import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings, Sparkles } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
-import { Logo } from '../../app/Shell'
+import { HeaderNavButton, Wordmark } from '../../app/Shell'
+import { LogoTile } from '../../app/SideMenu'
 import { usePrimaryAction } from '../../app/primaryAction'
 import { navigate } from '../../app/router'
 import { optionOf, PROJECT_STATUS } from '../../data/labels'
@@ -36,11 +37,11 @@ function greeting(d = new Date()) {
   return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
-/** Round quick action with its name under it (bank-app style). */
-function QuickAction({ label, icon, primary, onClick }: { label: string; icon: ReactNode; primary?: boolean; onClick(): void }) {
+/** Round quick action on the band: a white disc with a vermilion stroke icon and its name under it (bank-app style). */
+function QuickAction({ label, icon, onClick }: { label: string; icon: ReactNode; onClick(): void }) {
   return (
-    <button type="button" onClick={onClick} className="press flex min-w-0 flex-col items-center gap-2 text-[13px] font-semibold">
-      <span className={`grid size-[58px] place-items-center rounded-full ${primary ? 'bg-accent text-on-accent' : 'border border-card-border bg-surface text-ink'}`}>{icon}</span>
+    <button type="button" onClick={onClick} className="press group flex min-w-0 flex-col items-center gap-2 text-[13px] font-semibold">
+      <span className="grid size-14 place-items-center rounded-full bg-white text-brand shadow-[0_2px_8px_-2px_rgb(10_10_11/0.25)] transition-colors group-hover:bg-white/90">{icon}</span>
       <span className="max-w-full truncate">{label}</span>
     </button>
   )
@@ -104,42 +105,53 @@ export function HomePage() {
 
   return (
     <>
-      <header className="mb-6 flex items-center justify-between gap-3 lg:mb-7">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-full border border-card-border bg-surface lg:hidden">
-            <Logo className="size-6" />
+      {/* The vermilion band (bank-app home): menu, brand and shortcuts; greeting; the balance; quick actions. */}
+      <header className="band -mx-5 mb-7 px-5 pt-[calc(env(safe-area-inset-top)+6px)] pb-7 lg:mx-0 lg:mb-8 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 lg:pb-8">
+        <div className="flex h-12 items-center gap-2 lg:hidden">
+          <HeaderNavButton />
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <LogoTile className="size-8" />
+            <Wordmark className="text-[14px]" />
           </span>
-          <div className="min-w-0">
-            <p className="text-[14px] font-medium text-soft first-letter:uppercase">{formatWeekday(today)}</p>
-            <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.04em] lg:text-[40px]">{greeting(today)}</h1>
+          <IconButton label="Buscar" className="text-coal hover:bg-coal/[0.08]" onClick={() => navigate('/search')}>
+            <Search size={24} />
+          </IconButton>
+          <IconButton label="Configurações" className="-mr-2 text-coal hover:bg-coal/[0.08]" onClick={() => navigate('/settings')}>
+            <Settings size={24} />
+          </IconButton>
+        </div>
+        <div className="mt-4 lg:mt-0">
+          <p className="text-[14px] font-medium text-coal/75 first-letter:uppercase">{formatWeekday(today)}</p>
+          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.04em] lg:text-[40px]">{greeting(today)}</h1>
+        </div>
+
+        {on('finance') && (
+          <div className="mt-6">
+            <BalanceCard
+              variant="hero"
+              note={
+                month.income || month.expense ? (
+                  <span>
+                    {month.net > 0 ? '+' : ''}
+                    {show(month.net)} <span className="font-medium text-coal/75">em {monthName(today)}</span>
+                  </span>
+                ) : undefined
+              }
+            />
           </div>
-        </div>
-        <div className="flex gap-2">
-          <IconButton label="Buscar" className="border border-card-border bg-surface lg:hidden" onClick={() => navigate('/search')}>
-            <Search size={20} />
-          </IconButton>
-          <IconButton label="Configurações" className="border border-card-border bg-surface lg:hidden" onClick={() => navigate('/settings')}>
-            <Settings size={20} />
-          </IconButton>
-        </div>
+        )}
+
+        {/* Quick actions: round, with names. Money first when Financeiro is on. */}
+        <nav aria-label="Ações rápidas" className="mt-6 grid grid-cols-4 gap-2 lg:max-w-md">
+          {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('in')} />}
+          {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('out')} />}
+          {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} onClick={() => navigate('/today')} />}
+          <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
+        </nav>
       </header>
 
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
         <div className="min-w-0 space-y-7">
-          {on('finance') && (
-            <BalanceCard
-              variant="hero"
-              note={month.income || month.expense ? <span className={month.net < 0 ? 'text-expense' : 'text-income'}>{month.net > 0 ? '+' : ''}{show(month.net)} <span className="font-medium text-soft">em {monthName(today)}</span></span> : undefined}
-            />
-          )}
-
-          {/* Quick actions: round, with names. Money first when Financeiro is on. */}
-          <nav aria-label="Ações rápidas" className="grid grid-cols-4 gap-2">
-            {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.4} />} primary onClick={() => newTx.show('in')} />}
-            {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('out')} />}
-            {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} primary={!on('finance')} onClick={() => navigate('/today')} />}
-            <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
-          </nav>
 
           {pending.length > 0 && (
             <Block title="Esperando você" action={pending.length > 3 ? `Ver ${pending.length}` : 'Ver tudo'} onAction={() => navigate('/automations')}>
@@ -156,7 +168,7 @@ export function HomePage() {
                 <span className="block text-[15px] font-medium">Feito pelo Núcleo</span>
                 <span className="block truncate text-[13px] text-faint">{doneLately.length === 1 ? doneLately[0].summary : `${doneLately.length} ações nos últimos 7 dias · ${doneLately[0].summary}`}</span>
               </span>
-              <ChevronRight size={16} className="shrink-0 text-faint" />
+              <ChevronRight size={16} className="shrink-0 text-accent-hi" />
             </button>
           )}
 
@@ -214,7 +226,7 @@ export function HomePage() {
                     {taskList[0] ? `Próxima: ${taskList[0].title}` : 'Ver o dia'}
                   </span>
                 </span>
-                <ChevronRight size={18} className="shrink-0 text-faint" />
+                <ChevronRight size={18} className="shrink-0 text-accent-hi" />
               </button>
             </Block>
           )}
@@ -287,7 +299,7 @@ export function HomePage() {
                         </span>
                       </span>
                       <span className="num text-[15px] font-semibold">{formatMoney(tool.price, tool.currency)}</span>
-                      <ChevronRight size={16} className="text-faint" />
+                      <ChevronRight size={16} className="text-accent-hi" />
                     </button>
                   )
                 })}

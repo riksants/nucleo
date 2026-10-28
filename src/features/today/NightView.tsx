@@ -175,7 +175,7 @@ export function NightView({ plan, tomorrowPlan }: { plan: DayPlan; tomorrowPlan:
             <span className="block text-[15px] font-medium">Quer preparar sua próxima semana?</span>
             <span className="text-[13px] text-faint">Opcional — tarefas, compromissos e metas.</span>
           </span>
-          <ChevronRight size={18} className="text-faint" />
+          <ChevronRight size={18} className="text-accent-hi" />
         </button>
       )}
 

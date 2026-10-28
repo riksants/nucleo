@@ -40,19 +40,21 @@ try {
     { baseCurrency: 'BRL', modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL, startedAt: new Date(Date.now() - 40 * 86_400_000).toISOString() },
   )
 
-  // Navigation: no new bottom tab; reachable from Início, Hoje and Mais
+  // Navigation: no new bottom tab; reachable from Início, Hoje and the side menu
   await b.goto(BASE + '#/')
   await b.sleep(1500)
   const tabs = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
   let text = await b.text()
-  r.check('sem aba nova: barra inferior igual', tabs.length === 5 && !tabs.includes('Assistente'), tabs.join(','))
+  r.check('sem aba nova: barra inferior igual', tabs.length === 4 && !tabs.includes('Assistente'), tabs.join(','))
   r.check('Início mostra até 3 sugestões ("podem precisar da sua atenção") e o botão Assistente', /coisas? pode(m)? precisar da sua atenção/.test(text) && (await b.eval(`[...document.querySelectorAll('main button')].some((x) => x.textContent.trim() === 'Assistente')`)))
   await b.goto(BASE + '#/today')
   await b.sleep(1200)
   r.check('Hoje tem o acesso ao Assistente', (await b.text()).includes('Assistente'))
   await b.goto(BASE + '#/more')
-  await b.sleep(500)
-  r.check('Mais tem o Assistente', (await b.text()).includes('Assistente'))
+  await b.sleep(900)
+  r.check('menu lateral tem o Assistente', (await b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)).includes('Assistente'))
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await b.sleep(400)
 
   await b.goto(BASE + '#/assistant')
   await b.sleep(1200)

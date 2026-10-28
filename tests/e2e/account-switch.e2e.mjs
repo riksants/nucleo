@@ -90,9 +90,13 @@ try {
   await addTask(A, 'Tarefa da Ana')
   await syncNow(A)
 
+  // Old #/more links open the side menu (phone): profile with the e-mail and the "Conta" row.
   await A.goto(BASE + '#/more')
-  await A.sleep(600)
-  r.check('Mais mostra a linha "Conta" com o e-mail conectado', (await A.text()).includes('Conta') && (await A.text()).includes('ana@conta.com'))
+  await A.sleep(900)
+  const menuText = await A.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)
+  r.check('menu lateral mostra a linha "Conta" e o e-mail conectado', menuText.includes('Conta') && menuText.includes('ana@conta.com'))
+  await A.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await A.sleep(400)
   await A.goto(BASE + '#/settings')
   await A.sleep(600)
   let text = await A.text()

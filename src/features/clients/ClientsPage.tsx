@@ -67,7 +67,7 @@ export function ClientsPage() {
                       {(c.company || c.location) && <span className="block truncate text-[13px] text-faint">{[c.company, c.location].filter(Boolean).join(' · ')}</span>}
                     </span>
                     <Badge tone={s.tone}>{s.label}</Badge>
-                    <ChevronRight size={18} className="shrink-0 text-faint" />
+                    <ChevronRight size={18} className="shrink-0 text-accent-hi" />
                   </button>
                 )
               })}

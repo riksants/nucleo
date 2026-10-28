@@ -38,12 +38,12 @@ try {
   await b.goto(BASE + '#/')
   await sleep(1200)
   let s = await state()
-  r.check('automático + aparelho claro → tema claro (fundo e barra do navegador claros)', s.theme === 'light' && s.bg === 'rgb(239, 237, 232)' && s.chrome === '#efede8', JSON.stringify(s))
+  r.check('automático + aparelho claro → tema claro (fundo claro; barra do navegador no laranja da faixa)', s.theme === 'light' && s.bg === 'rgb(239, 237, 232)' && s.chrome === '#ff5b2e', JSON.stringify(s))
   r.check('claro: texto principal com contraste alto', contrast(s.ink, s.bg) >= 7, contrast(s.ink, s.bg).toFixed(1))
   await scheme('dark')
   await sleep(300)
   s = await state()
-  r.check('aparelho muda para escuro com o app aberto → app acompanha', s.theme === 'dark' && s.bg === 'rgb(10, 10, 11)' && s.chrome === '#0a0a0b', JSON.stringify(s))
+  r.check('aparelho muda para escuro com o app aberto → app acompanha', s.theme === 'dark' && s.bg === 'rgb(10, 10, 11)' && s.chrome === '#ff5b2e', JSON.stringify(s))
   r.check('escuro: texto principal com contraste alto', contrast(s.ink, s.bg) >= 7, contrast(s.ink, s.bg).toFixed(1))
 
   // Secondary text (soft / faint) on both themes

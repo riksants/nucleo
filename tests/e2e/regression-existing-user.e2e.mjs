@@ -43,7 +43,7 @@ try {
   check('apresentação das novas seções aparece', text.includes('Novas seções disponíveis'))
   await b.shot('t1-novas-secoes')
   const nav = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
-  check('abas inferiores iguais às de antes', JSON.stringify(nav) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas', 'Mais']), JSON.stringify(nav))
+  check('abas inferiores iguais às de antes', JSON.stringify(nav) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas']), JSON.stringify(nav))
   await b.click('Pronto')
   await b.shot('t1-home')
   const db = await b.eval(`new Promise(r => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const db = q.result; const v = db.version; const names = [...db.objectStoreNames]; const tx = db.transaction(['tasks','accounts','transactions'], 'readonly'); const out = { v, names: names.length }; let n = 0; for (const s of ['tasks','accounts','transactions']) { const g = tx.objectStore(s).count(); g.onsuccess = () => { out[s] = g.result; if (++n === 3) { db.close(); r(out) } } } } })`)

@@ -192,10 +192,13 @@ try {
   check('próximos lembretes calculados da rotina', text.toUpperCase().includes('PRÓXIMOS LEMBRETES'))
   await b.shot('t2-lembretes')
 
-  // ---------- Mais / navegação
+  // ---------- Menu lateral / navegação (o antigo #/more abre o menu)
   await b.goto(BASE + '#/more')
-  text = await b.text()
-  check('Mais mostra só seções ligadas', text.includes('Vendas') && text.includes('Assinantes') && text.includes('Hoje') && !text.includes('Portfólio'))
+  await b.sleep(900)
+  text = await b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)
+  await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await b.sleep(400)
+  check('menu mostra só seções ligadas', text.includes('Vendas') && text.includes('Assinantes') && text.includes('Hoje') && !text.includes('Portfólio'))
   // hidden module by URL
   await b.goto(BASE + '#/portfolio')
   text = await b.text()
