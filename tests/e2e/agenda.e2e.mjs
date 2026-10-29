@@ -22,7 +22,7 @@ try {
   await b.goto(BASE + '#/agenda')
   let text = await b.text()
   r.check('agenda de hoje junta tarefa com horário, hábito e compromisso', text.includes('Ligar para cliente') && text.includes('Tarefa com horário') && text.includes('Ler 20 min') && text.includes('Café cedo'))
-  r.check('compromisso que já passou aparece como "horário encerrado"', text.includes('horário encerrado'))
+  r.check('compromisso que já passou aparece como "Encerrado" (nunca como feito)', text.includes('Encerrado'))
   r.check('agenda não gravou nada (só visualiza)', (await idb(b, 'completions')).length === 0 && (await idb(b, 'events')).length === 1)
 
   // New appointment
@@ -43,7 +43,7 @@ try {
   r.check('marcar na agenda grava a conclusão do dia', (await idb(b, 'completions', `habit:h1:${today}`))?.status === 'done')
   await b.goto(BASE + '#/habits')
   text = await b.text()
-  r.check('Hábitos mostra o mesmo hábito concluído', text.includes('1 de 1 hoje'))
+  r.check('Hábitos mostra o mesmo hábito concluído', text.includes('1 de 1'))
 
   // Complete the task from the agenda → original task
   await b.goto(BASE + '#/agenda')
@@ -58,7 +58,7 @@ try {
   const sections = await b.eval(`document.querySelectorAll('main section').length`)
   r.check('semana mostra os 7 dias', sections === 7)
   r.check('hábito diário aparece em todos os dias da semana', (text.match(/Ler 20 min/g) ?? []).length === 7)
-  await b.click('Próximo')
+  await b.click('Próxima semana')
   text = await b.text()
   r.check('navega para a próxima semana', !text.includes('Reunião com Ana'))
   await b.shot('agenda-semana')

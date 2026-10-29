@@ -80,12 +80,17 @@ try {
   await seed()
 
   // ---------- 12) Task check + strike-through on the GPU, short; 14c) day cleared celebration
-  await b.goto(BASE + '#/today')
+  // The task row (Tarefas) strikes through on the GPU; on Hoje the same task lives in the day line.
+  await b.goto(BASE + '#/tasks')
   await sleep(1200)
   await b.eval(`document.querySelector('button[aria-label="Concluir tarefa"]').click()`)
   await sleep(120)
   const strike = await b.eval(`(() => { const s = [...document.querySelectorAll('main span.origin-left')][0]; if (!s) return null; const cs = getComputedStyle(s); return { transform: s.style.transform, prop: cs.transitionProperty, dur: cs.transitionDuration } })()`)
   r.check('risco da tarefa concluída por transform (GPU) em 200 ms', !!strike && strike.transform === 'scaleX(1)' && strike.prop.startsWith('transform') && strike.dur === '0.2s', JSON.stringify(strike))
+  await seed()
+  await b.goto(BASE + '#/today?mode=day')
+  await sleep(1200)
+  await b.eval(`document.querySelector('button[aria-label="Concluir Enviar proposta"]').click()`)
   // Wait (inside the page) for the 400 ms ring to start, instead of sampling one instant: on a slow machine
   // the check could land after the ring already finished.
   const celebrated = await b.eval(`new Promise((res) => { const t0 = performance.now(); const tick = () => { if ([...document.querySelectorAll('.ring-income\\\\/60')].some((el) => el.getAnimations().length > 0)) return res(true); if (performance.now() - t0 > 1500) return res(false); requestAnimationFrame(tick) }; tick() })`)
@@ -143,9 +148,9 @@ try {
   // ---------- Reduced motion: no celebration movement
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   await seed()
-  await b.goto(BASE + '#/today')
+  await b.goto(BASE + '#/today?mode=day')
   await sleep(1200)
-  await b.eval(`document.querySelector('button[aria-label="Concluir tarefa"]').click()`)
+  await b.eval(`document.querySelector('button[aria-label="Concluir Enviar proposta"]').click()`)
   await sleep(800)
   r.check('reduzir movimento: "Tudo feito por hoje" aparece sem animação', (await b.text()).includes('Tudo feito por hoje') && !(await ringPlaying()))
   await b.send('Emulation.setEmulatedMedia', { features: [] })

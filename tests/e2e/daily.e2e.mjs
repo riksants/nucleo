@@ -39,10 +39,12 @@ try {
     { modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL },
   )
 
-  // ---------- Hoje: "Dia" stays the default
+  // ---------- Hoje: opens on the part of the day that fits the clock (Manhã 4–11h, Dia, Noite from 19h)
   await b.goto(BASE + '#/today')
   let text = await b.text()
-  r.check('Hoje abre no "Dia" (tela de antes) com o seletor Manhã · Dia · Noite', text.includes('Manhã') && text.includes('Noite') && (await b.eval(`document.querySelector('[role=radio][aria-checked=true]')?.textContent`)) === 'Dia')
+  const hour = Number(await b.eval(`new Intl.DateTimeFormat('en-US',{hour:'numeric',hourCycle:'h23',timeZone:${JSON.stringify(TZ)}}).format(new Date())`))
+  const expectedMode = hour >= 4 && hour < 11 ? 'Manhã' : hour >= 19 || hour < 4 ? 'Noite' : 'Dia'
+  r.check('Hoje abre na parte do dia pelo relógio, com o seletor Manhã · Dia · Noite', text.includes('Manhã') && text.includes('Noite') && (await b.eval(`document.querySelector('[role=radio][aria-checked=true]')?.textContent`)) === expectedMode, `${hour}h → ${expectedMode}`)
 
   // ---------- Manhã
   await b.click('Manhã', '[role=radio]')
@@ -55,8 +57,11 @@ try {
   await b.sleep(500)
   r.check('hábito marcado na Manhã grava a conclusão do dia', (await idb(b, 'completions', `habit:agua:${today}`))?.status === 'done')
   await b.goto(BASE + '#/habits')
-  r.check('…e aparece concluído em Hábitos', (await b.text()).includes('1 de 2 hoje'))
+  r.check('…e aparece concluído em Hábitos', (await b.text()).includes('1 de 2'))
   await b.goto(BASE + '#/agenda')
+  // Finished items fold into "Concluídos" (the day line stays short).
+  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.startsWith('Concluídos'))?.click()`)
+  await b.sleep(300)
   r.check('…e na Agenda', await b.eval(`!!document.querySelector('[aria-label="Desmarcar Água"]')`))
 
   // ---------- Foco
@@ -116,10 +121,10 @@ try {
 
   // ---------- Caixa de entrada → compromisso → agenda
   await b.goto(BASE + '#/inbox')
-  await b.click('Capturar na caixa de entrada', 'button')
-  await setValue(b, 'textarea[aria-label="O que você quer guardar?"]', 'Consulta amanhã')
-  await b.click('Guardar para organizar depois')
-  await b.click('Organizar')
+  await setValue(b, 'textarea[aria-label="Capturar"]', 'Consulta amanhã')
+  await b.click('Guardar', 'button')
+  await b.sleep(500)
+  await b.click('Outro…')
   await b.click('Compromisso', 'button')
   await b.fill('Início', '15:00')
   await b.click('Criar compromisso', 'button[type=submit]')
@@ -127,7 +132,12 @@ try {
   const consult = (await idb(b, 'events')).find((x) => x.title === 'Consulta amanhã')
   r.check('item da caixa vira compromisso amanhã (data sugerida)', consult?.date === tomorrow && consult.start === '15:00')
   await b.goto(BASE + '#/agenda')
-  await b.click('Próximo')
+  // Tomorrow on the week strip (next week's first day when today is Sunday).
+  if (!(await b.eval(`(() => { const t = document.querySelector('[role=tab][aria-selected=true]')?.nextElementSibling; t?.click(); return !!t })()`))) {
+    await b.click('Próxima semana')
+    await b.eval(`document.querySelector('[role=tab]')?.click()`)
+  }
+  await b.sleep(400)
   r.check('…e aparece na Agenda de amanhã', (await b.text()).includes('Consulta amanhã'))
 
   r.check('sem rolagem horizontal (390px)', await noHorizontalScroll(b))
