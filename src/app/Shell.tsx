@@ -314,18 +314,20 @@ function RichHeader({
       <CompactBar title={title} visible={collapsed} />
       <header
         className={`band band-depth relative isolate -mx-5 overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+6px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 ${
-          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-5 pb-9 lg:mb-8 lg:pb-8'
+          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-5 pb-8 lg:mb-8 lg:pb-8'
         }`}
       >
         {Icon && (
           <Icon
             aria-hidden
             size={24}
-            className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+34px)] -right-7 -z-10 size-40 text-coal/[0.08] lg:top-5 lg:right-8 lg:size-36 [&_*]:[vector-effect:non-scaling-stroke]"
+            className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+10px)] -right-9 -z-10 size-36 text-coal/[0.06] lg:hidden [&_*]:[vector-effect:non-scaling-stroke]"
           />
         )}
-        <div className="flex h-12 items-center lg:hidden">
+        {/* Phone: the screen's own buttons sit on the menu row, so the title and its line get the full width. */}
+        <div className="flex h-12 items-center justify-between gap-2 lg:hidden">
           <HeaderNavButton />
+          {actions && <div className="flex min-w-0 items-center gap-2">{actions}</div>}
         </div>
         <motion.div {...enter(0)} className="mt-1 flex items-end justify-between gap-4 lg:mt-0">
           <div className="min-w-0">
@@ -336,14 +338,12 @@ function RichHeader({
             {subtitle && <p className="mt-1.5 text-[15px] leading-snug text-coal/75">{subtitle}</p>}
           </div>
           {(actions || primary) && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden shrink-0 items-center gap-2 lg:flex">
               {actions}
               {primary && (
-                <span className="hidden lg:block">
-                  <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
-                    {primary.label}
-                  </Button>
-                </span>
+                <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
+                  {primary.label}
+                </Button>
               )}
             </div>
           )}
@@ -351,7 +351,7 @@ function RichHeader({
         {stats && stats.length > 0 && (
           <motion.dl
             {...enter(0.05)}
-            className="mt-5 grid auto-cols-fr grid-flow-col divide-x divide-coal/[0.14] rounded-2xl bg-white/[0.16] py-3 ring-1 ring-coal/[0.07] ring-inset lg:max-w-xl"
+            className="mt-5 grid auto-cols-fr grid-flow-col divide-x divide-coal/[0.12] rounded-2xl bg-coal/[0.06] py-3 ring-1 ring-coal/[0.06] ring-inset lg:max-w-xl"
           >
             {stats.map((s) => (
               <div key={s.label} className="flex min-w-0 flex-col-reverse px-3.5">

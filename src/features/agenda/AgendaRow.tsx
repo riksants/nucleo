@@ -2,7 +2,7 @@ import { useDailyActions } from '../../core/actions'
 import { itemLabel, type AgendaItem } from '../../core/agenda'
 import { CheckButton } from '../daily/CheckButton'
 
-const DOT: Record<string, string> = {
+export const DOT: Record<string, string> = {
   event: 'bg-accent-hi',
   task: 'bg-soft',
   habit: 'bg-income',
@@ -18,6 +18,11 @@ const DOT: Record<string, string> = {
 }
 
 /** Toggles done on the original record (task, completion of the day, routine block). */
+/** The color dot of an item: its kind, or the kind of routine block. */
+export function dotOf(item: AgendaItem): string {
+  return DOT[item.kind === 'routine' ? (item.blockKind ?? 'other') : item.kind]
+}
+
 export function useToggleItem() {
   const { completeTask, setCompletion, setRoutine, setMealDone } = useDailyActions()
   return (item: AgendaItem, to: 'done' | 'pending' | 'skipped' = item.status === 'done' ? 'pending' : 'done') => {

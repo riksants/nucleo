@@ -1,26 +1,27 @@
 import { AnimatePresence } from 'framer-motion'
 import { CalendarCheck, Check, ChevronRight, MessageCircle } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { emptyRoutineAnswers } from '../../../supabase/functions/_shared/planner/schedule.ts'
-import { toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { isEnabled } from '../../app/modules'
 import { navigate, useRoute, type RoutePath } from '../../app/router'
+import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
 import { planDay } from '../../core/day'
-import { addDaysToDate, nowIn, useToday, weekdayOfDate, zoneOf } from '../../core/period'
+import { addDaysToDate, nowIn, useToday, zoneOf } from '../../core/period'
+import { awaitingConfirmation, nextUp, timeState } from '../../core/timeState'
 import { Segmented } from '../../ui/Segmented'
 import { PageHeader } from '../../app/Shell'
 import { ACTIVE_PROJECT_STATUSES, isPaidTool, nextChargeDate, sortOpenTasks } from '../../data/selectors'
 import { isOverdue, saleRemaining } from '../../data/sales'
 import { useStore } from '../../data/store'
 import { nextChargeOf } from '../../data/subscriptions'
-import type { Task, Weekday } from '../../data/types'
+import type { Task } from '../../data/types'
 import { daysBetween, formatDateValue, fromDateInput, relativeDays } from '../../lib/dates'
+import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
 import { Celebrate } from '../../ui/Celebrate'
 import { SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
-import { usePlans } from '../planner/plans'
-import { DayAgenda } from '../planner/RoutinePage'
+import { useOpenItem } from '../agenda/openItem'
+import { ConfirmList, DayTimeline, NowCard } from '../daily/DayParts'
 import { useBuyerName } from '../sales/useBuyerName'
 import { TaskForm } from '../tasks/TaskForm'
 
@@ -51,34 +52,31 @@ interface DueItem {
 }
 
 /**
- * Everything for today, read from the original records (no copies): completing
- * a task here completes the task itself; routine checks update the saved plan.
+ * Everything for today, read from the original records (no copies): what is happening now, what ended and needs a
+ * yes/no, the day as a timeline (tasks, appointments, routine, habits, recurring, meals), late tasks and money due.
+ * Marking here marks the record itself; the clock alone never marks anything as done.
  */
-/** The original "Hoje" screen, unchanged except that the day follows the chosen time zone. */
-function DayView({ today }: { today: string }) {
+function DayView({ today, items, nowTime }: { today: string; items: AgendaItem[]; nowTime: string }) {
   const { data, settings } = useStore()
-  const { routine, meals, profile } = usePlans()
   const buyer = useBuyerName()
   const taskSheet = useSheet<Task>()
+  const { open: openItem, sheets } = useOpenItem()
   const now = new Date()
-  const weekday = weekdayOfDate(today) as Weekday
   const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
 
   const open = data.tasks.filter((t) => t.status !== 'done')
-  const todayTasks = sortOpenTasks(open.filter((t) => t.dueDate === today)).sort((a, b) => (a.dueTime && b.dueTime ? toMinutes(a.dueTime) - toMinutes(b.dueTime) : a.dueTime ? -1 : b.dueTime ? 1 : 0))
   const overdue = sortOpenTasks(open.filter((t) => t.dueDate && t.dueDate < today))
-  // The last task of the day was just done here (not on load): keep the block and celebrate it.
-  const [prevCount, setPrevCount] = useState(todayTasks.length)
+  // The last thing of the day was just marked here (not on load): celebrate it.
+  const left = items.filter((i) => (i.checkable || i.markable) && i.status === 'pending').length
+  const [prevLeft, setPrevLeft] = useState(left)
   const [cleared, setCleared] = useState(false)
-  if (prevCount !== todayTasks.length) {
-    setPrevCount(todayTasks.length)
-    setCleared(todayTasks.length === 0 && prevCount > 0)
+  if (prevLeft !== left) {
+    setPrevLeft(left)
+    setCleared(left === 0 && prevLeft > 0)
   }
   const appointments = open
     .filter((t) => t.dueTime && t.dueDate > today && daysBetween(now, fromDateInput(t.dueDate)!) <= UPCOMING_DAYS)
     .sort((a, b) => (a.dueDate + a.dueTime < b.dueDate + b.dueTime ? -1 : 1))
-
-  const todayMeals = meals ? meals.meals.filter((m) => m.day === weekday).sort((a, b) => toMinutes(a.time) - toMinutes(b.time)) : []
 
   const due: DueItem[] = []
   const within = (date: string) => {
@@ -111,8 +109,7 @@ function DayView({ today }: { today: string }) {
   }
   due.sort((a, b) => (a.date < b.date ? -1 : 1))
 
-  const routineToday = routine?.blocks.some((b) => b.day === weekday)
-  const nothing = !todayTasks.length && !overdue.length && !appointments.length && !routineToday && !todayMeals.length && !due.length
+  const nothing = !items.length && !overdue.length && !appointments.length && !due.length
 
   return (
     <>
@@ -123,10 +120,37 @@ function DayView({ today }: { today: string }) {
           </div>
           <p className="text-[17px] font-semibold tracking-tight">Dia livre</p>
           <p className="mt-1.5 max-w-72 text-[15px] leading-relaxed text-soft">Nenhuma tarefa, horário, refeição ou prazo para hoje.</p>
+          {on('tasks') && (
+            <button type="button" onClick={() => taskSheet.show()} className="press mt-4 inline-flex h-10 items-center rounded-full px-4 text-[14px] font-medium ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]">
+              Planejar uma tarefa
+            </button>
+          )}
         </div>
       )}
-      <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-7">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <div className="space-y-6">
+          <NowCard items={items} today={today} nowTime={nowTime} onOpen={openItem} />
+          <ConfirmList items={items} today={today} nowTime={nowTime} />
+          {items.length > 0 && (
+            <section aria-label="Linha do dia">
+              <SectionTitle action={on('tasks') ? 'Nova tarefa' : undefined} onAction={() => taskSheet.show()}>
+                Linha do dia
+              </SectionTitle>
+              {cleared && (
+                <p className="card mb-3 flex items-center gap-3 px-5 py-4 text-[15px] font-medium">
+                  <Celebrate active onMount>
+                    <span className="grid size-7 place-items-center rounded-full bg-income/15 text-income">
+                      <Check size={16} strokeWidth={2.6} />
+                    </span>
+                  </Celebrate>
+                  Tudo feito por hoje
+                </p>
+              )}
+              <DayTimeline items={items} today={today} nowTime={nowTime} onOpen={openItem} />
+            </section>
+          )}
+        </div>
+        <div className="space-y-6">
           {on('tasks') && overdue.length > 0 && (
             <Block title={`Atrasadas · ${overdue.length}`}>
               <div className="card border-expense/20 p-1.5">
@@ -135,66 +159,6 @@ function DayView({ today }: { today: string }) {
                     <TaskRow key={t.id} task={t} onOpen={taskSheet.show} />
                   ))}
                 </AnimatePresence>
-              </div>
-            </Block>
-          )}
-          {on('tasks') && (todayTasks.length > 0 || !nothing || cleared) && (
-            <Block title="Tarefas de hoje" action="Nova" onAction={() => taskSheet.show()}>
-              {todayTasks.length ? (
-                <div className="card p-1.5">
-                  <AnimatePresence initial={false}>
-                    {todayTasks.map((t) => (
-                      <TaskRow key={t.id} task={t} onOpen={taskSheet.show} />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              ) : cleared ? (
-                <p className="card flex items-center gap-3 px-5 py-4 text-[15px] font-medium">
-                  <Celebrate active onMount>
-                    <span className="grid size-7 place-items-center rounded-full bg-income/15 text-income">
-                      <Check size={16} strokeWidth={2.6} />
-                    </span>
-                  </Celebrate>
-                  Tudo feito por hoje
-                </p>
-              ) : (
-                <p className="card px-5 py-4 text-[15px] text-faint">Nada com prazo para hoje.</p>
-              )}
-            </Block>
-          )}
-          {on('tasks') && appointments.length > 0 && (
-            <Block title="Próximos compromissos">
-              <div className="card p-1.5">
-                {appointments.map((t) => (
-                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-tint/[0.03] tap">
-                    <span className="num w-24 shrink-0 text-[14px] text-soft">
-                      {formatDateValue(t.dueDate)} {t.dueTime}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[15px]">{t.title}</span>
-                  </button>
-                ))}
-              </div>
-            </Block>
-          )}
-          {on('routine') && routine && routineToday && (
-            <Block title="Rotina de hoje" action="Semana" onAction={() => navigate('/routine')}>
-              <DayAgenda plan={routine} day={weekday} editable={false} answers={profile?.routine ?? { ...emptyRoutineAnswers(), wakeWeekday: '00:00', sleepWeekday: '00:00', wakeWeekend: '00:00', sleepWeekend: '00:00' }} onEdit={() => navigate('/routine')} />
-            </Block>
-          )}
-        </div>
-        <div className="space-y-7">
-          {on('meals') && todayMeals.length > 0 && (
-            <Block title="Refeições de hoje" action="Plano" onAction={() => navigate('/meals')}>
-              <div className="card divide-y divide-line">
-                {todayMeals.map((m) => (
-                  <div key={m.id} className="flex gap-3 px-4 py-3">
-                    <span className="num w-12 shrink-0 pt-0.5 text-[14px] text-soft">{m.time}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium">{m.label}</span>
-                      {m.items.length > 0 && <span className="block text-[13px] leading-relaxed text-faint">{m.items.join(' · ')}</span>}
-                    </span>
-                  </div>
-                ))}
               </div>
             </Block>
           )}
@@ -219,9 +183,24 @@ function DayView({ today }: { today: string }) {
               </div>
             </Block>
           )}
+          {on('tasks') && appointments.length > 0 && (
+            <Block title="Próximos dias">
+              <div className="card p-1.5">
+                {appointments.map((t) => (
+                  <button key={t.id} type="button" onClick={() => taskSheet.show(t)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-tint/[0.03] tap">
+                    <span className="num w-24 shrink-0 text-[14px] text-soft">
+                      {formatDateValue(t.dueDate)} {t.dueTime}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[15px]">{t.title}</span>
+                  </button>
+                ))}
+              </div>
+            </Block>
+          )}
         </div>
       </div>
       <TaskForm open={taskSheet.open} onClose={taskSheet.close} task={taskSheet.item} />
+      {sheets}
     </>
   )
 }
@@ -235,32 +214,52 @@ function greeting(hour: number) {
   return hour < 5 ? 'Boa noite' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
+/** Which part of the day fits the clock: Manhã from 4:00 to 11:00, Noite from 19:00, Dia in between. */
+function modeForHour(hour: number): DayMode {
+  return hour >= 4 && hour < 11 ? 'morning' : hour >= 19 || hour < 4 ? 'night' : 'day'
+}
+
 const LONG_DATE = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
-/** "Hoje" hub: Manhã · Dia · Noite. "Dia" is the original screen and stays the default. */
+/** "Hoje" hub: Manhã · Dia · Noite. It opens on the part of the day that fits the clock (the person can switch). */
 export function TodayPage() {
   const { data, settings } = useStore()
   const { params } = useRoute()
   const tz = zoneOf(settings)
   const today = useToday(tz)
-  const hour = nowIn(tz).hour
+  // Follows the clock: states (Em horário → Aguardando confirmação) update while the screen stays open.
+  const clock = useNow(30_000)
+  const { hour, time: nowTime } = nowIn(tz, clock)
   const asked = params.get('mode')
-  const [mode, setMode] = useState<DayMode>(asked === 'morning' || asked === 'night' ? asked : 'day')
+  const [mode, setMode] = useState<DayMode>(asked === 'morning' || asked === 'night' || asked === 'day' ? asked : modeForHour(hour))
   useEffect(() => {
     if (asked === 'morning' || asked === 'night' || asked === 'day') setMode(asked)
   }, [asked])
+  const items = useMemo(() => buildAgenda(data, settings, today, today, clock), [data, settings, today, clock])
   const plan = useMemo(() => (mode === 'day' ? null : planDay(data, settings, new Date(), today)), [mode, data, settings, today])
   const tomorrowPlan = useMemo(() => (mode === 'night' ? planDay(data, settings, new Date(), addDaysToDate(today, 1)) : null), [mode, data, settings, today])
   const hint = mode === 'day' ? (hour < 12 ? { to: 'morning' as const, label: 'Começar o dia' } : hour >= 18 ? { to: 'night' as const, label: 'Fechar o dia' } : null) : null
 
+  const t = tally(items)
+  const waiting = awaitingConfirmation(items, today, nowTime).length
+  const next = nextUp(items, today, nowTime)
+
   return (
     <>
       <PageHeader
+        rich
+        icon={CalendarCheck}
+        eyebrow={LONG_DATE.format(new Date(`${today}T12:00:00Z`))}
         title="Hoje"
-        subtitle={<span className="first-letter:uppercase">{LONG_DATE.format(new Date(`${today}T12:00:00Z`))}</span>}
+        subtitle={greeting(hour)}
+        stats={[
+          { label: 'Feitos', value: t.total ? `${t.done}/${t.total}` : '—' },
+          { label: 'Para confirmar', value: waiting },
+          { label: next && timeState(next, today, nowTime) === 'now' ? 'Agora' : 'Próximo', value: next?.start || '—' },
+        ]}
         actions={
           <button type="button" onClick={() => navigate('/assistant')} className="press flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-            <MessageCircle size={16} className="text-accent-hi" /> Assistente
+            <MessageCircle size={16} /> Assistente
           </button>
         }
       />
@@ -273,7 +272,7 @@ export function TodayPage() {
         )}
       </div>
       <Suspense fallback={null}>
-        {mode === 'day' && <DayView today={today} />}
+        {mode === 'day' && <DayView today={today} items={items} nowTime={nowTime} />}
         {mode === 'morning' && plan && <MorningView plan={plan} greeting={greeting(hour)} />}
         {mode === 'night' && plan && tomorrowPlan && <NightView plan={plan} tomorrowPlan={tomorrowPlan} />}
       </Suspense>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Flag } from 'lucide-react'
+import { CalendarClock, Flag } from 'lucide-react'
 import { useState } from 'react'
 import { optionOf, TASK_PRIORITY } from '../../data/labels'
 import { useStore } from '../../data/store'
@@ -31,7 +31,11 @@ function CheckCircle({ checked }: { checked: boolean }) {
   )
 }
 
-export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOpen(t: Task): void; showProject?: boolean }) {
+/**
+ * `onPostpone`: shows a "move" button (Tarefas, Hoje) for tasks due today or late.
+ * `emphasis`: a vermilion edge on high-priority tasks (lists sorted by relevance).
+ */
+export function TaskRow({ task, onOpen, showProject = true, onPostpone, emphasis }: { task: Task; onOpen(t: Task): void; showProject?: boolean; onPostpone?(t: Task): void; emphasis?: boolean }) {
   const { save } = useStore()
   const { toast } = useFeedback()
   const names = useNames()
@@ -60,7 +64,8 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
       transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
       className="overflow-hidden"
     >
-      <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
+      <div className="relative flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
+        {emphasis && task.priority === 'high' && !done && <span aria-hidden className="absolute inset-y-3 left-0 w-[3px] rounded-full bg-expense" />}
         <button type="button" onClick={toggle} aria-label={done ? 'Marcar como não feita' : 'Concluir tarefa'} className="grid size-12 shrink-0 place-items-center">
           <CheckCircle checked={checked} />
         </button>
@@ -96,6 +101,11 @@ export function TaskRow({ task, onOpen, showProject = true }: { task: Task; onOp
             </span>
           )}
         </button>
+        {onPostpone && !done && (
+          <button type="button" onClick={() => onPostpone(task)} aria-label={`Adiar ${task.title}`} title="Adiar" className="grid size-11 shrink-0 place-items-center rounded-xl text-faint hover:bg-tint/[0.05] hover:text-ink">
+            <CalendarClock size={18} />
+          </button>
+        )}
       </div>
     </motion.div>
   )
