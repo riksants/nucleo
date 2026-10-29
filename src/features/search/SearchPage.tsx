@@ -1,115 +1,180 @@
 import { ChevronRight, Search } from 'lucide-react'
-import { useState } from 'react'
+import { useDeferredValue, useMemo, useState, type ReactNode } from 'react'
+import { isEnabled, MODULE_BY_PATH } from '../../app/modules'
 import { navigate, type RoutePath } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
-import { MODULE_BY_PATH } from '../../app/modules'
-import { matches } from '../../data/selectors'
-import { PLAN_STATUS_LABEL } from '../../core/plans'
-import { mealTitle, typeLabel } from '../../core/meals'
+import { projectOutstanding, sumIn, upcomingCharges } from '../../data/selectors'
+import { saleRemaining } from '../../data/sales'
 import { useStore } from '../../data/store'
-import type { Entity } from '../../data/types'
-import { formatDateTime, formatDateValue } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { EmptyState, SearchField } from '../../ui/Display'
+import { EXAMPLES, type Destination, type HintId } from './catalog'
+import { parseQuery } from './engine'
+import { buildRecordIndex } from './records'
+import { rankPlaces, searchRecords } from './search'
 
-interface Hit {
-  id: string
-  /** React key when several hits open the same record (steps of one plan). */
-  key?: string
+const MAX_PER_GROUP = 6
+const MAX_PLACES = 5
+const MAX_ACTIONS = 4
+
+interface Row {
+  key: string
   title: string
-  subtitle?: string
+  subtitle?: ReactNode
+  icon?: ReactNode
+  go(): void
 }
 
 interface Group {
-  path: RoutePath
   label: string
-  hits: Hit[]
+  icon?: ReactNode
+  rows: Row[]
 }
 
-const MAX_PER_GROUP = 6
-
-function iconFor(path: RoutePath) {
-  return MODULE_BY_PATH[path]?.icon ?? Search
-}
+const go = (path: RoutePath, params?: Record<string, string>) => () => navigate(path, params)
 
 export function SearchPage() {
-  const { data, settings } = useStore()
+  const store = useStore()
+  const { data, settings } = store
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const q = query.trim()
+  // Typing stays instant; the results catch up right after (useful with many records on a phone).
+  const deferred = useDeferredValue(query)
+  const q = deferred.trim()
 
-  const group = <T extends Entity>(path: RoutePath, label: string, items: T[], fields: (x: T) => (string | undefined)[], hit: (x: T) => Omit<Hit, 'id'>): Group => ({
-    path,
-    label,
-    hits: items.filter((x) => matches(q, ...fields(x))).map((x) => ({ id: x.id, ...hit(x) })),
-  })
+  const index = useMemo(() => buildRecordIndex(data, settings), [data, settings])
 
-  const groups: Group[] = q
-    ? [
-        group('/clients', 'Clientes', data.clients, (c) => [c.name, c.company, c.email, c.phone, c.location, c.notes], (c) => ({ title: c.name, subtitle: c.company })),
-        group('/projects', 'Projetos de trabalho', data.projects, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
-        group('/tasks', 'Tarefas', data.tasks, (t) => [t.title], (t) => ({ title: t.title, subtitle: t.status === 'done' ? 'Feita' : undefined })),
-        group('/tools', 'Assinaturas', data.tools, (t) => [t.name, t.plan, t.notes, t.link], (t) => ({ title: t.name, subtitle: t.price ? formatMoney(t.price, t.currency) : t.plan })),
-        group('/finance', 'Movimentações', data.transactions, (t) => [t.reason], (t) => ({
-          title: t.reason,
-          subtitle: `${formatMoney(t.baseAmount >= 0 ? t.amount : -t.amount, t.currency, { sign: true })} · ${formatDateTime(t.createdAt)}`,
-        })),
-        group('/notes', 'Anotações', data.notes, (n) => [n.title, n.body], (n) => ({ title: n.title || n.body.slice(0, 60), subtitle: n.title ? n.body.slice(0, 80) : undefined })),
-        group('/accounts', 'Senhas', data.accounts, (a) => [a.name, a.link, a.email, a.username, a.notes], (a) => ({ title: a.name, subtitle: a.email || a.username })),
-        group('/goals', 'Metas de compra', data.goals, (g) => [g.name, g.note], (g) => ({ title: g.name, subtitle: formatMoney(g.price, g.currency) })),
-        group('/portfolio', 'Portfólio', data.portfolio, (p) => [p.name, p.notes, p.link], (p) => ({ title: p.name, subtitle: p.link })),
-        group('/agenda', 'Compromissos', data.events, (ev) => [ev.title, ev.notes], (ev) => ({ title: ev.title, subtitle: `${formatDateValue(ev.date)} · ${ev.start}` })),
-        group('/habits', 'Hábitos', data.habits, (h) => [h.name, h.goal], (h) => ({ title: h.name, subtitle: h.goal || undefined })),
-        group('/recurring', 'Recorrentes', data.recurring, (x) => [x.title, x.notes], (x) => ({ title: x.title })),
-        group('/life', 'Projetos pessoais', data.lifePlans.filter((p) => p.kind === 'project'), (p) => [p.title, p.description, p.notes], (p) => ({ title: p.title, subtitle: PLAN_STATUS_LABEL[p.status] })),
-        group('/life', 'Objetivos', data.lifePlans.filter((p) => p.kind === 'objective'), (p) => [p.title, p.description, p.notes], (p) => ({ title: p.title, subtitle: PLAN_STATUS_LABEL[p.status] })),
-        // A step opens its project/objective.
-        {
-          path: '/life' as RoutePath,
-          label: 'Etapas',
-          hits: data.planSteps.filter((s) => matches(q, s.title, s.notes) && data.lifePlans.some((p) => p.id === s.planId)).map((s) => ({ id: s.planId, key: s.id, title: s.title, subtitle: data.lifePlans.find((p) => p.id === s.planId)?.title })),
-        },
-        // Meals by name/description (ingredients alone don't flood the results).
-        group('/meals', 'Refeições', data.meals, (m) => [m.name, m.description, typeLabel(settings, m.type)], (m) => ({ title: mealTitle(settings, m), subtitle: `${typeLabel(settings, m.type) && m.name ? `${typeLabel(settings, m.type)} · ` : ''}${formatDateValue(m.date)}` })),
-        group('/inbox', 'Caixa de entrada', data.inbox, (i) => [i.text], (i) => ({ title: i.text.slice(0, 80), subtitle: i.status === 'done' ? 'Organizado' : 'Para organizar' })),
-      ].filter((g) => g.hits.length > 0)
-    : []
+  const hint = (id: HintId | undefined): string | undefined => {
+    if (!id) return undefined
+    const { displayCurrency, convert } = store
+    const money = (list: { cents: number; currency: typeof displayCurrency }[]) => {
+      const sum = sumIn(list, displayCurrency, convert)
+      return `${sum.complete ? '' : '≈ '}${formatMoney(sum.total, displayCurrency)}`
+    }
+    switch (id) {
+      case 'projectsReceivable':
+        return `${money(data.projects.map((p) => ({ cents: projectOutstanding(p), currency: p.currency })))} a receber`
+      case 'salesReceivable':
+        return `${money(data.sales.map((s) => ({ cents: Math.max(0, saleRemaining(s)), currency: s.currency })))} a receber`
+      case 'balance':
+        return formatMoney(store.balance, settings.baseCurrency)
+      case 'upcomingCharges': {
+        const n = upcomingCharges(data.tools, 30).length
+        return n ? `${n} nos próximos 30 dias` : 'Nenhuma nos próximos 30 dias'
+      }
+      case 'openTasks': {
+        const n = data.tasks.filter((t) => t.status !== 'done').length
+        return n === 1 ? '1 em aberto' : `${n} em aberto`
+      }
+    }
+  }
+
+  const groups: Group[] = useMemo(() => {
+    if (!q) return []
+    const parsed = parseQuery(q)
+    const places = rankPlaces(parsed, { enabled: (id) => isEnabled(settings, id), hasSubPlans: data.subPlans.length > 0 })
+    const toRow = ({ dest, hidden }: { dest: Destination; hidden: boolean }): Row => {
+      const Icon = dest.icon
+      const live = hidden ? undefined : hint(dest.hint)
+      return {
+        key: dest.id,
+        title: dest.title,
+        subtitle: hidden ? 'Seção escondida · toque para mostrar em Personalizar seções' : live ? `${live} · ${dest.subtitle}` : dest.subtitle,
+        icon: <Icon size={18} />,
+        go: hidden ? go('/settings', { painel: 'secoes' }) : go(dest.path, dest.params),
+      }
+    }
+    const actions = places.filter((p) => p.dest.kind === 'action').slice(0, MAX_ACTIONS).map(toRow)
+    const goTo = places.filter((p) => p.dest.kind !== 'action').slice(0, MAX_PLACES).map(toRow)
+    const placeGroups: Group[] = []
+    if (goTo.length) placeGroups.push({ label: 'Ir para', rows: goTo })
+    if (actions.length) placeGroups.push({ label: 'Fazer agora', rows: actions })
+    // "adicionar cliente": the action comes first.
+    if (parsed.create) placeGroups.reverse()
+
+    const records: Group[] = searchRecords(index, parsed).map((g) => {
+      const Icon = MODULE_BY_PATH[g.path]?.icon ?? Search
+      return {
+        label: g.label,
+        icon: <Icon size={16} />,
+        rows: g.hits.map((h) => ({ key: h.key, title: h.title, subtitle: h.subtitle, go: go(h.path, { open: h.openId }) })),
+      }
+    })
+    return [...placeGroups, ...records]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, index, settings, data.subPlans.length])
+
+  const first = groups[0]?.rows[0]
+  const examples = EXAMPLES.filter((e) => !e.module || isEnabled(settings, e.module))
 
   return (
     <>
       <PageHeader title="Buscar" />
-      <div className="mb-6">
-        <SearchField value={query} onChange={setQuery} placeholder="Clientes, projetos, notas, contas…" autoFocus />
-      </div>
+      <form
+        role="search"
+        className="mb-6"
+        onSubmit={(e) => {
+          // Enter opens the best result.
+          e.preventDefault()
+          first?.go()
+        }}
+      >
+        <SearchField value={query} onChange={setQuery} placeholder="Seções, ações, clientes, valores…" autoFocus />
+      </form>
 
-      {!q && <p className="px-1 text-[15px] text-faint">Procure em clientes, projetos, tarefas, assinaturas, movimentações, anotações e contas.</p>}
-      {q && groups.length === 0 && <EmptyState compact icon={<Search size={20} />} title="Nada encontrado" text={`Nenhum resultado para “${q}”.`} />}
+      {!query.trim() && (
+        <section aria-label="Sugestões">
+          <p className="mb-3 px-1 text-[15px] text-soft">Procure uma seção, uma ação ou qualquer coisa que você registrou. Experimente:</p>
+          <div className="flex flex-wrap gap-2">
+            {examples.map((e) => (
+              <button key={e.query} type="button" onClick={() => setQuery(e.query)} className="press rounded-full bg-tint/[0.05] px-4 py-2 text-[14px] font-medium text-ink ring-1 ring-line ring-inset hover:bg-tint/[0.08]">
+                {e.query}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      {q && groups.length === 0 && (
+        <EmptyState
+          compact
+          icon={<Search size={20} />}
+          title="Nada encontrado"
+          text={`Nenhuma seção, ação ou registro para “${q}”. Tente outra palavra ou pergunte ao Assistente.`}
+          action="Perguntar ao Assistente"
+          onAction={() => navigate('/assistant', { ask: q })}
+        />
+      )}
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2 lg:items-start" aria-live="polite">
         {groups.map((g) => {
-          const Icon = iconFor(g.path)
           const all = expanded === g.label
-          const hits = all ? g.hits : g.hits.slice(0, MAX_PER_GROUP)
+          const rows = all ? g.rows : g.rows.slice(0, MAX_PER_GROUP)
           return (
-            <section key={g.label}>
+            <section key={g.label} aria-label={g.label}>
               <h2 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold text-soft">
-                <Icon size={16} />
+                {g.icon}
                 {g.label}
-                <span className="text-faint">{g.hits.length}</span>
+                {g.icon && <span className="text-faint">{g.rows.length}</span>}
               </h2>
               <div className="card p-1.5">
-                {hits.map((h) => (
-                  <button key={h.key ?? h.id} type="button" onClick={() => navigate(g.path, { open: h.id })} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
+                {rows.map((r) => (
+                  <button key={r.key} type="button" onClick={r.go} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
+                    {r.icon && (
+                      <span aria-hidden className="icon-tile grid size-9 shrink-0 place-items-center rounded-xl">
+                        {r.icon}
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-medium">{h.title}</span>
-                      {h.subtitle && <span className="block truncate text-[13px] text-faint">{h.subtitle}</span>}
+                      <span className="block truncate text-[15px] font-medium">{r.title}</span>
+                      {r.subtitle && <span className="block truncate text-[13px] text-faint">{r.subtitle}</span>}
                     </span>
                     <ChevronRight size={16} className="shrink-0 text-accent-hi" />
                   </button>
                 ))}
-                {g.hits.length > MAX_PER_GROUP && !all && (
+                {g.rows.length > MAX_PER_GROUP && !all && (
                   <button type="button" onClick={() => setExpanded(g.label)} className="w-full rounded-2xl px-3.5 py-3 text-left text-sm font-medium text-accent-hi">
-                    Ver mais {g.hits.length - MAX_PER_GROUP}
+                    Ver mais {g.rows.length - MAX_PER_GROUP}
                   </button>
                 )}
               </div>

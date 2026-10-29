@@ -11,6 +11,7 @@ import { useSheet } from '../../ui/formHooks'
 import { CurrencyPicker } from '../../ui/Field'
 import { TransactionSheet } from './TransactionSheet'
 import { EASE_OUT_SOFT } from '../../lib/motion'
+import { useNewParam } from '../useOpenParam'
 
 /** Big balance number: muted currency symbol and cents, prominent whole part. */
 function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
@@ -76,6 +77,8 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
   const hero = variant === 'hero'
   const { balance, data, settings, displayCurrency, setDisplayCurrency, convert } = useStore()
   const sheet = useSheet<'in' | 'out'>()
+  // Buscar → "Registrar entrada/saída" opens Financeiro with ?novo=in|out.
+  useNewParam(hero ? undefined : (v) => sheet.show(v as 'in' | 'out'), (v) => v === 'in' || v === 'out')
   const [delta, setDelta] = useState<{ id: number; cents: Cents } | null>(null)
   const reduce = usePrefersReducedMotion()
 

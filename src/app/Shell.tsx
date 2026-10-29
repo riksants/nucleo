@@ -12,6 +12,7 @@ import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCaptu
 import { ASSISTANT, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
 import { openMenu, useMenuOpen } from './menu'
 import { LogoTile, SideMenu } from './SideMenu'
+import { useNewParam } from '../features/useOpenParam'
 
 /** Active-tab indicator: critically damped (damping ratio ≈ 1), so it settles in ~0.2 s without overshooting. */
 const INDICATOR_SPRING = { type: 'spring', stiffness: 500, damping: 45 } as const
@@ -217,6 +218,8 @@ function CompactBar({ title, visible }: { title: string; visible: boolean }) {
  */
 export function PageHeader({ title, subtitle, actions, primary, overlap }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction; overlap?: boolean }) {
   usePrimaryAction(primary)
+  // Buscar → "Novo cliente" opens this screen with ?novo=1: same as tapping its "+".
+  useNewParam(primary && !primary.disabled ? () => primary.onPress() : undefined)
   // The compact bar shows once the big title has scrolled under the top edge.
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [collapsed, setCollapsed] = useState(false)

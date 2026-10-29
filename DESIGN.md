@@ -65,6 +65,12 @@ Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-m
   Links antigos para `#/more` abrem Início com o menu aberto.
 - Seções têm ☰; telas internas (Configurações, Busca, Conta, Automações, Resumo do mês…) têm ‹ Voltar.
 - Computador: barra lateral fixa com a mesma organização.
+- Buscar (`src/features/search/`): procura seções, telas, configurações e ações (`catalog.ts`) e os registros
+  das seções ligadas (`records.ts`), no aparelho, sem servidor nem IA paga. Ignora acentos, plural e palavras
+  como "quero"/"minhas", perdoa erros pequenos e entende intenção ("adicionar cliente" → Novo cliente;
+  "quanto tenho para receber?" → o valor). Grupos: Ir para · Fazer agora · registros por seção. Senhas, segredos
+  do cofre e notas de acessos nunca entram no índice. Ações abrem o "+" da tela com `?novo=1` (Financeiro:
+  `?novo=in|out`). Enter abre o primeiro resultado.
 
 ## Movimento
 

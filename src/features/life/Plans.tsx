@@ -16,7 +16,7 @@ import { useDraft, useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
 import { CheckButton } from '../daily/CheckButton'
-import { useOpenParam } from '../useOpenParam'
+import { useNewParam, useOpenParam } from '../useOpenParam'
 
 const STATUS_TONE: Record<PlanStatus, 'neutral' | 'accent' | 'positive' | 'warn'> = { planning: 'neutral', active: 'accent', done: 'positive', paused: 'warn', archived: 'neutral' }
 const STATUSES = Object.keys(PLAN_STATUS_LABEL) as PlanStatus[]
@@ -370,6 +370,7 @@ export function PlansView({ kind }: { kind: PlanKind }) {
   const [filter, setFilter] = useState<Filter>('open')
   const form = useSheet<LifePlan>()
   const detail = useSheet<string>()
+  useNewParam(() => form.show())
   useOpenParam(
     data.lifePlans.filter((p) => p.kind === kind),
     (p) => detail.show(p.id),
