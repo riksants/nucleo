@@ -3,7 +3,7 @@ import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { RecurrenceRule, RecurringItem } from '../../data/types'
 import { useFeedback } from '../../ui/Feedback'
-import { Field, FormGrid, TextArea, TextInput } from '../../ui/Field'
+import { Field, FormGrid, Select, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft } from '../../ui/formHooks'
 import { ToggleRow } from '../planner/controls'
@@ -19,6 +19,8 @@ export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(
     time: item?.time ?? '',
     notes: item?.notes ?? '',
     active: item?.active ?? true,
+    bill: item?.bill ?? false,
+    remindDays: item?.remindDays === undefined ? '' : String(item.remindDays),
   }))
 
   const submit = async () => {
@@ -26,7 +28,17 @@ export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(
     const problem = ruleProblem(d.rule)
     if (problem) return problem
     if (d.time && !isTime(d.time)) return 'Confira o horário'
-    await save('recurring', { ...item, title: d.title.trim(), rule: d.rule, time: d.time, notes: d.notes.trim(), active: d.active, startDate: item?.startDate ?? now.date })
+    await save('recurring', {
+      ...item,
+      title: d.title.trim(),
+      rule: d.rule,
+      time: d.time,
+      notes: d.notes.trim(),
+      active: d.active,
+      bill: d.bill || undefined,
+      remindDays: d.remindDays === '' ? undefined : Number(d.remindDays),
+      startDate: item?.startDate ?? now.date,
+    })
     toast(item ? 'Item atualizado' : 'Item recorrente criado')
     onClose()
   }
@@ -47,9 +59,26 @@ export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(
           <TextInput value={d.title} placeholder="Ex.: Pagar aluguel" onChange={(e) => set('title', e.target.value)} autoFocus={!item} />
         </Field>
         <RuleEditor value={d.rule} onChange={(r) => set('rule', r)} kinds={['daily', 'weekly', 'weekdays', 'monthly']} today={now.weekday} />
-        <Field label="Horário" hint="opcional">
-          <TextInput type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
-        </Field>
+        <div className="half">
+          <Field label="Horário" hint="opcional">
+            <TextInput type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
+          </Field>
+        </div>
+        <div className="half">
+          <Field label="Lembrar">
+            <Select value={d.remindDays} onChange={(e) => set('remindDays', e.target.value)}>
+              <option value="">{d.bill ? 'Padrão (2 dias antes e no dia)' : 'Padrão (no dia)'}</option>
+              <option value="0">No dia</option>
+              <option value="1">1 dia antes</option>
+              <option value="2">2 dias antes</option>
+              <option value="3">3 dias antes</option>
+              <option value="7">1 semana antes</option>
+            </Select>
+          </Field>
+        </div>
+        <ToggleRow checked={d.bill} onChange={(v) => set('bill', v)} hint="Aluguel, internet, boleto… avisa com antecedência">
+          É uma conta ou pagamento
+        </ToggleRow>
         <Field label="Observações" hint="opcional">
           <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>

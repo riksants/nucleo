@@ -7,6 +7,7 @@ import { useStore } from '../../data/store'
 import { formatDateValue, relativeDays } from '../../lib/dates'
 import { Button, IconButton } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
+import { HabitFocus } from './HabitFocus'
 import { elapsed as elapsedOf, formatClock, pause, resume, start, useFocusTimer } from './timer'
 
 /**
@@ -20,6 +21,9 @@ export function FocusPage() {
   const { toast, confirm } = useFeedback()
   const { timer, update, ms } = useFocusTimer()
   const [busy, setBusy] = useState(false)
+  // A habit session (Hábitos → Iniciar), or the habit whose timer is running here.
+  const habitId = params.get('task') ? null : (params.get('habit') ?? timer?.habitId ?? null)
+  const habit = habitId ? (data.habits.find((h) => h.id === habitId) ?? null) : null
   const taskId = params.get('task') ?? timer?.taskId ?? null
   const task = data.tasks.find((t) => t.id === taskId) ?? null
   const ownTimer = timer && timer.taskId === (task?.id ?? null) ? timer : null
@@ -69,6 +73,8 @@ export function FocusPage() {
     }
     history.length > 1 ? history.back() : navigate('/')
   }
+
+  if (habit) return <HabitFocus habit={habit} />
 
   if (!task) {
     const open = sortOpenTasks(data.tasks.filter((t) => t.status !== 'done')).slice(0, 12)

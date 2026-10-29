@@ -8,6 +8,8 @@ import { readPref, writePref } from '../../lib/prefs'
 
 export interface FocusTimer {
   taskId: string | null
+  /** Set when the session is for a habit (then taskId is null). */
+  habitId?: string | null
   /** When the first run started (ISO). */
   startedAt: string
   /** Time accumulated in previous runs. */
@@ -22,8 +24,8 @@ export function elapsed(t: FocusTimer, now = Date.now()): number {
   return t.elapsedMs + (t.runningSince !== null ? now - t.runningSince : 0)
 }
 
-export function start(taskId: string | null, now = Date.now()): FocusTimer {
-  return { taskId, startedAt: new Date(now).toISOString(), elapsedMs: 0, runningSince: now }
+export function start(taskId: string | null, now = Date.now(), habitId: string | null = null): FocusTimer {
+  return { taskId, habitId, startedAt: new Date(now).toISOString(), elapsedMs: 0, runningSince: now }
 }
 
 export function pause(t: FocusTimer, now = Date.now()): FocusTimer {

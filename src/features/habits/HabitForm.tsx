@@ -1,3 +1,4 @@
+import { BedDouble, BookOpen, Brain, Droplets, Dumbbell, GraduationCap, Salad, type LucideIcon } from 'lucide-react'
 import { isTime } from '../../../supabase/functions/_shared/planner/time.ts'
 import { nowIn, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
@@ -10,17 +11,31 @@ import { useDraft } from '../../ui/formHooks'
 import { ToggleRow } from '../planner/controls'
 import { RuleEditor, ruleProblem } from '../daily/RuleEditor'
 
-/** Presets also set the category, which links the habit to weekly metrics. */
-const PRESETS: { name: string; category: HabitCategory }[] = [
-  { name: 'Beber água', category: 'water' },
-  { name: 'Treinar', category: 'training' },
-  { name: 'Estudar', category: 'study' },
-  { name: 'Ler', category: 'reading' },
-  { name: 'Dormir cedo', category: 'sleep' },
-  { name: 'Meditar', category: 'meditation' },
-  { name: 'Comer bem', category: 'food' },
+/** Presets set the name, the category (links to weekly metrics) and a sensible time and length to start from. */
+const PRESETS: { name: string; category: HabitCategory; icon: LucideIcon; time?: string; minutes?: number; goal?: string }[] = [
+  { name: 'Beber água', category: 'water', icon: Droplets, goal: '2 litros' },
+  { name: 'Treinar', category: 'training', icon: Dumbbell, time: '07:00', minutes: 45 },
+  { name: 'Estudar', category: 'study', icon: GraduationCap, time: '18:00', minutes: 30 },
+  { name: 'Ler', category: 'reading', icon: BookOpen, time: '21:00', minutes: 20 },
+  { name: 'Meditar', category: 'meditation', icon: Brain, time: '07:30', minutes: 10 },
+  { name: 'Dormir cedo', category: 'sleep', icon: BedDouble, time: '23:00' },
+  { name: 'Comer bem', category: 'food', icon: Salad },
 ]
 
+const TIMES = [
+  { label: 'Manhã', time: '07:00' },
+  { label: 'Tarde', time: '13:00' },
+  { label: 'Noite', time: '20:00' },
+]
+const LENGTHS = [10, 20, 30, 45, 60]
+
+const chip = (on: boolean) =>
+  `press h-9 shrink-0 rounded-full border px-3.5 text-[14px] font-medium transition-colors ${on ? 'border-accent/40 bg-accent/[0.14] text-accent-hi' : 'border-line bg-surface text-soft hover:text-ink'}`
+
+/**
+ * New/edit habit, in order of importance: what, how often, when, how long (optional: a timed session that
+ * reaches it marks the day by itself), then the details (target text, category, active).
+ */
 export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): void; habit: Habit | null }) {
   const { save, remove, settings } = useStore()
   const { toast, confirm } = useFeedback()
@@ -30,6 +45,7 @@ export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): 
     rule: (habit?.rule ?? { type: 'daily' }) as RecurrenceRule,
     time: habit?.time ?? '',
     goal: habit?.goal ?? '',
+    minutes: habit?.minutes ? String(habit.minutes) : '',
     active: habit?.active ?? true,
     category: (habit?.category ?? '') as HabitCategory | '',
   }))
@@ -39,8 +55,20 @@ export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): 
     const problem = ruleProblem(d.rule)
     if (problem) return problem
     if (d.time && !isTime(d.time)) return 'Confira o horário'
-    await save('habits', { ...habit, name: d.name.trim(), rule: d.rule, time: d.time, goal: d.goal.trim(), active: d.active, category: d.category || undefined, startDate: habit?.startDate ?? now.date })
-    toast(habit ? 'Hábito atualizado' : 'Hábito criado')
+    const minutes = d.minutes ? Math.round(Number(d.minutes)) : 0
+    if (d.minutes && (!Number.isFinite(minutes) || minutes < 1 || minutes > 600)) return 'Duração entre 1 e 600 minutos'
+    await save('habits', {
+      ...habit,
+      name: d.name.trim(),
+      rule: d.rule,
+      time: d.time,
+      goal: d.goal.trim(),
+      minutes: minutes || undefined,
+      active: d.active,
+      category: d.category || undefined,
+      startDate: habit?.startDate ?? now.date,
+    })
+    toast(habit ? 'Hábito atualizado' : d.time ? `Hábito criado: aparece no seu dia às ${d.time}` : 'Hábito criado')
     onClose()
   }
 
@@ -61,37 +89,76 @@ export function HabitForm({ open, onClose, habit }: { open: boolean; onClose(): 
   return (
     <FormSheet open={open} onClose={onClose} title={habit ? 'Editar hábito' : 'Novo hábito'} submitLabel={habit ? 'Salvar' : 'Criar hábito'} onSubmit={submit} onDelete={habit ? del : undefined}>
       <FormGrid>
-        <Field label="Hábito">
-          <TextInput value={d.name} placeholder="Ex.: Beber água" onChange={(e) => set('name', e.target.value)} autoFocus={!habit} />
-        </Field>
         {!habit && !d.name && (
-          <div className="-mt-2 flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <button key={p.name} type="button" onClick={() => setAll((x) => ({ ...x, name: p.name, category: p.category }))} className="press h-9 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-                {p.name}
+          <div>
+            <p className="mb-2 text-[13px] font-medium text-soft">Comece por um destes</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.name}
+                  type="button"
+                  onClick={() => setAll((x) => ({ ...x, name: p.name, category: p.category, time: p.time ?? x.time, minutes: p.minutes ? String(p.minutes) : x.minutes, goal: p.goal ?? x.goal }))}
+                  className="press flex items-center gap-2.5 rounded-2xl border border-line bg-surface px-3 py-2.5 text-left text-[14px] font-medium hover:border-line-strong"
+                >
+                  <span className="icon-tile grid size-8 shrink-0 place-items-center rounded-xl">
+                    <p.icon size={16} />
+                  </span>
+                  <span className="min-w-0 truncate">{p.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <Field label="Hábito">
+          <TextInput value={d.name} placeholder="Ex.: Estudar inglês" onChange={(e) => set('name', e.target.value)} autoFocus={!habit} />
+        </Field>
+
+        <RuleEditor value={d.rule} onChange={(r) => set('rule', r)} kinds={['daily', 'weekdays']} today={now.weekday} />
+
+        <Field label="Horário" hint="opcional · com horário, entra na linha do dia e nos lembretes">
+          <div className="space-y-2">
+            <div className="no-scrollbar flex gap-2 overflow-x-auto">
+              <button type="button" onClick={() => set('time', '')} className={chip(!d.time)}>
+                Sem horário
+              </button>
+              {TIMES.map((t) => (
+                <button key={t.label} type="button" onClick={() => set('time', t.time)} className={chip(d.time === t.time)}>
+                  {t.label} · {t.time}
+                </button>
+              ))}
+            </div>
+            <TextInput type="time" aria-label="Horário exato" value={d.time} onChange={(e) => set('time', e.target.value)} />
+          </div>
+        </Field>
+
+        <Field label="Duração da sessão" hint="opcional · ao usar o cronômetro e atingir, o dia é marcado sozinho">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto">
+            <button type="button" onClick={() => set('minutes', '')} className={chip(!d.minutes)}>
+              Sem duração
+            </button>
+            {LENGTHS.map((m) => (
+              <button key={m} type="button" onClick={() => set('minutes', String(m))} className={chip(d.minutes === String(m))}>
+                {m} min
               </button>
             ))}
           </div>
-        )}
-        <Field label="Categoria" hint="opcional · liga às metas e ao Score">
-          <Select value={d.category} onChange={(e) => set('category', e.target.value as HabitCategory | '')}>
-            <option value="">Sem categoria</option>
-            {(Object.keys(CATEGORY_LABEL) as HabitCategory[]).map((c) => (
-              <option key={c} value={c}>
-                {CATEGORY_LABEL[c]}
-              </option>
-            ))}
-          </Select>
         </Field>
-        <RuleEditor value={d.rule} onChange={(r) => set('rule', r)} kinds={['daily', 'weekdays']} today={now.weekday} />
-        <div className="half">
-          <Field label="Horário" hint="opcional">
-            <TextInput type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
-          </Field>
-        </div>
+
         <div className="half">
           <Field label="Meta" hint="opcional">
             <TextInput value={d.goal} placeholder="Ex.: 2 litros" onChange={(e) => set('goal', e.target.value)} />
+          </Field>
+        </div>
+        <div className="half">
+          <Field label="Categoria" hint="liga ao Score">
+            <Select value={d.category} onChange={(e) => set('category', e.target.value as HabitCategory | '')}>
+              <option value="">Sem categoria</option>
+              {(Object.keys(CATEGORY_LABEL) as HabitCategory[]).map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABEL[c]}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
         {habit && (

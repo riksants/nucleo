@@ -50,3 +50,38 @@ describe('time states', () => {
     expect(confirmQuestion(treino)).toBe('Estava programado até 10:30. Você concluiu?')
   })
 })
+
+import { habitRate, sessionReachesGoal } from '../src/core/habitProgress'
+import type { Completion, Habit } from '../src/data/types'
+import { indexCompletions } from '../src/core/completions'
+
+describe('habit progress', () => {
+  const h = { id: 'h', name: 'Inglês', rule: { type: 'daily' }, time: '18:00', goal: '', active: true, startDate: '2026-10-20', minutes: 30 } as Habit
+  const c = (date: string, status: 'done' | 'skipped') => ({ id: `habit:h:${date}`, source: 'habit', sourceId: 'h', date, status }) as Completion
+  it('rate counts expected days; skipped is a pause; today only once marked', () => {
+    const idx = indexCompletions([c('2026-10-28', 'done'), c('2026-10-27', 'done'), c('2026-10-26', 'skipped')])
+    expect(habitRate(h, idx, '2026-10-29')).toEqual({ done: 2, expected: 8, pct: 25 })
+  })
+  it('a session is evidence only when it reaches the habit length', () => {
+    expect(sessionReachesGoal(h, 30)).toBe(true)
+    expect(sessionReachesGoal(h, 29)).toBe(false)
+    expect(sessionReachesGoal({ minutes: undefined }, 90)).toBe(false)
+  })
+})
+
+import { moveOccurrence, nextRecurring, recurringOn } from '../src/core/habits'
+import type { RecurringItem } from '../src/data/types'
+
+describe('recurring: move one occurrence', () => {
+  const rent = { id: 'r', title: 'Pagar aluguel', rule: { type: 'monthly', dayOfMonth: 5 }, time: '', notes: '', active: true, startDate: '2026-01-01' } as RecurringItem
+  it('moves only that date; the rule stays', () => {
+    const moved = moveOccurrence(rent, '2026-11-05', '2026-11-06', '2026-11-05')
+    expect(recurringOn(moved, '2026-11-05')).toBe(false)
+    expect(recurringOn(moved, '2026-11-06')).toBe(true)
+    expect(recurringOn(moved, '2026-12-05')).toBe(true)
+    expect(nextRecurring(moved, '2026-11-01')).toBe('2026-11-06')
+    // moving it again keeps the original key
+    const again = moveOccurrence(moved, '2026-11-06', '2026-11-08', '2026-11-06')
+    expect(again.moved).toEqual({ '2026-11-05': '2026-11-08' })
+  })
+})

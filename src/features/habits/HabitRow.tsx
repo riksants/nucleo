@@ -7,18 +7,19 @@ import { CheckButton } from '../daily/CheckButton'
  * A habit on a given day. Marking writes one completion for that day; "Pular hoje"
  * records it as skipped (never as done). Used in Hábitos, Manhã, Noite and Agenda.
  */
-export function HabitRow({ habit, date, status, onOpen, compact }: { habit: Habit; date: string; status: OccurrenceStatus; onOpen?(h: Habit): void; compact?: boolean }) {
+/** `hint`: a short line instead of the time/target (e.g. "Era às 18:00 · confirme"). */
+export function HabitRow({ habit, date, status, onOpen, compact, hint }: { habit: Habit; date: string; status: OccurrenceStatus; onOpen?(h: Habit): void; compact?: boolean; hint?: string }) {
   const { setCompletion } = useDailyActions()
   const toggle = () => setCompletion('habit', habit.id, date, status === 'done' ? null : 'done')
   const skip = () => setCompletion('habit', habit.id, date, status === 'skipped' ? null : 'skipped')
-  const meta = [habit.time, habit.goal].filter(Boolean).join(' · ')
+  const meta = hint ?? [habit.time, habit.minutes ? `${habit.minutes} min` : '', habit.goal].filter(Boolean).join(' · ')
   return (
     <div className="flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
       <CheckButton status={status} onClick={toggle} label={status === 'done' ? `Desmarcar ${habit.name}` : `Concluir ${habit.name}`} />
       <button type="button" onClick={() => onOpen?.(habit)} disabled={!onOpen} className="min-w-0 flex-1 py-3 pr-1 text-left">
         <span className={`block truncate text-[15px] ${status === 'done' ? 'text-faint line-through' : status === 'skipped' ? 'text-faint' : ''}`}>{habit.name}</span>
         {(meta || status === 'skipped') && !compact && (
-          <span className="block truncate text-[13px] text-faint">{status === 'skipped' ? 'Pulado hoje' : meta}</span>
+          <span className={`block truncate text-[13px] ${hint && status === 'pending' ? 'font-medium text-warn' : 'text-faint'}`}>{status === 'skipped' ? 'Pulado hoje' : meta}</span>
         )}
       </button>
       {status !== 'done' && (

@@ -198,6 +198,8 @@ export interface Habit extends Entity {
   startDate: string
   /** Optional: links the habit to weekly metrics (training, study…). Older habits have none. */
   category?: HabitCategory
+  /** Optional session length (min). A focus session that reaches it marks the day as done (evidence, not a guess). */
+  minutes?: number
 }
 
 export type HabitCategory = 'training' | 'study' | 'reading' | 'water' | 'sleep' | 'meditation' | 'food' | 'other'
@@ -209,6 +211,12 @@ export interface RecurringItem extends Entity {
   notes: string
   active: boolean
   startDate: string
+  /** A bill or payment (aluguel, internet): reminded earlier by default. Optional; older items are ordinary. */
+  bill?: boolean
+  /** Days before to remind (0 = on the day). Unset: 2 for bills, 0 for the rest. */
+  remindDays?: number
+  /** Occurrences moved once ("Adiar"): original date → new date. The rule itself doesn't change. */
+  moved?: Record<string, string>
 }
 
 export type CompletionSource = 'habit' | 'recurring' | 'routine' | 'challenge'
@@ -238,6 +246,8 @@ export interface CalendarEvent extends Entity {
 /** A finished focus session (the running timer lives on the device until then). */
 export interface FocusSession extends Entity {
   taskId: string | null
+  /** A habit session (Hábitos → Iniciar); optional, older sessions don't have it. */
+  habitId?: string | null
   startedAt: string
   endedAt: string
   minutes: number
