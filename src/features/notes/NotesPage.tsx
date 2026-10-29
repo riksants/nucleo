@@ -287,10 +287,10 @@ export function NotesPage() {
               <SectionTitle>Encontrado nas suas notas</SectionTitle>
               <div className="card divide-y divide-line">
                 {found.map((a) => (
-                  <div key={`${a.note.id}:${a.line}`} className="flex items-center gap-3 px-4 py-3">
+                  <div key={`${a.note.id}:${a.line}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
                     <Sparkles size={16} className="shrink-0 text-accent-hi" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px]">{a.line}</span>
+                    <span className="min-w-0 flex-1 basis-48">
+                      <span className="line-clamp-2 block text-[15px] leading-snug">{a.line}</span>
                       <span className="block truncate text-[12px] text-faint">em “{a.note.title || a.note.body.split('\n')[0]}”</span>
                     </span>
                     <button type="button" onClick={() => setActing({ note: a.note, line: a.line, suggestion: a.suggestion })} className="press h-9 shrink-0 rounded-full bg-accent/[0.12] px-3 text-[13px] font-semibold text-accent-hi hover:bg-accent/[0.2]">
