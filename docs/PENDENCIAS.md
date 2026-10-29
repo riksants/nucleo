@@ -1,5 +1,20 @@
 # Pendências
 
+## Lembretes com o app fechado (Etapa 8 das telas, 2026-10-29) — precisa de ação sua
+
+O app já prepara todos os lembretes (tarefas, agenda, hábitos, rotina, recorrentes/contas, assinaturas) e os
+envia para a tabela `scheduled_notifications` quando há conta e permissão de notificação. Mas o envio pelo
+servidor **nunca foi agendado**: sem isso, os lembretes só aparecem com o app aberto. Para ligar (gratuito no
+plano Free):
+
+1. Publicar a função `push-dispatch` (Supabase CLI: `supabase functions deploy push-dispatch`).
+2. Criar os secrets da função: `VAPID_PRIVATE_KEY` (par da chave pública já usada no app) e `DISPATCH_SECRET`
+   (um valor aleatório longo). Nunca no repositório.
+3. Ligar as extensões `pg_cron` e `pg_net` e rodar `supabase/cron.sql` no SQL Editor (troca os dois valores marcados).
+
+Limites reais: no iPhone só com o app instalado na Tela de Início e iOS 16.4+; a entrega depende do sistema
+(modo foco, economia de bateria). Android e computador funcionam pelo navegador.
+
 ## Auth: configurações do painel do Supabase (Etapa 2)
 
 Registrado em 2026-10-22, na Etapa 2 da auditoria.

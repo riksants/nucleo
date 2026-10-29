@@ -72,6 +72,22 @@ Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-m
   do cofre e notas de acessos nunca entram no índice. Ações abrem o "+" da tela com `?novo=1` (Financeiro:
   `?novo=in|out`). Enter abre o primeiro resultado.
 
+## Telas reformuladas (2026-10-29)
+
+- Cabeçalho rico (`PageHeader rich`): opcional, só nas telas reformuladas (Hoje, Tarefas, Agenda, Rotina, Hábitos,
+  Recorrentes, Alimentação, Caixa de entrada, Assinaturas, Portfólio, Anotações). Linha pequena em caixa alta acima
+  do título, título 32/42 px, faixa de números (`stats`, fundo carvão 6%) e o ícone da seção em traço fino a 6%
+  no canto (só no celular). Luz suave na faixa (`band-depth`) e, no celular, a página "sobe" sobre a faixa com
+  borda arredondada. Entrada: 320 ms, 6 px, respeita "reduzir movimento". As outras telas usam o cabeçalho simples.
+- Início: data em caixa alta, saudação, resumo do dia (só o que existe), saldo com selo do mês e as ações num
+  "dock" que fica metade sobre a faixa.
+- Linha do dia (`src/features/daily/DayParts.tsx`): compartilhada por Hoje, Agenda e Rotina. Estados derivados do
+  relógio (`src/core/timeState.ts`): Programado → Em horário → Aguardando confirmação; Concluído e Não realizado
+  só pela pessoa. O relógio nunca marca nada como feito. "Concluí / Não fiz / Depois" (Depois = 1 h, por aparelho).
+- Faixas de dias (7 colunas, dia de hoje com contorno, escolhido em vermelhão): Agenda, Rotina, Alimentação.
+- Campos de data/hora encolhem como qualquer campo (correção do Safari do iPhone em `index.css`); grades da
+  página usam `grid-cols-[minmax(0,1fr)]` no celular para nunca empurrar a largura.
+
 ## Movimento
 
 - Curva da casa: expo ease-out `cubic-bezier(0.16, 1, 0.3, 1)` (`--ease-out-soft` no CSS, `EASE_OUT_SOFT` em
