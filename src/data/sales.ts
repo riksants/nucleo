@@ -1,6 +1,6 @@
-import { daysBetween, fromDateInput } from '../lib/dates'
+import { daysBetween, fromDateInput, toDateInput } from '../lib/dates'
 import { normalize } from './selectors'
-import type { Cents, Currency, Payment, Sale } from './types'
+import type { Cents, Currency, Installment, Payment, Sale } from './types'
 
 export type SaleStatus = 'pending' | 'partial' | 'paid'
 
@@ -26,9 +26,67 @@ export function saleStatus(sale: Pick<Sale, 'payments' | 'total'>): SaleStatus {
 }
 
 export function isOverdue(sale: Sale, today = new Date()): boolean {
+  // With installments, late = the first unpaid installment's date has passed.
+  if (sale.installments?.length) return isLate(sale, toDateInput(today))
   const due = fromDateInput(sale.dueDate)
   return Boolean(due) && saleStatus(sale) !== 'paid' && daysBetween(today, due!) < 0
 }
+
+// ---------- Installments (derived from the payments, nothing stored about who paid what)
+
+export type InstallmentState = 'paid' | 'partial' | 'pending' | 'overdue'
+
+export interface InstallmentView extends Installment {
+  paid: Cents
+  state: InstallmentState
+  index: number
+}
+
+/**
+ * Paid status of each installment, derived from the payments: what was paid beyond the part outside the
+ * installments (the down payment) covers them in order. Nothing stored, so removing a payment just recomputes.
+ */
+export function installmentViews(sale: Sale, today: string): InstallmentView[] {
+  const list = [...(sale.installments ?? [])].sort((a, b) => (a.due < b.due ? -1 : 1))
+  const scheduled = list.reduce((s, i) => s + i.amount, 0)
+  let left = Math.max(0, salePaid(sale) - Math.max(0, sale.total - scheduled))
+  return list.map((i, index) => {
+    const paid = Math.min(i.amount, left)
+    left -= paid
+    const state: InstallmentState = paid >= i.amount ? 'paid' : i.due < today ? 'overdue' : paid > 0 ? 'partial' : 'pending'
+    return { ...i, paid, state, index }
+  })
+}
+
+/** Which installments a payment of `amount` would settle (for "Recebi"). */
+export function settles(sale: Sale, amount: Cents, today: string): { index: number; due: string; covers: Cents; full: boolean }[] {
+  let left = amount
+  const out: { index: number; due: string; covers: Cents; full: boolean }[] = []
+  for (const v of installmentViews(sale, today)) {
+    if (left <= 0) break
+    const open = v.amount - v.paid
+    if (open <= 0) continue
+    const covers = Math.min(open, left)
+    out.push({ index: v.index, due: v.due, covers, full: covers === open })
+    left -= covers
+  }
+  return out
+}
+
+/** The next date something is owed: the first unpaid installment, else the sale's deadline. "" when none. */
+export function nextDue(sale: Sale, today: string): string {
+  if (saleStatus(sale) === 'paid') return ''
+  const open = installmentViews(sale, today).find((v) => v.state !== 'paid')
+  return open?.due ?? sale.dueDate ?? ''
+}
+
+/** Late: something owed whose date has passed (an installment or the deadline). */
+export function isLate(sale: Sale, today: string): boolean {
+  const d = nextDue(sale, today)
+  return Boolean(d) && d < today
+}
+
+
 
 /** Shown when a payment is bigger than what is still owed (the form offers “Usar o valor que falta”). */
 export const OVERPAY = 'O valor passa do que falta'

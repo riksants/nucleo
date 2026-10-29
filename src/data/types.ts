@@ -335,6 +335,37 @@ export interface Sale extends Entity {
   dueDate: string
   payments: Payment[]
   notes: string
+  /**
+   * Optional (older sales have none and keep `product`/`quantity`/`total` as they are). With items, `product`
+   * is their summary and `total` = sum of the items − `discount`.
+   */
+  items?: SaleItem[]
+  discount?: Cents
+  /** Installments of what is owed after the down payment: amounts add up exactly; paid status is derived from payments. */
+  installments?: Installment[]
+  /** Contact for "Cobrar" when the buyer is not in Clients (or the client has no phone). */
+  phone?: string
+  /** Repeating sale: the automation creates the next charges (new pending sales); never a payment. */
+  recurring?: { every: 'week' | 'month' | 'year'; status: 'active' | 'paused' | 'ended' }
+  /** Next date the automation will charge (repeating sales only). */
+  recurNext?: string
+  /** A charge generated from a repeating sale (its id). */
+  recurOf?: string
+}
+
+export interface SaleItem {
+  id: string
+  name: string
+  quantity: number
+  /** Price of one unit. */
+  price: Cents
+}
+
+export interface Installment {
+  id: string
+  /** "YYYY-MM-DD" */
+  due: string
+  amount: Cents
 }
 
 export type BillingInterval = 'monthly' | 'yearly'
@@ -911,7 +942,7 @@ export interface InsightMark {
 /* ----------------------------- Automações ----------------------------- */
 
 /** `rule`: a run of one of the person's rules (Parte 2); it has no on/off of its own in settings. */
-export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule' | 'bankImport'
+export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule' | 'bankImport' | 'saleRecurring'
 export type AutomationRunStatus = 'pending' | 'done' | 'undone' | 'skipped'
 
 /**

@@ -7,6 +7,7 @@ import type { AutomationId, Settings } from '../../data/types'
 import { planGoalSaves } from './goalSave'
 import { planSubscriberCharges } from './subscriberCharge'
 import { planToolCharges, planToolPresumed } from './toolCharge'
+import { planSaleRepeats } from './saleRecurring'
 import type { AutomationCtx, ItemPlan } from './types'
 
 export const AUTOMATIONS: { id: AutomationId; title: string; text: string }[] = [
@@ -24,6 +25,11 @@ export const AUTOMATIONS: { id: AutomationId; title: string; text: string }[] = 
     id: 'projectClient',
     title: 'Projetos e clientes',
     text: 'Quando o último projeto em aberto de um cliente é concluído, o cliente passa para Concluído. Se um projeto for reaberto, ele volta para Ativo (só quando foi o Núcleo que concluiu).',
+  },
+  {
+    id: 'saleRecurring',
+    title: 'Vendas recorrentes',
+    text: 'Na data de cada repetição, cria a próxima cobrança da venda (a receber). Nunca registra pagamento: só você confirma o que recebeu.',
   },
   {
     id: 'goalSave',
@@ -53,6 +59,8 @@ export function planAll(ctx: AutomationCtx): ItemPlan[] {
   if (sub) out.push(...planSubscriberCharges(ctx, sub))
   const tool = automationSince(ctx.settings, 'toolCharge')
   if (tool) out.push(...planToolCharges(ctx, tool), ...planToolPresumed(ctx))
+  const repeat = automationSince(ctx.settings, 'saleRecurring')
+  if (repeat) out.push(...planSaleRepeats(ctx, repeat))
   const goal = automationSince(ctx.settings, 'goalSave')
   if (goal) out.push(...planGoalSaves(ctx, goal))
   return out.filter((p) => p.ops.length)
