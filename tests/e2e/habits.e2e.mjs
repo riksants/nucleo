@@ -10,7 +10,7 @@ try {
   await b.mobile()
   await b.send('Network.enable')
   await b.send('Network.setBypassServiceWorker', { bypass: true })
-  await seedExistingUser(b, {}, { modules: { habits: true }, modulesSeen: ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'inbox', 'habits'] })
+  await seedExistingUser(b, {}, { modules: { habits: true }, modulesSeen: ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'inbox', 'habits', 'recurring', 'life', 'week', 'agenda'] })
   await b.goto(BASE + '#/habits')
   let text = await b.text()
   r.check('página de hábitos vazia com convite', text.includes('Nenhum hábito ainda'))
