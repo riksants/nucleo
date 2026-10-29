@@ -40,8 +40,9 @@ try {
   await b.goto(BASE + '#/meals')
   await b.sleep(900)
   let text = await b.text()
-  r.check('Alimentação abre com Semana · Lista de compras · Plano com IA', text.includes('Semana') && text.includes('Lista de compras') && text.includes('Plano com IA') && text.includes('Usar plano da IA'))
-  r.check('a semana mostra os 7 dias com datas reais', (await b.eval(`document.querySelectorAll('section[aria-label]').length`)) === 7)
+  r.check('Alimentação abre com Semana · Lista de compras · Plano com IA', text.includes('Semana') && text.includes('Lista de compras') && text.includes('Plano com IA') && text.includes('Usar plano aprovado'))
+  r.check('a semana mostra os 7 dias com datas reais', (await b.eval(`document.querySelectorAll('[role=tablist][aria-label="Dias da semana"] [role=tab]').length`)) === 7)
+  const pickDay = (date) => b.eval(`document.querySelectorAll('[role=tablist][aria-label="Dias da semana"] [role=tab]')[${(weekday(date) + 6) % 7}].click()`)
 
   // Quick meal: type → name → time → ingredients
   await b.click('Refeição', 'button')
@@ -53,7 +54,10 @@ try {
   r.check('formulário de refeição cabe na tela (390px)', await dialogFits())
   await b.click('Adicionar', '[role=dialog] button[type=submit]')
   await b.sleep(400)
-  await b.click(`Adicionar refeição em ${DAY_NAME[weekday(other)]}`)
+  // Another day: pick it on the day strip, then add there.
+  await pickDay(other)
+  await b.sleep(300)
+  await b.click('Refeição', 'button')
   await b.click('Jantar', '[role=radio]')
   await fillIn('Ingredientes', '200 g frango\n2 bananas')
   await b.click('Adicionar', '[role=dialog] button[type=submit]')
@@ -61,6 +65,8 @@ try {
   let meals = await idb(b, 'meals')
   const lunch = meals.find((m) => m.name === 'Frango com arroz')
   r.check('refeições salvas na data real (dia certo no fuso), com tipo e ingredientes como digitados', meals.length === 2 && lunch?.date === today && lunch.type === 'lunch' && lunch.time === '12:30' && lunch.ingredients.length === 3 && meals.some((m) => m.date === other && m.type === 'dinner' && m.name === ''))
+  await pickDay(today)
+  await b.sleep(300)
   await b.click('Marcar Frango com arroz como realizada')
   await b.sleep(300)
   r.check('marcar como realizada grava no próprio registro', (await idb(b, 'meals', lunch.id)).done === true)
@@ -103,6 +109,9 @@ try {
   // Agenda / Calendar / Morning / Night / Week use the real meals
   await b.goto(BASE + '#/agenda')
   await b.sleep(900)
+  // Finished items (the lunch marked as eaten) fold into "Concluídos".
+  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.startsWith('Concluídos'))?.click()`)
+  await b.sleep(300)
   text = await b.text()
   r.check('com refeições reais, a Agenda mostra a refeição original e não repete o modelo da IA', text.includes('Frango com arroz') && !text.includes('Marmita da IA'))
   await b.goto(BASE + '#/life')
@@ -132,7 +141,7 @@ try {
   r.check('copiar semana anterior cria novas refeições, sem "realizada", e não muda a antiga', next.length === 2 && next.every((m) => !m.done) && meals.length === 4 && meals.find((m) => m.id === lunch.id).done === true)
 
   // AI plan tab: its own list + copy without obvious duplicates
-  await b.click('Esta semana')
+  await b.click('Voltar para esta semana')
   await b.click('Plano com IA', '[role=radio]')
   await b.sleep(400)
   text = await b.text()

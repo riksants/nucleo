@@ -27,6 +27,7 @@ export function typeFromTime(time: string): string {
 }
 
 const SHORT = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' })
+const LONG = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 
 /** Seven days to pick from (inside its own row: never pushes the page sideways). */
 export function DayStrip({ days, value, today, counts, onPick, label = 'Dias' }: { days: string[]; value: string; today?: string; counts?: Record<string, number>; onPick(d: string): void; label?: string }) {
@@ -41,6 +42,7 @@ export function DayStrip({ days, value, today, counts, onPick, label = 'Dias' }:
             type="button"
             role="tab"
             aria-selected={on}
+            aria-label={`${LONG.format(new Date(`${d}T12:00:00Z`))}${n ? `, ${n}` : ''}`}
             onClick={() => onPick(d)}
             className={`press flex min-w-0 flex-col items-center gap-1 rounded-2xl py-2 transition-colors ${on ? 'bg-accent text-on-accent' : d === today ? 'bg-accent/[0.1] text-accent-hi ring-1 ring-accent/30 ring-inset' : 'text-soft hover:bg-tint/[0.04]'}`}
           >
