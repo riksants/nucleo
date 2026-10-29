@@ -110,11 +110,12 @@ try {
   await b.fill('Prazo', today)
   await b.fill('Horário', '23:50')
   await b.click('Criar tarefa', 'button[type=submit]')
-  await b.goto(BASE + '#/today')
+  // "Dia" explicitly: Hoje opens on the part of the day that fits the clock.
+  await b.goto(BASE + '#/today?mode=day')
   text = await b.text()
-  check('Hoje mostra a tarefa com horário', text.includes('Ligar para fornecedor') && !text.includes('está escondida') && text.toUpperCase().includes('TAREFAS DE HOJE'))
+  check('Hoje mostra a tarefa com horário', text.includes('Ligar para fornecedor') && !text.includes('está escondida') && text.toUpperCase().includes('LINHA DO DIA'))
   await b.shot('t2-hoje')
-  await b.click('Concluir tarefa')
+  await b.click('Concluir Ligar para fornecedor')
   await b.sleep(1200)
   const tasks = await idb('tasks')
   check('concluir em Hoje atualiza a tarefa original', tasks.length === 1 && tasks[0].status === 'done' && tasks[0].completedAt)
@@ -180,7 +181,7 @@ try {
   await b.sleep(400)
   text = await b.text()
   check('lista de compras também bloqueia alergênico', text.includes('não combina com: Amendoim'))
-  await b.click('Aprovar e salvar')
+  await b.click('Aprovar plano')
   await b.shot('t2-alimentacao')
 
   // ---------- Lembretes
