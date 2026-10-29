@@ -270,6 +270,11 @@ export interface Tool extends Entity {
   autoPaid?: boolean
   /** Day of the month the charges keep (set by the automation), so 31 → 28 Feb → 31 Mar. */
   chargeDay?: number
+  /**
+   * One day after an unconfirmed charge: 'ask' (default) asks; 'presume' records "Pagamento presumido" without
+   * touching the balance; 'presumeDeduct' also records the expense (the person authorized it beforehand).
+   */
+  afterDue?: 'ask' | 'presume' | 'presumeDeduct'
 }
 
 export interface Account extends Entity {
@@ -923,6 +928,12 @@ export interface AutomationRun extends Entity {
   status: AutomationRunStatus
   /** Confirmed by the person from "A receber"/"A pagar": undoing takes it back to pending. */
   fromPending?: true
+  /** Tools: "Pagamento presumido" (the person allowed it for this tool): never shown as a proven payment. */
+  presumed?: true
+  /** Tools: the person said "Ainda não paguei" after the due date: not presumed again, no more assisted prompt. */
+  presumeDeclined?: true
+  /** Tools: settled without a movement in Financeiro ("Confirmar sem descontar"). */
+  noExpense?: true
   /** Rules: which rule ran. */
   rule?: { id: string; name: string }
   /**

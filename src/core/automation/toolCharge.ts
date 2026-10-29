@@ -9,8 +9,8 @@
 import { instantFor } from '../../data/receipts'
 import type { AutomationRun, Cents, Tool, Transaction } from '../../data/types'
 import { formatMoney } from '../../lib/money'
-import { zoneOf } from '../period'
-import { cycleDates, dayOfDate, isDate } from './dates'
+import { addDaysToDate, zoneOf } from '../period'
+import { cycleDates, dayOfDate, isDate, shiftMonths } from './dates'
 import { type AutomationCtx, type BatchOp, type ItemPlan, knownRuns, makeRun, MAX_RUNS_PER_ITEM, runPut } from './types'
 
 export const toolRunId = (toolId: string, date: string) => `auto-tool-${toolId}-${date}`
@@ -87,10 +87,113 @@ export function confirmToolCharge(run: AutomationRun, input: { amount: Cents; da
     ...run,
     status: 'done',
     fromPending: true,
+    presumed: undefined,
+    noExpense: undefined,
     amount: input.amount,
     currency,
     summary: `Pagamento confirmado de ${t?.name ?? run.origin.label}: ${formatMoney(input.amount, currency)}`,
     created: [{ collection: 'transactions', id: tx.id }],
   }
   return [{ op: 'put', collection: 'transactions', item: tx }, runPut(done)]
+}
+
+/** How many days before its date a charge can be marked as paid. */
+export const EARLY_DAYS = 10
+
+/** "Confirmar sem descontar": the charge is settled and nothing enters Financeiro. Undo takes it back to "A pagar". */
+export function confirmToolChargeNoExpense(run: AutomationRun, ctx: AutomationCtx): BatchOp[] {
+  const t = ctx.data.tools.find((x) => x.id === run.origin.id)
+  const name = t?.name ?? run.origin.label
+  const money = run.amount !== undefined && run.currency ? `: ${formatMoney(run.amount, run.currency)}` : ''
+  const { presumed: _p, detail: _d, ...rest } = run
+  void _p
+  void _d
+  // A presumed charge whose expense was already recorded (as authorized): confirming keeps it, just no longer "presumed".
+  if (run.status === 'done' && run.created.length) return [runPut({ ...rest, summary: `Pagamento confirmado de ${name}${money}` })]
+  return [runPut({ ...rest, status: 'done', fromPending: true, noExpense: true, created: [], summary: `Pago sem descontar do saldo — ${name}${money}` })]
+}
+
+/** The charge date "Já paguei" refers to: the oldest one waiting, else the next one from today. */
+export function currentToolCycle(tool: Tool, ctx: Pick<AutomationCtx, 'data' | 'today'>): { date: string; run: AutomationRun | null } | null {
+  const waiting = ctx.data.automationRuns
+    .filter((r) => r.automation === 'toolCharge' && r.origin.id === tool.id && r.status === 'pending')
+    .sort((a, b) => (a.date < b.date ? -1 : 1))[0]
+  if (waiting) return { date: waiting.date, run: waiting }
+  if (tool.status !== 'active' || tool.price <= 0 || !isDate(tool.nextCharge)) return null
+  if (tool.billing === 'once') return { date: tool.nextCharge, run: null }
+  if (tool.billing !== 'monthly' && tool.billing !== 'yearly') return null
+  const anchor = tool.chargeDay ?? dayOfDate(tool.nextCharge)
+  const step = tool.billing === 'monthly' ? 1 : 12
+  let date = tool.nextCharge
+  for (let k = 1; date < ctx.today && k < 600; k++) date = shiftMonths(tool.nextCharge, k * step, anchor)
+  return { date, run: null }
+}
+
+/**
+ * "Já paguei": the same charge the automation would create for this cycle, settled right away — with the expense
+ * (`deduct`) or without. The date moves to the next cycle, so the automation never charges this cycle again.
+ */
+export function payToolNow(tool: Tool, input: { amount: Cents; date: string; deduct: boolean }, ctx: AutomationCtx): BatchOp[] | string {
+  const cycle = currentToolCycle(tool, ctx)
+  if (!cycle) return 'Esta assinatura não tem cobrança para registrar'
+  if (cycle.run) return cycle.run.status === 'pending' ? (input.deduct ? confirmToolCharge(cycle.run, input, ctx) : confirmToolChargeNoExpense(cycle.run, ctx)) : 'Esta cobrança já foi registrada'
+  // Paying early is fine, but not a cycle that is still far away (a second tap must not pay next month).
+  if (cycle.date > addDaysToDate(ctx.today, EARLY_DAYS)) return `A próxima cobrança é em ${cycle.date.split('-').reverse().join('/')}: ainda não há o que pagar`
+  const id = toolRunId(tool.id, cycle.date)
+  if (knownRuns(ctx.data).has(id)) return 'Esta cobrança já foi registrada'
+  const once = tool.billing === 'once'
+  const anchor = tool.chargeDay ?? dayOfDate(tool.nextCharge)
+  const after = once ? tool.nextCharge : shiftMonths(cycle.date, tool.billing === 'monthly' ? 1 : 12, anchor)
+  const pending = makeRun(
+    {
+      id,
+      automation: 'toolCharge',
+      date: cycle.date,
+      summary: `${tool.name}: a pagar`,
+      origin: { collection: 'tools', id: tool.id, label: tool.name },
+      amount: tool.price,
+      currency: tool.currency,
+      created: [],
+      changed: once ? [] : [{ collection: 'tools', id: tool.id, field: 'nextCharge', before: tool.nextCharge, after }],
+      status: 'pending',
+    },
+    ctx.now,
+  )
+  const settle = input.deduct ? confirmToolCharge(pending, input, ctx) : confirmToolChargeNoExpense(pending, ctx)
+  if (typeof settle === 'string') return settle
+  const item: Tool = { ...tool, nextCharge: after, chargeDay: anchor }
+  const moved: BatchOp[] = once ? [] : [{ op: 'put', collection: 'tools', item }]
+  return [...moved, ...settle]
+}
+
+/**
+ * Tools the person set to "presume" after the due date: a charge still waiting one day after its date becomes
+ * "Pagamento presumido" (with the expense only for 'presumeDeduct' and only with a rate). Never for a charge the
+ * person already said wasn't paid.
+ */
+export function planToolPresumed(ctx: AutomationCtx): ItemPlan[] {
+  const yesterday = addDaysToDate(ctx.today, -1)
+  const out: ItemPlan[] = []
+  for (const run of ctx.data.automationRuns) {
+    if (run.automation !== 'toolCharge' || run.status !== 'pending' || run.presumeDeclined || run.date > yesterday) continue
+    const t = ctx.data.tools.find((x) => x.id === run.origin.id)
+    if (!t || (t.afterDue !== 'presume' && t.afterDue !== 'presumeDeduct')) continue
+    const amount = run.amount ?? t.price
+    const currency = run.currency ?? t.currency
+    const tx = t.afterDue === 'presumeDeduct' ? expense(t, run.id, amount, currency, run.date, ctx) : null
+    // Deduct allowed but no rate yet: wait (nothing invented).
+    if (t.afterDue === 'presumeDeduct' && !tx) continue
+    const done: AutomationRun = {
+      ...run,
+      status: 'done',
+      fromPending: true,
+      presumed: true,
+      summary: `Pagamento presumido — ${t.name}: ${formatMoney(amount, currency)}`,
+      detail: `Venceu em ${run.date.split('-').reverse().join('/')} e não foi confirmado.${tx ? ' Descontado do saldo, como você autorizou.' : ' Saldo não alterado.'}`,
+      created: tx ? [{ collection: 'transactions', id: tx.id }] : [],
+      noExpense: tx ? undefined : true,
+    }
+    out.push({ runs: [done], ops: [...(tx ? [{ op: 'put' as const, collection: 'transactions' as const, item: tx }] : []), runPut(done)] })
+  }
+  return out
 }

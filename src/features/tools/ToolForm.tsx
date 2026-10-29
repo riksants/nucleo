@@ -24,6 +24,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
     notes: tool?.notes ?? '',
     status: tool?.status ?? ('active' as ToolStatus),
     autoPaid: Boolean(tool?.autoPaid),
+    afterDue: (tool?.afterDue ?? 'ask') as NonNullable<Tool['afterDue']>,
   }))
 
   const free = d.billing === 'free'
@@ -34,13 +35,14 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
     if (!d.name.trim()) return 'Informe o nome da assinatura'
     const price = free || !d.price.trim() ? 0 : parseMoney(d.price)
     if (price === null) return 'Confira o preço'
-    const { autoPaid, ...fields } = d
+    const { autoPaid, afterDue, ...fields } = d
     const { autoPaid: _old, ...base } = tool ?? ({} as Partial<Tool>)
     void _old
     await save('tools', {
       ...base,
       ...fields,
       ...(autoPaid && !free ? { autoPaid: true } : {}),
+      afterDue: afterDue === 'ask' || autoPaid ? undefined : afterDue,
       name: d.name.trim(),
       link: d.link.trim(),
       plan: d.plan.trim(),
@@ -119,6 +121,15 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
             </span>
             <Switch checked={d.autoPaid} />
           </button>
+        )}
+        {dated && !d.autoPaid && (
+          <Field label="Se eu não confirmar até o dia seguinte" hint="você pode corrigir depois">
+            <Select value={d.afterDue} onChange={(e) => set('afterDue', e.target.value as NonNullable<Tool['afterDue']>)}>
+              <option value="ask">Perguntar se paguei (padrão)</option>
+              <option value="presume">Registrar como pagamento presumido, sem mexer no saldo</option>
+              <option value="presumeDeduct">Registrar como presumido e descontar do saldo</option>
+            </Select>
+          </Field>
         )}
         <Field label="Observação" hint="opcional">
           <TextArea rows={3} value={d.notes} onChange={(e) => set('notes', e.target.value)} />

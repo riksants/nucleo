@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef } from 'react'
 import { planAll, sinceDefaults } from '../core/automation/engine'
 import { changeGoalMonth } from '../core/automation/goalSave'
 import { confirmSubscriberCharge, declineRun } from '../core/automation/subscriberCharge'
-import { confirmToolCharge } from '../core/automation/toolCharge'
+import { confirmToolCharge, confirmToolChargeNoExpense, payToolNow } from '../core/automation/toolCharge'
+import { runPut } from '../core/automation/types'
 import type { AutomationCtx } from '../core/automation/types'
 import { linkedRuleRuns, undoAction, undoRun } from '../core/automation/undo'
 import { attemptId, planRetry } from '../core/rules/retry'
@@ -11,7 +12,7 @@ import { todayIn, useToday, zoneOf } from '../core/period'
 import { applyOps } from '../core/rules/work'
 import type { SyncStatus } from './repository'
 import { useStore } from './store'
-import type { AutomationId, AutomationRun, Cents } from './types'
+import type { AutomationId, AutomationRun, Cents, Tool } from './types'
 
 /**
  * Whether the device has the account's latest data, so automations can act on it: the last sync
@@ -118,6 +119,34 @@ export function useAutomationActions() {
 
   const linkedRuns = useCallback((run: AutomationRun) => linkedRuleRuns(run, data.automationRuns), [data.automationRuns])
 
+  /** Assinaturas: "Confirmar sem descontar" (settled, nothing in Financeiro). */
+  const confirmNoExpense = useCallback((run: AutomationRun) => commit(confirmToolChargeNoExpense(run, ctx())), [commit, ctx])
+
+  /** Assinaturas: "Já paguei" for the current cycle, with or without the expense. Error message or null. */
+  const payNow = useCallback(
+    async (tool: Tool, input: { amount: Cents; date: string; deduct: boolean }) => {
+      const ops = payToolNow(tool, input, ctx())
+      if (typeof ops === 'string') return ops
+      await commit(ops)
+      return null
+    },
+    [commit, ctx],
+  )
+
+  /**
+   * Assinaturas: "Ainda não paguei" after the due date. A waiting charge stays "A pagar" without the assisted
+   * question; a presumed one goes back to "A pagar" (its expense, if any, is removed) and is not presumed again.
+   */
+  const notYet = useCallback(
+    async (run: AutomationRun) => {
+      if (run.status === 'pending') return commit([runPut({ ...run, presumeDeclined: true })])
+      const { ops } = undoRun(run, data, todayIn(zoneOf(settings)))
+      const fixed = ops.map((o) => (o.op === 'put' && o.collection === 'automationRuns' && o.item.id === run.id ? runPut({ ...(o.item as AutomationRun), presumed: undefined, noExpense: undefined, presumeDeclined: true }) : o))
+      return commit(fixed, { by: 'undo' })
+    },
+    [commit, data, settings],
+  )
+
   const changeMonth = useCallback(
     async (run: AutomationRun, amount: Cents) => {
       const ops = changeGoalMonth(run, amount, ctx())
@@ -171,5 +200,5 @@ export function useAutomationActions() {
     [data, settings, convert, commit, syncStatus],
   )
 
-  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry }
+  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry, confirmNoExpense, payNow, notYet }
 }

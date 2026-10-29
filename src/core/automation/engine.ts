@@ -6,7 +6,7 @@
 import type { AutomationId, Settings } from '../../data/types'
 import { planGoalSaves } from './goalSave'
 import { planSubscriberCharges } from './subscriberCharge'
-import { planToolCharges } from './toolCharge'
+import { planToolCharges, planToolPresumed } from './toolCharge'
 import type { AutomationCtx, ItemPlan } from './types'
 
 export const AUTOMATIONS: { id: AutomationId; title: string; text: string }[] = [
@@ -52,7 +52,7 @@ export function planAll(ctx: AutomationCtx): ItemPlan[] {
   const sub = automationSince(ctx.settings, 'subscriberCharge')
   if (sub) out.push(...planSubscriberCharges(ctx, sub))
   const tool = automationSince(ctx.settings, 'toolCharge')
-  if (tool) out.push(...planToolCharges(ctx, tool))
+  if (tool) out.push(...planToolCharges(ctx, tool), ...planToolPresumed(ctx))
   const goal = automationSince(ctx.settings, 'goalSave')
   if (goal) out.push(...planGoalSaves(ctx, goal))
   return out.filter((p) => p.ops.length)
