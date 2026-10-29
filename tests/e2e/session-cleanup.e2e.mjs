@@ -101,8 +101,8 @@ const typeIn = (b, selector, value) =>
 async function addTask(b, title) {
   await b.goto(BASE + '#/tasks')
   await b.sleep(700)
-  await typeIn(b, 'input[placeholder="Adicionar tarefa rápida…"]', title)
-  await b.eval(`document.querySelector('input[placeholder="Adicionar tarefa rápida…"]').closest('form').requestSubmit()`)
+  await typeIn(b, 'input[aria-label="Adicionar tarefa rápida"]', title)
+  await b.eval(`document.querySelector('input[aria-label="Adicionar tarefa rápida"]').closest('form').requestSubmit()`)
   await b.sleep(500)
 }
 async function syncNow(b) {
