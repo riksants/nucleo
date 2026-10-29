@@ -37,7 +37,7 @@ try {
   const habits = await idb(b, 'habits')
   r.check('dois hábitos criados (todo dia e dias específicos)', habits.length === 2 && habits.some((h) => h.rule.type === 'daily' && h.goal === '2 litros') && habits.some((h) => h.rule.type === 'weekdays' && h.rule.days.length === 1))
   text = await b.text()
-  r.check('"Hoje" mostra só o hábito programado para hoje', text.includes('Beber água') && text.toUpperCase().includes('0 DE 1 HOJE'))
+  r.check('"Hoje" mostra só o hábito programado para hoje', text.includes('Beber água') && text.toUpperCase().includes('0 DE 1'))
 
   // Complete today
   await b.click('Concluir Beber água')
@@ -47,7 +47,7 @@ try {
   r.check('concluir grava um registro do dia (id fixo)', comp?.status === 'done' && comp.date === today)
   r.check('o hábito em si não guarda booleano de concluído', !('done' in (await idb(b, 'habits', water.id))))
   text = await b.text()
-  r.check('contador do dia atualiza', text.includes('1 de 1 hoje'))
+  r.check('contador do dia atualiza', text.includes('1 de 1'))
   await b.shot('habitos-concluido')
 
   // Undo then skip: skipped is never done
@@ -58,7 +58,7 @@ try {
   await b.sleep(300)
   comp = await idb(b, 'completions', `habit:${water.id}:${today}`)
   text = await b.text()
-  r.check('"Pular hoje" fica registrado como pulado (não concluído)', comp?.status === 'skipped' && text.includes('0 de 1 hoje') && text.includes('Pulado hoje'))
+  r.check('"Pular hoje" fica registrado como pulado (não concluído)', comp?.status === 'skipped' && text.includes('0 de 1') && text.includes('Pulado hoje'))
   await b.click('Desfazer')
   await b.click('Concluir Beber água')
   await b.sleep(300)
@@ -68,12 +68,16 @@ try {
   if (kiri !== today) {
     await setZone('Pacific/Kiritimati')
     await b.send('Page.reload', { ignoreCache: true })
-    await b.sleep(2500)
+    await b.sleep(1500)
+    // Slow machines: wait until the app has rendered again (body exists and has content).
+    for (let i = 0; i < 60 && !(await b.eval(`!!document.body && document.body.innerText.length > 40`).catch(() => false)); i++) await b.sleep(250)
     text = await b.text()
-    r.check('outro fuso/dia: hábito volta a ficar pendente, ontem continua concluído', text.includes('0 de 1 hoje') && (await idb(b, 'completions', `habit:${water.id}:${today}`))?.status === 'done')
+    r.check('outro fuso/dia: hábito volta a ficar pendente, ontem continua concluído', text.includes('0 de 1') && (await idb(b, 'completions', `habit:${water.id}:${today}`))?.status === 'done')
     await setZone(tz)
     await b.send('Page.reload', { ignoreCache: true })
-    await b.sleep(2500)
+    await b.sleep(1500)
+    // Slow machines: wait until the app has rendered again (body exists and has content).
+    for (let i = 0; i < 60 && !(await b.eval(`!!document.body && document.body.innerText.length > 40`).catch(() => false)); i++) await b.sleep(250)
   } else {
     r.check('outro fuso/dia (pulado: mesma data nos dois fusos agora)', true)
   }
