@@ -21,6 +21,8 @@ const state = async () => (await fetch(MOCK + '/__state')).json()
 /** The sign-in screen: straight after leaving an account (Etapa 1), or from the welcome screen. */
 async function openAuth(b) {
   await b.goto(BASE)
+  // Slow machines: wait for either the sign-in screen or the button that opens it.
+  for (let i = 0; i < 60 && !/Esqueci minha senha|Entrar ou criar conta/.test(await b.text()); i++) await b.sleep(250)
   if (!(await b.text()).includes('Esqueci minha senha')) await b.click('Entrar ou criar conta')
 }
 
