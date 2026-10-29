@@ -43,6 +43,7 @@ try {
       sales: [
         { id: 'old', clientId: 'c1', clientName: '', product: 'Bolo de chocolate', quantity: 2, date: add(-6), total: 16000, currency: 'BRL', dueDate: add(-1), payments: [], notes: '' },
         { id: 'inst', clientId: null, clientName: 'Ana', product: 'Bolsa', quantity: 1, date: add(-40), total: 30000, currency: 'BRL', dueDate: add(20), payments: [], notes: '', installments: [{ id: 'i1', due: add(-10), amount: 10000 }, { id: 'i2', due: add(20), amount: 10000 }, { id: 'i3', due: add(50), amount: 10000 }] },
+        { id: 'eur', clientId: null, clientName: 'Rui', product: 'Livro', quantity: 1, date: add(-3), total: 2000, currency: 'EUR', dueDate: '', payments: [{ id: 'ep', date: add(-3), amount: 2000, note: '' }], notes: '' },
         { id: 'rep', clientId: null, clientName: 'Rita', product: 'Aula de inglês', quantity: 1, date: add(-30), total: 20000, currency: 'BRL', dueDate: add(-30), payments: [{ id: 'rp', date: add(-30), amount: 20000, note: '' }], notes: '', recurring: { every: 'month', status: 'active' }, recurNext: today },
       ],
     },
@@ -70,7 +71,17 @@ try {
   r.check('frase vira ficha "Entendi assim" com cliente, produto, total, recebido e restante', /Cliente\s+João/.test(card) && /Produto\s+tênis/.test(card) && /Total\s+R\$\s300,00/.test(card) && /Já recebido\s+R\$\s100,00/.test(card) && /Restante\s+R\$\s200,00/.test(card), card.replaceAll(String.fromCharCode(10), ' | '))
   r.check('vencimento mostrado com a data exata (sexta-feira)', /sexta-feira, \d{2}\/\d{2}/.test(text))
   r.check('nada salvo só por digitar', (await idb(b, 'sales')).length === sales.length)
-  await b.click('Conferir e registrar')
+  // Two currencies in use and none in the sentence: the button says what is missing; Enter waits too.
+  r.check('pede a moeda e o botão diz por que está apagado', text.includes('Em qual moeda?') && (await b.eval(`[...document.querySelectorAll('main button')].some(x => x.textContent.trim() === 'Escolha a moeda acima' && x.disabled)`)))
+  const pressEnter = () => b.eval(`(() => { const el = document.querySelector(${JSON.stringify(bar)}); el.focus(); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })()`)
+  await pressEnter()
+  await sleep(500)
+  r.check('Enter sem a moeda não abre a ficha', !(await dialogText()).includes('Nova venda'))
+  await b.click('BRL', 'main button')
+  await sleep(300)
+  // Enter in the bar opens the sheet (the keyboard key no longer just adds a line).
+  await pressEnter()
+  await waitFor(async () => (await dialogText()).includes('Nova venda'))
   await sleep(700)
   let dlg = await dialogText()
   r.check('ficha abre preenchida com "Registrar venda"', dlg.includes('Nova venda') && dlg.includes('Registrar venda'))
@@ -79,6 +90,7 @@ try {
   await b.click('Registrar venda', '[role=dialog] button[type=submit]')
   await sleep(400)
   r.check('sem escolher, não salva', (await idb(b, 'sales')).length === sales.length)
+  r.check('o aviso de escolher a pessoa fica na ficha, junto do nome', (await dialogText()).includes('Para registrar, toque em quem é'))
   await b.click('João Pereira', '[role=dialog] button')
   await sleep(300)
   // Double tap on Registrar: one sale, one income

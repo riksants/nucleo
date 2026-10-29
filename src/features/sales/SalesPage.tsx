@@ -184,7 +184,7 @@ function DraftCard({ draft, missing, currency, needCurrency, currencies, onCurre
       {draft.dueDate && draft.dueDate < today && <p className="mt-2 text-[13px] text-warn">A data entendida já passou: confira.</p>}
       <p className="mt-3 text-[12px] leading-relaxed text-faint">{missing.length ? `Falta: ${missing.join(', ')}. ` : ''}Nada é salvo até você conferir e tocar em “Registrar venda”.</p>
       <button type="button" disabled={needCurrency && !currency} onClick={onOpen} className="press mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-accent text-[15px] font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-50">
-        Conferir e registrar
+        {needCurrency && !currency ? 'Escolha a moeda acima' : 'Conferir e registrar'}
       </button>
     </section>
   )
@@ -303,7 +303,13 @@ export function SalesPage() {
           }}
           placeholder="Busque uma venda ou conte o que vendeu…"
           aria-label="Busque uma venda ou conte o que vendeu"
-          enterKeyHint="search"
+          enterKeyHint="go"
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return
+            e.preventDefault()
+            e.currentTarget.blur()
+            if (mode === 'create' && !(needCurrency && !pickedCurrency)) fromDraft()
+          }}
           className="block max-h-36 min-h-14 w-full resize-none rounded-[1.25rem] border border-line bg-surface py-4 pr-12 pl-11 text-[16px] leading-snug text-ink placeholder:text-faint focus:border-accent/70 focus:outline-none [field-sizing:content]"
         />
         {text && (

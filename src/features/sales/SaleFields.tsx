@@ -46,10 +46,13 @@ export function BuyerField({
   value,
   onChange,
   autoFocus,
+  alert,
 }: {
   value: { clientId: string | null; clientName: string; confirmed: boolean }
   onChange(v: { clientId: string | null; clientName: string; confirmed: boolean }): void
   autoFocus?: boolean
+  /** Saving was tried without choosing: say it here, where the choice is. */
+  alert?: boolean
 }) {
   const people = usePeople()
   const chosen = value.clientId ? people.find((p) => p.clientId === value.clientId) : null
@@ -81,7 +84,12 @@ export function BuyerField({
       )}
       {!chosen && like.length > 0 && !value.confirmed && (
         <div className="space-y-1.5">
-          {same.length > 0 && <p className="text-[13px] font-medium text-warn">{same.length > 1 ? `Há ${same.length} pessoas com esse nome. Qual é?` : 'Já existe alguém com esse nome. É essa pessoa?'}</p>}
+          {same.length > 0 && (
+            <p role={alert ? 'alert' : undefined} className={`text-[13px] font-medium ${alert ? 'rounded-xl bg-expense/[0.1] px-3 py-2 text-expense' : 'text-warn'}`}>
+              {alert ? 'Para registrar, toque em quem é: ' : ''}
+              {same.length > 1 ? `Há ${same.length} pessoas com esse nome. Qual é?` : 'Já existe alguém com esse nome. É essa pessoa?'}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2" aria-label="Pessoas que já existem">
             {like.map((p) => (
               <button

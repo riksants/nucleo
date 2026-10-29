@@ -1,5 +1,5 @@
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { buildInstallments, itemsSummary, nextRepeat } from '../../core/salesSmart'
 import { todayIn, zoneOf } from '../../core/period'
 import { belongsToSale } from '../../data/receipts'
@@ -61,6 +61,8 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
   const { toast, confirm } = useFeedback()
   const people = usePeople()
   const saving = useRef(false)
+  const buyerRef = useRef<HTMLDivElement>(null)
+  const [mustChoose, setMustChoose] = useState(false)
   const today = todayIn(zoneOf(settings))
   const editing = Boolean(sale)
   const [d, set, setAll] = useDraft(open, () => {
@@ -108,7 +110,12 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
   const submit = async () => {
     if (saving.current) return
     if (!d.buyer.clientId && !d.buyer.clientName.trim()) return 'Diga para quem vendeu'
-    if (buyerNeedsChoice(people, d.buyer)) return 'Escolha quem é essa pessoa (ou marque que é outra pessoa)'
+    if (buyerNeedsChoice(people, d.buyer)) {
+      // Shown next to the name (and brought into view): a toast alone can hide behind the keyboard.
+      setMustChoose(true)
+      buyerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return 'Escolha quem é essa pessoa (ou marque que é outra pessoa)'
+    }
     if (!useItems && !d.product.trim()) return 'Diga o que vendeu'
     if (useItems && !summary?.product) return 'Dê um nome a cada item'
     const quantity = useItems ? (summary?.quantity ?? 1) : Number(d.quantity.replace(',', '.'))
@@ -186,7 +193,17 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
     <FormSheet open={open} onClose={onClose} title={editing ? 'Editar venda' : 'Nova venda'} submitLabel={editing ? 'Salvar' : 'Registrar venda'} onSubmit={submit} size="lg" onDelete={sale ? () => deleteSale(sale) : undefined}>
       <FormGrid>
         <Field label="Cliente">
-          <BuyerField value={d.buyer} onChange={(v) => set('buyer', v)} autoFocus={!editing && !d.buyer.clientId && !d.buyer.clientName} />
+          <div ref={buyerRef}>
+            <BuyerField
+              value={d.buyer}
+              alert={mustChoose && buyerNeedsChoice(people, d.buyer)}
+              onChange={(v) => {
+                setMustChoose(false)
+                set('buyer', v)
+              }}
+              autoFocus={!editing && !d.buyer.clientId && !d.buyer.clientName}
+            />
+          </div>
         </Field>
 
         {!useItems && (
