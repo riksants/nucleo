@@ -5,7 +5,9 @@ import { useStore } from '../data/store'
 import { LOGO_ACCENT, LOGO_LIGHT, LOGO_VIEWBOX } from './logoMark'
 import { isEnabled, MODULE_BY_ID, MODULE_BY_PATH, MODULE_GROUPS } from './modules'
 import { usePrimaryAction, type PrimaryAction } from './primaryAction'
-import { ChevronLeft, Menu, Plus } from 'lucide-react'
+import { ChevronLeft, Menu, Plus, type LucideIcon } from 'lucide-react'
+import { usePrefersReducedMotion } from '../lib/hooks'
+import { EASE_OUT_SOFT } from '../lib/motion'
 import { Button } from '../ui/Button'
 import { SyncBadge } from '../features/account/SyncBadge'
 import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
@@ -211,12 +213,30 @@ function CompactBar({ title, visible }: { title: string; visible: boolean }) {
   )
 }
 
+/** A figure shown on the band under the title (e.g. "3 · a fazer"): the screen's state at a glance. */
+export interface HeaderStat {
+  label: string
+  value: ReactNode
+}
+
 /**
  * Standard page header: the vermilion band with the menu (or back), big title, optional subtitle and actions.
  * `primary`: what this screen creates — the floating "+" on the phone, a button here on the computer.
  * `overlap`: the band leaves room at the bottom for a card that sits half over it (Financeiro's balance).
  */
-export function PageHeader({ title, subtitle, actions, primary, overlap }: { title: string; subtitle?: ReactNode; actions?: ReactNode; primary?: PrimaryAction; overlap?: boolean }) {
+export function PageHeader(props: {
+  title: string
+  subtitle?: ReactNode
+  actions?: ReactNode
+  primary?: PrimaryAction
+  overlap?: boolean
+  /** Opt-in richer band (the reworked screens): a small line above the title, live figures and the section's mark. */
+  rich?: boolean
+  eyebrow?: ReactNode
+  stats?: HeaderStat[]
+  icon?: LucideIcon
+}) {
+  const { title, subtitle, actions, primary, overlap } = props
   usePrimaryAction(primary)
   // Buscar → "Novo cliente" opens this screen with ?novo=1: same as tapping its "+".
   useNewParam(primary && !primary.disabled ? () => primary.onPress() : undefined)
@@ -230,6 +250,7 @@ export function PageHeader({ title, subtitle, actions, primary, overlap }: { tit
     io.observe(el)
     return () => io.disconnect()
   }, [])
+  if (props.rich) return <RichHeader {...props} titleRef={titleRef} collapsed={collapsed} />
   return (
     <>
       <CompactBar title={title} visible={collapsed} />
@@ -262,6 +283,86 @@ export function PageHeader({ title, subtitle, actions, primary, overlap }: { tit
             </div>
           )}
         </div>
+      </header>
+    </>
+  )
+}
+
+/**
+ * The richer band of the reworked screens. Same vermilion, same coal type; it earns its height with information:
+ * a small line above the title (date, context), the title, then the screen's figures in a quiet strip, so the band
+ * is never a big empty block. Depth comes from light on the band (band-depth), the section's line mark faint in the
+ * corner and, on the phone, the page "lifting" over the band with a rounded edge.
+ */
+function RichHeader({
+  title,
+  subtitle,
+  actions,
+  primary,
+  overlap,
+  eyebrow,
+  stats,
+  icon: Icon,
+  titleRef,
+  collapsed,
+}: Parameters<typeof PageHeader>[0] & { titleRef: React.RefObject<HTMLHeadingElement | null>; collapsed: boolean }) {
+  const reduce = usePrefersReducedMotion()
+  const enter = (delay: number) =>
+    reduce ? {} : { initial: { opacity: 0, transform: 'translateY(6px)' }, animate: { opacity: 1, transform: 'translateY(0px)' }, transition: { duration: 0.32, delay, ease: EASE_OUT_SOFT } }
+  return (
+    <>
+      <CompactBar title={title} visible={collapsed} />
+      <header
+        className={`band band-depth relative isolate -mx-5 overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+6px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 ${
+          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-5 pb-9 lg:mb-8 lg:pb-8'
+        }`}
+      >
+        {Icon && (
+          <Icon
+            aria-hidden
+            size={24}
+            className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+34px)] -right-7 -z-10 size-40 text-coal/[0.08] lg:top-5 lg:right-8 lg:size-36 [&_*]:[vector-effect:non-scaling-stroke]"
+          />
+        )}
+        <div className="flex h-12 items-center lg:hidden">
+          <HeaderNavButton />
+        </div>
+        <motion.div {...enter(0)} className="mt-1 flex items-end justify-between gap-4 lg:mt-0">
+          <div className="min-w-0">
+            {eyebrow && <p className="mb-1 text-[12px] font-semibold tracking-[0.1em] text-coal/70 uppercase">{eyebrow}</p>}
+            <h1 ref={titleRef} className="text-[32px] leading-[1.05] font-semibold tracking-[-0.045em] lg:text-[42px]">
+              {title}
+            </h1>
+            {subtitle && <p className="mt-1.5 text-[15px] leading-snug text-coal/75">{subtitle}</p>}
+          </div>
+          {(actions || primary) && (
+            <div className="flex shrink-0 items-center gap-2">
+              {actions}
+              {primary && (
+                <span className="hidden lg:block">
+                  <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
+                    {primary.label}
+                  </Button>
+                </span>
+              )}
+            </div>
+          )}
+        </motion.div>
+        {stats && stats.length > 0 && (
+          <motion.dl
+            {...enter(0.05)}
+            className="mt-5 grid auto-cols-fr grid-flow-col divide-x divide-coal/[0.14] rounded-2xl bg-white/[0.16] py-3 ring-1 ring-coal/[0.07] ring-inset lg:max-w-xl"
+          >
+            {stats.map((s) => (
+              <div key={s.label} className="flex min-w-0 flex-col-reverse px-3.5">
+                <dt className="truncate text-[12px] font-medium text-coal/70">{s.label}</dt>
+                <dd className="num truncate text-[20px] leading-tight font-semibold tracking-[-0.03em]">{s.value}</dd>
+              </div>
+            ))}
+          </motion.dl>
+        )}
+        {/* Phone: the page lifts over the band with a rounded edge. */}
+        {!overlap && <span aria-hidden className="absolute inset-x-0 bottom-0 h-5 rounded-t-[22px] bg-bg lg:hidden" />}
       </header>
     </>
   )

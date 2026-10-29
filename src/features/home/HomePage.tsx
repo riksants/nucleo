@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings, Sparkles } from 'lucide-react'
+import { CalendarCheck, ChevronRight, MessageCircle, Minus, Plus, Search, Settings, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { lazy, Suspense, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { HeaderNavButton, Wordmark } from '../../app/Shell'
@@ -10,7 +10,7 @@ import { optionOf, PROJECT_STATUS } from '../../data/labels'
 import { ACTIVE_PROJECT_STATUSES, sortByNewest, sortOpenTasks, totalsSince, upcomingCharges } from '../../data/selectors'
 import { useStore } from '../../data/store'
 import type { Goal, Project, Task, Transaction } from '../../data/types'
-import { formatDateValue, formatWeekday, monthName, periodStart, relativeDays } from '../../lib/dates'
+import { formatDateValue, monthName, periodStart, relativeDays } from '../../lib/dates'
 import { addDaysToDate, todayIn, zoneOf } from '../../core/period'
 import { useNow } from '../../lib/hooks'
 import { formatMoney } from '../../lib/money'
@@ -37,14 +37,19 @@ function greeting(d = new Date()) {
   return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
-/** Round quick action on the band: a white disc with a vermilion stroke icon and its name under it (bank-app style). */
+/** One action of the dock under the band: a vermilion-tint tile with the glyph, its name under it. */
 function QuickAction({ label, icon, onClick }: { label: string; icon: ReactNode; onClick(): void }) {
   return (
-    <button type="button" onClick={onClick} className="press group flex min-w-0 flex-col items-center gap-2 text-[13px] font-semibold">
-      <span className="grid size-14 place-items-center rounded-full bg-white text-brand shadow-[0_2px_8px_-2px_rgb(10_10_11/0.25)] transition-colors group-hover:bg-white/90">{icon}</span>
+    <button type="button" onClick={onClick} className="press group flex min-w-0 flex-col items-center gap-1.5 rounded-2xl py-1 text-[13px] font-semibold tracking-[-0.01em]">
+      <span className="icon-tile grid size-12 place-items-center rounded-2xl transition-transform duration-200 group-hover:-translate-y-0.5">{icon}</span>
       <span className="max-w-full truncate">{label}</span>
     </button>
   )
+}
+
+/** "Quinta-feira, 29 de outubro" in the person's language settings. */
+function longDate(d: Date) {
+  return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(d)
 }
 
 function Block({ title, action, onAction, children }: { title: string; action?: string; onAction?(): void; children: ReactNode }) {
@@ -102,11 +107,18 @@ export function HomePage() {
   // Automations: charges waiting for the person, and what the Núcleo did in the last 7 days.
   const pending = pendingRuns(data.automationRuns)
   const doneLately = historyRuns(data.automationRuns).filter((r) => r.status === 'done' && r.date >= addDaysToDate(todayKey, -7))
+  // One line under the greeting with the day at a glance (only what exists, nothing invented).
+  const eventsToday = on('agenda') ? data.events.filter((e) => e.date === todayKey).length : 0
+  const glance = [
+    dueToday > 0 && `${dueToday} ${dueToday === 1 ? 'tarefa' : 'tarefas'} para hoje`,
+    late > 0 && `${late} ${late === 1 ? 'atrasada' : 'atrasadas'}`,
+    eventsToday > 0 && `${eventsToday} ${eventsToday === 1 ? 'compromisso' : 'compromissos'}`,
+  ].filter(Boolean) as string[]
 
   return (
     <>
-      {/* The vermilion band (bank-app home): menu, brand and shortcuts; greeting; the balance; quick actions. */}
-      <header className="band -mx-5 mb-7 px-5 pt-[calc(env(safe-area-inset-top)+6px)] pb-7 lg:mx-0 lg:mb-8 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 lg:pb-8">
+      {/* The vermilion band: menu, brand and shortcuts; the day; the balance. The actions dock sits over its edge. */}
+      <header className="band band-depth relative isolate -mx-5 overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+6px)] pb-16 lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 lg:pb-16">
         <div className="flex h-12 items-center gap-2 lg:hidden">
           <HeaderNavButton />
           <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -120,35 +132,44 @@ export function HomePage() {
             <Settings size={24} />
           </IconButton>
         </div>
-        <div className="mt-4 lg:mt-0">
-          <p className="text-[14px] font-medium text-coal/75 first-letter:uppercase">{formatWeekday(today)}</p>
-          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.04em] lg:text-[40px]">{greeting(today)}</h1>
+        <div className="mt-3 lg:mt-0">
+          <p className="text-[12px] font-semibold tracking-[0.1em] text-coal/70 uppercase">{longDate(today)}</p>
+          <h1 className="mt-0.5 text-[30px] leading-tight font-semibold tracking-[-0.045em] lg:text-[42px]">{greeting(today)}</h1>
+          {glance.length > 0 && <p className="mt-0.5 text-[15px] font-medium text-coal/75">{glance.join(' · ')}</p>}
         </div>
 
         {on('finance') && (
-          <div className="mt-6">
+          <div className="mt-6 border-t border-coal/[0.12] pt-4">
             <BalanceCard
               variant="hero"
               note={
                 month.income || month.expense ? (
-                  <span>
-                    {month.net > 0 ? '+' : ''}
-                    {show(month.net)} <span className="font-medium text-coal/75">em {monthName(today)}</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-coal/[0.08] py-1 pr-3 pl-2 text-[13px]">
+                    {month.net >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                    <span className="num">
+                      {month.net > 0 ? '+' : ''}
+                      {show(month.net)}
+                    </span>
+                    <span className="font-medium text-coal/75">em {monthName(today)}</span>
                   </span>
                 ) : undefined
               }
             />
           </div>
         )}
-
-        {/* Quick actions: round, with names. Money first when Financeiro is on. */}
-        <nav aria-label="Ações rápidas" className="mt-6 grid grid-cols-4 gap-2 lg:max-w-md">
-          {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('in')} />}
-          {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('out')} />}
-          {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} onClick={() => navigate('/today')} />}
-          <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
-        </nav>
       </header>
+
+      {/* Quick actions in one dock half over the band: money first when Financeiro is on. */}
+      <nav
+        aria-label="Ações rápidas"
+        style={{ gridTemplateColumns: `repeat(${(on('finance') ? 2 : 0) + (on('today') ? 1 : 0) + 1}, minmax(0, 1fr))` }}
+        className="card relative z-10 -mt-11 mb-7 grid gap-1 rounded-[1.5rem]! px-2 py-3 shadow-[0_18px_40px_-24px_var(--color-shade)]! lg:mx-8 lg:max-w-md"
+      >
+        {on('finance') && <QuickAction label="Adicionar" icon={<Plus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('in')} />}
+        {on('finance') && <QuickAction label="Retirar" icon={<Minus size={24} strokeWidth={2.4} />} onClick={() => newTx.show('out')} />}
+        {on('today') && <QuickAction label="Hoje" icon={<CalendarCheck size={24} />} onClick={() => navigate('/today')} />}
+        <QuickAction label="Assistente" icon={<MessageCircle size={24} />} onClick={() => navigate('/assistant')} />
+      </nav>
 
       <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
         <div className="min-w-0 space-y-7">

@@ -106,10 +106,10 @@ function MealDay({ plan, day, onEdit }: { plan: MealPlan; day: Weekday; onEdit(m
         <button key={m.id} type="button" onClick={() => onEdit(m)} className="card block w-full p-4 text-left hover:border-line-strong">
           <div className="flex items-baseline gap-3">
             <span className="num text-[14px] text-soft">{m.time}</span>
-            <span className="text-[16px] font-semibold tracking-tight">{m.label}</span>
+            <span className="min-w-0 text-[16px] font-semibold tracking-tight [overflow-wrap:anywhere]">{m.label}</span>
           </div>
           {m.items.length ? (
-            <ul className="mt-2 space-y-0.5 text-[15px] leading-relaxed">
+            <ul className="mt-2 space-y-0.5 text-[15px] leading-relaxed [overflow-wrap:anywhere]">
               {m.items.map((i, k) => (
                 <li key={k}>• {i}</li>
               ))}
@@ -185,7 +185,7 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
 function PlanView({ plan, answers, onEdit }: { plan: MealPlan; answers: MealAnswers; onEdit(m: PlannedMeal | null): void }) {
   const [day, setDay] = useState<Weekday>(() => new Date().getDay() as Weekday)
   return (
-    <div className="grid gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
       <section>
         <div className="mb-3 flex items-center gap-2">
           <div className="min-w-0 flex-1">

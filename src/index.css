@@ -125,6 +125,20 @@
     color-scheme: light;
   }
 
+  /* iPhone Safari gives date/time fields a native minimum width that pushes half-width form columns past
+     the screen edge: let them shrink like any field and keep the value left-aligned. */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'] {
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
   body {
     min-height: 100dvh;
     font-family: var(--font-sans);
@@ -249,6 +263,14 @@
     background: var(--color-coal);
     color: var(--color-paper);
   }
+}
+
+/* Depth on the band without a gradient look: a soft light from the top corner and a faint shade at the bottom
+   edge, so the vermilion reads as a lit surface. Same color everywhere; only the light changes. */
+@utility band-depth {
+  background-image:
+    radial-gradient(120% 85% at 100% 0%, rgb(255 255 255 / 0.17), transparent 58%),
+    linear-gradient(to bottom, transparent 55%, rgb(10 10 11 / 0.06));
 }
 
 /* The site's mark: a small vermilion square (wordmark, current item). */
