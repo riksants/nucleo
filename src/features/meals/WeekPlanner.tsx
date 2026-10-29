@@ -14,6 +14,7 @@ import { CheckButton } from '../daily/CheckButton'
 import { Switch } from '../settings/ModulePicker'
 import { weekLabel } from '../week/GoalForm'
 import { MealForm, type MealInitial } from './MealForm'
+import { DayStrip, MealTypeIcon } from './MealParts'
 import { MEALS_CURRENT } from '../planner/plans'
 
 const DAY_NAME = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -75,7 +76,7 @@ export function MealTypesSheet({ open, onClose }: { open: boolean; onClose(): vo
   )
 }
 
-/** Monday → Sunday of one real week; each meal opens and edits its own record. */
+/** Monday → Sunday of one real week, one day at a time; each meal opens and edits its own record. */
 export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId): void }) {
   const { data, settings, save } = useStore()
   const { confirm, toast } = useFeedback()
@@ -85,11 +86,17 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
   const form = useSheet<MealEntry>()
   const [initial, setInitial] = useState<MealInitial | undefined>()
   const [typesOpen, setTypesOpen] = useState(false)
+  const days = weekDays(week)
+  const [picked, setPicked] = useState<string | null>(null)
+  const day = picked && days.includes(picked) ? picked : days.includes(today) ? today : days[0]
   // Only this week's meals are grouped (records of other weeks are not touched).
   const meals = useMemo(() => sortMeals(mealsOfWeek(data.meals, week), settings), [data.meals, week, settings])
   const prevWeek = addDaysToDate(week, -7)
   const prevCount = useMemo(() => mealsOfWeek(data.meals, prevWeek).length, [data.meals, prevWeek])
   const template = data.mealPlans.find((p) => p.id === MEALS_CURRENT)
+  const counts = Object.fromEntries(days.map((d) => [d, meals.filter((m) => m.date === d).length]))
+  const list = meals.filter((m) => m.date === day)
+  const wd = new Date(`${day}T12:00:00Z`).getUTCDay()
 
   const addOn = (date: string) => {
     setInitial({ date })
@@ -107,88 +114,108 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
   }
   const useTemplate = async () => {
     if (!template) return
-    const ok = await confirm({ title: 'Usar o plano da IA nesta semana?', message: `${template.meals.length} refeições do plano serão criadas nos dias desta semana. O plano continua igual.`, confirmLabel: 'Usar' })
+    const ok = await confirm({ title: 'Usar o plano aprovado nesta semana?', message: `${template.meals.length} refeições do plano serão criadas nos dias desta semana. O plano continua igual.`, confirmLabel: 'Usar' })
     if (!ok) return
     for (const m of fromTemplate(template, week, settings)) await save('meals', m)
     toast('Plano aplicado nesta semana')
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <IconButton label="Semana anterior" size="sm" onClick={() => onWeek(prevWeek)}>
-            <ChevronLeft size={18} />
-          </IconButton>
-          <p className="min-w-0 truncate px-1 text-[15px] font-semibold">{weekLabel(week)}</p>
-          <IconButton label="Próxima semana" size="sm" onClick={() => onWeek(addDaysToDate(week, 7))}>
-            <ChevronRight size={18} />
-          </IconButton>
-          {week !== current && (
-            <Button variant="ghost" className="h-9! px-3!" onClick={() => onWeek(current)}>
-              Esta semana
-            </Button>
-          )}
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-1">
+        <IconButton label="Semana anterior" size="sm" onClick={() => (onWeek(prevWeek), setPicked(null))}>
+          <ChevronLeft size={18} />
+        </IconButton>
+        <p className="min-w-0 flex-1 truncate px-1 text-center text-[15px] font-semibold">{weekLabel(week)}</p>
+        <IconButton label="Próxima semana" size="sm" onClick={() => (onWeek(addDaysToDate(week, 7)), setPicked(null))}>
+          <ChevronRight size={18} />
+        </IconButton>
         <IconButton label="Tipos de refeição" size="sm" onClick={() => setTypesOpen(true)}>
           <Settings2 size={18} />
         </IconButton>
-        <Button icon={<Plus size={18} />} onClick={() => addOn(week <= today && today <= addDaysToDate(week, 6) ? today : week)}>
-          Refeição
-        </Button>
       </div>
-
-      {(prevCount > 0 || (template && !meals.length)) && (
-        <div className="flex flex-wrap gap-2">
-          {prevCount > 0 && (
-            <Button variant="secondary" icon={<Copy size={16} />} onClick={copyPrevious}>
-              Copiar semana anterior
-            </Button>
-          )}
-          {template && !meals.length && (
-            <Button variant="secondary" icon={<MessageCircle size={16} />} onClick={useTemplate}>
-              Usar plano da IA
-            </Button>
-          )}
-        </div>
+      {week !== current && (
+        <button type="button" onClick={() => (onWeek(current), setPicked(null))} className="mx-auto block text-[13px] font-semibold text-accent-hi">
+          Voltar para esta semana
+        </button>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {weekDays(week).map((date) => {
-          const list = meals.filter((m) => m.date === date)
-          const wd = new Date(`${date}T12:00:00Z`).getUTCDay()
-          return (
-            <section key={date} className={`card p-2 ${date === today ? 'border-accent-hi/40' : ''}`} aria-label={`${DAY_NAME[wd]} ${date.slice(8, 10)}/${date.slice(5, 7)}`}>
-              <div className="flex items-center gap-2 px-2 pt-1">
-                <p className="min-w-0 flex-1 text-[14px] font-semibold">
-                  {DAY_NAME[wd]} <span className="font-normal text-faint">{date.slice(8, 10)}/{date.slice(5, 7)}</span>
-                  {date === today && <span className="ml-2 text-[12px] font-medium text-accent-hi">hoje</span>}
-                </p>
-                <IconButton label={`Adicionar refeição em ${DAY_NAME[wd]}`} size="sm" onClick={() => addOn(date)}>
-                  <Plus size={18} />
-                </IconButton>
+      <DayStrip days={days} value={day} today={today} counts={counts} onPick={setPicked} label="Dias da semana" />
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+        <section aria-label={`${DAY_NAME[wd]} ${day.slice(8, 10)}/${day.slice(5, 7)}`}>
+          <div className="mb-2 flex items-center justify-between gap-2 px-1">
+            <h2 className="text-[15px] font-semibold tracking-[-0.01em]">
+              {DAY_NAME[wd]} <span className="font-normal text-faint">{day.slice(8, 10)}/{day.slice(5, 7)}</span>
+              {day === today && <span className="ml-2 text-[12px] font-semibold text-accent-hi">hoje</span>}
+            </h2>
+            <button type="button" onClick={() => addOn(day)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-accent-hi hover:bg-accent/[0.08]">
+              <Plus size={16} /> Refeição
+            </button>
+          </div>
+          {list.length ? (
+            <div className="card divide-y divide-line">
+              {list.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <MealTypeIcon type={m.type} />
+                  <button type="button" onClick={() => form.show(m)} className="min-w-0 flex-1 text-left">
+                    <span className="flex items-baseline gap-2">
+                      <span className={`truncate text-[15px] font-medium ${m.done ? 'text-faint line-through' : ''}`}>{mealTitle(settings, m)}</span>
+                      {m.time && <span className="num shrink-0 text-[12px] text-faint">{m.time}</span>}
+                    </span>
+                    {(m.name && m.type) || m.ingredients.length ? (
+                      <span className="block truncate text-[13px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(', ')].filter(Boolean).join(' · ')}</span>
+                    ) : null}
+                  </button>
+                  <CheckButton status={m.done ? 'done' : 'pending'} onClick={() => setMealDone(m, !m.done)} label={m.done ? `Desmarcar ${mealTitle(settings, m)}` : `Marcar ${mealTitle(settings, m)} como realizada`} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card px-4 py-5 text-center">
+              <p className="text-[15px] text-soft">Nada planejado para este dia.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <Button variant="secondary" icon={<Plus size={16} />} onClick={() => addOn(day)}>
+                  Adicionar refeição
+                </Button>
+                {!meals.length && prevCount > 0 && (
+                  <Button variant="ghost" icon={<Copy size={16} />} onClick={copyPrevious}>
+                    Copiar semana anterior
+                  </Button>
+                )}
+                {!meals.length && template && (
+                  <Button variant="ghost" icon={<MessageCircle size={16} />} onClick={useTemplate}>
+                    Usar plano aprovado
+                  </Button>
+                )}
               </div>
-              {list.length ? (
-                list.map((m) => (
-                  <div key={m.id} className="flex items-start gap-1 rounded-2xl hover:bg-tint/[0.03] tap">
-                    <CheckButton status={m.done ? 'done' : 'pending'} onClick={() => setMealDone(m, !m.done)} label={m.done ? `Desmarcar ${mealTitle(settings, m)}` : `Marcar ${mealTitle(settings, m)} como realizada`} />
-                    <button type="button" onClick={() => form.show(m)} className="min-w-0 flex-1 py-2.5 pr-2 text-left">
-                      <span className={`block truncate text-[15px] ${m.done ? 'text-faint line-through' : ''}`}>
-                        {m.time && <span className="num mr-2 text-soft">{m.time}</span>}
-                        {mealTitle(settings, m)}
-                      </span>
-                      {(m.name && m.type) || m.ingredients.length ? (
-                        <span className="block truncate text-[13px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(', ')].filter(Boolean).join(' · ')}</span>
-                      ) : null}
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="px-2 pt-1 pb-2 text-[13px] text-faint">Nada planejado</p>
-              )}
-            </section>
-          )
-        })}
+            </div>
+          )}
+        </section>
+
+        <section aria-label="Resumo da semana" className="hidden lg:block">
+          <h2 className="mb-2 px-1 text-[13px] font-semibold text-soft">Semana</h2>
+          <ul className="card divide-y divide-line">
+            {days.map((d) => {
+              const ms = meals.filter((m) => m.date === d)
+              const w = new Date(`${d}T12:00:00Z`).getUTCDay()
+              return (
+                <li key={d}>
+                  <button type="button" onClick={() => setPicked(d)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-tint/[0.03] ${d === day ? 'text-accent-hi' : ''}`}>
+                    <span className="w-24 shrink-0 text-[14px] font-medium">{DAY_NAME[w]}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-faint">{ms.length ? ms.map((m) => mealTitle(settings, m)).join(' · ') : 'Nada planejado'}</span>
+                    <span className="num shrink-0 text-[13px] text-soft">{ms.filter((m) => m.done).length}/{ms.length}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {meals.length > 0 && prevCount > 0 && (
+            <button type="button" onClick={copyPrevious} className="mt-3 px-1 text-[13px] font-medium text-soft hover:text-ink">
+              Copiar refeições da semana anterior
+            </button>
+          )}
+        </section>
       </div>
 
       <MealForm open={form.open} onClose={form.close} meal={form.item} initial={form.item ? undefined : initial} />

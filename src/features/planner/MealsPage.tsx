@@ -1,7 +1,7 @@
-import { MessageCircle, Plus, Salad, ShieldAlert, Stethoscope, Trash2 } from 'lucide-react'
+import { Check, MessageCircle, Plus, Salad, ShieldAlert, Stethoscope, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { activeRules, emptyMealAnswers, violations } from '../../../supabase/functions/_shared/planner/foodSafety.ts'
-import { DAY_LONG, DAY_SHORT, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
+import { DAY_LONG, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { navigate } from '../../app/router'
 import { newId, useStore } from '../../data/store'
@@ -12,9 +12,9 @@ import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, Select, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft, useSheet } from '../../ui/formHooks'
-import { Chips } from '../../ui/Segmented'
 import { MEALS_CURRENT, MEALS_DRAFT, usePlans } from './plans'
-import { mealsOfWeek } from '../../core/meals'
+import { mealsOfWeek, weekDays } from '../../core/meals'
+import { DayStrip, MealTypeIcon, typeFromTime } from '../meals/MealParts'
 import { todayIn, weekStart, zoneOf } from '../../core/period'
 import { buildList, guessCategory, keysOnList, normalizeName } from '../../core/shopping'
 
@@ -101,23 +101,22 @@ function MealDay({ plan, day, onEdit }: { plan: MealPlan; day: Weekday; onEdit(m
   const meals = plan.meals.filter((m) => m.day === day).sort((a, b) => toMinutes(a.time) - toMinutes(b.time))
   if (!meals.length) return <p className="card px-4 py-4 text-[15px] text-faint">Sem refeições neste dia.</p>
   return (
-    <div className="space-y-2">
+    <div className="card divide-y divide-line">
       {meals.map((m) => (
-        <button key={m.id} type="button" onClick={() => onEdit(m)} className="card block w-full p-4 text-left hover:border-line-strong">
-          <div className="flex items-baseline gap-3">
-            <span className="num text-[14px] text-soft">{m.time}</span>
-            <span className="min-w-0 text-[16px] font-semibold tracking-tight [overflow-wrap:anywhere]">{m.label}</span>
-          </div>
-          {m.items.length ? (
-            <ul className="mt-2 space-y-0.5 text-[15px] leading-relaxed [overflow-wrap:anywhere]">
-              {m.items.map((i, k) => (
-                <li key={k}>• {i}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-[14px] text-faint">Toque para preencher</p>
-          )}
-          {m.substitutions.length > 0 && <p className="mt-2 text-[13px] leading-relaxed text-faint">Trocas: {m.substitutions.join(' · ')}</p>}
+        <button key={m.id} type="button" onClick={() => onEdit(m)} className="flex w-full gap-3 px-3.5 py-3 text-left hover:bg-tint/[0.03]">
+          <MealTypeIcon type={typeFromTime(m.time)} />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline gap-2">
+              <span className="min-w-0 text-[15px] font-semibold tracking-tight [overflow-wrap:anywhere]">{m.label}</span>
+              <span className="num shrink-0 text-[12px] text-faint">{m.time}</span>
+            </span>
+            {m.items.length ? (
+              <span className="mt-0.5 block text-[14px] leading-relaxed text-soft [overflow-wrap:anywhere]">{m.items.join(' · ')}</span>
+            ) : (
+              <span className="mt-0.5 block text-[13px] text-faint">Toque para preencher</span>
+            )}
+            {m.substitutions.length > 0 && <span className="mt-1 block text-[12px] leading-relaxed text-faint [overflow-wrap:anywhere]">Trocas: {m.substitutions.join(' · ')}</span>}
+          </span>
         </button>
       ))}
     </div>
@@ -183,17 +182,21 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
 }
 
 function PlanView({ plan, answers, onEdit }: { plan: MealPlan; answers: MealAnswers; onEdit(m: PlannedMeal | null): void }) {
-  const [day, setDay] = useState<Weekday>(() => new Date().getDay() as Weekday)
+  const { settings } = useStore()
+  const today = todayIn(zoneOf(settings))
+  const dates = weekDays(weekStart(today))
+  const [date, setDate] = useState(today)
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay() as Weekday
+  const counts = Object.fromEntries(dates.map((d) => [d, plan.meals.filter((m) => m.day === new Date(`${d}T12:00:00Z`).getUTCDay()).length]))
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <Chips value={String(day)} onChange={(v) => setDay(Number(v) as Weekday)} options={WEEKDAYS.map((d) => ({ value: String(d), label: DAY_SHORT[d] }))} />
-          </div>
-          <IconButton label="Adicionar refeição" size="sm" onClick={() => onEdit(null)}>
-            <Plus size={18} />
-          </IconButton>
+      <section className="space-y-3">
+        <DayStrip days={dates} value={date} today={today} counts={counts} onPick={setDate} label="Dias do plano" />
+        <div className="flex items-center justify-between gap-2 px-1">
+          <h3 className="text-[15px] font-semibold">{DAY_LONG[day]}</h3>
+          <button type="button" onClick={() => onEdit(null)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-accent-hi hover:bg-accent/[0.08]">
+            <Plus size={16} /> Refeição
+          </button>
         </div>
         <MealDay plan={plan} day={day} onEdit={onEdit} />
       </section>
@@ -203,7 +206,7 @@ function PlanView({ plan, answers, onEdit }: { plan: MealPlan; answers: MealAnsw
 }
 
 export function AiPlanView() {
-  const { save, remove } = useStore()
+  const { save, remove, data, settings } = useStore()
   const { confirm, toast } = useFeedback()
   const { meals, mealsDraft, profile } = usePlans()
   const sheet = useSheet<{ meal: PlannedMeal | null; planId: string }>()
@@ -215,9 +218,23 @@ export function AiPlanView() {
       const ok = await confirm({ title: 'Substituir o planejamento salvo?', message: 'As refeições e a lista de compras atuais serão trocadas por esta proposta.', confirmLabel: 'Substituir' })
       if (!ok) return
     }
-    await save('mealPlans', { ...mealsDraft, id: MEALS_CURRENT, status: 'approved', createdAt: meals?.createdAt ?? mealsDraft.createdAt })
+    const approved = { ...mealsDraft, id: MEALS_CURRENT, status: 'approved' as const, createdAt: meals?.createdAt ?? mealsDraft.createdAt }
+    await save('mealPlans', approved)
     await remove('mealPlans', MEALS_DRAFT)
-    toast('Planejamento salvo')
+    toast('Plano aprovado')
+    // Approved: offer the shopping list of this week (only items not there yet; manual items untouched).
+    if (approved.shopping.length) await copyShopping(approved)
+  }
+
+  const copyShopping = async (plan: MealPlan) => {
+    const week = weekStart(todayIn(zoneOf(settings)))
+    const have = keysOnList(buildList(mealsOfWeek(data.meals, week), data.shoppingItems, week))
+    const fresh = [...new Map(plan.shopping.filter((s) => s.item.trim() && !have.has(normalizeName(s.item))).map((s) => [normalizeName(s.item), s])).values()]
+    if (!fresh.length) return
+    const ok = await confirm({ title: 'Gerar a lista de compras?', message: `${fresh.length} ${fresh.length === 1 ? 'item do plano vai' : 'itens do plano vão'} para a Lista de compras desta semana, agrupados por categoria. O que já está lá não se repete.`, confirmLabel: 'Gerar lista' })
+    if (!ok) return
+    for (const s of fresh) await save('shoppingItems', { week, kind: 'manual', name: s.item.trim().slice(0, 120), qty: s.qty ?? '', unit: '', category: guessCategory(normalizeName(s.item)), checked: false, note: '', origin: 'plan' })
+    toast('Lista de compras gerada')
   }
 
   const discard = async () => {
@@ -245,11 +262,13 @@ export function AiPlanView() {
 
       {mealsDraft && (
         <section className="mb-8">
-          <div className="card mb-3 space-y-3 border-accent-hi/30 p-4">
-            <div className="flex items-center gap-2">
-              <Badge tone="accent">{mealsDraft.source === 'ai' ? 'Proposta da IA' : 'Rascunho'}</Badge>
-              <span className="text-[14px] text-soft">Revise, edite e aprove</span>
+          <div className="card relative mb-4 space-y-3 overflow-hidden border-warn/30 p-4 pl-5">
+            <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-warn" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="warn">Rascunho · não aprovado</Badge>
+              <span className="text-[13px] text-faint">{mealsDraft.source === 'ai' ? 'Proposta da IA' : 'Feito à mão'}</span>
             </div>
+            <p className="text-[15px] leading-snug">Revise e edite as refeições abaixo. Nada entra na sua semana nem na lista de compras até você aprovar.</p>
             {mealsDraft.removed.length > 0 && (
               <details className="rounded-2xl bg-warn/8 p-3 text-[14px]">
                 <summary className="flex cursor-pointer items-center gap-2 font-medium text-warn">
@@ -264,9 +283,11 @@ export function AiPlanView() {
             )}
             {mealsDraft.notes && <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-soft">{mealsDraft.notes}</p>}
             <div className="flex flex-wrap gap-2">
-              <Button onClick={approve}>Aprovar e salvar</Button>
+              <Button icon={<Check size={18} />} onClick={approve}>
+                Aprovar plano
+              </Button>
               <Button variant="ghost" onClick={discard}>
-                Descartar
+                Descartar rascunho
               </Button>
             </div>
           </div>
@@ -276,7 +297,10 @@ export function AiPlanView() {
 
       {meals ? (
         <section>
-          {mealsDraft && <h2 className="mb-3 px-1 text-[13px] font-semibold text-soft">Planejamento salvo</h2>}
+          <div className="mb-4 flex flex-wrap items-center gap-2 px-1">
+            <Badge tone="positive">Plano aprovado</Badge>
+            <span className="text-[13px] text-faint">{mealsDraft ? 'É o que vale até você aprovar o rascunho acima.' : 'Use na Semana com “Usar plano aprovado”.'}</span>
+          </div>
           <PlanView plan={meals} answers={answers} onEdit={(m) => sheet.show({ meal: m, planId: MEALS_CURRENT })} />
         </section>
       ) : (

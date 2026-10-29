@@ -6,7 +6,7 @@ import { buildList, groupRows, SHOPPING_CATEGORIES, type ListRow } from '../../c
 import { useStore } from '../../data/store'
 import type { ShoppingEntry, WeekId } from '../../data/types'
 import { Button, IconButton } from '../../ui/Button'
-import { EmptyState } from '../../ui/Display'
+import { EmptyState, Progress } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
@@ -132,9 +132,20 @@ export function ShoppingList({ week, onWeek }: { week: WeekId; onWeek(w: WeekId)
 
       {rows.length ? (
         <>
+          <div className="flex items-center gap-3 px-1">
+            <div className="min-w-0 flex-1">
+              <Progress value={(bought.length / rows.length) * 100} tone="positive" />
+            </div>
+            <span className="num shrink-0 text-[13px] font-medium text-soft">
+              {bought.length} de {rows.length} comprados
+            </span>
+          </div>
           {groups.map((g) => (
             <section key={g.category}>
-              <h3 className="mb-1.5 px-1 text-[13px] font-semibold text-soft">{g.category}</h3>
+              <h3 className="mb-1.5 flex items-center gap-2 px-1 text-[13px] font-semibold text-soft">
+                {g.category}
+                <span className="font-normal text-faint">{g.rows.filter((r) => !r.checked).length}</span>
+              </h3>
               <div className="card divide-y divide-line">
                 {g.rows.map((r) => (
                   <div key={r.id} className="flex items-center gap-1 pr-1">
