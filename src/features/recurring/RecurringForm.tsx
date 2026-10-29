@@ -9,17 +9,18 @@ import { useDraft } from '../../ui/formHooks'
 import { ToggleRow } from '../planner/controls'
 import { RuleEditor, ruleProblem } from '../daily/RuleEditor'
 
-export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(): void; item: RecurringItem | null }) {
+/** `initial`: values suggested elsewhere (Caixa de entrada, Anotações); `onSaved` links the source to the new item. */
+export function RecurringForm({ open, onClose, item, initial, onSaved }: { open: boolean; onClose(): void; item: RecurringItem | null; initial?: { title?: string; rule?: RecurrenceRule; bill?: boolean }; onSaved?(saved: RecurringItem): void }) {
   const { save, remove, settings } = useStore()
   const { toast, confirm } = useFeedback()
   const now = nowIn(zoneOf(settings))
   const [d, set] = useDraft(open, () => ({
-    title: item?.title ?? '',
-    rule: (item?.rule ?? { type: 'weekdays', days: [now.weekday] }) as RecurrenceRule,
+    title: item?.title ?? initial?.title ?? '',
+    rule: (item?.rule ?? initial?.rule ?? { type: 'weekdays', days: [now.weekday] }) as RecurrenceRule,
     time: item?.time ?? '',
     notes: item?.notes ?? '',
     active: item?.active ?? true,
-    bill: item?.bill ?? false,
+    bill: item?.bill ?? initial?.bill ?? false,
     remindDays: item?.remindDays === undefined ? '' : String(item.remindDays),
   }))
 
@@ -28,7 +29,7 @@ export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(
     const problem = ruleProblem(d.rule)
     if (problem) return problem
     if (d.time && !isTime(d.time)) return 'Confira o horário'
-    await save('recurring', {
+    const saved = await save('recurring', {
       ...item,
       title: d.title.trim(),
       rule: d.rule,
@@ -40,6 +41,7 @@ export function RecurringForm({ open, onClose, item }: { open: boolean; onClose(
       startDate: item?.startDate ?? now.date,
     })
     toast(item ? 'Item atualizado' : 'Item recorrente criado')
+    onSaved?.(saved)
     onClose()
   }
 

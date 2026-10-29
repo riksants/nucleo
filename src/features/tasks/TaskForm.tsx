@@ -24,7 +24,7 @@ export function TaskForm({
   task: Task | null
   defaultProjectId?: string | null
   /** Prefill for a new task (e.g. converting an inbox item). */
-  initial?: { title?: string; notes?: string; dueDate?: string }
+  initial?: { title?: string; notes?: string; dueDate?: string; dueTime?: string }
   onSaved?(task: Task): void
 }) {
   const { save } = useStore()
@@ -34,7 +34,7 @@ export function TaskForm({
     title: task?.title ?? initial?.title ?? '',
     projectId: task?.projectId ?? defaultProjectId ?? null,
     dueDate: task?.dueDate ?? initial?.dueDate ?? '',
-    dueTime: task?.dueTime ?? '',
+    dueTime: task?.dueTime ?? initial?.dueTime ?? '',
     priority: task?.priority ?? ('none' as TaskPriority),
     status: task?.status ?? ('todo' as TaskStatus),
     notes: task?.notes ?? initial?.notes ?? '',

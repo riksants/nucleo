@@ -23,7 +23,7 @@ export function EventForm({
   open: boolean
   onClose(): void
   event: CalendarEvent | null
-  initial?: { title?: string; notes?: string; date?: string }
+  initial?: { title?: string; notes?: string; date?: string; start?: string }
   onSaved?(event: CalendarEvent): void
 }) {
   const { save } = useStore()
@@ -32,7 +32,7 @@ export function EventForm({
   const [d, set, setAll] = useDraft(open, () => ({
     title: event?.title ?? initial?.title ?? '',
     date: event?.date ?? initial?.date ?? '',
-    start: event?.start ?? '',
+    start: event?.start ?? initial?.start ?? '',
     end: event?.end ?? '',
     notes: event?.notes ?? initial?.notes ?? '',
   }))

@@ -424,8 +424,14 @@ export interface MealPlan extends Entity {
 
 export interface Note extends Entity {
   title: string
+  /** Plain text; lines "- [ ] …" / "- [x] …" are a checklist, "- …" a list (older notes are plain text and stay so). */
   body: string
   pinned: boolean
+  /** Optional, free text ("Trabalho", "Ideias"…). */
+  category?: string
+  favorite?: boolean
+  /** Lines already turned into a task/reminder from this note (not suggested again). */
+  acted?: string[]
 }
 
 export interface PortfolioItem extends Entity {
