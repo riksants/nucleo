@@ -88,6 +88,12 @@ Uma família: Geist (variável) e Geist Mono para rótulos estruturais (`label-m
 - Campos de data/hora encolhem como qualquer campo (correção do Safari do iPhone em `index.css`); grades da
   página usam `grid-cols-[minmax(0,1fr)]` no celular para nunca empurrar a largura.
 
+- Vendas (`src/features/sales/`, regras em `src/core/salesSmart.ts`): uma barra só ("Busque uma venda ou conte o que
+  vendeu…") que busca ou lê a frase (regras locais, sem IA) e mostra "Entendi assim" antes de abrir a ficha; nada é
+  salvo por digitar. Tocar numa venda abre o detalhe (Recebi · Cobrar · Vender novamente · Editar venda). Abas:
+  A receber (atrasadas primeiro) · Atrasadas · Quitadas · Todas · Pessoas. Parcelas e "atrasada" são derivadas dos
+  pagamentos; vendas recorrentes geram a cobrança (automação), nunca o pagamento.
+
 ## Movimento
 
 - Curva da casa: expo ease-out `cubic-bezier(0.16, 1, 0.3, 1)` (`--ease-out-soft` no CSS, `EASE_OUT_SOFT` em

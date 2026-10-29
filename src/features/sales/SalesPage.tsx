@@ -4,14 +4,14 @@ import { PageHeader } from '../../app/Shell'
 import { shiftMonths } from '../../core/automation/dates'
 import { todayIn, zoneOf } from '../../core/period'
 import { isLate, matchesSearch, nextDue, readSaleText, readSearch, type SaleDraft } from '../../core/salesSmart'
-import { BUYER_STATUS_LABEL, BUYER_TONE, buyers as groupBuyers, overdueAmount, saleRemaining, saleStatus, type Buyer, type MoneyTotals } from '../../data/sales'
+import { BUYER_STATUS_LABEL, BUYER_TONE, buyers as groupBuyers, overdueAmount, saleRemaining, salesOverview, saleStatus, type Buyer, type BuyerStatus, type MoneyTotals } from '../../data/sales'
 import { useStore } from '../../data/store'
 import type { Currency, Sale } from '../../data/types'
 import { formatDateValue, relativeDays } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { Badge, EmptyState } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
-import { Segmented } from '../../ui/Segmented'
+import { Chips, Segmented } from '../../ui/Segmented'
 import { useOpenParam } from '../useOpenParam'
 import { BuyerDetail } from './BuyerDetail'
 import { SaleDetail } from './SaleDetail'
@@ -95,6 +95,50 @@ function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
   )
 }
 
+/** Money of several currencies, one per line (never added together). */
+function MoneyLines({ list, pick, className }: { list: MoneyTotals[]; pick(t: MoneyTotals): number; className: string }) {
+  return (
+    <>
+      {list.map((t) => (
+        <span key={t.currency} className={`num block truncate ${className}`}>
+          {formatMoney(pick(t), t.currency)}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** Sold / received / to receive per currency, and how many people still owe. */
+function Overview({ totals, owing }: { totals: MoneyTotals[]; owing: number }) {
+  return (
+    <div className="card mb-4 grid grid-cols-2 gap-x-4 gap-y-3 p-4 pl-5 sm:grid-cols-4" aria-label="Resumo de vendas">
+      <div className="min-w-0">
+        <p className="text-[12px] text-faint">Total vendido</p>
+        <MoneyLines list={totals} pick={(t) => t.total} className="text-[17px] font-semibold" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[12px] text-faint">Total recebido</p>
+        <MoneyLines list={totals} pick={(t) => t.paid} className="text-[17px] font-semibold text-income" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[12px] text-faint">Total a receber</p>
+        <MoneyLines list={totals} pick={(t) => t.remaining} className="text-[17px] font-semibold text-accent-hi" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[12px] text-faint">Pessoas com valor pendente</p>
+        <span className="num block text-[17px] font-semibold">{owing}</span>
+      </div>
+    </div>
+  )
+}
+
+const PEOPLE_FILTERS: { value: BuyerStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'paid', label: 'Pagos' },
+  { value: 'partial', label: 'Parciais' },
+  { value: 'pending', label: 'Pendentes' },
+]
+
 /** "Entendi assim": what the sentence gave, with the exact date to check and what is still missing. */
 function DraftCard({ draft, missing, currency, needCurrency, currencies, onCurrency, onOpen, today }: { draft: SaleDraft; missing: string[]; currency: Currency | null; needCurrency: boolean; currencies: Currency[]; onCurrency(c: Currency): void; onOpen(): void; today: string }) {
   const cur = currency ?? currencies[0]
@@ -160,6 +204,7 @@ export function SalesPage() {
   const [text, setText] = useState('')
   const [force, setForce] = useState<'search' | 'create' | null>(null)
   const [pickedCurrency, setPickedCurrency] = useState<Currency | null>(null)
+  const [peopleStatus, setPeopleStatus] = useState<BuyerStatus | 'all'>('all')
   useOpenParam(data.sales, (s) => detail.show(s.id))
 
   const q = text.trim()
@@ -182,6 +227,7 @@ export function SalesPage() {
   const paid = data.sales.filter((s) => saleStatus(s) === 'paid').sort((a, b) => (a.date < b.date ? 1 : -1))
   const all = [...data.sales].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.createdAt < b.createdAt ? 1 : -1))
   const groups = useMemo(() => groupBuyers(data.sales, buyer).sort((a, b) => Number(a.status === 'paid') - Number(b.status === 'paid') || (a.lastDate < b.lastDate ? 1 : -1)), [data.sales, buyer])
+  const overview = useMemo(() => salesOverview(data.sales, buyer), [data.sales, buyer])
   const receivable = perCurrency(open, saleRemaining)
   const lateTotal = perCurrency(late, (s) => overdueAmount(s, today))
   const usedCurrencies = [...new Set(data.sales.map((s) => s.currency))]
@@ -362,12 +408,20 @@ export function SalesPage() {
                 ]}
               />
             </div>
+            {(tab === 'all' || tab === 'people') && <Overview totals={overview.totals} owing={overview.owing} />}
             {tab === 'people' ? (
-              <div className="card p-1.5">
-                {groups.map((b) => (
-                  <BuyerRow key={b.key} buyer={b} onOpen={(x) => person.show(x.key)} />
-                ))}
-              </div>
+              <>
+                <div className="mb-3">
+                  <Chips<BuyerStatus | 'all'> value={peopleStatus} onChange={setPeopleStatus} options={PEOPLE_FILTERS} />
+                </div>
+                <div className="card p-1.5">
+                  {groups
+                    .filter((g) => peopleStatus === 'all' || g.status === peopleStatus)
+                    .map((g) => (
+                      <BuyerRow key={g.key} buyer={g} onOpen={(x) => person.show(x.key)} />
+                    ))}
+                </div>
+              </>
             ) : list.length ? (
               <div className="card p-1.5">
                 {list.map((s) => (

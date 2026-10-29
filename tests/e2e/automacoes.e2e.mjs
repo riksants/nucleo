@@ -94,7 +94,7 @@ try {
   r.check('"Feito pelo Núcleo": pendência, pagamento automático e reserva', page.includes('Esperando você') && page.includes('Pagamento automático de Figma') && page.includes('Núcleo reservou') && page.includes('Viagem'), page.slice(0, 500).replace(/\n/g, ' | '))
   const figmaRow = await b.eval(`[...document.querySelectorAll('main .card > div')].find((x) => x.innerText.includes('Pagamento automático de Figma'))?.innerText ?? ''`)
   r.check('valor aparece uma vez só na linha do histórico', (figmaRow.match(/20,00/g) || []).length === 1, figmaRow.replace(/\n/g, ' | '))
-  r.check('interruptores das 4 automações', (await b.eval(`document.querySelectorAll('main [role=switch]').length`)) === 4)
+  r.check('interruptores das 5 automações (com Vendas recorrentes)', (await b.eval(`document.querySelectorAll('main [role=switch]').length`)) === 5)
   r.check('sem rolagem horizontal em Feito pelo Núcleo (390px)', await noHorizontalScroll(b))
 
   // Confirm the receivable: only now the income exists
