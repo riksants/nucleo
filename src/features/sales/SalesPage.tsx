@@ -1,91 +1,76 @@
-import { BadgeDollarSign, ChevronRight, Pencil, SlidersHorizontal } from 'lucide-react'
+import { BadgeDollarSign, ChevronRight, Search, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
-import {
-  BUYER_STATUS_LABEL,
-  BUYER_TONE,
-  buyers as groupBuyers,
-  clientKey,
-  isOverdue,
-  saleRemaining,
-  saleStatus,
-  salesOverview,
-  SALE_STATUS_LABEL,
-  type Buyer,
-  type BuyerStatus,
-  type MoneyTotals,
-  type SaleFilter,
-} from '../../data/sales'
-import { matches } from '../../data/selectors'
+import { shiftMonths } from '../../core/automation/dates'
+import { todayIn, zoneOf } from '../../core/period'
+import { isLate, matchesSearch, nextDue, readSaleText, readSearch, type SaleDraft } from '../../core/salesSmart'
+import { BUYER_STATUS_LABEL, BUYER_TONE, buyers as groupBuyers, overdueAmount, saleRemaining, saleStatus, type Buyer, type MoneyTotals } from '../../data/sales'
 import { useStore } from '../../data/store'
 import type { Currency, Sale } from '../../data/types'
 import { formatDateValue, relativeDays } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
-import { IconButton } from '../../ui/Button'
-import { Badge, EmptyState, SearchField } from '../../ui/Display'
-import { Field, Select, TextInput } from '../../ui/Field'
+import { Badge, EmptyState } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
-import { Chips, Segmented } from '../../ui/Segmented'
-import { Sheet } from '../../ui/Sheet'
+import { Segmented } from '../../ui/Segmented'
 import { useOpenParam } from '../useOpenParam'
-import { useBuyerName } from './useBuyerName'
 import { BuyerDetail } from './BuyerDetail'
-import { SaleForm, SalePayments, STATUS_TONE, type BuyerPreset } from './SaleForm'
+import { SaleDetail } from './SaleDetail'
+import { SaleForm, type BuyerPreset, type SaleInitial } from './SaleForm'
+import { usePeople } from './SaleFields'
+import { useBuyerName } from './useBuyerName'
 
-const STATUS_FILTERS: { value: SaleFilter['status']; label: string }[] = [
-  { value: 'all', label: 'Todas' },
-  { value: 'pending', label: 'Pendentes' },
-  { value: 'partial', label: 'Parciais' },
-  { value: 'paid', label: 'Quitadas' },
-  { value: 'overdue', label: 'Atrasadas' },
-]
+type Tab = 'open' | 'late' | 'paid' | 'all' | 'people'
 
-const PEOPLE_FILTERS: { value: BuyerStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'paid', label: 'Pagos' },
-  { value: 'partial', label: 'Parciais' },
-  { value: 'pending', label: 'Pendentes' },
-]
+const WEEKDAY = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'UTC' })
+const exactDate = (d: string) => WEEKDAY.format(new Date(`${d}T12:00:00Z`))
 
-/** Money of several currencies, one per line (never added together). */
-function MoneyLines({ list, pick, className }: { list: MoneyTotals[]; pick(t: MoneyTotals): number; className: string }) {
-  return (
-    <>
-      {list.map((t) => (
-        <span key={t.currency} className={`num block truncate ${className}`}>
-          {formatMoney(pick(t), t.currency)}
-        </span>
-      ))}
-    </>
-  )
+/** Money per currency, never added together. */
+function perCurrency(sales: Sale[], pick: (s: Sale) => number): { currency: Currency; amount: number }[] {
+  const map = new Map<Currency, number>()
+  for (const s of sales) {
+    const v = pick(s)
+    if (v > 0) map.set(s.currency, (map.get(s.currency) ?? 0) + v)
+  }
+  return [...map].map(([currency, amount]) => ({ currency, amount })).sort((a, b) => b.amount - a.amount)
 }
 
-/** Simple summary at the top of Vendas. */
-function Overview({ totals, owing }: { totals: MoneyTotals[]; owing: number }) {
+function SaleRow({ sale, today, onOpen }: { sale: Sale; today: string; onOpen(s: Sale): void }) {
+  const buyer = useBuyerName()
+  const status = saleStatus(sale)
+  const remaining = saleRemaining(sale)
+  const late = isLate(sale, today)
+  const due = nextDue(sale, today)
+  const rel = due ? relativeDays(due) : null
   return (
-    <div className="card mb-5 grid grid-cols-2 gap-x-4 gap-y-3 p-4 pl-5 sm:grid-cols-4" aria-label="Resumo de vendas">
-      <div className="min-w-0">
-        <p className="text-[12px] text-faint">Total vendido</p>
-        <MoneyLines list={totals} pick={(t) => t.total} className="text-[17px] font-semibold" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[12px] text-faint">Total recebido</p>
-        <MoneyLines list={totals} pick={(t) => t.paid} className="text-[17px] font-semibold text-income" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[12px] text-faint">Total a receber</p>
-        <MoneyLines list={totals} pick={(t) => t.remaining} className="text-[17px] font-semibold text-accent-hi" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[12px] text-faint">Pessoas com valor pendente</p>
-        <span className="num block text-[17px] font-semibold">{owing}</span>
-      </div>
-    </div>
+    <button type="button" onClick={() => onOpen(sale)} className="relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
+      {late && <span aria-hidden className="absolute inset-y-3 left-0 w-[3px] rounded-full bg-expense" />}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-medium">{buyer(sale)}</span>
+        <span className="block truncate text-[13px] text-faint">
+          {sale.product}
+          {sale.installments?.length ? ` · ${sale.installments.length}×` : ''}
+          {rel && status !== 'paid' ? <span className={late ? 'font-semibold text-expense' : rel.days <= 2 ? 'text-warn' : ''}> · {late ? `venceu ${rel.label.toLowerCase()}` : `vence ${rel.label.toLowerCase()}`}</span> : ` · ${formatDateValue(sale.date)}`}
+        </span>
+      </span>
+      <span className="shrink-0 text-right">
+        {status === 'paid' ? (
+          <>
+            <span className="num block text-[15px] font-semibold text-soft">{formatMoney(sale.total, sale.currency)}</span>
+            <Badge tone="positive">Quitada</Badge>
+          </>
+        ) : (
+          <>
+            <span className={`num block text-[15px] font-semibold ${late ? 'text-expense' : ''}`}>{formatMoney(remaining, sale.currency)}</span>
+            <span className="block text-[12px] text-faint">{status === 'partial' ? `de ${formatMoney(sale.total, sale.currency)}` : 'a receber'}</span>
+          </>
+        )}
+      </span>
+    </button>
   )
 }
 
 function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
-  const owing = buyer.totals.filter((t) => t.remaining > 0)
+  const owing = buyer.totals.filter((t: MoneyTotals) => t.remaining > 0)
   return (
     <button type="button" onClick={() => onOpen(buyer)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
       <span className="min-w-0 flex-1">
@@ -97,207 +82,320 @@ function BuyerRow({ buyer, onOpen }: { buyer: Buyer; onOpen(b: Buyer): void }) {
       <span className="shrink-0 text-right">
         {owing.length ? (
           owing.map((t) => (
-            <span key={t.currency} className="num block text-[15px] font-semibold text-ink">
+            <span key={t.currency} className="num block text-[15px] font-semibold">
               {formatMoney(t.remaining, t.currency)}
             </span>
           ))
         ) : (
-          <MoneyLines list={buyer.totals} pick={(t) => t.total} className="text-[15px] font-semibold text-soft" />
+          <span className="block text-[13px] text-faint">nada pendente</span>
         )}
-        <span className="block text-[12px] text-faint">{owing.length ? 'pendente' : 'comprado'}</span>
       </span>
       <ChevronRight size={16} className="shrink-0 text-accent-hi" />
     </button>
   )
 }
 
-function SaleRow({ sale, onOpen }: { sale: Sale; onOpen(s: Sale): void }) {
-  const buyer = useBuyerName()
-  const status = saleStatus(sale)
-  const remaining = saleRemaining(sale)
-  const overdue = isOverdue(sale)
-  const rel = sale.dueDate && status !== 'paid' ? relativeDays(sale.dueDate) : null
+/** "Entendi assim": what the sentence gave, with the exact date to check and what is still missing. */
+function DraftCard({ draft, missing, currency, needCurrency, currencies, onCurrency, onOpen, today }: { draft: SaleDraft; missing: string[]; currency: Currency | null; needCurrency: boolean; currencies: Currency[]; onCurrency(c: Currency): void; onOpen(): void; today: string }) {
+  const cur = currency ?? currencies[0]
+  const money = (v: number | null) => (v === null ? '—' : formatMoney(v, cur))
+  const rest = draft.total !== null ? Math.max(0, draft.total - (draft.paid ?? 0)) : null
+  const rows: [string, string, boolean][] = [
+    ['Cliente', draft.clientName || 'falta', !draft.clientName],
+    ['Produto', `${draft.quantity !== 1 ? `${draft.quantity}× ` : ''}${draft.product || 'falta'}`, !draft.product],
+    ['Total', draft.total !== null ? money(draft.total) : 'falta', draft.total === null],
+    ['Já recebido', draft.paid !== null ? money(draft.paid) : 'nada informado', false],
+    ['Restante', rest !== null ? money(rest) : '—', false],
+    ['Vencimento', draft.dueDate ? exactDate(draft.dueDate) : rest ? 'sem prazo' : '—', false],
+  ]
+  if (draft.installments > 1) rows.push(['Parcelas', `${draft.installments}× (você confere as datas)`, false])
   return (
-    <button type="button" onClick={() => onOpen(sale)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-tint/[0.03] tap">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-medium">{buyer(sale)}</span>
-        <span className="block truncate text-[13px] text-faint">
-          {sale.product}
-          {sale.quantity !== 1 ? ` × ${sale.quantity.toLocaleString('pt-BR')}` : ''} · {formatDateValue(sale.date)}
-          {rel && <span className={overdue ? 'text-expense' : rel.days <= 1 ? 'text-warn' : ''}> · prazo {rel.label}</span>}
-        </span>
-      </span>
-      <span className="shrink-0 text-right">
-        <span className="num block text-[15px] font-semibold">{formatMoney(sale.total, sale.currency)}</span>
-        {status === 'paid' ? (
-          <Badge tone="positive">{SALE_STATUS_LABEL.paid}</Badge>
-        ) : (
-          <span className={`num text-[13px] ${overdue ? 'text-expense' : 'text-soft'}`}>falta {formatMoney(remaining, sale.currency)}</span>
-        )}
-      </span>
-    </button>
+    <section aria-label="Nova venda pronta para conferir" className="card relative overflow-hidden p-4 pl-5">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-accent" />
+      <p className="flex items-center gap-2 text-[12px] font-semibold tracking-[0.1em] text-accent-hi uppercase">
+        <Sparkles size={14} /> Entendi assim
+      </p>
+      <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[14px]">
+        {rows.map(([k, v, miss]) => [
+          <dt key={`${k}-t`} className="text-soft">
+            {k}
+          </dt>,
+          <dd key={`${k}-d`} className={`num [overflow-wrap:anywhere] ${miss ? 'font-semibold text-warn' : 'font-medium'}`}>
+            {v}
+          </dd>,
+        ])}
+      </dl>
+      {needCurrency && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[13px] font-medium text-warn">Em qual moeda?</p>
+          <div className="flex flex-wrap gap-2">
+            {currencies.map((c) => (
+              <button key={c} type="button" aria-pressed={c === currency} onClick={() => onCurrency(c)} className={`press h-9 rounded-full border px-3.5 text-[14px] font-medium ${c === currency ? 'border-accent/40 bg-accent/[0.14] text-accent-hi' : 'border-line text-soft'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {draft.dueDate && draft.dueDate < today && <p className="mt-2 text-[13px] text-warn">A data entendida já passou: confira.</p>}
+      <p className="mt-3 text-[12px] leading-relaxed text-faint">{missing.length ? `Falta: ${missing.join(', ')}. ` : ''}Nada é salvo até você conferir e tocar em “Registrar venda”.</p>
+      <button type="button" disabled={needCurrency && !currency} onClick={onOpen} className="press mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-accent text-[15px] font-semibold text-on-accent hover:bg-accent-soft disabled:opacity-50">
+        Conferir e registrar
+      </button>
+    </section>
   )
 }
 
 export function SalesPage() {
-  const { data } = useStore()
+  const { data, settings, displayCurrency } = useStore()
   const buyer = useBuyerName()
+  const people = usePeople()
+  const today = todayIn(zoneOf(settings))
   const form = useSheet<Sale>()
   const detail = useSheet<string>()
   const person = useSheet<string>()
   const [preset, setPreset] = useState<BuyerPreset | null>(null)
-  const [tab, setTab] = useState<'people' | 'sales'>('people')
-  const [peopleQuery, setPeopleQuery] = useState('')
-  const [peopleStatus, setPeopleStatus] = useState<BuyerStatus | 'all'>('all')
-  const [filter, setFilter] = useState<SaleFilter>({ query: '', status: 'all', from: '', to: '', clientKey: '' })
-  const [showFilters, setShowFilters] = useState(false)
+  const [initial, setInitial] = useState<SaleInitial | null>(null)
+  const [tab, setTab] = useState<Tab>('open')
+  const [text, setText] = useState('')
+  const [force, setForce] = useState<'search' | 'create' | null>(null)
+  const [pickedCurrency, setPickedCurrency] = useState<Currency | null>(null)
   useOpenParam(data.sales, (s) => detail.show(s.id))
 
-  const buyers = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const s of data.sales) map.set(clientKey(s), buyer(s))
-    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
-  }, [data.sales, buyer])
+  const q = text.trim()
+  const reading = useMemo(() => (q ? readSaleText(q, today, people.map((p) => p.name)) : null), [q, today, people])
+  const mode = !reading ? null : force ?? (reading.kind === 'ambiguous' ? 'ambiguous' : reading.kind)
+  const search = useMemo(() => (mode === 'search' ? readSearch(q, today) : null), [mode, q, today])
+  const results = search ? data.sales.filter((s) => matchesSearch(s, buyer(s), search, today)).sort((a, b) => (a.date < b.date ? 1 : -1)) : []
 
-  const list = data.sales
-    .filter((s) => matches(filter.query, buyer(s), s.product, s.notes))
-    .filter((s) => filter.status === 'all' || (filter.status === 'overdue' ? isOverdue(s) : saleStatus(s) === filter.status))
-    .filter((s) => (!filter.from || s.date >= filter.from) && (!filter.to || s.date <= filter.to))
-    .filter((s) => !filter.clientKey || clientKey(s) === filter.clientKey)
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.createdAt < b.createdAt ? 1 : -1))
+  const late = data.sales.filter((s) => isLate(s, today)).sort((a, b) => (nextDue(a, today) < nextDue(b, today) ? -1 : 1))
+  const open = data.sales
+    .filter((s) => saleStatus(s) !== 'paid')
+    // Late first (oldest due first), then the next due dates, then those without a date (newest first).
+    .sort((a, b) => {
+      const la = isLate(a, today) ? 0 : nextDue(a, today) ? 1 : 2
+      const lb = isLate(b, today) ? 0 : nextDue(b, today) ? 1 : 2
+      if (la !== lb) return la - lb
+      if (la < 2) return nextDue(a, today) < nextDue(b, today) ? -1 : 1
+      return a.date < b.date ? 1 : -1
+    })
+  const paid = data.sales.filter((s) => saleStatus(s) === 'paid').sort((a, b) => (a.date < b.date ? 1 : -1))
+  const all = [...data.sales].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.createdAt < b.createdAt ? 1 : -1))
+  const groups = useMemo(() => groupBuyers(data.sales, buyer).sort((a, b) => Number(a.status === 'paid') - Number(b.status === 'paid') || (a.lastDate < b.lastDate ? 1 : -1)), [data.sales, buyer])
+  const receivable = perCurrency(open, saleRemaining)
+  const lateTotal = perCurrency(late, (s) => overdueAmount(s, today))
+  const usedCurrencies = [...new Set(data.sales.map((s) => s.currency))]
+  const currencies = [...new Set([...(usedCurrencies.length ? usedCurrencies : []), displayCurrency, settings.baseCurrency])]
 
-  // Receivable per currency: never added across currencies.
-  const receivable = new Map<Currency, number>()
-  for (const s of list) {
-    const r = saleRemaining(s)
-    if (r > 0) receivable.set(s.currency, (receivable.get(s.currency) ?? 0) + r)
-  }
-  const overdueCount = data.sales.filter((s) => isOverdue(s)).length
-  const people = useMemo(() => groupBuyers(data.sales, buyer), [data.sales, buyer])
-  const overview = useMemo(() => salesOverview(data.sales, buyer), [data.sales, buyer])
-  const peopleList = people
-    .filter((b) => matches(peopleQuery, b.name))
-    .filter((b) => peopleStatus === 'all' || b.status === peopleStatus)
-    // Who owes first, then the most recent buyers.
-    .sort((a, b) => Number(a.status === 'paid') - Number(b.status === 'paid') || (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : a.name.localeCompare(b.name)))
-  const openPerson = people.find((b) => b.key === person.item) ?? null
-  const newSale = (p: BuyerPreset | null) => {
+  const newSale = (p: BuyerPreset | null, init: SaleInitial | null = null) => {
     setPreset(p)
+    setInitial(init)
     person.close()
+    detail.close()
     form.show()
   }
-  const open = data.sales.find((s) => s.id === detail.item) ?? null
-  const set = <K extends keyof SaleFilter>(k: K, v: SaleFilter[K]) => setFilter((f) => ({ ...f, [k]: v }))
-  const filtered = filter.from || filter.to || filter.clientKey
+  const fromDraft = () => {
+    if (!reading || reading.kind === 'search') return
+    const d = reading.draft
+    const due = d.dueDate || (d.installments > 1 ? shiftMonths(today, 1, Number(today.slice(8))) : '')
+    newSale(null, {
+      clientName: d.clientName,
+      product: d.product,
+      quantity: d.quantity,
+      total: d.total,
+      paid: d.paid,
+      dueDate: due,
+      installments: d.installments,
+      currency: d.currency ?? pickedCurrency ?? (usedCurrencies.length > 1 ? null : (usedCurrencies[0] ?? displayCurrency)),
+    })
+  }
+  const sellAgain = (s: Sale) =>
+    newSale(null, {
+      clientId: s.clientId,
+      clientName: s.clientName,
+      confirmed: true,
+      product: s.product,
+      quantity: s.quantity,
+      items: s.items?.map((i) => ({ ...i })),
+      discount: s.discount,
+      total: s.items?.length ? null : s.total + (s.discount ?? 0),
+      currency: s.currency,
+    })
+  const opened = data.sales.find((s) => s.id === detail.item) ?? null
+  const openPerson = groups.find((b) => b.key === person.item) ?? null
+  const list = tab === 'open' ? open : tab === 'late' ? late : tab === 'paid' ? paid : all
+  const missingLabel = reading && reading.kind === 'create' ? reading.missing.map((m) => (m === 'client' ? 'cliente' : m === 'product' ? 'o que vendeu' : 'valor')) : []
+  const needCurrency = Boolean(reading && reading.kind !== 'search' && !reading.draft.currency && usedCurrencies.length > 1)
 
   return (
     <>
       <PageHeader
+        rich
+        icon={BadgeDollarSign}
+        eyebrow={data.sales.length ? `${data.sales.length} ${data.sales.length === 1 ? 'venda' : 'vendas'}` : 'Quem comprou, quanto pagou e quanto falta'}
         title="Vendas"
-        subtitle={data.sales.length ? `${data.sales.length} vendas${overdueCount ? ` · ${overdueCount} atrasada${overdueCount > 1 ? 's' : ''}` : ''}` : 'Quem comprou, quanto pagou e quanto falta'}
         primary={{ label: 'Nova', aria: 'Nova venda', onPress: () => newSale(null) }}
+        stats={
+          data.sales.length
+            ? [
+                { label: receivable.length > 1 ? `A receber (${receivable[0].currency})` : 'A receber', value: receivable.length ? formatMoney(receivable[0].amount, receivable[0].currency, { compact: true }) : '—' },
+                { label: 'Atrasadas', value: late.length },
+                { label: 'Quitadas', value: paid.length },
+              ]
+            : undefined
+        }
       />
-      {data.sales.length === 0 ? (
-        <EmptyState icon={<BadgeDollarSign size={20} />} title="Nenhuma venda ainda" text="Registre o que vendeu, para quem e acompanhe os pagamentos parciais." action="Registrar venda" onAction={() => newSale(null)} />
-      ) : (
-        <>
-          <Overview totals={overview.totals} owing={overview.owing} />
-          <div className="mb-4">
-            <Segmented variant="underline"
-              block
-              label="Ver vendas por"
-              value={tab}
-              onChange={(v) => setTab(v)}
-              options={[
-                { value: 'people', label: 'Pessoas' },
-                { value: 'sales', label: 'Vendas' },
-              ]}
-            />
+
+      <div className="relative mb-4">
+        <Search size={18} className="pointer-events-none absolute top-[18px] left-4 text-faint" />
+        <textarea
+          value={text}
+          rows={1}
+          onChange={(e) => {
+            setText(e.target.value)
+            setForce(null)
+          }}
+          placeholder="Busque uma venda ou conte o que vendeu…"
+          aria-label="Busque uma venda ou conte o que vendeu"
+          enterKeyHint="search"
+          className="block max-h-36 min-h-14 w-full resize-none rounded-[1.25rem] border border-line bg-surface py-4 pr-12 pl-11 text-[16px] leading-snug text-ink placeholder:text-faint focus:border-accent/70 focus:outline-none [field-sizing:content]"
+        />
+        {text && (
+          <button type="button" aria-label="Limpar" onClick={() => (setText(''), setForce(null))} className="absolute top-3 right-2.5 grid size-8 place-items-center rounded-full text-faint hover:text-ink">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {mode === 'ambiguous' && (
+        <div className="card mb-4 p-4">
+          <p className="text-[14px] text-soft">O que você quer fazer com “{q}”?</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setForce('search')} className="press h-11 rounded-full text-[15px] font-semibold ring-1 ring-line-strong ring-inset">
+              Buscar vendas
+            </button>
+            <button type="button" onClick={() => setForce('create')} className="press h-11 rounded-full bg-accent text-[15px] font-semibold text-on-accent">
+              Criar uma venda
+            </button>
           </div>
-          {tab === 'people' ? (
-            <>
-              <div className="mb-3">
-                <SearchField value={peopleQuery} onChange={setPeopleQuery} placeholder="Buscar pessoa" />
-              </div>
-              <div className="mb-4">
-                <Chips value={peopleStatus} onChange={(v) => setPeopleStatus(v)} options={PEOPLE_FILTERS} />
-              </div>
-              {peopleList.length ? (
-                <div className="card p-1.5">
-                  {peopleList.map((b) => (
-                    <BuyerRow key={b.key} buyer={b} onOpen={(x) => person.show(x.key)} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState compact icon={<BadgeDollarSign size={20} />} title="Ninguém com esse filtro" action="Limpar filtros" onAction={() => { setPeopleQuery(''); setPeopleStatus('all'); setPreset(null) }} />
-              )}
-            </>
-          ) : (
-            <>
-              {(filter.status !== 'all' || filter.query || filtered) && (
-                <div className="card mb-5 p-4 pl-5">
-                  <p className="text-[13px] text-soft">
-                    A receber
-                    {filter.status !== 'all' || filter.query || filtered ? ' (filtro atual)' : ''}
-                  </p>
-                  {receivable.size ? (
-                    <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
-                      {[...receivable.entries()].map(([c, v]) => (
-                        <span key={c} className="num text-[22px] font-semibold text-warn">
-                          {formatMoney(v, c)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="num mt-1 text-[22px] font-semibold text-soft">Nada a receber</p>
-                  )}
-                </div>
-              )}
-              <div className="mb-3 flex gap-2">
-                <div className="flex-1">
-                  <SearchField value={filter.query} onChange={(v) => set('query', v)} placeholder="Buscar cliente ou produto" />
-                </div>
-                <IconButton label="Filtros" tone={filtered || showFilters ? 'accent' : 'raised'} className="size-12!" onClick={() => setShowFilters(!showFilters)}>
-                  <SlidersHorizontal size={20} />
-                </IconButton>
-              </div>
-              {showFilters && (
-                <div className="card mb-3 grid gap-3 p-4 sm:grid-cols-3">
-                  <Field label="De">
-                    <TextInput type="date" value={filter.from} onChange={(e) => set('from', e.target.value)} />
-                  </Field>
-                  <Field label="Até">
-                    <TextInput type="date" value={filter.to} onChange={(e) => set('to', e.target.value)} />
-                  </Field>
-                  <Field label="Cliente">
-                    <Select value={filter.clientKey} onChange={(e) => set('clientKey', e.target.value)}>
-                      <option value="">Todos</option>
-                      {buyers.map(([key, name]) => (
-                        <option key={key} value={key}>
-                          {name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-              )}
-              <div className="mb-4">
-                <Chips value={filter.status} onChange={(v) => set('status', v)} options={STATUS_FILTERS} />
-              </div>
-              {list.length ? (
-                <div className="card p-1.5">
-                  {list.map((s) => (
-                    <SaleRow key={s.id} sale={s} onOpen={(x) => detail.show(x.id)} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState compact icon={<BadgeDollarSign size={20} />} title="Nenhuma venda com esse filtro" action="Limpar filtros" onAction={() => setFilter({ query: '', status: 'all', from: '', to: '', clientKey: '' })} />
-              )}
-            </>
-          )}
-        </>
+        </div>
       )}
 
+      {mode === 'create' && reading && reading.kind !== 'search' && (
+        <div className="mb-6">
+          <DraftCard draft={reading.draft} missing={missingLabel} currency={reading.draft.currency ?? pickedCurrency} needCurrency={needCurrency} currencies={currencies} onCurrency={setPickedCurrency} onOpen={fromDraft} today={today} />
+          <p className="mt-2 px-1 text-[12px] leading-relaxed text-faint">A leitura da frase é feita no aparelho, por regras: entende cliente, produto, quantidade, valor, quanto já recebeu, datas como “sexta” ou “dia 10” e “em 3x”. O que não entender fica em branco para você preencher.</p>
+        </div>
+      )}
+
+      {mode === 'search' && search && (
+        <section aria-label="Resultado da busca" className="mb-6">
+          <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[13px]">
+            <span className="font-semibold">
+              {results.length} {results.length === 1 ? 'venda' : 'vendas'}
+            </span>
+            {search.status && <span className="rounded-full bg-accent/[0.12] px-2.5 py-0.5 font-medium text-accent-hi">{{ overdue: 'atrasadas', open: 'a receber', paid: 'quitadas', partial: 'parciais' }[search.status]}</span>}
+            {search.dateLabel && <span className="rounded-full bg-accent/[0.12] px-2.5 py-0.5 font-medium text-accent-hi">{search.dateLabel}</span>}
+            {search.words.map((w) => (
+              <span key={w} className="rounded-full bg-tint/[0.06] px-2.5 py-0.5 font-medium text-soft">
+                “{w}”
+              </span>
+            ))}
+            <button type="button" onClick={() => setText('')} className="ml-auto font-semibold text-accent-hi">
+              Ver todas as vendas
+            </button>
+          </div>
+          {results.length ? (
+            <div className="card p-1.5">
+              {results.map((s) => (
+                <SaleRow key={s.id} sale={s} today={today} onOpen={(x) => detail.show(x.id)} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState compact icon={<Search size={20} />} title="Nenhuma venda encontrada" text="Se quis registrar uma venda, escreva começando por “Vendi…”." action="Criar uma venda com esse texto" onAction={() => setForce('create')} />
+          )}
+        </section>
+      )}
+
+      {!q &&
+        (data.sales.length === 0 ? (
+          <EmptyState icon={<BadgeDollarSign size={20} />} title="Nenhuma venda ainda" text="Escreva na barra acima, por exemplo: “Vendi um bolo pra Ana por 80, ela paga sexta”. Ou registre pelo botão." action="Registrar venda" onAction={() => newSale(null)} />
+        ) : (
+          <>
+            {(receivable.length > 1 || lateTotal.length > 0) && (
+              <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 px-1 text-[13px] text-soft">
+                {receivable.length > 1 && (
+                  <span>
+                    A receber:{' '}
+                    {receivable.map((r) => (
+                      <span key={r.currency} className="num mr-2 font-semibold text-ink">
+                        {formatMoney(r.amount, r.currency)}
+                      </span>
+                    ))}
+                  </span>
+                )}
+                {lateTotal.length > 0 && (
+                  <span>
+                    Vencido:{' '}
+                    {lateTotal.map((r) => (
+                      <span key={r.currency} className="num mr-2 font-semibold text-expense">
+                        {formatMoney(r.amount, r.currency)}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="no-scrollbar -mx-5 mb-4 overflow-x-auto px-5 lg:mx-0 lg:px-0">
+              <Segmented<Tab>
+                variant="underline"
+                size="sm"
+                label="Vendas"
+                value={tab}
+                onChange={setTab}
+                options={[
+                  { value: 'open', label: `A receber · ${open.length}` },
+                  { value: 'late', label: `Atrasadas · ${late.length}` },
+                  { value: 'paid', label: `Quitadas · ${paid.length}` },
+                  { value: 'all', label: 'Todas' },
+                  { value: 'people', label: 'Pessoas' },
+                ]}
+              />
+            </div>
+            {tab === 'people' ? (
+              <div className="card p-1.5">
+                {groups.map((b) => (
+                  <BuyerRow key={b.key} buyer={b} onOpen={(x) => person.show(x.key)} />
+                ))}
+              </div>
+            ) : list.length ? (
+              <div className="card p-1.5">
+                {list.map((s) => (
+                  <SaleRow key={s.id} sale={s} today={today} onOpen={(x) => detail.show(x.id)} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState compact icon={<BadgeDollarSign size={20} />} title={tab === 'late' ? 'Nada atrasado' : tab === 'open' ? 'Nada a receber' : tab === 'paid' ? 'Nenhuma quitada ainda' : 'Nenhuma venda'} text={tab === 'late' || tab === 'open' ? 'Tudo recebido.' : undefined} />
+            )}
+          </>
+        ))}
+
+      <SaleDetail
+        // Another sale starts clean (no "Recebi"/"Cobrar" left open from the previous one).
+        key={opened?.id ?? 'none'}
+        sale={detail.open ? opened : null}
+        onClose={detail.close}
+        onEdit={(s) => {
+          detail.close()
+          setInitial(null)
+          form.show(s)
+        }}
+        onSellAgain={sellAgain}
+        onOpenPerson={(key) => {
+          detail.close()
+          person.show(key)
+        }}
+      />
       <BuyerDetail
         buyer={openPerson}
         open={person.open && openPerson !== null}
@@ -306,51 +404,17 @@ export function SalesPage() {
           person.close()
           detail.show(id)
         }}
-        onNewSale={newSale}
+        onNewSale={(p) => newSale(p)}
       />
-
-      <Sheet
-        open={detail.open && open !== null}
-        onClose={detail.close}
-        title={open ? `${buyer(open)} · ${open.product}` : ''}
-        actions={
-          open && (
-            <IconButton
-              label="Editar venda"
-              size="sm"
-              onClick={() => {
-                detail.close()
-                form.show(open)
-              }}
-            >
-              <Pencil size={18} />
-            </IconButton>
-          )
-        }
-      >
-        {open && (
-          <>
-            <p className="pb-3 text-[14px] text-faint">
-              {formatDateValue(open.date)} · {open.quantity.toLocaleString('pt-BR')} un.
-              {open.dueDate ? ` · prazo ${formatDateValue(open.dueDate).toLowerCase()}` : ''} <Badge tone={STATUS_TONE[saleStatus(open)]}>{SALE_STATUS_LABEL[saleStatus(open)]}</Badge>
-            </p>
-            <SalePayments sale={open} />
-            {open.notes && <p className="mt-4 text-sm leading-relaxed whitespace-pre-wrap text-soft">{open.notes}</p>}
-            <button
-              type="button"
-              onClick={() => {
-                detail.close()
-                person.show(clientKey(open))
-              }}
-              className="mt-5 flex w-full items-center justify-between rounded-2xl border border-line px-4 py-3 text-left text-[15px] text-soft hover:text-ink"
-            >
-              Ver todas as compras de {people.find((x) => x.key === clientKey(open))?.name ?? buyer(open)}
-              <ChevronRight size={16} />
-            </button>
-          </>
-        )}
-      </Sheet>
-      <SaleForm open={form.open} onClose={form.close} sale={form.item} preset={form.item ? null : preset} />
+      <SaleForm
+        open={form.open}
+        onClose={form.close}
+        // The sentence stays in the bar until the sale it described is really registered.
+        onSaved={() => initial && setText('')}
+        sale={form.item}
+        preset={form.item ? null : preset}
+        initial={form.item ? null : initial}
+      />
     </>
   )
 }

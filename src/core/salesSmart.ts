@@ -7,9 +7,9 @@
 import { readDate } from './assistant/intents'
 import { addDaysToDate, weekdayOfDate } from './period'
 import { shiftMonths } from './automation/dates'
-import { clientKey, installmentViews, isLate, nextDue, personName, saleRemaining, saleStatus, settles } from '../data/sales'
+import { clientKey, installmentViews, isLate, nextDue, overdueAmount, personName, saleRemaining, saleStatus, settles } from '../data/sales'
 
-export { installmentViews, isLate, nextDue, settles }
+export { installmentViews, isLate, nextDue, overdueAmount, settles }
 export type { InstallmentState, InstallmentView } from '../data/sales'
 import type { Cents, Currency, Installment, Sale, SaleItem } from '../data/types'
 
@@ -140,8 +140,18 @@ export function readSaleText(text: string, today: string, knownNames: string[] =
     const missing = [!clientName && 'client', !product && 'product', !total && 'total'].filter(Boolean) as ('client' | 'product' | 'total')[]
     return { kind: 'create', draft, missing }
   }
-  // A name with an amount ("João 300") could be either: ask, keeping the text.
-  if (anyNumber && t.split(/\s+/).length >= 2 && (clientName || total)) return { kind: 'ambiguous', draft }
+  // A name with an amount ("João 300") could be either: ask, keeping the text. Search words ("vendas de 300",
+  // "atrasadas", "sexta") stay a search.
+  const plain = readSearch(src, today)
+  const numbers = plain.words.filter((w) => /^\d/.test(w))
+  const others = plain.words.filter((w) => !/^\d/.test(w))
+  if (anyNumber && numbers.length && others.length && !plain.status && !plain.from) {
+    const name = src
+      .split(/\s+/)
+      .filter((w) => !/\d/.test(w) && others.includes(foldKeep(w).replace(/[^a-z]/g, '')))
+      .join(' ')
+    return { kind: 'ambiguous', draft: { ...draft, clientName: draft.clientName || name, total: draft.total ?? parseAmount(numbers[0]) } }
+  }
   return { kind: 'search' }
 }
 

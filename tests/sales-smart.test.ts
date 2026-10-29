@@ -106,3 +106,14 @@ describe('produtos lembrados, itens, cobrança e repetição', () => {
     expect(nextRepeat('2026-10-29', 'week')).toBe('2026-11-05')
   })
 })
+
+describe('ambiguidade', () => {
+  it('"João 300" pergunta (com João e 300 prontos para a venda); buscas continuam buscas', () => {
+    const r = readSaleText('João 300', T)
+    expect(r.kind).toBe('ambiguous')
+    if (r.kind === 'ambiguous') expect(r.draft).toMatchObject({ clientName: 'João', total: 30000 })
+    expect(readSaleText('300', T).kind).toBe('search')
+    expect(readSaleText('vendas de 300', T).kind).toBe('search')
+    expect(readSaleText('atrasadas 2', T).kind).toBe('search')
+  })
+})

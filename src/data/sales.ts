@@ -80,6 +80,12 @@ export function nextDue(sale: Sale, today: string): string {
   return open?.due ?? sale.dueDate ?? ''
 }
 
+/** What is really overdue: the unpaid part of installments already due, or everything owed past the deadline. */
+export function overdueAmount(sale: Sale, today: string): Cents {
+  if (sale.installments?.length) return installmentViews(sale, today).filter((v) => v.state === 'overdue').reduce((s, v) => s + v.amount - v.paid, 0)
+  return isLate(sale, today) ? saleRemaining(sale) : 0
+}
+
 /** Late: something owed whose date has passed (an installment or the deadline). */
 export function isLate(sale: Sale, today: string): boolean {
   const d = nextDue(sale, today)
