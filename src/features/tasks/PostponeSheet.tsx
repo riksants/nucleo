@@ -8,6 +8,16 @@ import { formatDateValue } from '../../lib/dates'
 import { useFeedback } from '../../ui/Feedback'
 import { Sheet } from '../../ui/Sheet'
 
+function Option({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint?: string; onClick(): void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-tint/[0.04] tap">
+      <span className="icon-tile grid size-9 shrink-0 place-items-center rounded-xl">{icon}</span>
+      <span className="min-w-0 flex-1 text-[15px] font-medium">{label}</span>
+      {hint && <span className="num shrink-0 text-[13px] text-faint">{hint}</span>}
+    </button>
+  )
+}
+
 /** Move a task in one tap: tomorrow, next Monday, a date, or no date. The time of day stays. */
 export function PostponeSheet({ task, onClose }: { task: Task | null; onClose(): void }) {
   const { settings } = useStore()
@@ -22,13 +32,6 @@ export function PostponeSheet({ task, onClose }: { task: Task | null; onClose():
     toast(`Movida para ${formatDateValue(date)}`)
     onClose()
   }
-  const Option = ({ icon, label, hint, onClick }: { icon: ReactNode; label: string; hint?: string; onClick(): void }) => (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-tint/[0.04] tap">
-      <span className="icon-tile grid size-9 shrink-0 place-items-center rounded-xl">{icon}</span>
-      <span className="min-w-0 flex-1 text-[15px] font-medium">{label}</span>
-      {hint && <span className="num shrink-0 text-[13px] text-faint">{hint}</span>}
-    </button>
-  )
   return (
     <Sheet open={!!task} onClose={onClose} title="Adiar tarefa">
       {task && (

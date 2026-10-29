@@ -163,6 +163,7 @@ function TimelineRow({ item, state, onOpen, last }: { item: AgendaItem; state: T
           <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-faint">
             {itemLabel(item)}
             {item.end && <span className="num">· até {item.end}</span>}
+            {item.source.kind === 'routine' && item.source.block.fixed && <span>· fixo</span>}
             {state !== 'scheduled' && state !== 'anytime' && (
               <span className={state === 'now' ? 'font-semibold text-accent-hi' : state === 'awaiting' ? 'font-semibold text-warn' : ''}>· {TIME_STATE_LABEL[state]}</span>
             )}

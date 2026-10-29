@@ -1,8 +1,12 @@
 import { AlertTriangle, CalendarClock, Check, MessageCircle, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
+import { nextUp, timeState } from '../../core/timeState'
+import { useNow } from '../../lib/hooks'
+import { ConfirmList, DayTimeline } from '../daily/DayParts'
 import { useDailyActions } from '../../core/actions'
 import { indexCompletions, routineStatus } from '../../core/completions'
-import { todayIn, weekDates, zoneOf } from '../../core/period'
+import { nowIn, todayIn, useToday, weekDates, weekdayOfDate, zoneOf } from '../../core/period'
 import { DAY_LONG, DAY_SHORT, emptyRoutineAnswers, findConflicts, KIND_LABEL, sortBlocks, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { navigate } from '../../app/router'
@@ -10,8 +14,8 @@ import { PageHeader } from '../../app/Shell'
 import { newId, useStore } from '../../data/store'
 import type { BlockKind, RoutineAnswers, RoutineBlock, RoutinePlan, Weekday } from '../../data/types'
 import { toDateInput } from '../../lib/dates'
-import { Button, IconButton } from '../../ui/Button'
-import { Badge, EmptyState } from '../../ui/Display'
+import { Button } from '../../ui/Button'
+import { Badge, EmptyState, Progress } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
 import { Field, FormGrid, Select, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
@@ -179,10 +183,140 @@ function WeekView({ plan, editable, answers, onEdit }: { plan: RoutinePlan; edit
   )
 }
 
+const SHORT = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' })
+
+/** The figures on the band: today's progress, what is on now, planned hours in the week. */
+function useRoutineStats() {
+  const { data, settings } = useStore()
+  const tz = zoneOf(settings)
+  const today = useToday(tz)
+  const clock = useNow(30_000)
+  const nowTime = nowIn(tz, clock).time
+  return (plan: RoutinePlan) => {
+    const items = buildAgenda(data, settings, today, today, clock).filter((i) => i.kind === 'routine')
+    const t = tally(items)
+    const next = nextUp(items, today, nowTime)
+    const minutes = plan.blocks.reduce((n, b) => n + Math.max(0, toMinutes(b.end) - toMinutes(b.start)), 0)
+    return [
+      { label: 'Hoje', value: t.total ? `${t.done}/${t.total}` : '—' },
+      { label: next && timeState(next, today, nowTime) === 'now' ? 'Agora' : 'A seguir', value: next ? next.start : '—' },
+      { label: 'Na semana', value: `${Math.round(minutes / 60)} h` },
+    ]
+  }
+}
+
+/**
+ * The saved routine: pick a day of this week, see its progress, confirm what ended ("ia até 10:30 — você
+ * concluiu?") and the day as a timeline. Marking stays with the person: the clock never marks anything.
+ */
+function SavedRoutine({ plan, answers, onEdit }: { plan: RoutinePlan; answers: RoutineAnswers; onEdit(b: RoutineBlock | null): void }) {
+  const { data, settings } = useStore()
+  const tz = zoneOf(settings)
+  const today = useToday(tz)
+  const clock = useNow(30_000)
+  const nowTime = nowIn(tz, clock).time
+  const week = weekDates(today)
+  const [date, setDate] = useState(today)
+  const all = useMemo(() => buildAgenda(data, settings, week[0], week[6], clock).filter((i) => i.kind === 'routine'), [data, settings, week[0], clock]) // eslint-disable-line react-hooks/exhaustive-deps
+  const items = all.filter((i) => i.date === date)
+  const t = tally(items)
+  // The same clash repeated on several days reads as one line ("… em 5 dias").
+  const conflicts = [...findConflicts(plan.blocks, answers).reduce((m, c) => m.set(c.message, (m.get(c.message) ?? 0) + 1), new Map<string, number>())].map(([message, n]) => ({ message: n > 1 ? `${message} (${n} dias)` : message }))
+  const open = (item: AgendaItem) => item.source.kind === 'routine' && onEdit(item.source.block)
+
+  return (
+    <>
+      {conflicts.length > 0 && (
+        <div className="mb-4 flex gap-2.5 rounded-2xl bg-expense/10 p-3.5 text-[14px] text-expense">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            {conflicts.slice(0, 2).map((c, i) => (
+              <p key={i}>{c.message}</p>
+            ))}
+            {conflicts.length > 2 && <p className="font-medium">E mais {conflicts.length - 2} conflito(s): toque nos horários para ajustar.</p>}
+          </div>
+        </div>
+      )}
+      <div role="tablist" aria-label="Dias da semana" className="mb-4 grid grid-cols-7 gap-1">
+        {week.map((d) => {
+          const its = all.filter((i) => i.date === d)
+          const dt = tally(its)
+          const on = d === date
+          const pct = dt.total ? dt.done / dt.total : 0
+          return (
+            <button
+              key={d}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              aria-label={`${DAY_LONG[weekdayOfDate(d) as Weekday]}${dt.total ? `, ${dt.done} de ${dt.total} feitos` : ''}`}
+              onClick={() => setDate(d)}
+              className={`press flex min-w-0 flex-col items-center gap-1 rounded-2xl py-2 transition-colors ${on ? 'bg-accent text-on-accent' : d === today ? 'bg-accent/[0.1] text-accent-hi ring-1 ring-accent/30 ring-inset' : 'text-soft hover:bg-tint/[0.04]'}`}
+            >
+              <span className="text-[11px] font-semibold tracking-wide uppercase">{SHORT.format(new Date(`${d}T12:00:00Z`)).replace('.', '').slice(0, 3)}</span>
+              <span className={`num text-[17px] leading-none font-semibold ${on ? '' : 'text-ink'}`}>{Number(d.slice(8))}</span>
+              {/* how much of the day is done (only days already reached) */}
+              <span className={`h-1 w-6 overflow-hidden rounded-full ${on ? 'bg-on-accent/30' : 'bg-tint/10'}`}>
+                {d <= today && <span className={`block h-full rounded-full ${on ? 'bg-on-accent' : 'bg-accent'}`} style={{ width: `${pct * 100}%` }} />}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+        <div className="space-y-5">
+          {t.total > 0 && (
+            <div className="flex items-center gap-3 px-1">
+              <div className="min-w-0 flex-1">
+                <Progress value={(t.done / t.total) * 100} tone="accent" />
+              </div>
+              <span className="num shrink-0 text-[13px] font-medium text-soft">
+                {date === today ? 'Hoje' : DAY_LONG[weekdayOfDate(date) as Weekday]} {t.done} de {t.total}
+              </span>
+            </div>
+          )}
+          {date === today && <ConfirmList items={items} today={today} nowTime={nowTime} />}
+          <section aria-label="Horários do dia">
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{date === today ? 'Hoje' : DAY_LONG[weekdayOfDate(date) as Weekday]}</h2>
+              <button type="button" onClick={() => onEdit(null)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-medium text-accent-hi hover:bg-accent/[0.08]">
+                <Plus size={16} /> Horário
+              </button>
+            </div>
+            <DayTimeline items={items} today={today} nowTime={nowTime} onOpen={open} emptyText="Nada planejado neste dia." />
+            <p className="mt-2 px-1 text-[13px] text-faint">Toque no círculo para marcar como feito; toque no horário para editar.</p>
+          </section>
+        </div>
+        <section aria-label="Resumo da semana" className="hidden lg:block">
+          <h2 className="mb-2 px-1 text-[13px] font-semibold text-soft">Semana</h2>
+          <ul className="card divide-y divide-line">
+            {week.map((d) => {
+              const dt = tally(all.filter((i) => i.date === d))
+              return (
+                <li key={d}>
+                  <button type="button" onClick={() => setDate(d)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-tint/[0.03] ${d === date ? 'text-accent-hi' : ''}`}>
+                    <span className="w-28 shrink-0 text-[14px] font-medium">{DAY_LONG[weekdayOfDate(d) as Weekday]}</span>
+                    <span className="min-w-0 flex-1">
+                      <Progress value={dt.total ? (dt.done / dt.total) * 100 : 0} tone="accent" />
+                    </span>
+                    <span className="num w-12 shrink-0 text-right text-[13px] text-soft">{dt.total ? `${dt.done}/${dt.total}` : '—'}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      </div>
+    </>
+  )
+}
+
 export function RoutinePage() {
   const { save, remove } = useStore()
   const { confirm, toast } = useFeedback()
   const { routine, routineDraft, profile } = usePlans()
+  const routineStats = useRoutineStats()
   const blockSheet = useSheet<{ block: RoutineBlock | null; plan: RoutinePlan }>()
   const answers = profile?.routine ?? { ...emptyRoutineAnswers(), wakeWeekday: '00:00', sleepWeekday: '00:00', wakeWeekend: '00:00', sleepWeekend: '00:00' }
   const draftConflicts = routineDraft ? findConflicts(routineDraft.blocks, answers) : []
@@ -207,8 +341,11 @@ export function RoutinePage() {
   return (
     <>
       <PageHeader
+        rich
+        icon={CalendarClock}
+        eyebrow={routineDraft ? 'Proposta para revisar' : routine ? 'Sua semana' : 'Rotina'}
         title="Rotina"
-        subtitle={routine ? 'Sua semana' : undefined}
+        stats={routine ? routineStats(routine) : undefined}
         actions={
           <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>
             {profile ? 'Refazer' : 'Montar'}
@@ -250,13 +387,7 @@ export function RoutinePage() {
       {routine ? (
         <section>
           {routineDraft && <h2 className="mb-3 px-1 text-[13px] font-semibold text-soft">Rotina salva</h2>}
-          <div className="mb-3 flex items-center justify-between gap-2 px-1">
-            <p className="text-[13px] text-faint">Toque no círculo para marcar como feito</p>
-            <IconButton label="Adicionar horário" size="sm" onClick={() => blockSheet.show({ block: null, plan: routine })}>
-              <Plus size={18} />
-            </IconButton>
-          </div>
-          <WeekView plan={routine} editable={false} answers={answers} onEdit={(b) => blockSheet.show({ block: b, plan: routine })} />
+          <SavedRoutine plan={routine} answers={answers} onEdit={(b) => blockSheet.show({ block: b, plan: routine })} />
         </section>
       ) : (
         !routineDraft && (
