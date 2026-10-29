@@ -50,8 +50,10 @@ describe('lembretes', () => {
     const routine: RoutinePlan = { id: 'routine-current', createdAt: '', updatedAt: '', status: 'approved', source: 'manual', notes: '', done: {}, blocks: [{ id: 'b1', day: 1, start: '07:00', end: '08:00', title: 'Treino', kind: 'training', fixed: true }] }
     const meals: MealPlan = { id: 'meals-current', createdAt: '', updatedAt: '', status: 'approved', source: 'manual', notes: '', removed: [], shopping: [], meals: [{ id: 'm1', day: 1, time: '12:30', label: 'Almoço', items: ['Frango', 'Salada'], substitutions: [] }] }
     const occ = buildOccurrences({ ...empty(), routinePlans: [routine], mealPlans: [meals] }, on(['routine', 'meals'], { reminders: { showDetails: true, rules: { ...DEFAULT_REMINDERS.rules, routine: { ...DEFAULT_REMINDERS.rules.routine, enabled: true }, meals: { ...DEFAULT_REMINDERS.rules.meals, enabled: true } } } }), { now: NOW, days: 14 })
-    const mondays = occ.filter((o) => o.kind === 'routine')
+    const mondays = occ.filter((o) => o.kind === 'routine' && o.key.startsWith('routine:'))
     expect(mondays).toHaveLength(2) // 5/out e 12/out
+    // and, when each one ends, the "concluiu?" (not marked as done by the clock)
+    expect(occ.filter((o) => o.key.startsWith('routine-end:')).map((o) => o.fireAt.toISOString())).toEqual(['2026-10-05T11:00:00.000Z', '2026-10-12T11:00:00.000Z'])
     expect(new Set(occ.map((o) => o.key)).size).toBe(occ.length)
     const meal = occ.find((o) => o.kind === 'meals')!
     expect(`${meal.title} ${meal.body}`).not.toMatch(/Frango|Salada/)

@@ -16,11 +16,14 @@ import { buildOccurrences, reminderPrefs } from './engine'
 import { currentSubscription, enablePush, forgetPushOnThisDevice, isIOS, pushSupport } from './push'
 
 const KINDS: { kind: ReminderKind; label: string; hint: string; timed: boolean; modules: ModuleId[] }[] = [
-  { kind: 'tasks', label: 'Tarefas e compromissos', hint: 'Com horário: minutos antes. Só com data: no dia escolhido.', timed: true, modules: ['tasks'] },
+  { kind: 'tasks', label: 'Tarefas', hint: 'Com horário: minutos antes. Só com data: na véspera e no dia.', timed: true, modules: ['tasks'] },
+  { kind: 'events', label: 'Compromissos da Agenda', hint: 'Minutos antes do horário; sem horário, no dia', timed: true, modules: ['agenda'] },
+  { kind: 'habits', label: 'Hábitos', hint: 'Antes do horário de cada hábito; não avisa o que você já marcou', timed: true, modules: ['habits'] },
+  { kind: 'recurring', label: 'Recorrentes e contas', hint: 'Contas avisam 2 dias antes e no dia (muda em cada item)', timed: true, modules: ['recurring'] },
   { kind: 'routine', label: 'Rotina e treinos', hint: 'Antes de cada horário da rotina salva', timed: true, modules: ['routine'] },
   { kind: 'meals', label: 'Refeições', hint: 'Mostra só o nome da refeição, nunca o cardápio', timed: true, modules: ['meals'] },
   { kind: 'deadlines', label: 'Prazos de projetos', hint: 'Dias antes do prazo', timed: false, modules: ['projects'] },
-  { kind: 'payments', label: 'Pagamentos e cobranças', hint: 'Assinaturas, vendas a receber e assinantes — sem valores', timed: false, modules: ['tools', 'sales', 'subscribers'] },
+  { kind: 'payments', label: 'Assinaturas e cobranças', hint: 'Assinaturas, vendas a receber e assinantes — sem valores. Já pago não avisa.', timed: false, modules: ['tools', 'sales', 'subscribers'] },
 ]
 
 const REASONS: Record<string, string> = {
@@ -71,7 +74,7 @@ export function RemindersPage() {
 
   return (
     <>
-      <PageHeader title="Lembretes" subtitle="Escolha o que lembrar, quando e com quanta antecedência" />
+      <PageHeader title="Lembretes" subtitle="Um só sistema para tarefas, agenda, hábitos, rotina, contas e assinaturas" />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
         <div className="space-y-7">
           <section>
@@ -94,20 +97,50 @@ export function RemindersPage() {
                           </Field>
                         )}
                         {(kind === 'tasks' || !timed) && (
-                          <>
-                            <Field label={kind === 'tasks' ? 'Sem horário: dias antes' : 'Dias antes'}>
-                              <NumberInput label="Dias antes" value={rule.daysBefore} max={30} suffix="dias" onChange={(v) => setRule(kind, { daysBefore: v })} />
-                            </Field>
-                            <Field label="Horário do aviso">
-                              <TextInput type="time" value={rule.at} onChange={(e) => setRule(kind, { at: e.target.value })} />
-                            </Field>
-                          </>
+                          <Field label={kind === 'tasks' ? 'Sem horário: dias antes' : 'Dias antes'}>
+                            <NumberInput label="Dias antes" value={rule.daysBefore} max={30} suffix="dias" onChange={(v) => setRule(kind, { daysBefore: v })} />
+                          </Field>
+                        )}
+                        {(kind === 'tasks' || kind === 'recurring' || kind === 'events' || !timed) && (
+                          <Field label={timed ? 'Sem horário: avisar às' : 'Horário do aviso'}>
+                            <TextInput type="time" value={rule.at} onChange={(e) => setRule(kind, { at: e.target.value })} />
+                          </Field>
+                        )}
+                        {(kind === 'tasks' || !timed) && rule.daysBefore > 0 && (
+                          <div className="col-span-2">
+                            <ToggleRow checked={rule.onDay ?? false} onChange={(v) => setRule(kind, { onDay: v })} hint="Um segundo aviso no próprio dia">
+                              Lembrar também no dia
+                            </ToggleRow>
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
                 )
               })}
+            </div>
+          </section>
+
+          <section>
+            <SectionTitle>Horário silencioso</SectionTitle>
+            <div className="card space-y-3 p-3">
+              <ToggleRow
+                checked={!!prefs.quiet}
+                onChange={(v) => updateSettings({ reminders: { ...prefs, quiet: v ? { from: '22:00', to: '07:00' } : null } })}
+                hint="O que cair nesse intervalo espera até o fim dele: chega uma vez só, nunca se perde."
+              >
+                Não avisar à noite
+              </ToggleRow>
+              {prefs.quiet && (
+                <div className="grid grid-cols-2 gap-3 px-1 pb-1">
+                  <Field label="Das">
+                    <TextInput type="time" value={prefs.quiet.from} onChange={(e) => e.target.value && updateSettings({ reminders: { ...prefs, quiet: { ...prefs.quiet!, from: e.target.value } } })} />
+                  </Field>
+                  <Field label="Até">
+                    <TextInput type="time" value={prefs.quiet.to} onChange={(e) => e.target.value && updateSettings({ reminders: { ...prefs, quiet: { ...prefs.quiet!, to: e.target.value } } })} />
+                  </Field>
+                </div>
+              )}
             </div>
           </section>
 
@@ -144,7 +177,7 @@ export function RemindersPage() {
                 </p>
               )}
               <p className="text-[13px] leading-relaxed text-faint">
-                Sem notificações, os lembretes aparecem dentro do app quando ele está aberto.{isIOS() ? ' No iPhone, a entrega depende do sistema (modo foco, economia de bateria).' : ''} Lembretes dos próximos 14 dias são preparados sempre que você abre o app.
+                Sem notificações, os lembretes aparecem dentro do app quando ele está aberto.{isIOS() ? ' No iPhone, a entrega depende do sistema (modo foco, economia de bateria).' : ''} Lembretes dos próximos 14 dias são preparados sempre que você abre o app; ao editar, concluir ou excluir um item, o lembrete muda ou some.
               </p>
             </div>
           </section>

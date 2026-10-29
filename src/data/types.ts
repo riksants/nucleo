@@ -592,7 +592,7 @@ export interface VaultMeta {
   autoLockMin: number
 }
 
-export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments'
+export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments' | 'habits' | 'recurring' | 'events'
 
 export interface ReminderRule {
   enabled: boolean
@@ -601,12 +601,16 @@ export interface ReminderRule {
   /** For date-only items: days before and the time of day to remind. */
   daysBefore: number
   at: string
+  /** Date-only items reminded days before: also on the day itself (at the same time). */
+  onDay?: boolean
 }
 
 export interface ReminderPrefs {
   rules: Record<ReminderKind, ReminderRule>
   /** Show titles on the lock screen. Off by default; amounts and health data are never sent. */
   showDetails: boolean
+  /** Quiet hours ("22:00" → "07:00"): a reminder that falls inside waits until the end. */
+  quiet?: { from: string; to: string } | null
 }
 
 export interface Collections {

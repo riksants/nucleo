@@ -102,7 +102,7 @@ export function normalizeSettings(raw: unknown): Settings {
   set('automations', isObj(s.automations), entries(s.automations, (x) => isObj(x) && isBool(x.on) && isStr(x.since)))
   set('importTemplates', Array.isArray(s.importTemplates), Array.isArray(s.importTemplates) ? s.importTemplates.filter((t) => isObj(t) && isStr(t.id) && isStr(t.name) && isObj(t.columns)) : undefined)
   const rem = isObj(s.reminders) ? s.reminders : null
-  set('reminders', Boolean(rem), rem && { showDetails: rem.showDetails === true, rules: entries(rem.rules, (r) => isObj(r) && isBool(r.enabled)) ?? {} })
+  set('reminders', Boolean(rem), rem && { showDetails: rem.showDetails === true, rules: entries(rem.rules, (r) => isObj(r) && isBool(r.enabled)) ?? {}, quiet: isObj(rem.quiet) && isTime(rem.quiet.from) && isTime(rem.quiet.to) ? { from: rem.quiet.from as string, to: rem.quiet.to as string } : null })
   set('updatedAt', isStr(s.updatedAt))
   return out as unknown as Settings
 }
