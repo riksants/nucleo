@@ -127,6 +127,7 @@ export function NoteEditor({ open, onClose, note, initial, onSaved }: { open: bo
           requestAnimationFrame(() => el.setSelectionRange(pos + 1 + prefix.length, pos + 1 + prefix.length))
         }}
         placeholder="Escreva aqui… Use “- [ ]” para checklist."
+        aria-label="Texto da nota"
         className="min-h-[40dvh] w-full resize-none bg-transparent pt-2 text-[16px] leading-relaxed text-ink placeholder:text-faint focus:outline-none"
       />
       {note && (
@@ -138,13 +139,17 @@ export function NoteEditor({ open, onClose, note, initial, onSaved }: { open: bo
   )
 }
 
+/** A card shows a preview: each line is cut short so a huge note never makes the list lay out the whole text. */
+const clip = (s: string, n = 240) => (s.length > n ? `${s.slice(0, n)}…` : s)
+
 /** The note as it reads: title, checklist with real checkboxes, list, a few lines of text, links, category. */
 function NoteCard({ note, onOpen, actions }: { note: Note; onOpen(n: Note): void; actions: number }) {
   const { save } = useStore()
-  const lines = parseNote(note.body).filter((l) => l.text.trim())
+  // Only the first lines matter for the preview (the whole body is still parsed for checklist progress).
+  const lines = parseNote(note.body.slice(0, 4000)).filter((l) => l.text.trim())
   const progress = checklistProgress(note.body)
   const links = linksIn(note.body)
-  const title = note.title || lines[0]?.text || 'Sem título'
+  const title = clip(note.title || lines[0]?.text || 'Sem título', 120)
   const shown = (note.title ? lines : lines.slice(1)).slice(0, 6)
   return (
     <article className="card mb-3 break-inside-avoid p-4 transition-colors hover:border-line-strong">
@@ -160,12 +165,12 @@ function NoteCard({ note, onOpen, actions }: { note: Note; onOpen(n: Note): void
               <li key={l.index}>
                 <button type="button" onClick={() => save('notes', { ...note, body: toggleLine(note.body, l.index) })} className="flex w-full items-start gap-2 text-left text-[14px] leading-snug">
                   <span className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[5px] border ${l.done ? 'border-accent bg-accent text-on-accent' : 'border-check-line'}`}>{l.done && <Check size={14} strokeWidth={2.6} />}</span>
-                  <span className={`min-w-0 [overflow-wrap:anywhere] ${l.done ? 'text-faint line-through' : 'text-soft'}`}>{l.text}</span>
+                  <span className={`min-w-0 [overflow-wrap:anywhere] ${l.done ? 'text-faint line-through' : 'text-soft'}`}>{clip(l.text)}</span>
                 </button>
               </li>
             ) : (
               <li key={l.index} onClick={() => onOpen(note)} className={`line-clamp-2 cursor-pointer text-[14px] leading-snug text-soft [overflow-wrap:anywhere] ${l.kind === 'bullet' ? 'pl-3 before:-ml-3 before:inline-block before:w-3 before:content-["•"]' : ''}`}>
-                {l.text}
+                {clip(l.text)}
               </li>
             ),
           )}

@@ -68,7 +68,7 @@ async function newNote(b, title) {
   if ((await b.text()).includes('Nenhuma nota ainda')) await b.click('Criar nota')
   else await b.click('Nova anotação')
   await typeIn(b, 'input[placeholder="Título"]', title)
-  await typeIn(b, 'textarea[placeholder="Escreva aqui…"]', 'texto de ' + title)
+  await typeIn(b, 'textarea[aria-label="Texto da nota"]', 'texto de ' + title)
   await b.click('Salvar', '[role=dialog] button[type=submit]')
   await b.sleep(500)
 }
