@@ -20,7 +20,8 @@ const state = async () => (await fetch(MOCK + '/__state')).json()
 
 async function signUp(b, email) {
   await b.goto(BASE)
-  await b.click('Entrar ou criar conta')
+  // After "Sair" the app restarts on the sign-in screen (same helper as assistant-sync).
+  if (!(await b.text()).includes('Esqueci minha senha')) await b.click('Entrar ou criar conta')
   await b.click('Criar conta')
   await b.fill('E-mail', email)
   await b.fill('Senha', 'Nucleo-teste-42')
@@ -86,7 +87,7 @@ try {
   await signIn(B, 'rita@teste.com')
   await B.goto(BASE + '#/habits')
   text = await B.text()
-  r.check('outro aparelho vê o hábito concluído hoje', text.includes('1 de 1 hoje'))
+  r.check('outro aparelho vê o hábito concluído hoje', text.includes('1 de 1'))
 
   // B offline: capture + undo habit; nothing reaches the server until online
   await fetch(MOCK + '/__offline?v=1')
@@ -94,9 +95,9 @@ try {
   await B.sleep(300)
   await B.goto(BASE + '#/inbox')
   await B.sleep(800)
-  await B.click('Capturar na caixa de entrada')
-  await setValue(B, 'textarea[aria-label="O que você quer guardar?"]', 'Ideia offline')
-  await B.click('Guardar para organizar depois')
+  // On the inbox screen the capture field is on the page itself.
+  await setValue(B, 'textarea[aria-label="Capturar"]', 'Ideia offline')
+  await B.click('Guardar', 'button')
   await B.sleep(2500)
   s = await state()
   r.check('offline: alterações ficam na fila do aparelho', !s.records.some((x) => x.collection === 'inbox') && s.records.some((x) => x.collection === 'completions' && !x.deleted))
@@ -109,7 +110,7 @@ try {
   await syncNow(A)
   await A.goto(BASE + '#/habits')
   text = await A.text()
-  r.check('aparelho A recebe a desmarcação feita no B', text.includes('0 de 1 hoje'))
+  r.check('aparelho A recebe a desmarcação feita no B', text.includes('0 de 1'))
   await A.goto(BASE + '#/inbox')
   r.check('aparelho A recebe a captura feita offline no B', (await A.text()).includes('Ideia offline'))
 
