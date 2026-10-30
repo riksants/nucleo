@@ -6,10 +6,13 @@
  * Scheduling happens on the server (pg_cron → push-dispatch), never with page timers.
  */
 import { parseQuota, quotaMessage } from '../../data/quota'
+import { readPref, writePref } from '../../lib/prefs'
 import { supabase } from '../../lib/supabase'
 import type { Occurrence } from './engine'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
+/** This device asked for notifications (so a lost subscription is renewed at the next opening). */
+const WANTED_KEY = 'pushWanted'
 
 export type PushSupport =
   | { ok: true }
@@ -55,11 +58,8 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return (await reg?.pushManager.getSubscription()) ?? null
 }
 
-/** Must be called from a tap (iOS requires a user gesture for the permission prompt). */
-export async function enablePush(): Promise<void> {
+async function subscribeAndClaim(): Promise<void> {
   if (!supabase || !VAPID_PUBLIC_KEY) throw new Error('Notificações push não configuradas neste app.')
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') throw new Error('Permissão negada. Você pode liberar nas configurações do aparelho.')
   const reg = await navigator.serviceWorker.ready
   const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(VAPID_PUBLIC_KEY) }))
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
@@ -70,8 +70,32 @@ export async function enablePush(): Promise<void> {
   }
 }
 
+/** Must be called from a tap (iOS requires a user gesture for the permission prompt). */
+export async function enablePush(): Promise<void> {
+  if (!supabase || !VAPID_PUBLIC_KEY) throw new Error('Notificações push não configuradas neste app.')
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') throw new Error('Permissão negada. Você pode liberar nas configurações do aparelho.')
+  await subscribeAndClaim()
+  writePref(WANTED_KEY, true)
+}
+
+/**
+ * At each opening (signed in): makes sure the server still has this device. The push service can
+ * replace or expire a subscription, and the dispatcher drops endpoints that stopped answering;
+ * without this, notifications would silently stop until the person turned them on again.
+ * Never asks for permission (that needs a tap) and does nothing on a device that never opted in.
+ */
+export async function refreshPush(): Promise<void> {
+  if (!supabase || !VAPID_PUBLIC_KEY || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
+  if (Notification.permission !== 'granted') return
+  if (!(await currentSubscription()) && !readPref(WANTED_KEY, false)) return
+  await subscribeAndClaim()
+  writePref(WANTED_KEY, true)
+}
+
 /** Stops this device from receiving this account's notifications (used on logout too). */
 export async function forgetPushOnThisDevice(): Promise<void> {
+  writePref(WANTED_KEY, false)
   const sub = await currentSubscription()
   if (!sub) return
   if (supabase) await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
@@ -83,6 +107,7 @@ export async function forgetPushOnThisDevice(): Promise<void> {
  * also works after the session ended (the dispatcher drops the dead endpoint on its next send).
  */
 export async function silencePushOnThisDevice(): Promise<void> {
+  writePref(WANTED_KEY, false)
   if (!('serviceWorker' in navigator)) return
   const reg = await navigator.serviceWorker.getRegistration()
   if (!reg) return

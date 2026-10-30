@@ -6,7 +6,7 @@ import { useStore } from '../../data/store'
 import { readPref, writePref } from '../../lib/prefs'
 import { useSession } from '../account/session'
 import { buildOccurrences, reminderPrefs, type Occurrence } from './engine'
-import { currentSubscription, syncSchedule } from './push'
+import { currentSubscription, refreshPush, syncSchedule } from './push'
 import { EASE_OUT_SOFT } from '../../lib/motion'
 
 const SHOWN_KEY = 'shownReminders'
@@ -51,6 +51,32 @@ export function ReminderCenter() {
     const timer = window.setInterval(() => void tick(), 30_000)
     return () => window.clearInterval(timer)
   }, [ready])
+
+  // Messages from the service worker: a tapped notification opens its screen; a push that arrives
+  // while the app is on screen is not shown twice (in-app banner + system notification).
+  useEffect(() => {
+    const sw = navigator.serviceWorker
+    if (!sw) return
+    const onMessage = async (e: MessageEvent) => {
+      const msg = e.data as { type?: string; url?: string; key?: string } | null
+      if (msg?.type === 'nucleo-open' && typeof msg.url === 'string' && msg.url.startsWith('#/')) {
+        window.location.hash = msg.url.slice(1)
+      } else if (msg?.type === 'nucleo-push' && msg.key) {
+        const shown = shownMap()
+        if (shown[msg.key]) {
+          const reg = await sw.getRegistration()
+          for (const n of (await reg?.getNotifications({ tag: msg.key })) ?? []) n.close()
+        } else writePref(SHOWN_KEY, { ...shown, [msg.key]: Date.now() })
+      }
+    }
+    sw.addEventListener('message', onMessage)
+    return () => sw.removeEventListener('message', onMessage)
+  }, [])
+
+  // Signed in: keep this device's push subscription known to the server (renewed if it expired).
+  useEffect(() => {
+    if (userId && navigator.onLine) refreshPush().catch(() => {})
+  }, [userId])
 
   // Mirror to the server (signed in only). Debounced; also clears everything when all reminders are off.
   useEffect(() => {
