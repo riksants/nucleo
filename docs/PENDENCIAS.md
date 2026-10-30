@@ -1,19 +1,18 @@
 # Pendências
 
-## Lembretes com o app fechado (Etapa 8 das telas, 2026-10-29) — precisa de ação sua
+## Lembretes com o app fechado — LIGADO em 2026-10-30
 
-O app já prepara todos os lembretes (tarefas, agenda, hábitos, rotina, recorrentes/contas, assinaturas) e os
-envia para a tabela `scheduled_notifications` quando há conta e permissão de notificação. Mas o envio pelo
-servidor **nunca foi agendado**: sem isso, os lembretes só aparecem com o app aberto. Para ligar (gratuito no
-plano Free):
-
-1. Publicar a função `push-dispatch` (Supabase CLI: `supabase functions deploy push-dispatch`).
-2. Criar os secrets da função: `VAPID_PRIVATE_KEY` (par da chave pública já usada no app) e `DISPATCH_SECRET`
-   (um valor aleatório longo). Nunca no repositório.
-3. Ligar as extensões `pg_cron` e `pg_net` e rodar `supabase/cron.sql` no SQL Editor (troca os dois valores marcados).
-
-Limites reais: no iPhone só com o app instalado na Tela de Início e iOS 16.4+; a entrega depende do sistema
-(modo foco, economia de bateria). Android e computador funcionam pelo navegador.
+- Função `push-dispatch` publicada (sem verificação de JWT do gateway; recusa sem `DISPATCH_SECRET` → 403).
+- Secrets da função: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (mailto:supportnucleo@gmail.com),
+  `DISPATCH_SECRET`. Cópia de segurança só em `Documents/Nucleo-backup-PRIVADO/nucleo-push-PRIVADO.json`
+  (perder a chave privada = gerar outra e cada aparelho ativar de novo).
+- `pg_cron` + `pg_net` ligados; `supabase/cron.sql` aplicado (URL e segredo no Vault): `nucleo-push-dispatch`
+  a cada minuto e `nucleo-push-cleanup` semanal. Variável do GitHub `VITE_VAPID_PUBLIC_KEY` criada.
+- Plano Free: 500 mil execuções de função/mês incluídas; o cron usa ~43 mil.
+- Diagnóstico (SQL Editor): `select status, start_time from cron.job_run_details order by start_time desc limit 5;`
+- Desligar: `select cron.unschedule('nucleo-push-dispatch');` (os lembretes continuam dentro do app).
+- Limites reais: iPhone só com o app na Tela de Início e iOS 16.4+; entrega depende do sistema (modo foco,
+  economia de bateria). Lembretes cobrem os próximos 14 dias a partir da última vez que o app foi aberto.
 
 ## Auth: configurações do painel do Supabase (Etapa 2)
 
