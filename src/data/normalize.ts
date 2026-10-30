@@ -102,7 +102,17 @@ export function normalizeSettings(raw: unknown): Settings {
   set('automations', isObj(s.automations), entries(s.automations, (x) => isObj(x) && isBool(x.on) && isStr(x.since)))
   set('importTemplates', Array.isArray(s.importTemplates), Array.isArray(s.importTemplates) ? s.importTemplates.filter((t) => isObj(t) && isStr(t.id) && isStr(t.name) && isObj(t.columns)) : undefined)
   const rem = isObj(s.reminders) ? s.reminders : null
-  set('reminders', Boolean(rem), rem && { showDetails: rem.showDetails === true, rules: entries(rem.rules, (r) => isObj(r) && isBool(r.enabled)) ?? {}, ...(isObj(rem.quiet) && isTime(rem.quiet.from) && isTime(rem.quiet.to) ? { quiet: { from: rem.quiet.from as string, to: rem.quiet.to as string } } : {}) })
+  const isWhen = (w: unknown) => w === 'before' || w === 'at' || w === 'both'
+  set('reminders', Boolean(rem), rem && {
+    showDetails: rem.showDetails === true,
+    rules: entries(rem.rules, (r) => isObj(r) && isBool(r.enabled)) ?? {},
+    ...(isObj(rem.quiet) && isTime(rem.quiet.from) && isTime(rem.quiet.to) ? { quiet: { from: rem.quiet.from as string, to: rem.quiet.to as string } } : {}),
+    ...(rem.quiet === null ? { quiet: null } : {}),
+    ...(isBool(rem.on) ? { on: rem.on } : {}),
+    ...(isWhen(rem.when) ? { when: rem.when } : {}),
+    ...(isBool(rem.followUp) ? { followUp: rem.followUp } : {}),
+    ...(isObj(rem.kinds) ? { kinds: entries(rem.kinds, isObj) ?? {} } : {}),
+  })
   set('updatedAt', isStr(s.updatedAt))
   return out as unknown as Settings
 }

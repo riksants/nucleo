@@ -20,6 +20,24 @@
 - Limites reais: iPhone só com o app na Tela de Início e iOS 16.4+; entrega depende do sistema (modo foco,
   economia de bateria). Lembretes cobrem os próximos 14 dias a partir da última vez que o app foi aberto.
 
+## Notificações completas e simples (2026-10-30)
+
+- Tela principal: chave geral, "Quando avisar" (Antes · Na hora · Antes e na hora), horário silencioso e um
+  acesso a "Ajustes avançados" (por categoria: ligar, quando, minutos/dias antes, horário do aviso; avisar de
+  novo se pendente; nome na tela bloqueada; fuso). Configurações em `settings.reminders` (`on`, `when`,
+  `followUp`, `kinds`); as antigas (`rules`) continuam lidas.
+- Quem nunca ligou a chave geral continua exatamente com o comportamento antigo. Ao ligar, tudo vem ligado,
+  exceto o que a pessoa tinha desligado e que vinha ligado por padrão (hábitos, recorrentes, agenda).
+  Limite: uma categoria que já era desligada por padrão não tem como ser distinguida de uma desligada de
+  propósito; essas passam a vir ligadas.
+- Cobertos: agenda, tarefas (e atrasadas, uma vez), rotina (início e "concluiu?"), hábitos (horário e um único
+  lembrete à noite se faltar algo), recorrentes e contas, assinaturas a pagar, parcelas de vendas e assinantes
+  a receber, prazos de projetos/vida/etapas/metas financeiras, refeições, fim da sessão de foco de um hábito.
+  Clientes e Caixa de entrada entram pelo que geram (vendas, assinantes, tarefas, compromissos): não têm datas próprias.
+- O espelho no servidor escreve só o que mudou e no máximo 900 avisos futuros por conta (cota 2.000).
+- Conferido em produção (2 contas de teste, apagadas): app real → servidor → cron → push com o app fechado,
+  "antes e na hora", cancelado não chega, remarcado chega no novo horário, cada aviso uma vez, isolamento.
+
 ## Auth: configurações do painel do Supabase (Etapa 2)
 
 Registrado em 2026-10-22, na Etapa 2 da auditoria.

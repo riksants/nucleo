@@ -186,10 +186,12 @@ try {
   // ---------- Lembretes
   await b.goto(BASE + '#/reminders')
   text = await b.text()
-  check('lembretes: sem servidor, explica e mantém lembretes no app', text.includes('lembretes aparecem dentro do app') && (text.includes('não foi configurado') || text.includes('não oferece')))
-  await b.click('Rotina e treinos', '[role=switch]')
+  // One tap turns everything on; without the server, the reminders stay inside the app.
+  await b.click('Ativar notificações', 'button')
+  await b.sleep(600)
   text = await b.text()
-  check('próximos lembretes calculados da rotina', text.toUpperCase().includes('PRÓXIMOS LEMBRETES'))
+  check('lembretes: sem servidor, explica e mantém lembretes no app', text.includes('lembretes aparecem dentro do app'))
+  check('próximos lembretes calculados da rotina', text.toUpperCase().includes('PRÓXIMOS AVISOS'))
   await b.shot('t2-lembretes')
 
   // ---------- Menu lateral / navegação (o antigo #/more abre o menu)

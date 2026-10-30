@@ -18,7 +18,9 @@ export interface FocusTimer {
   runningSince: number | null
 }
 
-const KEY = 'focusTimer'
+export const FOCUS_KEY = 'focusTimer'
+/** Sent when the timer starts, pauses or ends (reminders follow its goal). */
+export const FOCUS_EVENT = 'nucleo:focus-timer'
 
 export function elapsed(t: FocusTimer, now = Date.now()): number {
   return t.elapsedMs + (t.runningSince !== null ? now - t.runningSince : 0)
@@ -47,12 +49,13 @@ export function formatClock(ms: number): string {
 
 /** Persisted timer + a ticking "now" while it runs. */
 export function useFocusTimer() {
-  const [timer, setTimer] = useState<FocusTimer | null>(() => readPref<FocusTimer | null>(KEY, null))
+  const [timer, setTimer] = useState<FocusTimer | null>(() => readPref<FocusTimer | null>(FOCUS_KEY, null))
   const [now, setNow] = useState(() => Date.now())
   const update = useCallback((next: FocusTimer | null) => {
     setNow(Date.now())
     setTimer(next)
-    writePref(KEY, next)
+    writePref(FOCUS_KEY, next)
+    window.dispatchEvent(new Event(FOCUS_EVENT))
   }, [])
   useEffect(() => {
     if (timer?.runningSince == null) return

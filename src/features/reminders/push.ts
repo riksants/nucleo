@@ -115,6 +115,8 @@ export async function silencePushOnThisDevice(): Promise<void> {
   await (await reg.pushManager.getSubscription())?.unsubscribe()
 }
 
+const MAX_SCHEDULED = 900
+
 /**
  * Mirrors the next 14 days of reminders to the server, so they can be sent
  * with the app closed. Removed or changed sources disappear from the server
@@ -123,16 +125,26 @@ export async function silencePushOnThisDevice(): Promise<void> {
 export async function syncSchedule(occurrences: Occurrence[]): Promise<void> {
   if (!supabase) return
   const now = new Date().toISOString()
-  const { data: existing, error } = await supabase.from('scheduled_notifications').select('key').is('sent_at', null).gt('fire_at', now)
+  const { data: existing, error } = await supabase.from('scheduled_notifications').select('key,fire_at,title,body,url').is('sent_at', null).gt('fire_at', now)
   if (error) throw new Error(error.message)
   const wanted = new Set(occurrences.map((o) => o.key))
   const stale = (existing ?? []).map((r) => r.key as string).filter((k) => !wanted.has(k))
   for (let i = 0; i < stale.length; i += 100) {
     await supabase.from('scheduled_notifications').delete().in('key', stale.slice(i, i + 100)).is('sent_at', null)
   }
-  const future = occurrences.filter((o) => o.fireAt.getTime() > Date.now())
-  for (let i = 0; i < future.length; i += 200) {
-    const rows = future.slice(i, i + 200).map((o) => ({ key: o.key, fire_at: o.fireAt.toISOString(), title: o.title.slice(0, 120), body: o.body.slice(0, 240), url: o.url }))
+  // The soonest ones only: keeps each account well under its server limit (2.000 rows, sent ones included).
+  // Only what is new or changed is written (each open of the app would otherwise rewrite every row).
+  const known = new Map((existing ?? []).map((r) => [r.key as string, r as { fire_at: string; title: string; body: string; url: string }]))
+  const changed = occurrences
+    .filter((o) => o.fireAt.getTime() > Date.now())
+    .slice(0, MAX_SCHEDULED)
+    .map((o) => ({ key: o.key, fire_at: o.fireAt.toISOString(), title: o.title.slice(0, 120), body: o.body.slice(0, 240), url: o.url }))
+    .filter((row) => {
+      const was = known.get(row.key)
+      return !was || Date.parse(was.fire_at) !== Date.parse(row.fire_at) || was.title !== row.title || was.body !== row.body || was.url !== row.url
+    })
+  for (let i = 0; i < changed.length; i += 200) {
+    const rows = changed.slice(i, i + 200)
     const { error: upsertError } = await supabase.from('scheduled_notifications').upsert(rows, { onConflict: 'user_id,key' })
     if (upsertError) throw new Error(upsertError.message)
   }

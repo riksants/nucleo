@@ -5,7 +5,8 @@ import { usePrefersReducedMotion } from '../../lib/hooks'
 import { useStore } from '../../data/store'
 import { readPref, writePref } from '../../lib/prefs'
 import { useSession } from '../account/session'
-import { buildOccurrences, reminderPrefs, type Occurrence } from './engine'
+import { buildOccurrences, effectivePrefs, type FocusRun, type Occurrence } from './engine'
+import { FOCUS_EVENT, FOCUS_KEY } from '../focus/timer'
 import { currentSubscription, refreshPush, syncSchedule } from './push'
 import { EASE_OUT_SOFT } from '../../lib/motion'
 
@@ -26,10 +27,18 @@ export function ReminderCenter() {
   const { userId } = useSession()
   const [visible, setVisible] = useState<Occurrence[]>([])
   const reduce = usePrefersReducedMotion()
-  const occurrences = useMemo(() => (ready ? buildOccurrences(data, settings) : []), [data, settings, ready])
+  // The running focus timer lives on this device; its goal end is a reminder too (also with the app closed).
+  const [focus, setFocus] = useState<FocusRun | null>(() => readPref<FocusRun | null>(FOCUS_KEY, null))
+  useEffect(() => {
+    const read = () => setFocus(readPref<FocusRun | null>(FOCUS_KEY, null))
+    window.addEventListener(FOCUS_EVENT, read)
+    return () => window.removeEventListener(FOCUS_EVENT, read)
+  }, [])
+  const occurrences = useMemo(() => (ready ? buildOccurrences(data, settings, { focus }) : []), [data, settings, ready, focus])
   const latest = useRef(occurrences)
   latest.current = occurrences
-  const anyEnabled = Object.values(reminderPrefs(settings).rules).some((r) => r.enabled)
+  const prefs = effectivePrefs(settings)
+  const anyEnabled = prefs.on && Object.values(prefs.kinds).some((k) => k.enabled)
 
   useEffect(() => {
     if (!ready) return

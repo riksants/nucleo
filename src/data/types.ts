@@ -623,7 +623,22 @@ export interface VaultMeta {
   autoLockMin: number
 }
 
-export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments' | 'habits' | 'recurring' | 'events'
+/** payments = a pagar (assinaturas, ferramentas) · receivables = a receber (vendas, assinantes) · focus = fim da sessão. */
+export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments' | 'habits' | 'recurring' | 'events' | 'receivables' | 'focus'
+
+/** Antes do horário, exatamente no horário, ou os dois. */
+export type ReminderWhen = 'before' | 'at' | 'both'
+
+/** What the person chose for one kind (advanced settings). Only what was chosen is stored. */
+export interface ReminderKindPref {
+  enabled?: boolean
+  when?: ReminderWhen
+  /** Items with a time: minutes before. */
+  leadMin?: number
+  /** Items with only a date: days before, and the time of day for date-only reminders. */
+  daysBefore?: number
+  at?: string
+}
 
 export interface ReminderRule {
   enabled: boolean
@@ -637,7 +652,16 @@ export interface ReminderRule {
 }
 
 export interface ReminderPrefs {
-  rules: Record<ReminderKind, ReminderRule>
+  /** Old per-kind settings (before 2026-10-30). Kept as they are; still read for what the person changed. */
+  rules: Partial<Record<ReminderKind, ReminderRule>>
+  /** The main switch. Missing = the old behaviour (per-kind switches above) until it is first turned on. */
+  on?: boolean
+  /** When to remind, for everything (a kind can override it). Missing = before. */
+  when?: ReminderWhen
+  /** One more reminder later for what stayed pending (overdue task, unpaid bill…). Missing = on. */
+  followUp?: boolean
+  /** Advanced, per kind; overrides the general choice. */
+  kinds?: Partial<Record<ReminderKind, ReminderKindPref>>
   /** Show titles on the lock screen. Off by default; amounts and health data are never sent. */
   showDetails: boolean
   /** Quiet hours ("22:00" → "07:00"): a reminder that falls inside waits until the end. */
