@@ -9,6 +9,12 @@
 - `pg_cron` + `pg_net` ligados; `supabase/cron.sql` aplicado (URL e segredo no Vault): `nucleo-push-dispatch`
   a cada minuto e `nucleo-push-cleanup` semanal. Variável do GitHub `VITE_VAPID_PUBLIC_KEY` criada.
 - Plano Free: 500 mil execuções de função/mês incluídas; o cron usa ~43 mil.
+- Migração `20261030000000_push_dispatch_permissao.sql` aplicada (só `grant select, delete` em
+  `push_subscriptions` para o service_role; `schema_version` com 12 linhas). O envio usa
+  `_shared/push/webpush.ts` (WebCrypto), não o pacote `web-push`, que quebra no runtime das Edge Functions.
+- Conferido em produção (2026-10-30), 2 contas de teste apagadas no fim: 22/22 — entrega pelo cron, app
+  fechado, isolamento entre contas (RLS), concluído não chega, 1 entrega por lembrete, 2 disparos simultâneos.
+  Assinatura VAPID aceita pelo servidor da Apple (web.push.apple.com).
 - Diagnóstico (SQL Editor): `select status, start_time from cron.job_run_details order by start_time desc limit 5;`
 - Desligar: `select cron.unschedule('nucleo-push-dispatch');` (os lembretes continuam dentro do app).
 - Limites reais: iPhone só com o app na Tela de Início e iOS 16.4+; entrega depende do sistema (modo foco,

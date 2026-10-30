@@ -82,9 +82,9 @@ describe('envio de push', () => {
       send: async (s: Subscription) => (sent.push(s.endpoint), { gone: s.endpoint.includes('gone') }),
       removeSubscription: async (id: string) => void removed.push(id),
     }
-    expect(await dispatch(deps)).toEqual({ due: 1, sent: 1, removed: 1 })
+    expect(await dispatch(deps)).toEqual({ due: 1, sent: 1, removed: 1, failed: 0 })
     expect(sent).not.toContain('https://other')
     expect(removed).toEqual(['s2'])
-    expect(await dispatch(deps)).toEqual({ due: 0, sent: 0, removed: 0 })
+    expect(await dispatch(deps)).toEqual({ due: 0, sent: 0, removed: 0, failed: 0 })
   })
 })
