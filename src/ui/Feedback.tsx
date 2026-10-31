@@ -16,23 +16,30 @@ interface ConfirmOptions {
   danger?: boolean
 }
 
+/** A short follow-up offered with a toast ("Marcar também"). */
+export interface ToastAction {
+  label: string
+  run(): void
+}
+
 interface FeedbackApi {
-  toast(message: string, tone?: ToastTone): void
+  toast(message: string, tone?: ToastTone, action?: ToastAction): void
   confirm(options: ConfirmOptions): Promise<boolean>
 }
 
 const FeedbackContext = createContext<FeedbackApi | null>(null)
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
-  const [toast, setToast] = useState<{ id: number; message: string; tone: ToastTone } | null>(null)
+  const [toast, setToast] = useState<{ id: number; message: string; tone: ToastTone; action?: ToastAction } | null>(null)
   const timer = useRef<number>(0)
   const [pending, setPending] = useState<(ConfirmOptions & { resolve(ok: boolean): void }) | null>(null)
   const reduceMotion = usePrefersReducedMotion()
 
-  const showToast = useCallback((message: string, tone: ToastTone = 'success') => {
+  const showToast = useCallback((message: string, tone: ToastTone = 'success', action?: ToastAction) => {
     window.clearTimeout(timer.current)
-    setToast({ id: Date.now(), message, tone })
-    timer.current = window.setTimeout(() => setToast(null), 2200)
+    setToast({ id: Date.now(), message, tone, action })
+    // With an action the person needs time to read and tap it.
+    timer.current = window.setTimeout(() => setToast(null), action ? 6000 : 2200)
   }, [])
 
   const confirm = useCallback(
@@ -62,12 +69,24 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 // Leaves faster than it came (the system answering, not the person deciding), the same way down.
                 exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(10px) scale(0.98)', transition: { duration: 0.15, ease: EASE_OUT_SOFT } }}
                 transition={{ duration: 0.22, ease: EASE_OUT_SOFT }}
-                className="flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pr-5 pl-3 text-[15px] font-medium shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none"
+                className={`flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pl-3 text-[15px] font-medium shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none ${toast.action ? 'pointer-events-auto pr-2.5' : 'pr-5'}`}
               >
                 <span className={`grid size-6 place-items-center rounded-full ${toast.tone === 'success' ? 'bg-accent text-on-accent' : 'bg-expense/20 text-expense'}`}>
                   {toast.tone === 'success' ? <Check size={14} strokeWidth={2.6} /> : <AlertCircle size={16} />}
                 </span>
                 {toast.message}
+                {toast.action && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.action!.run()
+                      setToast(null)
+                    }}
+                    className="press -my-1 ml-1 h-8 shrink-0 rounded-full bg-accent px-3 text-[14px] font-semibold text-on-accent"
+                  >
+                    {toast.action.label}
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

@@ -7,7 +7,8 @@ import { isTime, toMinutes } from '../../supabase/functions/_shared/planner/time
 import { isEnabled } from '../app/modules'
 import type { BlockKind, CalendarEvent, DataState, Habit, MealEntry, MealPlan, PlannedMeal, RecurringItem, RoutineBlock, RoutinePlan, Settings, Task } from '../data/types'
 import { indexCompletions, routineStatus, statusOf, type CompletionIndex } from './completions'
-import { habitsDue, recurringDue } from './habits'
+import { habitsDue, recurringDue, recurringTime } from './habits'
+import { habitHostOn } from './habitLink'
 import { addDaysToDate, nowIn, weekdayOfDate, weekStart, zoneOf } from './period'
 import { mealTitle, weeksWithMeals } from './meals'
 import { eventsByDate, mealsByDate, tasksByDate } from './indexes'
@@ -49,6 +50,8 @@ export interface AgendaItem {
   markable?: boolean
   /** For routine blocks: work, training, study… */
   blockKind?: BlockKind
+  /** Habits linked to this item on this day: shown on this line instead of a second one. */
+  habits?: { habit: Habit; status: 'done' | 'skipped' | 'pending' }[]
   source: AgendaSource
 }
 
@@ -145,15 +148,23 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
     }
   }
 
-  if (on('habits')) {
-    for (const habit of habitsDue(data.habits, date)) {
-      out.push({ key: `habit:${habit.id}:${date}`, kind: 'habit', date, start: habit.time, end: '', title: habit.name, status: statusOf(index, 'habit', habit.id, date), checkable: true, source: { kind: 'habit', habit } })
+  if (on('recurring')) {
+    for (const item of recurringDue(data.recurring, date)) {
+      out.push({ key: `recurring:${item.id}:${date}`, kind: 'recurring', date, start: recurringTime(item, date), end: '', title: item.title, status: statusOf(index, 'recurring', item.id, date), checkable: true, source: { kind: 'recurring', item } })
     }
   }
 
-  if (on('recurring')) {
-    for (const item of recurringDue(data.recurring, date)) {
-      out.push({ key: `recurring:${item.id}:${date}`, kind: 'recurring', date, start: item.time, end: '', title: item.title, status: statusOf(index, 'recurring', item.id, date), checkable: true, source: { kind: 'recurring', item } })
+  if (on('habits')) {
+    for (const habit of habitsDue(data.habits, date)) {
+      const status = statusOf(index, 'habit', habit.id, date)
+      // Linked to something happening today: one line (that item), with the habit attached.
+      const hostKey = habitHostOn(data, settings, habit, date)
+      const host = hostKey ? out.find((i) => i.key === hostKey) : undefined
+      if (host) {
+        host.habits = [...(host.habits ?? []), { habit, status }]
+        continue
+      }
+      out.push({ key: `habit:${habit.id}:${date}`, kind: 'habit', date, start: habit.time, end: '', title: habit.name, status, checkable: true, source: { kind: 'habit', habit } })
     }
   }
   return out

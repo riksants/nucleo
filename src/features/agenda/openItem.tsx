@@ -7,15 +7,20 @@ import { HabitForm } from '../habits/HabitForm'
 import { RecurringForm } from '../recurring/RecurringForm'
 import { TaskForm } from '../tasks/TaskForm'
 import { EventForm } from './EventForm'
+import { ItemSheet } from '../daily/ItemSheet'
 
-/** Opens the original record behind an agenda item. */
+/**
+ * Tapping an item of the day: its details and quick actions first (ItemSheet); "Editar" there opens the
+ * original record's form. `edit` skips the details.
+ */
 export function useOpenItem() {
+  const details = useSheet<AgendaItem>()
   const task = useSheet<Task>()
   const event = useSheet<CalendarEvent>()
   const habit = useSheet<Habit>()
   const recurring = useSheet<RecurringItem>()
   const meal = useSheet<MealEntry>()
-  const open = (item: AgendaItem) => {
+  const edit = (item: AgendaItem) => {
     const src = item.source
     if (src.kind === 'task') task.show(src.task)
     else if (src.kind === 'event') event.show(src.event)
@@ -25,14 +30,17 @@ export function useOpenItem() {
     else if (src.kind === 'routine') navigate('/routine')
     else navigate('/meals')
   }
+  const open = (item: AgendaItem) => details.show(item)
+  // Each sheet mounts the first time it is used (and stays, for its closing animation): screens open lighter.
   const sheets = (
     <>
-      <TaskForm open={task.open} onClose={task.close} task={task.item} />
-      <EventForm open={event.open} onClose={event.close} event={event.item} />
-      <HabitForm open={habit.open} onClose={habit.close} habit={habit.item} />
-      <RecurringForm open={recurring.open} onClose={recurring.close} item={recurring.item} />
-      <MealForm open={meal.open} onClose={meal.close} meal={meal.item} />
+      {details.item && <ItemSheet item={details.item} open={details.open} onClose={details.close} onEdit={edit} />}
+      {task.item && <TaskForm open={task.open} onClose={task.close} task={task.item} />}
+      {event.item && <EventForm open={event.open} onClose={event.close} event={event.item} />}
+      {habit.item && <HabitForm open={habit.open} onClose={habit.close} habit={habit.item} />}
+      {recurring.item && <RecurringForm open={recurring.open} onClose={recurring.close} item={recurring.item} />}
+      {meal.item && <MealForm open={meal.open} onClose={meal.close} meal={meal.item} />}
     </>
   )
-  return { open, sheets }
+  return { open, edit, sheets }
 }

@@ -1,8 +1,11 @@
-import { ArrowDownLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, CalendarDays, CalendarSearch, ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { buildAgenda, itemLabel, type AgendaItem } from '../../core/agenda'
+import { conflictsOf } from '../../core/timeline'
+import { usePref } from '../../lib/prefs'
+import { CreateSheet } from '../daily/CreateSheet'
 import { moneyDueOn, type MoneyDue } from '../../core/day'
 import { addDaysToDate, nowIn, useToday, weekDates, zoneOf } from '../../core/period'
 import { timeState, TIME_STATE_LABEL } from '../../core/timeState'
@@ -24,6 +27,46 @@ const SHORT_DAY = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone:
 const MONTH = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const at = (date: string) => new Date(`${date}T12:00:00Z`)
 const dayTitle = (date: string) => LONG.format(at(date))
+
+type Filter = 'all' | 'event' | 'task' | 'routine' | 'habit' | 'recurring'
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'Tudo' },
+  { value: 'event', label: 'Compromissos' },
+  { value: 'task', label: 'Tarefas' },
+  { value: 'routine', label: 'Rotina e treinos' },
+  { value: 'habit', label: 'Hábitos' },
+  { value: 'recurring', label: 'Recorrentes' },
+]
+/** Linked habits ride on their item, so "Hábitos" also keeps the lines that carry one. */
+const matches = (f: Filter, i: AgendaItem) => f === 'all' || i.kind === f || (f === 'habit' && !!i.habits?.length)
+
+/** Two things at the same time: told, never moved. */
+function Conflicts({ items, onOpen }: { items: AgendaItem[]; onOpen(i: AgendaItem): void }) {
+  const list = conflictsOf(items)
+  if (!list.length) return null
+  return (
+    <section aria-label="Horários sobrepostos" className="card mb-4 border-warn/30 px-4 py-3">
+      <p className="flex items-center gap-2 text-[14px] font-semibold text-warn">
+        <AlertTriangle size={16} /> {list.length === 1 ? 'Dois horários se sobrepõem' : `${list.length} sobreposições neste dia`}
+      </p>
+      <ul className="mt-1.5 space-y-1">
+        {list.slice(0, 3).map((c) => (
+          <li key={c.key} className="text-[13px] text-soft">
+            <button type="button" className="hover:text-ink" onClick={() => onOpen(c.a.item)}>
+              {c.a.item.title}
+            </button>{' '}
+            ({c.a.item.start}) e{' '}
+            <button type="button" className="hover:text-ink" onClick={() => onOpen(c.b.item)}>
+              {c.b.item.title}
+            </button>{' '}
+            ({c.b.item.start})
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 text-[12px] text-faint">Nada foi mudado. Toque num item para reagendar, se quiser.</p>
+    </section>
+  )
+}
 
 /** The week as seven tappable days: weekday, number and a dot per kind of thing on it. Today is ringed. */
 function WeekStrip({ days, selected, today, items, money, onPick }: { days: string[]; selected: string; today: string; items: AgendaItem[]; money: Map<string, MoneyDue[]>; onPick(d: string): void }) {
@@ -108,10 +151,15 @@ export function AgendaPage() {
   const clock = useNow(30_000)
   const nowTime = nowIn(tz, clock).time
   const [view, setView] = useState<'day' | 'week'>('day')
+  const [filter, setFilter] = usePref<Filter>('agenda.filter', 'all')
+  const create = useSheet<null>()
   const [selected, setSelected] = useState<string | null>(null)
   const day = selected ?? today
   const days = weekDates(day)
-  const items = useMemo(() => buildAgenda(data, settings, days[0], days[6], clock), [data, settings, days[0], clock]) // eslint-disable-line react-hooks/exhaustive-deps
+  const all = useMemo(() => buildAgenda(data, settings, days[0], days[6], clock), [data, settings, days[0], clock]) // eslint-disable-line react-hooks/exhaustive-deps
+  const items = filter === 'all' ? all : all.filter((i) => matches(filter, i))
+  // Only the filters that have something this week (plus the one in use).
+  const filters = FILTERS.filter((f) => f.value === 'all' || f.value === filter || all.some((i) => matches(f.value, i)))
   const money = useMemo(() => new Map(days.map((d) => [d, moneyDueOn(data, settings, d)])), [data, settings, days[0]]) // eslint-disable-line react-hooks/exhaustive-deps
   const newEvent = useSheet<string>()
   const editEvent = useSheet<CalendarEvent>()
@@ -120,7 +168,7 @@ export function AgendaPage() {
   const pick = (d: string) => setSelected(d === today ? null : d)
 
   const dayItems = items.filter((i) => i.date === day)
-  const dayMoney = money.get(day) ?? []
+  const dayMoney = filter === 'all' ? (money.get(day) ?? []) : []
   const weekCount = items.length
   const weekMoney = [...money.values()].reduce((n, l) => n + l.length, 0)
 
@@ -133,6 +181,11 @@ export function AgendaPage() {
         title="Agenda"
         subtitle="Compromissos, tarefas, rotina, hábitos e cobranças num lugar só"
         primary={{ label: 'Compromisso', aria: 'Novo compromisso', onPress: () => newEvent.show(day) }}
+        actions={
+          <button type="button" onClick={() => create.show()} className="press flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
+            <Sparkles size={16} /> Em uma frase
+          </button>
+        }
         stats={[
           { label: day === today ? 'Hoje' : 'Neste dia', value: dayItems.length },
           { label: 'Na semana', value: weekCount },
@@ -148,6 +201,10 @@ export function AgendaPage() {
               Hoje
             </button>
           )}
+          <label className="relative grid size-9 cursor-pointer place-items-center rounded-full text-soft hover:bg-tint/[0.05] hover:text-ink" title="Ir para uma data">
+            <CalendarSearch size={18} />
+            <input type="date" aria-label="Ir para uma data" value={day} onChange={(e) => e.target.value && pick(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+          </label>
           <IconButton label="Semana anterior" size="sm" onClick={() => pick(addDaysToDate(day, -7))}>
             <ChevronLeft size={18} />
           </IconButton>
@@ -157,19 +214,36 @@ export function AgendaPage() {
         </div>
       </div>
 
-      <div className="mb-5">
-        <WeekStrip days={days} selected={day} today={today} items={items} money={money} onPick={pick} />
+      <div className="mb-4">
+        <WeekStrip days={days} selected={day} today={today} items={items} money={filter === 'all' ? money : new Map()} onPick={pick} />
       </div>
+      {filters.length > 2 && (
+        <div role="radiogroup" aria-label="Mostrar" className="no-scrollbar -mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1">
+          {filters.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              role="radio"
+              aria-checked={filter === f.value}
+              onClick={() => setFilter(f.value)}
+              className={`press h-8 shrink-0 rounded-full px-3 text-[13px] font-medium transition-colors ${filter === f.value ? 'bg-ink text-bg' : 'text-soft ring-1 ring-line ring-inset hover:text-ink'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {view === 'day' ? (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
           <section aria-label={dayTitle(day)}>
             <h2 className="mb-2 px-1 text-[15px] font-semibold tracking-[-0.01em] first-letter:uppercase">{day === today ? `Hoje, ${dayTitle(day).split(', ')[1]}` : dayTitle(day)}</h2>
+            {day >= today && <Conflicts items={dayItems} onOpen={open} />}
             {dayItems.length ? (
-              <DayTimeline items={dayItems} today={today} nowTime={nowTime} onOpen={open} />
+              <DayTimeline items={dayItems} today={today} nowTime={nowTime} onOpen={open} periods />
             ) : (
               <div className="card flex items-center justify-between gap-3 px-4 py-4">
-                <span className="text-[15px] text-soft">{day < today ? 'Nada registrado neste dia.' : 'Dia livre.'}</span>
+                <span className="text-[15px] text-soft">{filter !== 'all' ? 'Nada deste tipo neste dia.' : day < today ? 'Nada registrado neste dia.' : 'Dia livre.'}</span>
                 {day >= today && (
                   <button type="button" onClick={() => newEvent.show(day)} className="press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-medium ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]">
                     <Plus size={16} /> Compromisso
@@ -184,7 +258,7 @@ export function AgendaPage() {
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
           {days.map((d) => {
             const its = items.filter((i) => i.date === d)
-            const m = money.get(d) ?? []
+            const m = filter === 'all' ? (money.get(d) ?? []) : []
             return (
               <section key={d} aria-label={dayTitle(d)} className={`card p-1.5 ${d === today ? 'ring-1 ring-accent/35 ring-inset' : ''}`}>
                 <button type="button" onClick={() => (pick(d), setView('day'))} className="flex w-full items-center gap-2 rounded-xl px-2.5 pt-1.5 pb-1 text-left">
@@ -210,6 +284,7 @@ export function AgendaPage() {
       )}
       <EventForm open={newEvent.open} onClose={newEvent.close} event={null} initial={{ date: newEvent.item ?? today }} />
       <EventForm open={editEvent.open} onClose={editEvent.close} event={editEvent.item} />
+      <CreateSheet open={create.open} onClose={create.close} />
       {sheets}
     </>
   )

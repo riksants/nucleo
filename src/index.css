@@ -265,6 +265,33 @@
   }
 }
 
+/* Início only: in the dark theme the band's type is white (greeting, date, balance, figures); in the light theme it
+   stays coal. Every color inside points at these tokens (coal included), so nothing is styled one by one. */
+:root:not([data-theme='light']) .band-home {
+  color: #ffffff;
+  --color-coal: #ffffff;
+  /* The pill of the chosen currency turns white, so its text goes coal. */
+  --color-paper: #0a0a0b;
+  --color-ink: #ffffff;
+  --color-soft: rgb(255 255 255 / 0.9);
+  --color-faint: rgb(255 255 255 / 0.86);
+  --color-line: rgb(255 255 255 / 0.2);
+  --color-line-strong: rgb(255 255 255 / 0.4);
+  --color-tint: #ffffff;
+  --color-surface: rgb(10 10 11 / 0.12);
+  --color-raised: rgb(10 10 11 / 0.12);
+  --color-elevated: rgb(10 10 11 / 0.2);
+  --color-card-border: rgb(255 255 255 / 0.16);
+  --color-accent: #ffffff;
+  --color-accent-soft: rgb(255 255 255 / 0.88);
+  --color-accent-hi: #ffffff;
+  --color-on-accent: #0a0a0b;
+  --color-income: #ffffff;
+  --color-expense: #ffffff;
+  --color-warn: #ffffff;
+  --color-goal: #ffffff;
+}
+
 /* Depth on the band without a gradient look: a soft light from the top corner and a faint shade at the bottom
    edge, so the vermilion reads as a lit surface. Same color everywhere; only the light changes. */
 @utility band-depth {

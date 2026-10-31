@@ -5,22 +5,23 @@
  */
 import { useCallback } from 'react'
 import { useStore } from '../data/store'
-import type { CompletionSource, MealEntry, RoutinePlan, Task } from '../data/types'
+import type { Completion, CompletionSource, MealEntry, RoutinePlan, Task } from '../data/types'
 import { completionId } from './completions'
 
 export function useDailyActions() {
   const { data, save, remove } = useStore()
 
-  /** done / skipped, or null to clear the mark of that day. */
+  /** done / skipped, or null to clear the mark of that day. `via`: marked together with that item (a linked habit). */
   const setCompletion = useCallback(
-    async (source: CompletionSource, sourceId: string, date: string, status: 'done' | 'skipped' | null) => {
+    async (source: CompletionSource, sourceId: string, date: string, status: 'done' | 'skipped' | null, via?: string) => {
       const id = completionId(source, sourceId, date)
       const existing = data.completions.find((c) => c.id === id)
       if (status === null) {
         if (existing) await remove('completions', id)
         return
       }
-      await save('completions', { ...existing, id, source, sourceId, date, status })
+      const { via: _was, ...rest } = existing ?? ({} as Partial<Completion>)
+      await save('completions', { ...rest, id, source, sourceId, date, status, ...(via ? { via } : {}) })
     },
     [data.completions, save, remove],
   )

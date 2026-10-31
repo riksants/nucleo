@@ -4,7 +4,7 @@ import { BASE, idb, noHorizontalScroll, reporter, seedExistingUser } from './hel
 const r = reporter()
 const b = await launch(9355)
 const TZ = 'America/Sao_Paulo'
-const ALL = ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'inbox', 'habits', 'recurring', 'agenda']
+const ALL = ['today', 'finance', 'projects', 'tasks', 'clients', 'goals', 'tools', 'accounts', 'notes', 'portfolio', 'sales', 'subscribers', 'routine', 'meals', 'inbox', 'habits', 'recurring', 'agenda', 'life', 'week']
 try {
   await b.mobile()
   await b.send('Network.enable')
@@ -22,7 +22,7 @@ try {
   await b.goto(BASE + '#/agenda')
   let text = await b.text()
   r.check('agenda de hoje junta tarefa com horário, hábito e compromisso', text.includes('Ligar para cliente') && text.includes('Tarefa com horário') && text.includes('Ler 20 min') && text.includes('Café cedo'))
-  r.check('compromisso que já passou aparece como "Encerrado" (nunca como feito)', text.includes('Encerrado'))
+  r.check('compromisso que já passou aparece como "Horário encerrado" (nunca como feito)', text.includes('Horário encerrado'))
   r.check('agenda não gravou nada (só visualiza)', (await idb(b, 'completions')).length === 0 && (await idb(b, 'events')).length === 1)
 
   // New appointment

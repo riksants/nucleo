@@ -18,6 +18,7 @@ try {
   // Create from preset (daily)
   await b.click('Criar hábito')
   await b.click('Beber água', 'button')
+  await b.click('Mais opções', 'button')
   await b.fill('Meta', '2 litros')
   await b.shot('habitos-form')
   await b.click('Criar hábito', 'button[type=submit]')
@@ -28,9 +29,8 @@ try {
   const otherDay = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][(todayWd + 2) % 7]
   await b.click('Novo hábito', 'button')
   await b.fill('Hábito', 'Treinar')
-  await b.click('Dias', '[role=radio]')
-  // clear default Seg–Sex and choose one other day
-  for (const d of ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']) await b.click(d, 'button[aria-pressed=true]')
+  await b.click('Semanal', '[role=radio]')
+  // The suggested day (today) is replaced by the first day tapped.
   await b.click(otherDay, 'button[aria-pressed=false]')
   await b.click('Criar hábito', 'button[type=submit]')
   await b.sleep(400)

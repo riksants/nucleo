@@ -42,7 +42,7 @@ const DISMISS_VELOCITY = 420
 /** The logo exactly as the app icon: the white and vermilion "N" on a coal tile. */
 export function LogoTile({ className = 'size-9' }: { className?: string }) {
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center rounded-[28%] bg-coal ${className}`}>
+    <span aria-hidden className={`grid shrink-0 place-items-center rounded-[28%] bg-[#0a0a0b] ${className}`}>
       <svg viewBox={LOGO_VIEWBOX} className="size-[62%]">
         <path d={LOGO_LIGHT} fill="#ffffff" />
         <path d={LOGO_ACCENT} fill="var(--color-brand)" />

@@ -176,6 +176,8 @@ export type RecurrenceRule =
   | { type: 'weekdays'; days: Weekday[] }
   /** Day of the month; 29–31 fall on the last day in shorter months. */
   | { type: 'monthly'; dayOfMonth: number }
+  /** Every N days or weeks, counted from the start date (Etapa 1 do dia a dia). */
+  | { type: 'interval'; every: number; unit: 'day' | 'week' }
 
 /** Quick capture. Stays until organized; never deleted by converting it. */
 export interface InboxItem extends Entity {
@@ -200,7 +202,18 @@ export interface Habit extends Entity {
   category?: HabitCategory
   /** Optional session length (min). A focus session that reaches it marks the day as done (evidence, not a guess). */
   minutes?: number
+  /** false = no reminder for this habit (missing = reminds when it has a time). */
+  remind?: boolean
+  /**
+   * Optional link to what usually proves it: a recurring item, or a kind of routine block. On a day when the linked
+   * thing happens, Hoje and Agenda show one line, and marking that line suggests (or, with `autoFromLink`, does)
+   * marking the habit too. Never marked by the clock.
+   */
+  link?: HabitLink
+  autoFromLink?: boolean
 }
+
+export type HabitLink = { kind: 'recurring'; id: string } | { kind: 'routine'; blockKind: 'training' | 'study' }
 
 export type HabitCategory = 'training' | 'study' | 'reading' | 'water' | 'sleep' | 'meditation' | 'food' | 'other'
 
@@ -217,6 +230,12 @@ export interface RecurringItem extends Entity {
   remindDays?: number
   /** Occurrences moved once ("Adiar"): original date → new date. The rule itself doesn't change. */
   moved?: Record<string, string>
+  /** Last day it happens ("YYYY-MM-DD", inclusive). Missing = no end. "Encerrar" sets it. */
+  endDate?: string
+  /** Time of one occurrence only ("só esta"): occurrence date → "HH:MM". */
+  times?: Record<string, string>
+  /** Items with a time: minutes before to remind (overrides the general setting). */
+  remindMin?: number
 }
 
 export type CompletionSource = 'habit' | 'recurring' | 'routine' | 'challenge'
@@ -232,6 +251,8 @@ export interface Completion extends Entity {
   date: string
   /** "skipped" is never counted as done. */
   status: 'done' | 'skipped'
+  /** Marked together with another item (a linked habit): its key, so undoing that item undoes this one too. */
+  via?: string
 }
 
 /** Appointment with a duration. A past time does NOT mean it happened. */

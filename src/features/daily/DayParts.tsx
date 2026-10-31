@@ -1,16 +1,16 @@
 /**
- * Shared pieces of the day (Hoje, Agenda, Rotina): the state chip, the "Agora / A seguir" card, the quick
+ * Shared pieces of the day (Hoje, Agenda, Rotina): the state chip, the quick
  * confirmation of what already ended, and the day's timeline with a "now" line. Everything reads the original
  * records through AgendaItem; marking here marks the task / habit / routine block itself.
  */
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Clock, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { itemLabel, type AgendaItem } from '../../core/agenda'
 import { useDailyActions } from '../../core/actions'
 import { addDaysToDate } from '../../core/period'
-import { awaitingConfirmation, confirmQuestion, inWords, isMarkable, minutesUntil, nextUp, timeState, timeWindow, TIME_STATE_LABEL, type TimeState } from '../../core/timeState'
+import { awaitingConfirmation, confirmQuestion, inWords, isMarkable, minutesUntil, nextUp, timeState, TIME_STATE_LABEL, type TimeState } from '../../core/timeState'
 import { usePrefersReducedMotion } from '../../lib/hooks'
 import { EASE_OUT_SOFT } from '../../lib/motion'
 import { usePref } from '../../lib/prefs'
@@ -44,44 +44,6 @@ function useSnooze() {
     snoozed: (key: string) => (map[key] ?? 0) > now,
     snooze: (key: string) => setMap(Object.fromEntries([...Object.entries(map).filter(([, until]) => until > now), [key, now + 60 * 60_000]])),
   }
-}
-
-/** The thing happening now, or the next one, big enough to read at a glance. */
-export function NowCard({ items, today, nowTime, onOpen }: { items: AgendaItem[]; today: string; nowTime: string; onOpen(item: AgendaItem): void }) {
-  const toggle = useToggleItem()
-  const item = nextUp(items, today, nowTime)
-  if (!item) return null
-  const state = timeState(item, today, nowTime)
-  const until = minutesUntil(item, nowTime)
-  const w = timeWindow(item)
-  const left = state === 'now' && w ? w.end - (isTime(nowTime) ? toMinutes(nowTime) : 0) : null
-  return (
-    <section aria-label={state === 'now' ? 'Agora' : 'A seguir'} className="card relative overflow-hidden p-4 pl-5">
-      <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${state === 'now' ? 'bg-accent' : 'bg-tint/15'}`} />
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[12px] font-semibold tracking-[0.1em] text-faint uppercase">{state === 'now' ? 'Agora' : 'A seguir'}</p>
-        <StateChip state={state} />
-      </div>
-      <button type="button" onClick={() => onOpen(item)} className="mt-1.5 block w-full text-left">
-        <span className="block text-[20px] leading-snug font-semibold tracking-[-0.03em] [overflow-wrap:anywhere]">{item.title}</span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[14px] text-soft">
-          <span className={`size-2 rounded-full ${dotOf(item)}`} />
-          {itemLabel(item)}
-          <span className="num">
-            · {item.start}
-            {item.end ? `–${item.end}` : ''}
-          </span>
-          {state === 'scheduled' && until !== null && <span className="font-medium text-ink">· {inWords(until)}</span>}
-          {left !== null && left > 0 && <span className="font-medium text-ink">· termina em {left < 60 ? `${left} min` : inWords(left).replace('em ', '')}</span>}
-        </span>
-      </button>
-      {isMarkable(item) && state === 'now' && (
-        <button type="button" onClick={() => toggle(item, 'done')} className="press mt-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-[14px] font-semibold text-on-accent hover:bg-accent-soft">
-          <Check size={16} strokeWidth={2.6} /> Concluí
-        </button>
-      )}
-    </section>
-  )
 }
 
 /**
@@ -144,43 +106,103 @@ export function ConfirmList({ items, today, nowTime }: { items: AgendaItem[]; to
   )
 }
 
-function TimelineRow({ item, state, onOpen, last }: { item: AgendaItem; state: TimeState; onOpen(item: AgendaItem): void; last: boolean }) {
+/** The state words of a row: a task past its time is "Atrasada" (it moves); "Não realizado" only when the person says so. */
+export function stateWords(item: AgendaItem, state: TimeState): string {
+  if (state === 'awaiting' && item.kind === 'task') return 'Atrasada'
+  return TIME_STATE_LABEL[state]
+}
+
+/** Linked habits riding on a line ("· Estudar ✓"). */
+function HabitTags({ item }: { item: AgendaItem }) {
+  if (!item.habits?.length) return null
+  return (
+    <>
+      {item.habits.map(({ habit, status }) => (
+        <span key={habit.id} className={`inline-flex items-center gap-1 ${status === 'done' ? 'text-income' : ''}`}>
+          · {habit.name}
+          {status === 'done' && <Check size={14} strokeWidth={2.6} aria-label="hábito feito" />}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/**
+ * One line of the day. The next thing reads "A seguir · em 25 min"; what ended without an answer gets its quick
+ * answers right on the line (Concluí · Não fiz / Amanhã), so nothing shows twice on the screen.
+ */
+function TimelineRow({ item, state, onOpen, last, next, nowTime }: { item: AgendaItem; state: TimeState; onOpen(item: AgendaItem): void; last: boolean; next?: boolean; nowTime: string }) {
   const toggle = useToggleItem()
+  const { moveTask } = useDailyActions()
   const muted = state === 'done' || state === 'missed' || state === 'ended'
+  const late = state === 'awaiting'
+  const until = next && state === 'scheduled' ? minutesUntil(item, nowTime) : null
   return (
     <li className="relative flex gap-3">
       {/* time column + rail */}
       <div className="flex w-12 shrink-0 flex-col items-end pt-3">
-        <span className={`num text-[13px] font-medium ${state === 'now' ? 'text-accent-hi' : muted ? 'text-faint' : 'text-soft'}`}>{item.start}</span>
+        <span className={`num text-[13px] font-medium ${state === 'now' ? 'text-accent-hi' : late ? 'text-warn' : muted ? 'text-faint' : 'text-soft'}`}>{item.start}</span>
       </div>
       <div className="relative flex w-3 shrink-0 justify-center">
         {!last && <span aria-hidden className="absolute top-5 -bottom-1 w-px bg-line" />}
         <span aria-hidden className={`relative mt-[18px] size-2.5 rounded-full ring-4 ring-bg ${state === 'now' ? 'bg-accent' : dotOf(item)} ${muted ? 'opacity-50' : ''}`} />
       </div>
-      <div className={`mb-1.5 flex min-w-0 flex-1 items-center gap-1 rounded-2xl ${state === 'now' ? 'bg-accent/[0.08] ring-1 ring-accent/25 ring-inset' : 'hover:bg-tint/[0.03]'}`}>
+      <div className={`mb-1.5 flex min-w-0 flex-1 flex-wrap items-center gap-x-1 rounded-2xl ${state === 'now' ? 'bg-accent/[0.08] ring-1 ring-accent/25 ring-inset' : next ? 'ring-1 ring-accent/20 ring-inset' : late ? 'bg-warn/[0.05]' : 'hover:bg-tint/[0.03]'}`}>
         <button type="button" onClick={() => onOpen(item)} className="min-w-0 flex-1 py-2.5 pl-3 text-left">
           <span className={`block truncate text-[15px] ${state === 'now' ? 'font-semibold' : ''} ${muted ? 'text-faint' : ''} ${state === 'done' ? 'line-through' : ''}`}>{item.title}</span>
           <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-faint">
             {itemLabel(item)}
             {item.end && <span className="num">· até {item.end}</span>}
             {item.source.kind === 'routine' && item.source.block.fixed && <span>· fixo</span>}
-            {state !== 'scheduled' && state !== 'anytime' && (
-              <span className={state === 'now' ? 'font-semibold text-accent-hi' : state === 'awaiting' ? 'font-semibold text-warn' : ''}>· {TIME_STATE_LABEL[state]}</span>
-            )}
+            <HabitTags item={item} />
+            {until !== null && <span className="font-semibold text-accent-hi">· A seguir, {inWords(until)}</span>}
+            {state !== 'scheduled' && state !== 'anytime' && <span className={state === 'now' ? 'font-semibold text-accent-hi' : late ? 'font-semibold text-warn' : ''}>· {stateWords(item, state)}</span>}
           </span>
         </button>
         {isMarkable(item) && <CheckButton status={item.status === 'ended' ? 'pending' : item.status} onClick={() => toggle(item)} label={item.status === 'done' ? `Desmarcar ${item.title}` : `Concluir ${item.title}`} />}
+        {late && (
+          <div className="flex w-full flex-wrap gap-1.5 px-3 pb-2.5">
+            <button type="button" onClick={() => toggle(item, 'done')} className="press inline-flex h-8 items-center gap-1 rounded-full bg-accent px-3 text-[13px] font-semibold text-on-accent hover:bg-accent-soft">
+              <Check size={14} strokeWidth={2.6} /> Concluí
+            </button>
+            {item.source.kind === 'task' ? (
+              <button type="button" onClick={() => item.source.kind === 'task' && moveTask(item.source.task, addDaysToDate(item.date, 1))} className="press inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]">
+                Amanhã
+              </button>
+            ) : (
+              <button type="button" onClick={() => toggle(item, 'skipped')} className="press inline-flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]">
+                <X size={14} /> Não fiz
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </li>
   )
 }
 
+type PartId = 'morning' | 'afternoon' | 'night'
+const PARTS: { id: PartId; label: string; from: number; to: number }[] = [
+  { id: 'morning', label: 'Manhã', from: 0, to: 12 * 60 },
+  { id: 'afternoon', label: 'Tarde', from: 12 * 60, to: 18 * 60 },
+  { id: 'night', label: 'Noite', from: 18 * 60, to: 24 * 60 },
+]
+
+/** Manhã (até 12h) · Tarde (12h–18h) · Noite (18h em diante), by the start time. */
+export function partOf(start: string): PartId {
+  const m = toMinutes(start)
+  return m < 12 * 60 ? 'morning' : m < 18 * 60 ? 'afternoon' : 'night'
+}
+
 /**
  * The day as a line: items with a time on a rail, with an "Agora" marker at the current time (today only);
- * things without a time under "A qualquer hora"; what is finished folds into "Concluídos" so the line stays short.
+ * with `periods`, split into Manhã · Tarde · Noite (a part of the day already over folds into one line);
+ * things without a time under "A qualquer hora"; what is finished folds into "Concluídos".
  */
-export function DayTimeline({ items, today, nowTime, onOpen, emptyText = 'Nada com horário neste dia.' }: { items: AgendaItem[]; today: string; nowTime: string; onOpen(item: AgendaItem): void; emptyText?: string }) {
+export function DayTimeline({ items, today, nowTime, onOpen, emptyText = 'Nada com horário neste dia.', periods = false }: { items: AgendaItem[]; today: string; nowTime: string; onOpen(item: AgendaItem): void; emptyText?: string; periods?: boolean }) {
+  const nextKey = nextUp(items, today, nowTime)?.key
   const [showDone, setShowDone] = useState(false)
+  const [opened, setOpened] = useState<Record<string, boolean>>({})
   const date = items[0]?.date
   const states = new Map(items.map((i) => [i.key, timeState(i, today, nowTime)]))
   const finished = (i: AgendaItem) => {
@@ -191,8 +213,7 @@ export function DayTimeline({ items, today, nowTime, onOpen, emptyText = 'Nada c
   const untimed = items.filter((i) => !i.start && !finished(i))
   const done = items.filter(finished)
   const nowMin = isTime(nowTime) ? toMinutes(nowTime) : -1
-  // Where the "Agora" line goes: before the first timed item that starts after now (today only).
-  const nowIndex = date === today ? timed.findIndex((i) => toMinutes(i.start) > nowMin) : -2
+  const isToday = date === today
 
   const nowLine = (
     <li key="now-line" aria-label={`Agora, ${nowTime}`} className="relative my-1 flex items-center gap-3">
@@ -204,19 +225,59 @@ export function DayTimeline({ items, today, nowTime, onOpen, emptyText = 'Nada c
     </li>
   )
 
+  /** One rail; the "Agora" line goes before the first item that starts after now (when `withNow`). */
+  const rail = (list: AgendaItem[], withNow: boolean) => {
+    const nowIndex = withNow ? list.findIndex((i) => toMinutes(i.start) > nowMin) : -2
+    return (
+      <ol className="card px-2 pt-2 pb-1">
+        {list.map((item, i) => [i === nowIndex && nowLine, <TimelineRow key={item.key} item={item} state={states.get(item.key)!} onOpen={onOpen} last={i === list.length - 1} next={item.key === nextKey} nowTime={nowTime} />])}
+        {withNow && nowIndex === -1 && nowLine}
+      </ol>
+    )
+  }
+
+  let timedBlock: ReactNode = null
+  if (timed.length && !periods) timedBlock = rail(timed, isToday)
+  else if (timed.length) {
+    timedBlock = (
+      <div className="space-y-4">
+        {PARTS.map((p) => {
+          const list = timed.filter((i) => partOf(i.start) === p.id)
+          const all = items.filter((i) => i.start && partOf(i.start) === p.id)
+          if (!all.length) return null
+          const over = (date ?? '') < today || (isToday && nowMin >= p.to)
+          const current = isToday && nowMin >= p.from && nowMin < p.to
+          // A part of the day already over, with nothing waiting for a yes/no, folds into its header.
+          const needs = list.some((i) => states.get(i.key) === 'awaiting' || states.get(i.key) === 'now')
+          const foldable = over && !needs
+          const folded = foldable && !opened[p.id]
+          const doneCount = all.filter(finished).length
+          return (
+            <section key={p.id} aria-label={p.label}>
+              <h3 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold">
+                <span className={current ? 'text-accent-hi' : 'text-soft'}>{p.label}</span>
+                {current && <span className="rounded-full bg-accent/[0.12] px-2 py-0.5 text-[11px] font-semibold text-accent-hi">agora</span>}
+                <span className="num font-medium text-faint">
+                  {doneCount}/{all.length}
+                </span>
+                {foldable && (
+                  <button type="button" aria-expanded={!folded} onClick={() => setOpened((o) => ({ ...o, [p.id]: !o[p.id] }))} className="hit relative ml-auto flex items-center gap-1 font-medium text-soft hover:text-ink">
+                    {folded ? 'Ver' : 'Recolher'}
+                    <ChevronDown size={14} className={`transition-transform duration-200 ${folded ? '' : 'rotate-180'}`} />
+                  </button>
+                )}
+              </h3>
+              {folded ? null : list.length ? rail(list, current) : <p className="card px-4 py-3 text-[14px] text-faint">Tudo resolvido nesta parte do dia.</p>}
+            </section>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      {timed.length > 0 ? (
-        <ol className="card px-2 pt-2 pb-1">
-          {timed.map((item, i) => [
-            i === nowIndex && nowLine,
-            <TimelineRow key={item.key} item={item} state={states.get(item.key)!} onOpen={onOpen} last={i === timed.length - 1} />,
-          ])}
-          {nowIndex === -1 && date === today && nowLine}
-        </ol>
-      ) : (
-        !untimed.length && !done.length && <p className="card px-5 py-4 text-[15px] text-faint">{emptyText}</p>
-      )}
+      {timedBlock ?? (!untimed.length && !done.length && <p className="card px-5 py-4 text-[15px] text-faint">{emptyText}</p>)}
 
       {untimed.length > 0 && (
         <section aria-label="A qualquer hora">
@@ -265,7 +326,9 @@ function UntimedRow({ item, state, onOpen }: { item: AgendaItem; state: TimeStat
         <span className="flex items-center gap-1.5 text-[12px] text-faint">
           {item.start && <span className="num">{item.start} ·</span>}
           {itemLabel(item)}
+          <HabitTags item={item} />
           {state === 'missed' && ' · não realizado'}
+          {state === 'awaiting' && item.kind === 'task' && <span className="font-semibold text-warn">· atrasada</span>}
         </span>
       </button>
     </li>

@@ -30,13 +30,33 @@
   exceto o que a pessoa tinha desligado e que vinha ligado por padrão (hábitos, recorrentes, agenda).
   Limite: uma categoria que já era desligada por padrão não tem como ser distinguida de uma desligada de
   propósito; essas passam a vir ligadas.
-- Cobertos: agenda, tarefas (e atrasadas, uma vez), rotina (início e "concluiu?"), hábitos (horário e um único
+- Cobertos: agenda, tarefas (e atrasadas, uma vez), rotina (início; o "concluiu?" saiu em 2026-10-31), hábitos (horário e um único
   lembrete à noite se faltar algo), recorrentes e contas, assinaturas a pagar, parcelas de vendas e assinantes
   a receber, prazos de projetos/vida/etapas/metas financeiras, refeições, fim da sessão de foco de um hábito.
   Clientes e Caixa de entrada entram pelo que geram (vendas, assinantes, tarefas, compromissos): não têm datas próprias.
 - O espelho no servidor escreve só o que mudou e no máximo 900 avisos futuros por conta (cota 2.000).
 - Conferido em produção (2 contas de teste, apagadas): app real → servidor → cron → push com o app fechado,
   "antes e na hora", cancelado não chega, remarcado chega no novo horário, cada aviso uma vez, isolamento.
+
+## Dia a dia, Etapa 1: Início, Hoje, Agenda, Hábitos e Recorrentes (2026-10-31, branch `feat/etapa1-dia`)
+
+- Sem migração: os campos novos são opcionais dentro do JSON de `records` (mesma RLS). Recorrente: `endDate`,
+  `times` (horário de uma ocorrência), `remindMin`, regra `{ type: 'interval', every, unit }`. Hábito: `remind`,
+  `link` (recorrente ou treino/estudo da rotina), `autoFromLink`. Conclusão: `via` (marcada junto com outro item).
+  Reverter = voltar a versão do app; os campos ficam ignorados. Um aparelho com a versão antiga não mostra os
+  recorrentes "a cada N" (não quebra).
+- Rotina: terminado o horário mostra "Horário encerrado", sem pedir confirmação e sem o push "concluiu?".
+  Continua marcável à mão.
+- "Esta e as próximas" divide o recorrente em dois registros que não se sobrepõem (o antigo termina na véspera);
+  hábitos vinculados passam a apontar para a continuação.
+- Cadastro por frase: local (sem IA). Entende data, hora, intervalo de horas, "da tarde/noite", prazos ("até
+  sexta"), repetição (todo dia, dias da semana, dias úteis, todo dia N, a cada N dias/semanas) e duração. Hora de
+  1 a 6 sem período é perguntada. Voz usa o reconhecimento do próprio navegador (Safari/Chrome/Edge); onde não
+  existe, o botão do microfone não aparece (o ditado do teclado funciona igual). No Chrome/Edge o áudio é
+  processado pelo serviço do navegador.
+- e2e `etapa1-dia` cobre o fluxo inteiro. Falham também no `main` (conferido em 2026-10-31, sábado):
+  `finishing` (Vendas, "Pagamento geral"), `regression-new-user` (rascunho da rotina sem bloco de trabalho no
+  fim de semana) e `home-switch` (deslocamento ~0,03 ao voltar para a Início).
 
 ## Auth: configurações do painel do Supabase (Etapa 2)
 

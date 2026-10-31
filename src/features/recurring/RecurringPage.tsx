@@ -1,9 +1,9 @@
-import { CalendarClock, ListRestart, Receipt, Repeat } from 'lucide-react'
+import { CalendarClock, ChevronDown, ListRestart, Pause, Receipt, Repeat } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { useDailyActions } from '../../core/actions'
 import { indexCompletions, statusOf } from '../../core/completions'
-import { moveOccurrence, nextRecurring, recurringDue } from '../../core/habits'
+import { moveOccurrence, nextRecurring, recurringDue, recurringState, recurringTime } from '../../core/habits'
 import { addDaysToDate, useToday, zoneOf } from '../../core/period'
 import { describeRule } from '../../core/recurrence'
 import { useStore } from '../../data/store'
@@ -47,7 +47,7 @@ function TodayRow({ item, date, status, onOpen }: { item: RecurringItem; date: s
           {item.bill && <Receipt size={14} className="shrink-0 text-accent-hi" aria-label="Conta" />}
           <span className="truncate">{item.title}</span>
         </span>
-        <span className="block truncate text-[13px] text-faint">{status === 'skipped' ? 'Pulado hoje' : [item.time, describeRule(item.rule)].filter(Boolean).join(' · ')}</span>
+        <span className="block truncate text-[13px] text-faint">{status === 'skipped' ? 'Pulado hoje' : [recurringTime(item, date), describeRule(item.rule)].filter(Boolean).join(' · ')}</span>
       </button>
       {status === 'pending' && (
         <button type="button" onClick={postpone} className="shrink-0 rounded-xl px-2.5 py-2 text-[13px] font-medium text-soft hover:bg-tint/[0.04] tap hover:text-ink">
@@ -71,16 +71,18 @@ export function RecurringPage() {
   const today = useToday(zoneOf(settings))
   const index = useMemo(() => indexCompletions(data.completions), [data.completions])
   const [showAll, setShowAll] = useState(false)
+  const [showStopped, setShowStopped] = useState(false)
   const due = recurringDue(data.recurring, today)
   const tomorrow = addDaysToDate(today, 1)
   const upcoming = data.recurring
-    .filter((r) => r.active)
+    .filter((r) => recurringState(r, today) === 'active')
     .map((r) => ({ item: r, next: nextRecurring(r, tomorrow) }))
     .filter((x): x is { item: RecurringItem; next: string } => Boolean(x.next))
     .sort((a, b) => (a.next < b.next ? -1 : a.next > b.next ? 1 : a.item.title.localeCompare(b.item.title)))
-  const inactive = data.recurring.filter((r) => !r.active)
+  // Paused (comes back when resumed) and ended (past its last day): out of the way, never deleted.
+  const inactive = data.recurring.filter((r) => recurringState(r, today) !== 'active').sort((a, b) => a.title.localeCompare(b.title))
   const week = upcoming.filter((u) => u.next <= addDaysToDate(today, 7)).length
-  const bills = data.recurring.filter((r) => r.active && r.bill).length
+  const bills = data.recurring.filter((r) => recurringState(r, today) === 'active' && r.bill).length
   const nextOne = upcoming[0]
   const rest = upcoming.slice(1)
   const shown = showAll ? rest : rest.slice(0, 8)
@@ -144,7 +146,7 @@ export function RecurringPage() {
                         <span className="truncate">{nextOne.item.title}</span>
                       </span>
                       <span className="block text-[13px] text-soft first-letter:uppercase">
-                        {relativeDays(nextOne.next)?.label} · {[nextOne.item.time, describeRule(nextOne.item.rule)].filter(Boolean).join(' · ')}
+                        {relativeDays(nextOne.next)?.label} · {[recurringTime(nextOne.item, nextOne.next), describeRule(nextOne.item.rule)].filter(Boolean).join(' · ')}
                       </span>
                     </button>
                   </div>
@@ -174,7 +176,7 @@ export function RecurringPage() {
                       </span>
                       <span className="flex items-center gap-1 truncate text-[12px] text-faint">
                         <Repeat size={14} className="shrink-0" />
-                        {[describeRule(item.rule), item.time].filter(Boolean).join(' · ')}
+                        {[describeRule(item.rule), recurringTime(item, next)].filter(Boolean).join(' · ')}
                       </span>
                     </span>
                     <span className="shrink-0 text-[12px] text-soft">{relativeDays(next)?.label}</span>
@@ -190,16 +192,31 @@ export function RecurringPage() {
               <p className="card px-5 py-4 text-[15px] text-faint">Nada mais programado.</p>
             )}
             {inactive.length > 0 && (
-              <>
-                <h3 className="mt-6 mb-2 px-1 text-[13px] font-semibold text-soft">Desativados</h3>
-                <div className="card divide-y divide-line">
-                  {inactive.map((r) => (
-                    <button key={r.id} type="button" onClick={() => form.show(r)} className="flex w-full items-center px-4 py-3 text-left text-[15px] text-faint hover:bg-tint/[0.03] tap">
-                      {r.title}
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div className="mt-6">
+                <button type="button" aria-expanded={showStopped} onClick={() => setShowStopped(!showStopped)} className="flex w-full items-center gap-2 px-1 text-[13px] font-semibold text-soft hover:text-ink">
+                  Pausados e encerrados · {inactive.length}
+                  <ChevronDown size={16} className={`transition-transform duration-200 ${showStopped ? 'rotate-180' : ''}`} />
+                </button>
+                {showStopped && (
+                  <div className="card mt-2 divide-y divide-line">
+                    {inactive.map((r) => {
+                      const st = recurringState(r, today)
+                      return (
+                        <button key={r.id} type="button" onClick={() => form.show(r)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-tint/[0.03] tap">
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[15px] text-soft">{r.title}</span>
+                            <span className="block truncate text-[12px] text-faint">{describeRule(r.rule)}</span>
+                          </span>
+                          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold ${st === 'paused' ? 'bg-warn/[0.14] text-warn' : 'bg-tint/[0.06] text-faint'}`}>
+                            {st === 'paused' && <Pause size={14} />}
+                            {st === 'paused' ? 'Pausado' : 'Encerrado'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </section>
         </div>

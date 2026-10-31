@@ -1,4 +1,6 @@
 import { useDailyActions } from '../../core/actions'
+import { useStore } from '../../data/store'
+import { useFeedback } from '../../ui/Feedback'
 import { itemLabel, type AgendaItem } from '../../core/agenda'
 import { CheckButton } from '../daily/CheckButton'
 
@@ -25,13 +27,45 @@ export function dotOf(item: AgendaItem): string {
 
 export function useToggleItem() {
   const { completeTask, setCompletion, setRoutine, setMealDone } = useDailyActions()
-  return (item: AgendaItem, to: 'done' | 'pending' | 'skipped' = item.status === 'done' ? 'pending' : 'done') => {
+  const { data } = useStore()
+  const { toast } = useFeedback()
+
+  /**
+   * Habits attached to the line (linked to this recurring item or routine block). Done → marked too when the
+   * person chose "automático", otherwise offered in one tap. Undone → only what was marked together goes back.
+   */
+  const linked = async (item: AgendaItem, to: 'done' | 'pending' | 'skipped') => {
+    const habits = item.habits ?? []
+    if (!habits.length) return
+    if (to === 'pending') {
+      for (const { habit } of habits) {
+        const c = data.completions.find((x) => x.source === 'habit' && x.sourceId === habit.id && x.date === item.date)
+        if (c?.via === item.key) await setCompletion('habit', habit.id, item.date, null)
+      }
+      return
+    }
+    if (to !== 'done') return
+    const open = habits.filter((h) => h.status === 'pending').map((h) => h.habit)
+    const auto = open.filter((h) => h.autoFromLink)
+    const ask = open.filter((h) => !h.autoFromLink)
+    for (const h of auto) await setCompletion('habit', h.id, item.date, 'done', item.key)
+    if (ask.length)
+      toast(`${item.title}: concluído`, 'success', {
+        label: ask.length === 1 ? `Marcar ${ask[0].name}` : 'Marcar hábitos',
+        run: () => void Promise.all(ask.map((h) => setCompletion('habit', h.id, item.date, 'done', item.key))),
+      })
+    else if (auto.length) toast(`${item.title} e ${auto.map((h) => h.name).join(', ')}: concluídos`)
+  }
+
+  return async (item: AgendaItem, to: 'done' | 'pending' | 'skipped' = item.status === 'done' ? 'pending' : 'done') => {
     const src = item.source
     if (src.kind === 'task') return completeTask(src.task, to === 'done')
     if (src.kind === 'mealEntry') return setMealDone(src.meal, to === 'done')
     if (src.kind === 'habit') return setCompletion('habit', src.habit.id, item.date, to === 'pending' ? null : to)
-    if (src.kind === 'recurring') return setCompletion('recurring', src.item.id, item.date, to === 'pending' ? null : to)
-    if (src.kind === 'routine') return to === 'skipped' ? setCompletion('routine', src.block.id, item.date, 'skipped') : setRoutine(src.plan, src.block.id, item.date, to === 'done')
+    if (src.kind === 'recurring') await setCompletion('recurring', src.item.id, item.date, to === 'pending' ? null : to)
+    else if (src.kind === 'routine') await (to === 'skipped' ? setCompletion('routine', src.block.id, item.date, 'skipped') : setRoutine(src.plan, src.block.id, item.date, to === 'done'))
+    else return
+    await linked(item, to)
   }
 }
 

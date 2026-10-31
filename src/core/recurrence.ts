@@ -24,6 +24,16 @@ export function occursOn(rule: RecurrenceRule, startDate: string, date: string):
       const want = Math.min(Math.max(1, rule.dayOfMonth), lastDayOfMonth(date))
       return day === want
     }
+    case 'interval': {
+      // Counted from the start date (the first occurrence); without one there is no anchor.
+      if (!startDate) return false
+      const step = Math.max(1, Math.round(rule.every)) * (rule.unit === 'week' ? 7 : 1)
+      const diff = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${startDate}T12:00:00Z`)) / 864e5)
+      return diff >= 0 && diff % step === 0
+    }
+    default:
+      // A rule from a newer version of the app: nothing is shown rather than guessing.
+      return false
   }
 }
 
@@ -57,5 +67,12 @@ export function describeRule(rule: RecurrenceRule): string {
     }
     case 'monthly':
       return `Todo dia ${rule.dayOfMonth}`
+    case 'interval': {
+      const n = Math.max(1, Math.round(rule.every))
+      if (rule.unit === 'week') return n === 1 ? 'Toda semana' : `A cada ${n} semanas`
+      return n === 1 ? 'Todos os dias' : `A cada ${n} dias`
+    }
+    default:
+      return 'Repetição'
   }
 }

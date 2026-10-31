@@ -112,7 +112,7 @@ try {
   // "Dia" explicitly: Hoje opens on the part of the day that fits the clock.
   await b.goto(BASE + '#/today?mode=day')
   text = await b.text()
-  check('Hoje mostra a tarefa com horário', text.includes('Ligar para fornecedor') && !text.includes('está escondida') && text.toUpperCase().includes('LINHA DO DIA'))
+  check('Hoje mostra a tarefa com horário', text.includes('Ligar para fornecedor') && !text.includes('está escondida') && text.toUpperCase().includes('SEU DIA'))
   await b.shot('t2-hoje')
   await b.click('Concluir Ligar para fornecedor')
   await b.sleep(1200)

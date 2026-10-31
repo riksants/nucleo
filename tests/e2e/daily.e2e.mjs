@@ -39,15 +39,16 @@ try {
     { modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL },
   )
 
-  // ---------- Hoje: opens on the part of the day that fits the clock (Manhã 4–11h, Dia, Noite from 19h)
+  // ---------- Hoje: one view of the day (Manhã · Tarde · Noite inside it); "Começar/Fechar o dia" by the clock
   await b.goto(BASE + '#/today')
   let text = await b.text()
   const hour = Number(await b.eval(`new Intl.DateTimeFormat('en-US',{hour:'numeric',hourCycle:'h23',timeZone:${JSON.stringify(TZ)}}).format(new Date())`))
-  const expectedMode = hour >= 4 && hour < 11 ? 'Manhã' : hour >= 19 || hour < 4 ? 'Noite' : 'Dia'
-  r.check('Hoje abre na parte do dia pelo relógio, com o seletor Manhã · Dia · Noite', text.includes('Manhã') && text.includes('Noite') && (await b.eval(`document.querySelector('[role=radio][aria-checked=true]')?.textContent`)) === expectedMode, `${hour}h → ${expectedMode}`)
+  const hint = hour >= 4 && hour < 12 ? 'Começar o dia' : hour >= 18 || hour < 4 ? 'Fechar o dia' : null
+  r.check('Hoje abre no dia, com o atalho certo para o horário', text.includes('Seu dia') && (hint ? text.includes(hint) : !text.includes('Começar o dia') && !text.includes('Fechar o dia')), `${hour}h → ${hint}`)
+  r.check('a noite do dia aparece como parte "Noite"', await b.eval(`!!document.querySelector('section[aria-label="Noite"]')`))
 
   // ---------- Manhã
-  await b.click('Manhã', '[role=radio]')
+  await b.goto(BASE + '#/today?mode=morning')
   await b.sleep(800)
   text = await b.text()
   r.check('Manhã: frase-resumo do dia', /Hoje você tem 2 tarefas, 1 compromisso às 23h30 e 2 hábitos para concluir\./.test(text), text.match(/Hoje você tem[^\n]*/)?.[0])

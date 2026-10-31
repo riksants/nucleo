@@ -23,7 +23,7 @@ export function EventForm({
   open: boolean
   onClose(): void
   event: CalendarEvent | null
-  initial?: { title?: string; notes?: string; date?: string; start?: string }
+  initial?: { title?: string; notes?: string; date?: string; start?: string; end?: string }
   onSaved?(event: CalendarEvent): void
 }) {
   const { save } = useStore()
@@ -33,7 +33,7 @@ export function EventForm({
     title: event?.title ?? initial?.title ?? '',
     date: event?.date ?? initial?.date ?? '',
     start: event?.start ?? initial?.start ?? '',
-    end: event?.end ?? '',
+    end: event?.end ?? (initial?.start && initial?.end ? initial.end : initial?.start ? plusHour(initial.start) : ''),
     notes: event?.notes ?? initial?.notes ?? '',
   }))
 

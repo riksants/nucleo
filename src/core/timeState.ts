@@ -14,7 +14,7 @@ export const TIME_STATE_LABEL: Record<TimeState, string> = {
   awaiting: 'Aguardando confirmação',
   done: 'Concluído',
   missed: 'Não realizado',
-  ended: 'Encerrado',
+  ended: 'Horário encerrado',
   anytime: 'Hoje, a qualquer hora',
 }
 
@@ -39,10 +39,18 @@ export function timeWindow(item: AgendaItem): { start: number; end: number } | n
   return { start, end }
 }
 
+/**
+ * Routine blocks are a plan, not a promise: when their time is over they just read "Horário encerrado", without
+ * asking for a confirmation. They stay markable by hand, and nothing is assumed either way.
+ */
+function asksConfirmation(item: AgendaItem): boolean {
+  return isMarkable(item) && item.source.kind !== 'routine'
+}
+
 export function timeState(item: AgendaItem, today: string, nowTime: string): TimeState {
   if (item.status === 'done') return 'done'
   if (item.status === 'skipped') return 'missed'
-  const markable = isMarkable(item)
+  const markable = asksConfirmation(item)
   if (item.date > today) return 'scheduled'
   const w = timeWindow(item)
   if (item.date < today) return markable ? 'awaiting' : 'ended'

@@ -52,8 +52,8 @@ describe('lembretes', () => {
     const occ = buildOccurrences({ ...empty(), routinePlans: [routine], mealPlans: [meals] }, on(['routine', 'meals'], { reminders: { showDetails: true, rules: { ...DEFAULT_REMINDERS.rules, routine: { ...DEFAULT_REMINDERS.rules.routine, enabled: true }, meals: { ...DEFAULT_REMINDERS.rules.meals, enabled: true } } } }), { now: NOW, days: 14 })
     const mondays = occ.filter((o) => o.kind === 'routine' && o.key.startsWith('routine:'))
     expect(mondays).toHaveLength(2) // 5/out e 12/out
-    // and, when each one ends, the "concluiu?" (not marked as done by the clock)
-    expect(occ.filter((o) => o.key.startsWith('routine-end:')).map((o) => o.fireAt.toISOString())).toEqual(['2026-10-05T11:00:00.000Z', '2026-10-12T11:00:00.000Z'])
+    // When a block ends it only reads "Horário encerrado" in the app: no "concluiu?" push (Etapa 1 do dia a dia).
+    expect(occ.filter((o) => o.key.startsWith('routine-end:'))).toEqual([])
     expect(new Set(occ.map((o) => o.key)).size).toBe(occ.length)
     const meal = occ.find((o) => o.kind === 'meals')!
     expect(`${meal.title} ${meal.body}`).not.toMatch(/Frango|Salada/)

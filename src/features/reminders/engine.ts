@@ -19,7 +19,8 @@ import { typeLabel, weeksWithMeals } from '../../core/meals'
 import { stepDone, taskMap } from '../../core/plans'
 import { weekStart } from '../../core/period'
 import { indexCompletions, routineStatus, statusOf } from '../../core/completions'
-import { habitsDue, recurringOn } from '../../core/habits'
+import { habitsDue, recurringOn, recurringTime } from '../../core/habits'
+import { habitHostOn } from '../../core/habitLink'
 
 export const KINDS: ReminderKind[] = ['events', 'tasks', 'habits', 'routine', 'recurring', 'payments', 'receivables', 'deadlines', 'meals', 'focus']
 
@@ -432,13 +433,14 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
     }
   }
 
-  // ---------------------------------------------------------------- Rotina: início e, ao terminar, "concluiu?"
+  // ---------------------------------------------------------------- Rotina: início (ao terminar, só "Horário encerrado" no app)
   const routine = data.routinePlans.find((p) => p.id === 'routine-current') as RoutinePlan | undefined
   if (on('routine') && routine && isEnabled(settings, 'routine')) {
     for (const date of dates) {
       const day = weekdayOfDate(date)
       for (const b of routine.blocks) {
-        if (b.day !== day || b.kind === 'meal' || !isTime(b.start)) continue
+        // Already marked as done (early): nothing to remind.
+        if (b.day !== day || b.kind === 'meal' || !isTime(b.start) || routineStatus(index, routine, b.id, date) === 'done') continue
         const label = b.kind === 'commute' ? `${b.title} — hora de sair` : b.title
         timed(
           ctx,
@@ -452,9 +454,7 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
           },
           zonedToInstant(date, b.start, tz),
         )
-        // When it ends, a quick "concluiu?" (never marks anything: the answer is the person's, in Hoje).
-        if ((prefs.legacy || prefs.followUp) && b.kind !== 'commute' && b.kind !== 'rest' && isTime(b.end) && b.end > b.start && routineStatus(index, routine, b.id, date) === 'pending')
-          add(ctx, 'routine', `routine-end:${b.id}:${date}T${b.end}`, zonedToInstant(date, b.end, tz), `${b.title}: concluiu?`, `${b.title} terminou às ${b.end}. Você concluiu?`, '#/today?mode=day')
+        // When a block ends it just reads "Horário encerrado" in Hoje: no "concluiu?" is asked.
       }
     }
   }
@@ -715,7 +715,8 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
       for (const h of habitsDue(data.habits ?? [], date)) {
         if (statusOf(index, 'habit', h.id, date) !== 'pending') continue
         pending++
-        if (!isTime(h.time)) continue
+        // Its own reminder can be off; and when a linked item hosts it today, that item already reminds.
+        if (!isTime(h.time) || h.remind === false || habitHostOn(data, settings, h, date)) continue
         timed(
           ctx,
           {
@@ -757,19 +758,21 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
       const title = r.bill ? `Conta: ${r.title}` : r.title
       for (const date of horizon) {
         if (!recurringOn(r, date) || statusOf(index, 'recurring', r.id, date) !== 'pending') continue
-        if (isTime(r.time)) {
+        // The time of this occurrence ("só esta" may have changed it): the key carries it, so a change replaces the old reminder.
+        const time = recurringTime(r, date)
+        if (isTime(time)) {
           timed(
             ctx,
             {
               kind: 'recurring',
-              base: `recurring:${r.id}:${date}T${r.time}`,
+              base: `recurring:${r.id}:${date}T${time}`,
               title,
-              before: `${r.time} · ${r.title}`,
+              before: `${time} · ${r.title}`,
               at: `Agora: ${r.title}`,
               url,
             },
-            zonedToInstant(date, r.time, tz),
-            prefs.legacy ? { when: 'before' } : {},
+            zonedToInstant(date, time, tz),
+            { ...(prefs.legacy ? { when: 'before' as const } : {}), ...(typeof r.remindMin === 'number' ? { leadMin: r.remindMin } : {}) },
           )
           if (before > 0 && (prefs.legacy || t.when !== 'at'))
             add(ctx, 'recurring', `recurring:${r.id}:${date}:${before}:${t.at}`, zonedToInstant(addDaysToDate(date, -before), t.at, tz), title, `${r.title} em ${days(before)}`, url)
