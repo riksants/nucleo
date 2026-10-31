@@ -79,6 +79,8 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+          // Etapa 4: the PDF reader (PDF.js, ~1 MB) is downloaded only by who imports a PDF, never by every update.
+          globIgnores: ['**/pdf-*.js', '**/pdf.worker*'],
           navigateFallback: `${BASE}index.html`,
           // Push notifications (works with the app closed where the platform allows it).
           importScripts: ['push-sw.js'],

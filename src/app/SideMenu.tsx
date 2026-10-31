@@ -1,7 +1,7 @@
 import { pendingCount } from '../core/automation/activity'
 import { todayIn, zoneOf } from '../core/period'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
-import { ChevronRight, FileClock, Search, SlidersHorizontal, Sparkles, UserRound, Wand2, X, type LucideIcon } from 'lucide-react'
+import { ChevronRight, FileClock, FileInput, Search, SlidersHorizontal, Sparkles, UserRound, Wand2, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../data/store'
@@ -139,6 +139,7 @@ export function SideMenu() {
     entries: [
       { href: '#/automations', path: '/automations', label: 'Feito pelo Núcleo', icon: Sparkles, count: pending || undefined },
       { href: '#/rules', path: '/rules', label: 'Minhas regras', icon: Wand2 },
+      { href: '#/intake', path: '/intake' as RoutePath, label: 'Importação inteligente', icon: FileInput },
       ...(isEnabled(settings, 'finance') ? [{ href: '#/imports', path: '/imports' as RoutePath, label: 'Extratos importados', icon: FileClock }] : []),
     ],
   })

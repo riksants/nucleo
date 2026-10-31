@@ -1,14 +1,14 @@
 import { ClipboardPaste, FileUp, History, ShieldCheck } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { navigate } from '../../app/router'
 import { usePrimaryAction } from '../../app/primaryAction'
 import { PageHeader } from '../../app/Shell'
 import { analyze } from '../../core/import/analyze'
 import { csvLines, formatOf, readFileAsync, readPasted, templateOf, type FileRead } from '../../core/import/read'
 import { MAX_PASTE_CHARS } from '../../core/import/pasted'
+import { takeHandoff } from '../../core/intake/handoff'
 import { todayIn, zoneOf } from '../../core/period'
 import { formatDateValue } from '../../lib/dates'
-import { TextArea } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
 import { MAX_IMPORT_LINES } from '../../core/import/csv'
 import { actionOf, type Decision } from '../../core/import/plan'
@@ -17,7 +17,7 @@ import type { AutomationRun, CsvMapping, Currency } from '../../data/types'
 import { Button } from '../../ui/Button'
 import { quickCurrencies } from '../../ui/CurrencySheet'
 import { useFeedback } from '../../ui/Feedback'
-import { CurrencyPicker, Field, TextInput } from '../../ui/Field'
+import { CurrencyPicker, Field, TextArea, TextInput } from '../../ui/Field'
 import { ColumnsStep, type ColumnsResult } from './ColumnsStep'
 import { PreviewStep } from './PreviewStep'
 import { useImportActions } from './useImport'
@@ -130,6 +130,23 @@ export function ImportPage() {
       setStep(ok && (r.template || (!r.guess.missing.length && !r.guess.dateAmbiguous)) ? 'preview' : 'columns')
     }
   }
+
+  // Etapa 4: movements found by the Importação inteligente arrive here, to the same preview (taken once).
+  useEffect(() => {
+    const h = takeHandoff()
+    if (!h) return
+    if (h.kind === 'text') {
+      reset()
+      setFileName(h.source)
+      begin(readPasted(h.text, todayIn(zoneOf(settings)), settings.importTemplates))
+    } else {
+      reset()
+      setFileName(h.name)
+      setStep('reading')
+      void readFileAsync(h.bytes, h.name, settings.importTemplates).then(begin)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // The same content imported before (and not undone): said before the preview — the lines show as duplicates.
   const sameFile = useMemo(() => {

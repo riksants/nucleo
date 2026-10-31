@@ -1,6 +1,8 @@
 // Etapa 4 (modo local): Feito pelo Núcleo em abas, regras que pedem confirmação/revisão, frase → editor,
 // e as larguras de celular 320/375/390 sem rolagem horizontal (temas claro e escuro).
-import { launch } from './cdp.mjs'
+import { launch, OUT } from './cdp.mjs'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { BASE, idb, noHorizontalScroll, reporter, seedExistingUser, setValue } from './helpers.mjs'
 
 const r = reporter()
@@ -32,6 +34,28 @@ const dbReady = `indexedDB.databases().then((l) => l.some((d) => d.name === 'nuc
 const T = new Date().toISOString()
 const putDb = (store, item) =>
   b.eval(`new Promise((res, rej) => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const tx = q.result.transaction(${JSON.stringify(store)}, 'readwrite'); tx.objectStore(${JSON.stringify(store)}).put(${JSON.stringify(item)}); tx.oncomplete = () => { q.result.close(); res(true) }; tx.onerror = () => rej(tx.error) } })`)
+
+/** A minimal one-page PDF with real text (read by PDF.js in the browser). */
+function pdfOf(lines) {
+  const stream = `BT /F1 12 Tf 50 750 Td 16 TL ${lines.map((l) => `(${l}) Tj T*`).join(' ')} ET`
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>', `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']
+  let out = '%PDF-1.4\n'
+  const offs = []
+  objs.forEach((o, i) => {
+    offs.push(out.length)
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`
+  })
+  const x = out.length
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offs.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF\n`
+  return Buffer.from(out, 'latin1')
+}
+
+/** Puts a file in the page's file input (CDP), like choosing it on the phone. */
+async function chooseFile(selector, path) {
+  const doc = await b.send('DOM.getDocument', { depth: -1, pierce: true })
+  const q = await b.send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector })
+  await b.send('DOM.setFileInputFiles', { nodeId: q.result.nodeId, files: [path] })
+}
 
 async function expense(value, reason) {
   await b.goto(BASE + '#/finance')
@@ -187,6 +211,63 @@ try {
   const fromSale = (await idb(b, 'transactions')).filter((t) => t.source?.kind === 'sale' && t.source.parentId === 'sj')
   r.check('pagamento entrou na venda (uma entrada só, ligada à venda)', sj?.payments?.length === 1 && sj.payments[0].amount === 30000 && fromSale.length === 1 && !(await idb(b, 'transactions')).some((t) => t.reason === 'João · Site'), JSON.stringify({ p: sj?.payments, n: fromSale.length }))
 
+  // ---------- 4.6 Importação inteligente: PDF real (PDF.js no navegador, dentro do CSP) → treino
+  mkdirSync(OUT, { recursive: true })
+  const pdfPath = join(OUT, 'treino-e2e.pdf')
+  writeFileSync(pdfPath, pdfOf(['Treino A - segunda e quinta 7h', 'Supino reto 4x10 60kg', 'Remada curvada 3x12', 'Obs: descanso 60s']))
+  await b.goto(BASE + '#/intake')
+  await sleep(1200)
+  await chooseFile('input[aria-label="Documento"]', pdfPath)
+  for (let i = 0; i < 30 && !(await mainText()).includes('O que parece ser'); i++) await sleep(500)
+  text = await mainText()
+  r.check('PDF lido no aparelho e reconhecido como treino', text.includes('Treino → Recorrentes') && text.includes('Ficha: Treino A') && text.includes('Recorrente'), text.slice(0, 700).replace(/\n/g, ' | '))
+  r.check('sem rolagem horizontal na prévia da importação (390px)', await noHorizontalScroll(b))
+  await b.shot('etapa4-intake-preview').catch(() => {})
+  await clickMain('Importar 2')
+  await sleep(700)
+  await clickIn('Importar')
+  await sleep(2000)
+  const notesNow = await idb(b, 'notes')
+  const recNow = await idb(b, 'recurring')
+  const ficha = notesNow.find((n) => n.title.startsWith('Ficha: Treino A'))
+  r.check('ficha com séries, carga e observação preservadas + recorrente seg/qui 7h', ficha?.body.includes('Supino reto 4x10 60kg') && ficha.body.includes('Obs: descanso 60s') && recNow.some((x) => x.rule?.type === 'weekdays' && x.rule.days.join() === '1,4' && x.time === '07:00'), JSON.stringify({ ficha: ficha?.body, rec: recNow.map((x) => [x.title, x.rule, x.time]) }))
+  text = await mainText()
+  r.check('resultado com contagem e Desfazer', text.includes('Criados') && text.includes('Desfazer importação'))
+  await clickMain('Desfazer importação')
+  await sleep(600)
+  await clickIn('Desfazer')
+  await sleep(1500)
+  r.check('desfazer remove o que foi importado', !(await idb(b, 'notes')).some((n) => n.title.startsWith('Ficha: Treino A')) && !(await idb(b, 'recurring')).some((x) => x.title?.startsWith('Treino A')))
+
+  // PDF sem texto: recusado com motivo
+  const scanPath = join(OUT, 'scan-e2e.pdf')
+  writeFileSync(scanPath, pdfOf([]).toString('latin1').replace('BT /F1 12 Tf 50 750 Td 16 TL  ET', '0 0 m 9 9 l S         '), 'latin1')
+  await b.goto(BASE + '#/today')
+  await b.goto(BASE + '#/intake')
+  await sleep(1000)
+  await chooseFile('input[aria-label="Documento"]', scanPath)
+  for (let i = 0; i < 30 && !/digitalizado|abrir/.test(await mainText()); i++) await sleep(500)
+  r.check('PDF sem texto: diz que é digitalizado, não finge ler', (await mainText()).includes('digitalizado'))
+
+  // Texto com movimentações → segue para Importar extrato (mesma prévia)
+  await b.goto(BASE + '#/today')
+  await b.goto(BASE + '#/intake')
+  await sleep(1000)
+  await clickMain('Colar texto')
+  await sleep(500)
+  await setValue(b, 'textarea[aria-label="Conteúdo para importar"]', [`${dd(3)} Padaria -8,40`, `${dd(2)} Farmácia -23,10`, `${dd(1)} Pix recebido +150,00`].join('\n'))
+  await clickIn('Ler o texto')
+  await sleep(1200)
+  await clickMain('Continuar em Importar extrato')
+  await sleep(1800)
+  text = await mainText()
+  r.check('sem moeda no texto: Importar extrato pergunta a moeda', text.includes('Escolha a moeda'))
+  await clickMain('EUR')
+  await sleep(1200)
+  text = await mainText()
+  r.check('movimentações seguem para a prévia de Importar extrato', text.includes('Importar extrato') && text.includes('Padaria') && text.includes('Farmácia'), text.slice(0, 500).replace(/\n/g, ' | '))
+
+  await widths('#/intake', 'Importação inteligente')
   await widths('#/automations', 'Feito pelo Núcleo')
   await widths('#/import', 'Importar extrato')
   await widths('#/rules', 'Minhas regras')

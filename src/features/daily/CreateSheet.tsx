@@ -182,6 +182,9 @@ export function CreateSheet({ open, onClose, title = 'Criar', initialText }: { o
                   </button>
                 )}
               </div>
+              <button type="button" onClick={() => (onClose(), navigate('/intake'))} className="press mt-2 flex h-12 w-full items-center justify-center rounded-2xl border border-dashed border-line text-[15px] font-medium text-soft hover:text-ink">
+                Importar documento ou texto
+              </button>
             </div>
           </div>
         ) : (

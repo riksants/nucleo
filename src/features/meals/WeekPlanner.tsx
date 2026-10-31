@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ClipboardPaste, Copy, History, MessageCircle, Plus, Settings2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ClipboardPaste, Copy, FileUp, History, MessageCircle, Plus, Settings2 } from 'lucide-react'
+import { navigate } from '../../app/router'
 import { useMemo, useState } from 'react'
 import { DEFAULT_MEAL_TYPES, copyWeek, fromTemplate, mealsOfWeek, mealTitle, mealTypes, sortMeals, typeLabel, weekDays } from '../../core/meals'
 import { addDaysToDate, useToday, weekStart, zoneOf } from '../../core/period'
@@ -169,6 +170,9 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
             </button>
             <button type="button" onClick={() => setPaste(true)} className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-soft hover:text-ink">
               <ClipboardPaste size={14} /> Colar várias
+            </button>
+            <button type="button" onClick={() => navigate('/intake', { target: 'meals' })} className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-soft hover:text-ink">
+              <FileUp size={14} /> Importar dieta
             </button>
           </div>
           {list.length ? (

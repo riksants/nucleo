@@ -34,6 +34,7 @@ export type RoutePath =
   | '/rules'
   | '/import'
   | '/imports'
+  | '/intake'
 
 export interface Route {
   path: RoutePath

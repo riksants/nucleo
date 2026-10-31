@@ -46,7 +46,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const DAYS = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']
 const DAY = `(domingo|segunda|terca|quarta|quinta|sexta|sabado)s?(?:-feiras?)?`
 
-const EVENT_WORDS = ['reuniao', 'consulta', 'dentista', 'medico', 'medica', 'compromisso', 'aula', 'entrevista', 'call', 'encontro', 'evento', 'exame', 'jantar', 'almoco', 'festa', 'voo', 'treino', 'academia', 'cabeleireiro', 'barbeiro', 'terapia', 'fisioterapia', 'show', 'cinema']
+const EVENT_WORDS = ['reuniao', 'consulta', 'dentista', 'medico', 'medica', 'compromisso', 'aula', 'entrevista', 'call', 'encontro', 'evento', 'exame', 'prova', 'jantar', 'almoco', 'festa', 'voo', 'treino', 'academia', 'cabeleireiro', 'barbeiro', 'terapia', 'fisioterapia', 'show', 'cinema']
 const LEAD = /^(?:eu\s+)?(?:tenho que|tenho de|tenho|vou ter|preciso de|preciso|quero|queria|me lembra de|me lembre de|lembrar de|lembra de|lembrete|agendar|agenda|marcar|marca|criar|cria)\s+/
 const HABIT = /\b(?:criar |crie |cria |comecar |ter )?(?:o |um |uma )?(?:novo )?habito (?:de |do |da )?/
 

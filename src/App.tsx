@@ -46,6 +46,7 @@ const AssistantPage = lazyPage(() => import('./features/assistant/AssistantPage'
 const AutomationsPage = lazyPage(() => import('./features/automations/AutomationsPage').then((m) => m.AutomationsPage))
 const RulesPage = lazyPage(() => import('./features/rules/RulesPage').then((m) => m.RulesPage))
 const ImportPage = lazyPage(() => import('./features/import/ImportPage').then((m) => m.ImportPage))
+const IntakePage = lazyPage(() => import('./features/intake/IntakePage').then((m) => m.IntakePage))
 const ImportsPage = lazyPage(() => import('./features/import/ImportsPage').then((m) => m.ImportsPage))
 const MealsPage = lazyPage(() => import('./features/meals/MealsHome').then((m) => m.MealsPage))
 const LifePage = lazyPage(() => import('./features/life/LifePage').then((m) => m.LifePage))
@@ -89,6 +90,7 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/rules': RulesPage,
   '/import': ImportPage,
   '/imports': ImportsPage,
+  '/intake': IntakePage,
 }
 
 /**
