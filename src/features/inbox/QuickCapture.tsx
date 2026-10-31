@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button'
 import { useFeedback } from '../../ui/Feedback'
 import { TextArea } from '../../ui/Field'
 import { Sheet } from '../../ui/Sheet'
+import { CreateSheet } from '../daily/CreateSheet'
 
 /** Minimal capture: type, save. Organizing happens later in the inbox. */
 export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void }) {
@@ -15,6 +16,8 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
   const { toast } = useFeedback()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  // Etapa 4: "Entender e criar agora" — the same text goes to the Cadastro inteligente (nothing saved yet).
+  const [smartText, setSmartText] = useState<string | null>(null)
 
   const submit = async () => {
     const value = text.trim()
@@ -31,14 +34,30 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
   }
 
   return (
+    <>
     <Sheet
       open={open}
       onClose={onClose}
       title="Capturar"
       footer={
-        <Button size="lg" block onClick={submit} disabled={!text.trim() || busy}>
-          Guardar para organizar depois
-        </Button>
+        <div className="space-y-2">
+          <Button size="lg" block onClick={submit} disabled={!text.trim() || busy}>
+            Guardar para organizar depois
+          </Button>
+          <Button
+            size="lg"
+            block
+            variant="secondary"
+            disabled={!text.trim() || busy}
+            onClick={() => {
+              setSmartText(text.trim())
+              setText('')
+              onClose()
+            }}
+          >
+            Entender e criar agora
+          </Button>
+        </div>
       }
     >
       <TextArea
@@ -52,8 +71,10 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
         }}
       />
-      <p className="mt-2 px-1 text-[13px] text-faint">Depois você transforma em tarefa, compromisso, anotação ou projeto.</p>
+      <p className="mt-2 px-1 text-[13px] text-faint">Depois você transforma em tarefa, compromisso, anotação ou projeto — ou toque em “Entender e criar agora”.</p>
     </Sheet>
+    {smartText !== null && <CreateSheet open onClose={() => setSmartText(null)} initialText={smartText} />}
+    </>
   )
 }
 

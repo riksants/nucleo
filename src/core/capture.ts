@@ -70,6 +70,12 @@ function readRule(t: string): (Found & { rule?: RecurrenceRule; needsWeekday?: b
     const days = [...new Set([...m[0].matchAll(new RegExp(DAY, 'g'))].map((x) => DAYS.indexOf(x[1]) as Weekday))].sort()
     return { match: m[0], rule: { type: 'weekdays', days } }
   }
+  // Etapa 4: a list of two or more days ("treino segunda, quarta e sexta") repeats on those days.
+  m = t.match(new RegExp(`\\b${DAY}(?:\\s*(?:,|e)?\\s*${DAY})+\\b`))
+  if (m) {
+    const days = [...new Set([...m[0].matchAll(new RegExp(DAY, 'g'))].map((x) => DAYS.indexOf(x[1]) as Weekday))].sort()
+    if (days.length >= 2) return { match: m[0], rule: { type: 'weekdays', days } }
+  }
   m = t.match(/\b(?:todos os dias|todo dia|diariamente|por dia|cada dia|uma vez por dia|1 vez por dia)\b/)
   if (m) return { match: m[0], rule: { type: 'daily' } }
   m = t.match(/\b(?:toda semana|todas as semanas|semanalmente|uma vez por semana|1 vez por semana|por semana)\b/)

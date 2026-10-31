@@ -141,10 +141,10 @@ function Questions({ draft, today, onAnswer }: { draft: CaptureDraft; today: str
  * One line to write (or say) the whole thing. `onDraft` gets the result once nothing important is missing.
  * `submitLabel`: "Preencher" inside a form, "Entender" in the create sheet.
  */
-export function SmartField({ onDraft, submitLabel = 'Entender', placeholder, autoFocus }: { onDraft(d: CaptureDraft): void; submitLabel?: string; placeholder?: string; autoFocus?: boolean }) {
+export function SmartField({ onDraft, submitLabel = 'Entender', placeholder, autoFocus, onText, initialText = '' }: { onDraft(d: CaptureDraft): void; submitLabel?: string; placeholder?: string; autoFocus?: boolean; onText?(text: string): boolean; initialText?: string }) {
   const { settings } = useStore()
   const today = useToday(zoneOf(settings))
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [pending, setPending] = useState<CaptureDraft | null>(null)
   const speech = useSpeech(setText)
   const done = (d: CaptureDraft) => {
@@ -154,7 +154,12 @@ export function SmartField({ onDraft, submitLabel = 'Entender', placeholder, aut
       onDraft(d)
     }
   }
-  const read = () => text.trim() && done(parseCapture(text, today))
+  // Etapa 4: the Cadastro inteligente may take the sentence first (money, goals, subscriptions, clients, sales).
+  const read = () => {
+    if (!text.trim()) return
+    if (onText?.(text)) return setPending(null)
+    done(parseCapture(text, today))
+  }
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
