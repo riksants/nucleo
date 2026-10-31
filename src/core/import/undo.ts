@@ -72,6 +72,20 @@ export function undoImport(run: AutomationRun, data: DataState, today: string, n
     void _b
     ops.push({ op: 'put', collection: 'transactions', item: rest as Transaction })
   }
+  // Etapa 4: the other side of a transfer, marked by this import, goes back — only if still as the import left it.
+  for (const ch of run.changed) {
+    if (ch.collection !== 'transactions' || ch.field !== 'transfer') continue
+    const tx = state.transactions.find((t) => t.id === ch.id)
+    if (!tx) continue
+    if (JSON.stringify(tx.transfer) !== JSON.stringify(ch.after)) {
+      kept.push({ id: tx.id, label: tx.reason, why: 'a marca de transferência foi alterada depois' })
+      continue
+    }
+    const next = { ...tx } as Transaction
+    if (ch.before === undefined) delete next.transfer
+    else next.transfer = ch.before as Transaction['transfer']
+    ops.push({ op: 'put', collection: 'transactions', item: next })
+  }
   const info = run.bankImport!
   const result = { removed, unlinked: reconciled.length, rules, kept }
   ops.push(runPut({ ...run, status: 'undone', bankImport: { ...info, undone: { at: now.toISOString(), ...result } } }))

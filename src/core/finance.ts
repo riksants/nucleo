@@ -72,7 +72,8 @@ export function financeIndex(transactions: Transaction[], settings: Pick<Setting
     let d = days.get(date)
     if (!d) days.set(date, (d = blankDay()))
     d.balanceDelta += t.baseAmount
-    if (t.type === 'adjust') continue
+    // Balance adjustments and transfers between own accounts move the balance but are neither income nor expense.
+    if (t.type === 'adjust' || t.transfer) continue
     d.count++
     if (t.currency !== settings.baseCurrency) d.otherCurrency++
     if (t.type === 'in') d.income += t.baseAmount

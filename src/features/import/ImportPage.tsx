@@ -1,10 +1,15 @@
-import { FileUp, History, ShieldCheck } from 'lucide-react'
+import { ClipboardPaste, FileUp, History, ShieldCheck } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { navigate } from '../../app/router'
 import { usePrimaryAction } from '../../app/primaryAction'
 import { PageHeader } from '../../app/Shell'
 import { analyze } from '../../core/import/analyze'
-import { csvLines, readFile, templateOf, type FileRead } from '../../core/import/read'
+import { csvLines, formatOf, readFileAsync, readPasted, templateOf, type FileRead } from '../../core/import/read'
+import { MAX_PASTE_CHARS } from '../../core/import/pasted'
+import { todayIn, zoneOf } from '../../core/period'
+import { formatDateValue } from '../../lib/dates'
+import { TextArea } from '../../ui/Field'
+import { Sheet } from '../../ui/Sheet'
 import { MAX_IMPORT_LINES } from '../../core/import/csv'
 import { actionOf, type Decision } from '../../core/import/plan'
 import { newId, useStore } from '../../data/store'
@@ -41,6 +46,8 @@ export function ImportPage() {
   const [decisions, setDecisions] = useState<Map<number, Decision>>(new Map())
   const [saving, setSaving] = useState(false)
   const [run, setRun] = useState<AutomationRun | null>(null)
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasted, setPasted] = useState('')
 
   const knownAccounts = useMemo(() => {
     const names = new Set<string>()
@@ -74,13 +81,38 @@ export function ImportPage() {
     await new Promise((r) => setTimeout(r, 30))
     try {
       const bytes = new Uint8Array(await file.arrayBuffer())
-      const r = readFile(bytes, file.name, settings.importTemplates)
+      begin(await readFileAsync(bytes, file.name, settings.importTemplates))
+    } catch (err) {
+      console.error('Importação: falha ao ler o arquivo', err)
+      setError('Não consegui ler este arquivo. Ele parece usar um formato diferente.')
+      setStep('error')
+    }
+  }
+
+  /** "Colar texto do extrato": the same preview as a file. */
+  const onPaste = () => {
+    reset()
+    setPasteOpen(false)
+    setFileName('Texto colado')
+    begin(readPasted(pasted, todayIn(zoneOf(settings)), settings.importTemplates))
+  }
+
+  /** What was read → the next step (columns when unsure, else the preview). */
+  const begin = (r: FileRead) => {
+    {
       if (r.kind === 'error') {
         setError(r.message)
         setStep('error')
         return
       }
       setRead(r)
+      if (r.kind === 'lines') {
+        setAccount('')
+        setAccountKey('')
+        setCurrency(r.lines.find((l) => l.currency)?.currency ?? null)
+        setStep('preview')
+        return
+      }
       if (r.kind === 'ofx') {
         setAccount(r.account ?? '')
         setAccountKey(r.account ?? '')
@@ -96,16 +128,19 @@ export function ImportPage() {
       if (r.template) setTemplate({ id: r.template.id, name: r.template.name, applied: true })
       const ok = !csvLines(r.sheet, r.mapping).problems.length
       setStep(ok && (r.template || (!r.guess.missing.length && !r.guess.dateAmbiguous)) ? 'preview' : 'columns')
-    } catch (err) {
-      console.error('Importação: falha ao ler o arquivo', err)
-      setError('Não consegui ler este arquivo. Ele parece usar um formato diferente.')
-      setStep('error')
     }
   }
+
+  // The same content imported before (and not undone): said before the preview — the lines show as duplicates.
+  const sameFile = useMemo(() => {
+    if (!read?.hash) return null
+    return data.automationRuns.find((x) => x.automation === 'bankImport' && x.status !== 'undone' && x.bankImport?.fileHash === read.hash) ?? null
+  }, [read, data.automationRuns])
 
   const lines = useMemo(() => {
     if (!read) return null
     if (read.kind === 'ofx') return { lines: read.lines, ignored: 0, problems: [] as string[] }
+    if (read.kind === 'lines') return { lines: read.lines, ignored: read.ignored, problems: [] as string[] }
     return mapping ? csvLines(read.sheet, mapping) : null
   }, [read, mapping])
 
@@ -114,7 +149,7 @@ export function ImportPage() {
 
   const analysis = useMemo(() => {
     if (step !== 'preview' || !lines || lines.problems.length) return null
-    return analyze(lines.lines, { account: accountKey, currency }, data, { settings, convert })
+    return analyze(lines.lines, { account: accountKey, currency }, data, { settings, convert, today: todayIn(zoneOf(settings)) })
   }, [step, lines, accountKey, currency, data, settings, convert])
 
   const onColumns = (r: ColumnsResult) => {
@@ -149,7 +184,7 @@ export function ImportPage() {
     if (!ok) return
     setSaving(true)
     try {
-      const r = await importNow(analysis, decisions, { file: fileName, format: read.kind, account: accountKey.trim(), ...(template ? { template: template.name } : {}) })
+      const r = await importNow(analysis, decisions, { file: fileName, format: formatOf(read), account: accountKey.trim(), ...(read.hash ? { fileHash: read.hash } : {}), ...(template ? { template: template.name } : {}) })
       if (typeof r === 'string') {
         toast(r, 'error')
         return
@@ -166,7 +201,7 @@ export function ImportPage() {
     }
   }
 
-  const header = <PageHeader title="Importar extrato" subtitle={step === 'pick' ? 'CSV ou OFX do seu banco' : fileName} />
+  const header = <PageHeader title="Importar extrato" subtitle={step === 'pick' ? 'CSV, OFX, Excel ou texto do seu banco' : fileName} />
 
   if (step === 'done' && run?.bankImport) {
     const b = run.bankImport
@@ -186,6 +221,7 @@ export function ImportPage() {
           </div>
           <div className="card divide-y divide-line">
             {row('Importadas', b.created)}
+            {b.transfers ? row('Transferências entre suas contas (fora dos totais)', b.transfers) : null}
             {row('Conciliadas com o que já existia', b.reconciled)}
             {row('Duplicadas ignoradas', b.duplicates)}
             {row('Categorias aplicadas', b.categorized)}
@@ -208,7 +244,7 @@ export function ImportPage() {
   return (
     <>
       {header}
-      <input ref={input} type="file" accept=".csv,.ofx,.qfx,.txt,text/csv,application/x-ofx" className="sr-only" aria-label="Arquivo do extrato" onChange={(e) => void onFile(e.target.files?.[0])} />
+      <input ref={input} type="file" accept=".csv,.ofx,.qfx,.txt,.tsv,.xlsx,text/csv,application/x-ofx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" aria-label="Arquivo do extrato" onChange={(e) => void onFile(e.target.files?.[0])} />
       {step === 'pick' && (
         <div className="max-w-xl space-y-5">
           <button type="button" onClick={() => input.current?.click()} className="card flex w-full flex-col items-center gap-3 border-dashed px-6 py-10 text-center transition-colors hover:bg-tint/[0.03]">
@@ -216,7 +252,14 @@ export function ImportPage() {
               <FileUp size={24} />
             </span>
             <span className="text-[17px] font-semibold">Escolher arquivo</span>
-            <span className="text-[14px] text-soft">Extrato em CSV ou OFX, baixado do site ou app do banco</span>
+            <span className="text-[14px] text-soft">Extrato em CSV, OFX ou Excel (.xlsx), baixado do site ou app do banco</span>
+          </button>
+          <button type="button" onClick={() => setPasteOpen(true)} className="card flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03]">
+            <ClipboardPaste size={18} className="text-soft" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium">Colar texto do extrato</span>
+              <span className="block text-[13px] text-faint">Copie as linhas do site ou app do banco e cole aqui</span>
+            </span>
           </button>
           <p className="flex items-start gap-2 px-1 text-[13px] leading-relaxed text-faint">
             <ShieldCheck size={16} className="mt-0.5 shrink-0" />
@@ -232,9 +275,29 @@ export function ImportPage() {
       {step === 'error' && (
         <div className="max-w-xl space-y-4">
           <p className="card px-4 py-4 text-[15px] leading-relaxed">{error}</p>
-          <Button onClick={() => input.current?.click()}>Escolher outro arquivo</Button>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => input.current?.click()}>Escolher outro arquivo</Button>
+            <Button variant="secondary" onClick={() => setPasteOpen(true)}>
+              Colar texto
+            </Button>
+          </div>
         </div>
       )}
+      <Sheet
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        title="Colar texto do extrato"
+        footer={
+          <Button size="lg" block disabled={!pasted.trim()} onClick={onPaste}>
+            Ler o texto
+          </Button>
+        }
+      >
+        <div className="space-y-3 pt-1">
+          <TextArea aria-label="Texto do extrato" rows={9} maxLength={MAX_PASTE_CHARS} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'05/10 Mercadona -45,20\n06/10 Salário +2.500,00\n07/10 Uber -12,90'} />
+          <p className="text-[13px] leading-relaxed text-faint">Cada movimentação precisa de data, descrição e valor com sinal (ou C/D). Valores sem sinal não são adivinhados: aparecem para você decidir. Nada é salvo antes da prévia.</p>
+        </div>
+      </Sheet>
       {step === 'columns' && read?.kind === 'csv' && mapping && (
         <div className="max-w-2xl">
           <ColumnsStep sheet={read.sheet} guess={read.guess} initial={mapping} templateName={template?.name} onDone={onColumns} onCancel={() => input.current?.click()} />
@@ -275,14 +338,19 @@ export function ImportPage() {
               </Field>
             )}
           </div>
+          {sameFile && (
+            <p className="card px-4 py-3 text-[14px] leading-relaxed text-warn">
+              Este conteúdo já foi importado em {formatDateValue(sameFile.date).toLowerCase()}. As linhas que já estão no Núcleo aparecem como duplicadas e não entram de novo.
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-soft">
-            <span>{read.kind === 'ofx' ? 'Arquivo OFX' : template?.applied ? `Modelo “${template.name}” aplicado` : 'Arquivo CSV'}</span>
+            <span>{read.kind === 'ofx' ? 'Arquivo OFX' : read.kind === 'lines' ? 'Texto colado' : template?.applied ? `Modelo “${template.name}” aplicado` : read.source === 'xlsx' ? 'Planilha do Excel' : read.source === 'text' ? 'Texto colado (tabela)' : 'Arquivo CSV'}</span>
             {read.kind === 'csv' && (
               <button type="button" className="font-medium text-accent-hi hover:text-ink" onClick={() => setStep('columns')}>
                 Ajustar colunas
               </button>
             )}
-            {lines && lines.ignored > 0 && <span>{lines.ignored === 1 ? '1 linha de saldo/total ignorada' : `${lines.ignored} linhas de saldo/total ignoradas`}</span>}
+            {lines && lines.ignored > 0 && <span>{read.kind === 'lines' ? (lines.ignored === 1 ? '1 linha que não é movimentação foi ignorada' : `${lines.ignored} linhas que não são movimentações foram ignoradas`) : lines.ignored === 1 ? '1 linha de saldo/total ignorada' : `${lines.ignored} linhas de saldo/total ignoradas`}</span>}
             {lines?.tooMany ? <span>{`Só as primeiras ${MAX_IMPORT_LINES.toLocaleString('pt-BR')} linhas foram lidas; ${lines.tooMany.toLocaleString('pt-BR')} ficaram de fora. Importe um período menor.`}</span> : null}
           </div>
           {needsCurrency ? (

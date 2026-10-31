@@ -63,7 +63,7 @@ try {
   await b.mobile()
   await b.send('Network.enable')
   await b.send('Network.setBypassServiceWorker', { bypass: true })
-  await seedExistingUser(b, {}, { baseCurrency: 'EUR', displayCurrency: 'EUR', currencies: ['EUR', 'BRL'], initialBalance: 500000, rates: freshRates, timeZone: 'Europe/Madrid', automations, modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL })
+  await seedExistingUser(b, {}, { baseCurrency: 'EUR', displayCurrency: 'EUR', currencies: ['EUR', 'BRL'], initialBalance: 500000, startedAt: '2026-01-01T00:00:00.000Z', rates: freshRates, timeZone: 'Europe/Madrid', automations, modules: Object.fromEntries(ALL.map((m) => [m, true])), modulesSeen: ALL })
   await b.send('Page.addScriptToEvaluateOnNewDocument', { source: `document.addEventListener('DOMContentLoaded', () => document.getElementById('splash')?.remove())` })
   await b.goto(BASE + '#/rules')
   await waitFor(dbReady, 'banco v9')
@@ -123,7 +123,35 @@ try {
   r.check('recarregar não refaz a tarefa', (await idb(b, 'tasks')).length === 1)
   await b.shot('etapa4-feito-390').catch(() => {})
 
+  // ---------- 4.4 Importar extrato: texto colado → prévia com totais por moeda e transferência → importar
+  const dd = (n) => { const x = new Date(Date.now() - n * 86_400_000); return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}` }
+  await b.goto(BASE + '#/import')
+  await sleep(1000)
+  await b.click('Colar texto do extrato')
+  await sleep(500)
+  await setValue(b, 'textarea[aria-label="Texto do extrato"]', [`${dd(3)} Mercadona -45,20`, `${dd(2)} Salário +2.500,00`, `${dd(2)} Transf. entre contas proprias -300,00`, `${dd(1)} Sem sinal 30,00`].join('\n'))
+  await clickIn('Ler o texto')
+  await sleep(1500)
+  text = await mainText()
+  if (text.includes('Escolha a moeda')) {
+    await clickMain('EUR')
+    await sleep(1200)
+    text = await mainText()
+  }
+  r.check('texto colado vira prévia com totais por moeda', text.includes('Texto colado') && /Entradas\s*€\s?2\.500,00/.test(text) && /Saídas\s*€\s?45,20/.test(text) && text.includes('1 transferência entre contas (fora dos totais)'), text.slice(0, 900).replace(/\n/g, ' | '))
+  r.check('linha sem sinal não é adivinhada', text.includes('sem sinal'))
+  r.check('sem rolagem horizontal na prévia (390px)', await noHorizontalScroll(b))
+  await b.shot('etapa4-import-preview').catch(() => {})
+  await clickMain('Importar 3')
+  await sleep(700)
+  await clickIn('Importar')
+  await sleep(2000)
+  const all = await idb(b, 'transactions')
+  const transfer = all.find((t) => t.reason?.includes('entre contas'))
+  r.check('importou 3 movimentações; a transferência ficou marcada e preservada', all.filter((t) => t.bank).length === 3 && transfer?.transfer && transfer.type === 'out' && transfer.amount === 30000, JSON.stringify(all.map((t) => [t.reason, t.type, t.amount, Boolean(t.transfer)])))
+
   await widths('#/automations', 'Feito pelo Núcleo')
+  await widths('#/import', 'Importar extrato')
   await widths('#/rules', 'Minhas regras')
 } catch (err) {
   r.results.push('ERROR ' + err.message)

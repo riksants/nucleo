@@ -44,7 +44,8 @@ function finder(before: DataState, ops: BatchOp[], prevOf = indexer(before)) {
 const buyerName = (sale: Sale, client: Client | undefined) => (sale.clientId ? (client?.name ?? '') : sale.clientName).trim()
 
 function moneyEvent(tx: Transaction, find: ReturnType<typeof finder>, ctx: RuleCtx): RuleEvent | null {
-  if (tx.type !== 'in' && tx.type !== 'out') return null
+  // A transfer between own accounts is not money coming in or going out: no rule reacts to it.
+  if ((tx.type !== 'in' && tx.type !== 'out') || tx.transfer) return null
   const origin: MoneyOrigin = tx.source ? ORIGIN_OF[tx.source.kind] : tx.bank && !tx.bank.reconciled ? 'import' : 'manual'
   let clientId: string | null = null
   let projectId: string | null = null

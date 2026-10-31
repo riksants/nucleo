@@ -512,7 +512,7 @@ describe('Regras da Parte 2', () => {
   })
 
   it('muitas linhas: não para no limite de 20 execuções por gravação', () => {
-    const rows = Array.from({ length: 25 }, (_, i) => `${String((i % 28) + 1).padStart(2, '0')}/10/2026;NOMINA ${i};100,00`).join('\n')
+    const rows = Array.from({ length: 25 }, (_, i) => `${String((i % 19) + 1).padStart(2, '0')}/10/2026;NOMINA ${i};100,00`).join('\n')
     const d = { ...start(), rules: [{ ...reserve(), since: '2026-01-01' }] }
     const { data: after } = importInto(d, analyzeText(`Fecha;Concepto;Importe\n${rows}\n`, d))
     expect(after.automationRuns.filter((r) => r.automation === 'rule' && r.status === 'done')).toHaveLength(25)

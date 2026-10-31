@@ -20,6 +20,8 @@ import { zoneOf } from '../period'
 import { hash16 } from '../rules/hash'
 import type { RuleCtx, RuleEvent } from '../rules/types'
 import { makeCategorizer, type CategoryGuess } from './categorize'
+import { findTransfers, suspicious, type TransferHint } from './checks'
+import { todayIn } from '../period'
 import { merchantKey, normDescription, plain, prettyDescription, similarity, textsMatch } from './normalize'
 import type { ParsedLine } from './types'
 
@@ -67,6 +69,10 @@ export interface AnalyzedLine {
   beforeStart?: boolean
   /** Lines that can never be imported (unreadable, or exactly the same line already in). */
   locked: boolean
+  /** Etapa 4: looks like a transfer between own accounts (suggested by default, or only offered). */
+  transfer?: TransferHint
+  /** Etapa 4: suspicious date or value, in words. */
+  warnings?: string[]
 }
 
 export interface ImportSource {
@@ -149,7 +155,7 @@ function describe(t: Transaction, data: DataState, tz: string, cache: Map<string
 
 const moneyKey = (type: string, currency: string, amount: number) => `${type}|${currency}|${amount}`
 
-export function analyze(lines: ParsedLine[], source: ImportSource, data: DataState, ctx: Pick<RuleCtx, 'settings' | 'convert'>): Analysis {
+export function analyze(lines: ParsedLine[], source: ImportSource, data: DataState, ctx: Pick<RuleCtx, 'settings' | 'convert'> & { today?: string }): Analysis {
   const tz = zoneOf(ctx.settings)
   const start = startDay(ctx.settings)
   const acct = plain(source.account)
@@ -298,9 +304,21 @@ export function analyze(lines: ParsedLine[], source: ImportSource, data: DataSta
     }
   }
 
-  // Categories, for the lines that may become movements.
+  // Etapa 4: transfers between own accounts, and suspicious dates/values.
+  for (const [i, hint] of findTransfers(out, data, source.account)) out[i].transfer = hint
+  const today = ctx.today ?? todayIn(tz)
+  for (const [i, list] of suspicious(out, today)) {
+    const a = out[i]
+    a.warnings = list.map((w) => w.text)
+    if (list.some((w) => w.review) && a.status === 'new') {
+      a.status = 'review'
+      a.note = list.filter((w) => w.review).map((w) => w.text).join(' ')
+    }
+  }
+
+  // Categories, for the lines that may become movements (a suggested transfer gets none: it isn't spending).
   for (const a of out) {
-    if (a.locked || a.status === 'reconciled' || a.status === 'duplicate') continue
+    if (a.locked || a.status === 'reconciled' || a.status === 'duplicate' || a.transfer?.suggested) continue
     const ev: RuleEvent = {
       key: `tx:${a.id}`,
       kind: a.type === 'in' ? 'moneyIn' : 'moneyOut',
@@ -326,7 +344,7 @@ export function analyze(lines: ParsedLine[], source: ImportSource, data: DataSta
     counts[a.status]++
     if (a.status === 'new' && a.category) counts.categorized++
   }
-  counts.attention = counts.possible + counts.review
+  counts.attention = counts.possible + counts.review + out.filter((a) => a.status === 'new' && a.warnings?.length).length
   return { lines: out, counts, from, to }
 }
 

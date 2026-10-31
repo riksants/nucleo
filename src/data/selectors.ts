@@ -6,12 +6,12 @@ export function balanceOf(settings: Pick<Settings, 'initialBalance'>, transactio
   return transactions.reduce((sum, t) => sum + t.baseAmount, settings.initialBalance)
 }
 
-/** Income and expenses in the base currency. Balance adjustments are not counted as either. */
+/** Income and expenses in the base currency. Balance adjustments and transfers between own accounts are not counted as either. */
 export function totalsSince(transactions: Transaction[], since: Date | null) {
   let income = 0
   let expense = 0
   for (const t of transactions) {
-    if (since && new Date(t.createdAt) < since) continue
+    if ((since && new Date(t.createdAt) < since) || t.transfer) continue
     if (t.type === 'in') income += t.baseAmount
     else if (t.type === 'out') expense -= t.baseAmount
   }

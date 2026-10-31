@@ -35,7 +35,7 @@ export type Learned = Map<string, Map<string, number>>
 
 /** Was this category chosen by the person (not left as the Núcleo set it, not set by a payment)? */
 function personChoice(t: Transaction): boolean {
-  if (!t.category || t.type === 'adjust' || t.source) return false
+  if (!t.category || t.type === 'adjust' || t.source || t.transfer) return false
   if (t.bank) return !t.bank.reconciled && t.category !== t.bank.autoCategory
   return true
 }

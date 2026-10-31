@@ -43,7 +43,17 @@ export interface Transaction extends Entity {
    * movement confirmed by the statement (`reconciled`). Missing on everything typed or created before.
    */
   bank?: BankRef
+  /**
+   * Etapa 4: a transfer between the person's own accounts (Sabadell → Wise). The movement stays exactly as the
+   * bank shows it (in or out, same value, same balance effect), but it is not income nor expense: totals,
+   * categories, forecasts and rules leave it out. `pairId`: the movement of the other side, when it is known.
+   * Missing on every older movement (they keep counting as before).
+   */
+  transfer?: { pairId?: string }
 }
+
+/** Income/expense that really counts (not a balance adjustment, not a transfer between own accounts). */
+export const isFlow = (t: Pick<Transaction, 'type' | 'transfer'>) => t.type !== 'adjust' && !t.transfer
 
 /** One line of an imported bank statement (CSV/OFX), as kept on the movement. */
 export interface BankRef {
@@ -1086,7 +1096,8 @@ export interface SmartImportInfo {
 
 export interface BankImportInfo {
   file: string
-  format: 'csv' | 'ofx'
+  /** Etapa 4 adds Excel and pasted text. */
+  format: 'csv' | 'ofx' | 'xlsx' | 'text'
   template?: string
   account?: string
   /** Lines read from the file. */
@@ -1103,6 +1114,10 @@ export interface BankImportInfo {
   autoReconciled: number
   /** Created movements with a category. */
   categorized: number
+  /** Etapa 4: created as transfers between own accounts (out of income/expense). */
+  transfers?: number
+  /** Etapa 4: fingerprint of the file's content (the same file imported again is recognised). */
+  fileHash?: string
   /** …of which with the category the Núcleo suggested by itself. */
   autoCategorized: number
   /** Lines that needed review and were left out (or could not be read). */

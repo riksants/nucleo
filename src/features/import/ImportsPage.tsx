@@ -30,6 +30,7 @@ function ImportRow({ run, highlight }: { run: AutomationRun; highlight: boolean 
     b.duplicates ? n(b.duplicates, 'duplicada ignorada', 'duplicadas ignoradas') : '',
     b.reconciled ? n(b.reconciled, 'conciliada', 'conciliadas') : '',
     b.categorized ? n(b.categorized, 'categoria aplicada', 'categorias aplicadas') : '',
+    b.transfers ? n(b.transfers, 'transferência entre contas', 'transferências entre contas') : '',
     left ? `${n(left, 'deixada', 'deixadas')} de fora para revisão` : '',
   ].filter(Boolean)
 

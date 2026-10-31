@@ -67,7 +67,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
   const signed = positive ? tx.amount : -tx.amount
   const converted = tx.currency !== displayCurrency ? convert(Math.abs(tx.baseAmount), settings.baseCurrency, displayCurrency) : null
   const when = showDay ? formatDateTime(tx.createdAt) : formatDateTime(tx.createdAt).split(' • ')[1]
-  const details = [when, tx.category && tx.type !== 'adjust' ? categoryLabel(settings, tx.category) : null, tx.unnecessary && tx.type === 'out' ? 'desnecessário' : null].filter(Boolean).join(' · ')
+  const details = [when, tx.transfer ? 'transferência entre contas' : null, tx.category && tx.type !== 'adjust' && !tx.transfer ? categoryLabel(settings, tx.category) : null, tx.unnecessary && tx.type === 'out' ? 'desnecessário' : null].filter(Boolean).join(' · ')
 
   return (
     <button type="button" onClick={() => onOpen(tx)} className="flex w-full items-center gap-3.5 rounded-2xl px-2 py-3 text-left transition-colors hover:bg-tint/[0.03] active:bg-tint/[0.04]">
@@ -83,7 +83,7 @@ export function TransactionRow({ tx, onOpen, showDay = true }: { tx: Transaction
         <span className="mt-0.5 block truncate text-[13px] text-faint">{details}</span>
       </span>
       <span className="shrink-0 text-right">
-        <span className={`num block text-[16px] font-semibold ${tx.type === 'adjust' ? 'text-soft' : positive ? 'text-income' : 'text-ink'}`}>
+        <span className={`num block text-[16px] font-semibold ${tx.type === 'adjust' || tx.transfer ? 'text-soft' : positive ? 'text-income' : 'text-ink'}`}>
           {formatMoney(signed, tx.currency, { sign: true })}
         </span>
         {converted !== null && <span className="num mt-0.5 block text-[13px] text-faint">≈ {formatMoney(converted, displayCurrency)}</span>}

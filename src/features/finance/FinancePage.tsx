@@ -33,7 +33,7 @@ export function FinancePage() {
 function WeekBars() {
   const { data } = useStore()
   const days = Array.from({ length: 7 }, (_, i) => toDateInput(new Date(Date.now() - (6 - i) * 86_400_000)))
-  const spent = days.map((d) => data.transactions.reduce((sum, t) => (t.type === 'out' && toDateInput(new Date(t.createdAt)) === d ? sum - t.baseAmount : sum), 0))
+  const spent = days.map((d) => data.transactions.reduce((sum, t) => (t.type === 'out' && !t.transfer && toDateInput(new Date(t.createdAt)) === d ? sum - t.baseAmount : sum), 0))
   const max = Math.max(...spent, 1)
   return (
     <div className="flex h-14 shrink-0 items-end gap-1.5" aria-hidden>

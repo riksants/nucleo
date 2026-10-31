@@ -62,6 +62,8 @@ const applyToState = applyOps
 export interface TransactionExtras {
   category?: string | null
   unnecessary?: boolean
+  /** Etapa 4: "Transferência entre minhas contas" (kept in the balance, out of income/expense). */
+  transfer?: boolean
 }
 
 /**
@@ -77,6 +79,10 @@ export function withExtras<T extends Partial<Transaction>>(tx: T, type: Transact
   if ('unnecessary' in extras) {
     if (extras.unnecessary && type === 'out') out.unnecessary = true
     else delete out.unnecessary
+  }
+  if ('transfer' in extras) {
+    if (extras.transfer && type !== 'adjust') out.transfer = (out as Partial<Transaction>).transfer ?? {}
+    else delete out.transfer
   }
   return out
 }

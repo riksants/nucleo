@@ -57,6 +57,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
     reason: editing?.reason ?? '',
     category: editing?.category ?? '',
     unnecessary: editing?.unnecessary ?? false,
+    transfer: Boolean(editing?.transfer),
   }))
   const categories = kind === 'adjust' ? [] : pickableCategories(settings, kind, editing?.category)
   useEffect(() => {
@@ -97,6 +98,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
       const extras = {
         ...(draft.category || editing?.category ? { category: draft.category || null } : {}),
         ...(draft.unnecessary || editing?.unnecessary ? { unnecessary: kind === 'out' && draft.unnecessary } : {}),
+        ...(draft.transfer || editing?.transfer ? { transfer: draft.transfer } : {}),
       }
       const input = { amount: cents, currency: draft.currency, reason: draft.reason.trim(), ...extras }
       if (editing) await updateTransaction(editing, input)
@@ -293,11 +295,14 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
                 ))}
               </Select>
             </div>
-            {kind === 'out' && (
+            {kind === 'out' && !draft.transfer && (
               <ToggleRow checked={draft.unnecessary} onChange={(v) => set('unnecessary', v)} hint="Opcional — só você decide. Aparece na revisão da semana e no mês.">
                 Gasto desnecessário
               </ToggleRow>
             )}
+            <ToggleRow checked={draft.transfer} onChange={(v) => set('transfer', v)} hint="Fica no saldo como o banco mostra, mas não conta como entrada nem saída nos totais, categorias e regras.">
+              Transferência entre minhas contas
+            </ToggleRow>
           </div>
         )}
         <button type="submit" hidden />

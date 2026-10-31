@@ -437,7 +437,9 @@ function covered(s: RuleSuggestion, rules: Rule[]): boolean {
 }
 
 /** Every suggestion that holds now, strongest first (money, then tasks, bills, categories). */
-export function ruleSuggestions(data: DataState, settings: Settings, today: string): RuleSuggestion[] {
+export function ruleSuggestions(all0: DataState, settings: Settings, today: string): RuleSuggestion[] {
+  // Transfers between own accounts are never a pattern of income or spending.
+  const data = all0.transactions.some((t) => t.transfer) ? { ...all0, transactions: all0.transactions.filter((t) => !t.transfer) } : all0
   const all = [
     ...reserveAfterIncome(data, settings, today),
     ...taskAfterProjectDone(data, settings, today),

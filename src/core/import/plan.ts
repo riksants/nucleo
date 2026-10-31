@@ -22,12 +22,21 @@ export interface Decision {
   action: LineAction
   /** The category chosen (null = none). Undefined = what the preview suggested. */
   category?: string | null
+  /** Etapa 4: "Transferência entre suas contas". Undefined = what the preview suggested. */
+  transfer?: boolean
+}
+
+/** Whether a line goes in as a transfer between own accounts: the person's choice, else the suggestion. */
+export function transferOf(l: AnalyzedLine, d: Decision | undefined): boolean {
+  return d?.transfer ?? Boolean(l.transfer?.suggested)
 }
 
 export interface ImportMeta {
   importId: string
   file: string
-  format: 'csv' | 'ofx'
+  format: 'csv' | 'ofx' | 'xlsx' | 'text'
+  /** Etapa 4: fingerprint of the content (recognises the same file imported again). */
+  fileHash?: string
   account: string
   template?: string
 }
@@ -69,8 +78,9 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
   const ops: BatchOp[] = []
   const created = new Set<string>()
   const linked = new Set<string>()
-  const info: BankImportInfo = { file: meta.file, format: meta.format, ...(meta.template ? { template: meta.template } : {}), ...(meta.account ? { account: meta.account } : {}), lines: analysis.lines.length, created: 0, duplicates: 0, possible: 0, reconciled: 0, autoReconciled: 0, categorized: 0, autoCategorized: 0, review: 0, errors: 0, ...(analysis.from ? { from: analysis.from, to: analysis.to } : {}) }
+  const info: BankImportInfo = { file: meta.file, format: meta.format, ...(meta.fileHash ? { fileHash: meta.fileHash } : {}), ...(meta.template ? { template: meta.template } : {}), ...(meta.account ? { account: meta.account } : {}), lines: analysis.lines.length, created: 0, duplicates: 0, possible: 0, reconciled: 0, autoReconciled: 0, categorized: 0, autoCategorized: 0, review: 0, errors: 0, ...(analysis.from ? { from: analysis.from, to: analysis.to } : {}) }
   const missingRate = new Set<string>()
+  const changed: AutomationRun['changed'] = []
 
   for (const l of analysis.lines) {
     const d = decisions.get(l.i)
@@ -116,9 +126,24 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
       missingRate.add(l.currency)
       continue
     }
-    const category = categoryOf(l, d)
+    const transfer = transferOf(l, d)
+    // A transfer is not spending nor income: no category.
+    const category = transfer ? null : categoryOf(l, d)
     // Left as the Núcleo suggested (not chosen by the person): not counted as learning later.
     const auto = Boolean(category && l.category && d?.category === undefined && category === l.category.id)
+    let pairId: string | undefined
+    if (transfer && l.transfer?.pairTxId) {
+      const other = byId.get(l.transfer.pairTxId)
+      // The other side (already in the Núcleo) is marked too — recorded, so undoing the import takes it back.
+      if (other && !other.transfer?.pairId) {
+        pairId = other.id
+        ops.push({ op: 'put', collection: 'transactions', item: { ...other, transfer: { pairId: l.id } } as Transaction })
+        changed.push({ collection: 'transactions', id: other.id, field: 'transfer', before: other.transfer, after: { pairId: l.id } })
+      }
+    } else if (transfer && l.transfer?.pairLine !== undefined) {
+      const other = analysis.lines[l.transfer.pairLine]
+      if (other && actionOf(other, decisions.get(other.i)) === 'import' && transferOf(other, decisions.get(other.i))) pairId = other.id
+    }
     const tx: Transaction = {
       id: l.id,
       createdAt: `${l.day}T12:00:00.000Z`,
@@ -129,12 +154,14 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
       baseAmount: l.type === 'in' ? base : -base,
       reason: l.reason,
       ...(category ? { category } : {}),
+      ...(transfer ? { transfer: pairId ? { pairId } : {} } : {}),
       bank: { ...ref, ...(auto ? { autoCategory: category! } : {}) },
     }
     tx.bank!.fp = bankFp(tx)
     ops.push({ op: 'put', collection: 'transactions', item: tx })
     created.add(tx.id)
     info.created++
+    if (transfer) info.transfers = (info.transfers ?? 0) + 1
     if (category) info.categorized++
     if (auto) info.autoCategorized++
   }
@@ -145,6 +172,7 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
   }
 
   const parts: string[] = []
+  if (info.transfers) parts.push(plural(info.transfers, 'transferência entre suas contas', 'transferências entre suas contas'))
   if (info.autoCategorized) parts.push(plural(info.autoCategorized, 'categoria aplicada automaticamente', 'categorias aplicadas automaticamente'))
   if (info.reconciled) parts.push(plural(info.reconciled, 'movimentação conciliada', 'movimentações conciliadas'))
   if (info.duplicates) parts.push(plural(info.duplicates, 'duplicada ignorada', 'duplicadas ignoradas'))
@@ -165,7 +193,7 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
       ...(parts.length ? { detail: parts.join(' · ') } : {}),
       origin: { collection: 'transactions', id: '', label: 'Importações' },
       created: [],
-      changed: [],
+      changed,
       status: info.created || info.reconciled ? 'done' : 'skipped',
       bankImport: info,
     },
