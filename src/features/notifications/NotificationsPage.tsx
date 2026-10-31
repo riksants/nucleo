@@ -54,7 +54,7 @@ function Row({ e, onOpen, highlight }: { e: FeedEntry; onOpen(e: FeedEntry): voi
   return (
     <button type="button" onClick={() => onOpen(e)} className={`press flex w-full items-start gap-3 px-4 py-3 text-left ${highlight ? 'bg-accent/[0.06]' : ''}`}>
       <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ${unread ? 'bg-accent text-on-accent' : 'bg-tint/[0.06] text-soft'}`}>
-        <Icon size={17} />
+        <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
         {/* The specific message is the line; the title only when it says something the message doesn't. */}
@@ -140,7 +140,7 @@ export function NotificationsPage() {
           </a>
         )}
 
-        {empty && <EmptyState icon={<Bell size={22} />} title="Nenhuma notificação ainda" text="Quando algo com data ou horário se aproximar, ele aparece aqui — e também chega no aparelho, se as notificações estiverem ligadas." />}
+        {empty && <EmptyState icon={<Bell size={24} />} title="Nenhuma notificação ainda" text="Quando algo com data ou horário se aproximar, ele aparece aqui — e também chega no aparelho, se as notificações estiverem ligadas." />}
 
         {group.length > 0 && (
           <section>

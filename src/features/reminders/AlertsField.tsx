@@ -85,7 +85,7 @@ export function AlertsField({
         )}
         {!adding ? (
           <button type="button" onClick={() => setAdding(true)} className="press inline-flex min-h-10 items-center gap-2 rounded-full px-1 text-[15px] font-medium text-accent">
-            <BellPlus size={17} />
+            <BellPlus size={18} />
             {alerts.length ? 'Adicionar outro aviso' : 'Escolher quando avisar'}
           </button>
         ) : (
