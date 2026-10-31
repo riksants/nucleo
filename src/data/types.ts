@@ -1003,7 +1003,7 @@ export interface InsightMark {
 /* ----------------------------- Automações ----------------------------- */
 
 /** `rule`: a run of one of the person's rules (Parte 2); it has no on/off of its own in settings. */
-export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule' | 'bankImport' | 'saleRecurring'
+export type AutomationId = 'subscriberCharge' | 'toolCharge' | 'projectClient' | 'goalSave' | 'rule' | 'bankImport' | 'saleRecurring' | 'smartImport'
 export type AutomationRunStatus = 'pending' | 'done' | 'undone' | 'skipped'
 
 /**
@@ -1050,6 +1050,34 @@ export interface AutomationRun extends Entity {
   chain?: { rootRunId: string; path: { id: string; name: string }[]; depth: number }
   /** Parte 3: an import of a bank statement (its movements carry `bank.importId` = this run's id). */
   bankImport?: BankImportInfo
+  /** Etapa 4: "Adiar" in Pendências — hidden there until this day ("YYYY-MM-DD"). */
+  snoozedUntil?: string
+  /** Etapa 4: a waiting item the person dismissed ("Dispensar"): it never comes back to Pendências. */
+  dismissedAt?: string
+  /** Etapa 4: a rule run waiting for confirmation that the person declined (nothing was done). */
+  declined?: true
+  /** Etapa 4: what the rule saw when it asked for confirmation (re-checked when confirmed). */
+  awaiting?: { eventKey: string; event: unknown }
+  /** Etapa 4: an import of a document or pasted text (Importação inteligente). */
+  smartImport?: SmartImportInfo
+}
+
+/** Etapa 4 — what one smart import did (the document itself is never stored). */
+export interface SmartImportInfo {
+  /** File name, or "Texto colado". */
+  source: string
+  /** Hash of the content (the same content imported again is recognised). */
+  hash: string
+  /** Where it went ("Alimentação", "Tarefas"…). */
+  target: string
+  created: number
+  /** Lines of the document that were not recognised (kept in the result, never dropped silently). */
+  unrecognised: number
+  /** Items the person left out. */
+  skipped: number
+  /** Items that already existed (same content imported before): not written again. */
+  duplicates: number
+  undone?: boolean
 }
 
 export interface BankImportInfo {

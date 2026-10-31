@@ -1,3 +1,5 @@
+import { pendingCount } from '../core/automation/activity'
+import { todayIn, zoneOf } from '../core/period'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { ChevronRight, FileClock, Search, SlidersHorizontal, Sparkles, UserRound, Wand2, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, type MouseEvent } from 'react'
@@ -131,7 +133,7 @@ export function SideMenu() {
         return { href: `#${m.path}`, path: m.path, label: m.label, icon: m.icon, count: key ? data[key].length : undefined }
       }),
   }))
-  const pending = data.automationRuns.filter((r) => r.status === 'pending').length
+  const pending = pendingCount(data, todayIn(zoneOf(settings)))
   groups.push({
     title: 'Automações',
     entries: [

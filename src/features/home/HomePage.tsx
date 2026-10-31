@@ -204,7 +204,7 @@ export function HomePage() {
     .filter((c) => c.date > addDaysToDate(todayKey, 1))
     .slice(0, 3)
   const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
-  const pending = pendingRuns(data.automationRuns)
+  const pending = pendingRuns(data.automationRuns, undefined, todayKey)
   const doneLately = historyRuns(data.automationRuns).filter((r) => r.status === 'done' && r.date >= addDaysToDate(todayKey, -7))
   // One line under the greeting with the day at a glance (only what exists, nothing invented).
   const eventsToday = on('agenda') ? data.events.filter((e) => e.date === todayKey).length : 0

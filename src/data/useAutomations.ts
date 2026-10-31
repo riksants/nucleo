@@ -200,5 +200,11 @@ export function useAutomationActions() {
     [data, settings, convert, commit, syncStatus],
   )
 
-  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry, confirmNoExpense, payNow, notYet }
+  /** "Adiar": the item leaves Pendências until `until` (nothing else changes). */
+  const snooze = useCallback((run: AutomationRun, until: string) => commit([runPut({ ...run, snoozedUntil: until })], { by: 'undo' }), [commit])
+
+  /** "Dispensar" a waiting item that is not a charge (a failed action, a review): it never comes back. */
+  const dismiss = useCallback((run: AutomationRun) => commit([runPut({ ...run, dismissedAt: new Date().toISOString() })], { by: 'undo' }), [commit])
+
+  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry, confirmNoExpense, payNow, notYet, snooze, dismiss }
 }

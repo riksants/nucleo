@@ -1,3 +1,5 @@
+import { pendingCount } from '../../core/automation/activity'
+import { todayIn, zoneOf } from '../../core/period'
 import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound, Wand2 } from 'lucide-react'
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
@@ -317,7 +319,7 @@ export function SettingsPage() {
           <Row
             label="Feito pelo Núcleo"
             detail={(() => {
-              const n = data.automationRuns.filter((r) => r.status === 'pending').length
+              const n = pendingCount(data, todayIn(zoneOf(settings)))
               return n ? `${n} esperando você · ligar ou desligar automações` : 'Histórico · ligar ou desligar automações'
             })()}
             icon={<Sparkles size={18} />}
