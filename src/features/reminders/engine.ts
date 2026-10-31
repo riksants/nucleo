@@ -347,6 +347,9 @@ interface Ctx {
   tz: string
   now: Date
   until: Date
+  /** Local dates that can hold a moment of the window (cheap string check before any time-zone math). */
+  firstDate: string
+  lastDate: string
   prefs: EffectivePrefs
   out: Occurrence[]
   money: (cents: number, currency: string) => string
@@ -393,6 +396,9 @@ function momentOf(ctx: Ctx, date: string, s: Pick<Spec, 'dayOffset' | 'time' | '
 
 function emit(ctx: Ctx, it: Item, date: string, specs: Spec[]) {
   for (const s of specs) {
+    const local = addDaysToDate(date, s.dayOffset)
+    // Far outside the window (quiet hours move a moment by less than a day): skip the time-zone math.
+    if (local < ctx.firstDate || local > ctx.lastDate) continue
     push(ctx, {
       key: `${it.prefix}:${date}${s.suffix}`,
       kind: it.kind,
@@ -443,6 +449,8 @@ function dated(ctx: Ctx, it: Item, date: string, opts: { daysBefore?: number; wh
 /** One more reminder the day after, if it is still pending (never repeated: one key per item and date). */
 function followUp(ctx: Ctx, it: Item, date: string) {
   if (!ctx.prefs.followUp || it.off) return
+  const next = addDaysToDate(date, 1)
+  if (next < ctx.firstDate || next > ctx.lastDate) return
   push(ctx, {
     key: `${it.prefix}:${date}:late`,
     kind: it.kind,
@@ -471,9 +479,18 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
   if (!prefs.on) return []
   const tz = settings.timeZone || deviceTimeZone()
   const span = opts.days ?? 14
-  const ctx: Ctx = { tz, now, until: new Date(now.getTime() + span * 86_400_000), prefs, out: [], money: (c, cur) => formatMoney(c, cur) }
-  const on = (kind: ReminderKind) => prefs.kinds[kind].enabled
   const today = wallClock(now, tz).date
+  const ctx: Ctx = {
+    tz,
+    now,
+    until: new Date(now.getTime() + span * 86_400_000),
+    firstDate: addDaysToDate(today, -2),
+    lastDate: addDaysToDate(today, span + 2),
+    prefs,
+    out: [],
+    money: (c, cur) => formatMoney(c, cur),
+  }
+  const on = (kind: ReminderKind) => prefs.kinds[kind].enabled
   const yesterday = addDaysToDate(today, -1)
   const dates = Array.from({ length: span + 1 }, (_, i) => addDaysToDate(today, i))
   const runs = data.automationRuns ?? []

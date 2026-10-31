@@ -139,6 +139,12 @@ describe('revisão: aparelho desatualizado não mexe em nada', () => {
     expect(r.status).toBe('sent')
   })
 
+  it('links só para dentro do app', async () => {
+    await expect(sync(A, { cursor: null, upserts: [row('x', H, { url: 'javascript:alert(1)' })] })).rejects.toThrow(/scheduled_url_internal/)
+    await expect(sync(A, { cursor: null, series: [bill({ url: 'https://evil.example' })] })).rejects.toThrow(/check/)
+    expect(await rows(A)).toEqual([])
+  })
+
   it('isolamento: B não vê nem apaga o que é de A', async () => {
     expect(await sync(A, { cursor: null, upserts: [row('k1', H)], series: [] })).toBe('ok')
     expect(await sync(B, { cursor: null, deletes: ['k1'] })).toBe('ok')

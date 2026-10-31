@@ -61,7 +61,20 @@ function offsetAt(instant: number, tz: string): number {
  * "2026-10-18" + "07:30" in `tz` → the instant. Times that don't exist (clock
  * jumps forward) move to the first valid minute after; repeated times use the first one.
  */
+const instantCache = new Map<string, number>()
+
 export function zonedToInstant(date: string, time: string, tz: string): Date {
+  // Pure in (date, time, zone): the reminders ask for the same few moments thousands of times.
+  const key = `${tz}|${date}|${time}`
+  const hit = instantCache.get(key)
+  if (hit !== undefined) return new Date(hit)
+  const ms = computeInstant(date, time, tz)
+  if (instantCache.size > 20_000) instantCache.clear()
+  instantCache.set(key, ms)
+  return new Date(ms)
+}
+
+function computeInstant(date: string, time: string, tz: string): number {
   const [y, m, d] = date.split('-').map(Number)
   const [h, mi] = time.split(':').map(Number)
   const asUtc = Date.UTC(y, m - 1, d, h, mi)
@@ -74,7 +87,7 @@ export function zonedToInstant(date: string, time: string, tz: string): Date {
     return w.date === date && w.time === time
   })
   // In a gap (clock jumped forward) the old offset lands just after the jump.
-  return new Date(exact ?? asUtc - before)
+  return exact ?? asUtc - before
 }
 
 /** "YYYY-MM-DD" n days after a date string (calendar arithmetic, zone independent). */

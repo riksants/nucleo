@@ -42,6 +42,11 @@ alter table public.scheduled_notifications
 -- Linhas enviadas antes desta migração ficam com status 'scheduled' e sent_at preenchido: o app
 -- mostra "Processado (resultado não registrado)", sem afirmar que chegou.
 
+-- Links só para dentro do app (a central e o service worker abrem o que estiver aqui). NOT VALID:
+-- vale para o que for gravado daqui em diante, sem reler as linhas antigas.
+alter table public.scheduled_notifications drop constraint if exists scheduled_url_internal;
+alter table public.scheduled_notifications add constraint scheduled_url_internal check (url = '' or url like '#/%') not valid;
+
 create index if not exists scheduled_history_idx on public.scheduled_notifications (user_id, fire_at desc);
 create index if not exists scheduled_series_idx on public.scheduled_notifications (user_id, series_key) where series_key is not null and sent_at is null;
 
@@ -78,7 +83,7 @@ create table if not exists public.notification_series (
   title text not null check (char_length(title) <= 120),
   body text not null check (char_length(body) <= 240),
   detail text not null default '' check (char_length(detail) <= 300),
-  url text not null default '' check (char_length(url) <= 200),
+  url text not null default '' check (char_length(url) <= 200 and (url = '' or url like '#/%')),
   updated_at timestamptz not null default now(),
   primary key (user_id, key)
 );
