@@ -1,4 +1,4 @@
-import { AlarmClock, Bell, BellOff, CalendarClock, CheckCheck, ChevronRight, CircleDollarSign, HandCoins, Hourglass, ListChecks, Repeat, Settings2, Sparkles, Target, Timer, Utensils, type LucideIcon } from 'lucide-react'
+import { AlarmClock, Bell, BellOff, CalendarClock, ChevronRight, CircleDollarSign, HandCoins, Hourglass, ListChecks, Repeat, Settings2, Sparkles, Target, Timer, Utensils, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearParams, useRoute } from '../../app/router'
@@ -57,12 +57,11 @@ function Row({ e, onOpen, highlight }: { e: FeedEntry; onOpen(e: FeedEntry): voi
         <Icon size={17} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className={`min-w-0 truncate text-[15px] ${unread ? 'font-semibold' : 'font-medium'}`}>{e.title}</span>
-          <span className="num shrink-0 text-[12px] text-faint">{formatDateTime(e.at.toISOString()).toLowerCase()}</span>
-        </span>
-        {e.text && e.text !== e.title && <span className="mt-0.5 line-clamp-2 block text-[14px] leading-snug text-soft">{e.text}</span>}
+        {/* The specific message is the line; the title only when it says something the message doesn't. */}
+        <span className={`line-clamp-3 block text-[15px] leading-snug ${unread ? 'font-semibold' : 'font-medium'}`}>{e.text || e.title}</span>
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-faint">
+          <span className="num">{formatDateTime(e.at.toISOString()).toLowerCase()}</span>
+          <span aria-hidden>·</span>
           <span>{ORIGIN_LABEL[e.origin]}</span>
           <span aria-hidden>·</span>
           <StateChip e={e} />
@@ -131,13 +130,6 @@ export function NotificationsPage() {
       <PageHeader
         title="Central de notificações"
         subtitle={unread.length ? `${unread.length} não ${unread.length === 1 ? 'lida' : 'lidas'}` : 'Tudo lido'}
-        actions={
-          unread.length ? (
-            <Button variant="secondary" icon={<CheckCheck size={16} />} onClick={() => void markSeen(null)}>
-              Marcar todas como lidas
-            </Button>
-          ) : undefined
-        }
       />
       <div className="mx-auto max-w-xl space-y-6">
         {!prefs.on && (
@@ -163,7 +155,9 @@ export function NotificationsPage() {
 
         {unread.length > 0 && (
           <section>
-            <SectionTitle>Não lidas</SectionTitle>
+            <SectionTitle action="Marcar todas" onAction={() => void markSeen(null)}>
+              Não lidas
+            </SectionTitle>
             <div className="card divide-y divide-line overflow-hidden">
               {unread.map((e) => (
                 <Row key={e.key} e={e} onOpen={setOpen} />
