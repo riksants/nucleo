@@ -388,7 +388,7 @@ export function SettingsPage() {
               <Tile><Clock size={18} /></Tile>
               <span className="min-w-0 flex-1 text-[15px]">Horários para sugestões</span>
             </div>
-            <div className="mt-2.5 flex items-center gap-2 pl-11">
+            <div className="mt-2.5 flex items-center gap-2 pl-11 max-[359px]:pl-0">
               <input type="time" aria-label="Início da faixa de horário" value={settings.activeHours?.start ?? '07:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: e.target.value, end: settings.activeHours?.end ?? '22:00' } })} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-raised px-3 text-[15px] text-ink" />
               <span className="text-faint" aria-hidden>–</span>
               <input type="time" aria-label="Fim da faixa de horário" value={settings.activeHours?.end ?? '22:00'} onChange={(e) => e.target.value && updateSettings({ activeHours: { start: settings.activeHours?.start ?? '07:00', end: e.target.value } })} className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-raised px-3 text-[15px] text-ink" />
