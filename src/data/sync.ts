@@ -557,6 +557,7 @@ export function createSyncedRepository(uid: string, remote: RemoteApi, opts: { a
     },
 
     status: () => status,
+    syncBasis: async () => ({ cursor: (await readMeta<string>(await database.get(), 'cursor')) ?? null }),
     syncNow: () => sync(),
     flush,
     pull,

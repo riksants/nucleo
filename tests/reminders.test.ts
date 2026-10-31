@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dispatch, type DueRow, type Subscription } from '../supabase/functions/_shared/push/dispatch.ts'
+import { compose, dispatch, type DueRow, type RowResult, type Subscription } from '../supabase/functions/_shared/push/dispatch.ts'
 import { DEFAULT_REMINDERS, buildOccurrences } from '../src/features/reminders/engine'
 import type { DataState, MealPlan, RoutinePlan, Settings, Task } from '../src/data/types'
 
@@ -31,11 +31,15 @@ describe('lembretes', () => {
     expect(dubai.fireAt.toISOString()).toBe('2026-10-02T10:45:00.000Z')
   })
 
-  it('na tela bloqueada não mostra detalhes por padrão', () => {
+  it('na tela bloqueada: específico por padrão; discreto só quando escolhido', () => {
     const [o] = buildOccurrences({ ...empty(), tasks: [task({})] }, on(['tasks']), { now: NOW })
-    expect(o.title).toBe('Núcleo')
-    expect(o.body).not.toContain('Dentista')
-    expect(o.detail).toContain('Dentista')
+    expect(o.title).toBe('Dentista')
+    expect(o.body).toContain('Dentista')
+    const s = on(['tasks'])
+    const [d] = buildOccurrences({ ...empty(), tasks: [task({})] }, { ...s, reminders: { ...s.reminders!, privacy: 'discreet' } }, { now: NOW })
+    expect(d.title).toBe('Núcleo')
+    expect(d.body).not.toContain('Dentista')
+    expect(d.detail).toContain('Dentista')
   })
 
   it('mudar ou concluir a origem muda ou cancela o lembrete (chave nova / some)', () => {
@@ -86,5 +90,59 @@ describe('envio de push', () => {
     expect(sent).not.toContain('https://other')
     expect(removed).toEqual(['s2'])
     expect(await dispatch(deps)).toEqual({ due: 0, sent: 0, removed: 0, failed: 0 })
+  })
+
+  const row = (key: string, over: Partial<DueRow> = {}): DueRow => ({ user_id: 'u1', key, title: `T ${key}`, body: `B ${key}`, url: `#/x?open=${key}`, kind: 'payments', custom: false, fire_at: '2026-11-10T08:00:00Z', ...over })
+
+  it('agrupa automáticos do mesmo minuto listando cada um; os da pessoa e os do app vão sozinhos', () => {
+    const msgs = compose([
+      row('a'),
+      row('b'),
+      row('mine', { custom: true }),
+      row('notice', { kind: 'app' }),
+      row('other-minute', { fire_at: '2026-11-10T08:01:00Z' }),
+      row('other-user', { user_id: 'u2' }),
+    ])
+    const group = msgs.find((m) => m.rows.length > 1)!
+    expect(group.rows.map((r) => r.key)).toEqual(['a', 'b'])
+    expect(group.payload.title).toBe('Núcleo · 2 lembretes')
+    expect(group.payload.body).toBe('T a: B a\nT b: B b')
+    expect(group.payload.url).toBe('#/notifications?at=2026-11-10T08%3A00%3A00.000Z')
+    expect(msgs.filter((m) => m.rows.length === 1).map((m) => m.rows[0].key).sort()).toEqual(['mine', 'notice', 'other-minute', 'other-user'])
+    // Linhas antigas (servidor sem as colunas novas): tudo sozinho, como antes.
+    expect(compose([{ user_id: 'u1', key: 'x', title: 't', body: 'b', url: '' }, { user_id: 'u1', key: 'y', title: 't', body: 'b', url: '' }])).toHaveLength(2)
+    // Muitos: 4 linhas e o resto indicado na central.
+    const many = compose(['1', '2', '3', '4', '5', '6'].map((k) => row(k)))
+    expect(many[0].payload.body.split('\n')).toHaveLength(5)
+    expect(many[0].payload.body).toContain('+ 2 na central')
+  })
+
+  it('guarda o resultado de cada lembrete (enviado ao serviço, falhou, sem aparelho)', async () => {
+    const due = [row('a'), row('b'), row('c', { user_id: 'u2', custom: true }), row('d', { user_id: 'u3', custom: true })]
+    const subs: Subscription[] = [
+      { id: 's1', user_id: 'u1', endpoint: 'https://ok', p256dh: 'p', auth: 'a' },
+      { id: 's2', user_id: 'u2', endpoint: 'https://bad', p256dh: 'p', auth: 'a' },
+    ]
+    let results: RowResult[] = []
+    const payloads: string[] = []
+    let claimed = false
+    const res = await dispatch({
+      claim: async () => (claimed ? [] : ((claimed = true), due)),
+      subscriptionsFor: async (ids) => subs.filter((s) => ids.includes(s.user_id)),
+      send: async (s, p) => {
+        if (s.endpoint.includes('bad')) throw new Error('500 do serviço')
+        payloads.push(p)
+        return { gone: false }
+      },
+      removeSubscription: async () => {},
+      record: async (r) => void (results = r),
+    })
+    expect(res).toEqual({ due: 4, sent: 1, removed: 0, failed: 1 })
+    expect(payloads).toHaveLength(1) // a e b numa só notificação
+    const by = Object.fromEntries(results.map((r) => [r.key, r]))
+    expect(by.a).toMatchObject({ status: 'sent', grouped: true })
+    expect(by.b).toMatchObject({ status: 'sent', grouped: true })
+    expect(by.c).toMatchObject({ status: 'failed', error: '500 do serviço', grouped: false })
+    expect(by.d).toMatchObject({ status: 'nodevice', sent: 0 })
   })
 })

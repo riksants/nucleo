@@ -111,6 +111,7 @@ export function normalizeSettings(raw: unknown): Settings {
     ...(isBool(rem.on) ? { on: rem.on } : {}),
     ...(isWhen(rem.when) ? { when: rem.when } : {}),
     ...(isBool(rem.followUp) ? { followUp: rem.followUp } : {}),
+    ...(rem.privacy === 'complete' || rem.privacy === 'noAmounts' || rem.privacy === 'discreet' ? { privacy: rem.privacy } : {}),
     ...(isObj(rem.kinds) ? { kinds: entries(rem.kinds, isObj) ?? {} } : {}),
   })
   set('updatedAt', isStr(s.updatedAt))

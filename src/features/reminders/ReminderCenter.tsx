@@ -5,7 +5,9 @@ import { usePrefersReducedMotion } from '../../lib/hooks'
 import { useStore } from '../../data/store'
 import { readPref, writePref } from '../../lib/prefs'
 import { useSession } from '../account/session'
-import { buildOccurrences, effectivePrefs, type FocusRun, type Occurrence } from './engine'
+import { buildOccurrences, buildSeries, effectivePrefs, type FocusRun, type Occurrence } from './engine'
+import { syncAllowsAutomations } from '../../data/useAutomations'
+import { deviceTimeZone } from '../../lib/zoned'
 import { FOCUS_EVENT, FOCUS_KEY } from '../focus/timer'
 import { currentSubscription, refreshPush, syncSchedule } from './push'
 import { EASE_OUT_SOFT } from '../../lib/motion'
@@ -23,7 +25,7 @@ function shownMap(): Record<string, number> {
  * supported) and the server mirror used for notifications with the app closed.
  */
 export function ReminderCenter() {
-  const { data, settings, ready } = useStore()
+  const { data, settings, ready, syncStatus, repository } = useStore()
   const { userId } = useSession()
   const [visible, setVisible] = useState<Occurrence[]>([])
   const reduce = usePrefersReducedMotion()
@@ -88,13 +90,40 @@ export function ReminderCenter() {
   }, [userId])
 
   // Mirror to the server (signed in only). Debounced; also clears everything when all reminders are off.
+  // Only when this device is fully synced (nothing waiting to go up); the server still checks the
+  // revision and answers 'stale' if another device changed something meanwhile: then this device
+  // syncs and tries again, it never writes reminders from old data.
+  const idle = syncAllowsAutomations(syncStatus)
+  const [retry, setRetry] = useState(0)
   useEffect(() => {
-    if (!ready || !userId) return
-    const timer = window.setTimeout(() => {
-      if (navigator.onLine) syncSchedule(anyEnabled ? occurrences : []).catch(() => {})
+    if (!ready || !userId || !idle) return
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      if (!navigator.onLine) return
+      try {
+        const now = new Date()
+        const basis = { cursor: (await repository.syncBasis?.())?.cursor ?? null, settingsAt: settings.updatedAt ?? null }
+        const result = await syncSchedule({
+          occurrences: anyEnabled ? occurrences : [],
+          series: anyEnabled ? buildSeries(data, settings, { now }) : [],
+          until: new Date(now.getTime() + 14 * 86_400_000),
+          tz: settings.timeZone || deviceTimeZone(),
+          quiet: prefs.quiet ?? null,
+          basis,
+        })
+        if (result === 'stale' && !cancelled) {
+          await repository.syncNow?.()
+          window.setTimeout(() => !cancelled && setRetry((n) => n + 1), 20_000)
+        }
+      } catch {
+        // Offline or the server refused: the next change or opening tries again (nothing is lost here).
+      }
     }, 3000)
-    return () => window.clearTimeout(timer)
-  }, [occurrences, userId, ready, anyEnabled])
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [occurrences, data, settings, repository, prefs.quiet, userId, ready, anyEnabled, idle, retry])
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+10px)] z-[65] flex flex-col items-center gap-2 px-4 lg:pl-64">

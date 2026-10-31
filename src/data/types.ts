@@ -120,6 +120,10 @@ export type ProjectKind = 'site' | 'app' | 'other'
 export type ProjectStatus = 'idea' | 'notStarted' | 'inProgress' | 'waitingClient' | 'review' | 'done' | 'paused'
 
 export interface Project extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   name: string
   clientId: string | null
   kind: ProjectKind
@@ -157,6 +161,10 @@ export type TaskStatus = 'todo' | 'doing' | 'done'
 export type TaskPriority = 'none' | 'low' | 'medium' | 'high'
 
 export interface Task extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   title: string
   projectId: string | null
   dueDate: string
@@ -199,6 +207,10 @@ export interface InboxItem extends Entity {
 }
 
 export interface Habit extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   name: string
   rule: RecurrenceRule
   /** "HH:MM" or "" (any time of the day). */
@@ -228,6 +240,10 @@ export type HabitLink = { kind: 'recurring'; id: string } | { kind: 'routine'; b
 export type HabitCategory = 'training' | 'study' | 'reading' | 'water' | 'sleep' | 'meditation' | 'food' | 'other'
 
 export interface RecurringItem extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   title: string
   rule: RecurrenceRule
   time: string
@@ -267,6 +283,10 @@ export interface Completion extends Entity {
 
 /** Appointment with a duration. A past time does NOT mean it happened. */
 export interface CalendarEvent extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   title: string
   date: string
   start: string
@@ -288,6 +308,10 @@ export type ToolBilling = 'monthly' | 'yearly' | 'once' | 'free'
 export type ToolStatus = 'active' | 'cancelled' | 'trial' | 'free' | 'paused'
 
 export interface Tool extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   name: string
   link: string
   plan: string
@@ -359,6 +383,10 @@ export interface Payment {
 }
 
 export interface Sale extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   clientId: string | null
   /** Used when the buyer is not (or should not be) in Clients. */
   clientName: string
@@ -424,6 +452,10 @@ export interface SubPlan extends Entity {
 export type SubscriberStatus = 'active' | 'trial' | 'paused' | 'cancelled'
 
 export interface Subscriber extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   offeringId: string
   planId: string
   name: string
@@ -669,7 +701,16 @@ export interface VaultMeta {
 }
 
 /** payments = a pagar (assinaturas, ferramentas) · receivables = a receber (vendas, assinantes) · focus = fim da sessão. */
-export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments' | 'habits' | 'recurring' | 'events' | 'receivables' | 'focus'
+export type ReminderKind = 'tasks' | 'routine' | 'meals' | 'deadlines' | 'payments' | 'habits' | 'recurring' | 'events' | 'receivables' | 'focus' | 'app'
+
+/**
+ * One reminder set on a record. `min`: minutes before (items with a time) · `day`: N days before (0 = on the
+ * day) at a time of day · `at`: at the moment (items with a time) or on the day (date only).
+ */
+export type ReminderAlert = { id: string; type: 'min'; minutes: number } | { id: string; type: 'day'; days: number; at: string } | { id: string; type: 'at' }
+
+/** What the lock screen shows. complete: everything · noAmounts: what and when, no money (default) · discreet: only "Núcleo". */
+export type ReminderPrivacy = 'complete' | 'noAmounts' | 'discreet'
 
 /** Antes do horário, exatamente no horário, ou os dois. */
 export type ReminderWhen = 'before' | 'at' | 'both'
@@ -707,8 +748,10 @@ export interface ReminderPrefs {
   followUp?: boolean
   /** Advanced, per kind; overrides the general choice. */
   kinds?: Partial<Record<ReminderKind, ReminderKindPref>>
-  /** Show titles on the lock screen. Off by default; amounts and health data are never sent. */
+  /** Old switch (before Etapa 5): kept, but `privacy` decides what the lock screen shows. */
   showDetails: boolean
+  /** Lock-screen text. Missing = noAmounts (specific, without money). */
+  privacy?: ReminderPrivacy
   /** Quiet hours ("22:00" → "07:00"): a reminder that falls inside waits until the end. */
   quiet?: { from: string; to: string } | null
 }
@@ -870,6 +913,10 @@ export interface WeekSnapshot extends Entity {
  * semana" come from what was really registered.
  */
 export interface FinanceGoal extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   name: string
   target: Cents
   saved: Cents
@@ -906,6 +953,10 @@ export type PlanStatus = 'planning' | 'active' | 'done' | 'paused' | 'archived'
  * (clients, values) stay in `projects`, untouched.
  */
 export interface LifePlan extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   kind: PlanKind
   title: string
   description: string
@@ -934,6 +985,10 @@ export interface LifePlan extends Entity {
  * and editing the plan on another never overwrite each other.
  */
 export interface PlanStep extends Entity {
+  /** Reminders the person set on this record (they replace the general timing). Missing/empty = general setting. */
+  alerts?: ReminderAlert[]
+  /** "Pausar lembretes" of this record: none are sent until it is turned back on. */
+  alertsOff?: boolean
   planId: string
   title: string
   /** "YYYY-MM-DD" or "" */

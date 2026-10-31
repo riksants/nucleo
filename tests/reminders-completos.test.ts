@@ -263,7 +263,7 @@ describe('dinheiro: a pagar e a receber', () => {
     expect(keys({ ...empty(), sales: [settled] }, on())).toEqual([])
   })
 
-  it('a pagar e a receber têm textos diferentes; valores nunca aparecem', () => {
+  it('a pagar e a receber têm textos específicos; valores só no texto completo', () => {
     const tool = {
       id: 'tl',
       createdAt: '',
@@ -278,20 +278,25 @@ describe('dinheiro: a pagar e a receber', () => {
       notes: '',
       status: 'active',
     } as Tool
-    const occ = buildOccurrences({ ...empty(), tools: [tool], sales: [sale({ dueDate: '2026-11-03' })] }, on(), { now: NOW })
-    expect(occ.find((o) => o.kind === 'payments')).toMatchObject({
-      title: 'Pagar: Figma',
-    })
-    expect(occ.find((o) => o.kind === 'receivables')).toMatchObject({
-      title: 'Receber: Bolo',
-      detail: 'Cobrar Maria · Bolo em 1 dia',
-    })
-    const locked = buildOccurrences({ ...empty(), tools: [tool], sales: [sale({ dueDate: '2026-11-03' })] }, on({ showDetails: false, followUp: false }), { now: NOW })
-    expect(locked.map((o) => [o.title, o.body])).toEqual([
+    const data = { ...empty(), tools: [tool], sales: [sale({ dueDate: '2026-11-03' })] }
+    const occ = buildOccurrences(data, on(), { now: NOW })
+    const pay = occ.find((o) => o.kind === 'payments')!
+    const rec = occ.find((o) => o.kind === 'receivables')!
+    expect(pay.title).toBe('Pagar: Figma')
+    expect(pay.detail).toBe('A assinatura Figma de US$ 15,00 vence em 2 dias')
+    expect(pay.plain).toBe('A assinatura Figma vence em 2 dias')
+    expect(rec).toMatchObject({ title: 'Receber: Bolo', plain: 'Maria precisa pagar o restante de Bolo amanhã' })
+    expect(rec.detail).toBe('Maria precisa pagar os R$ 300,00 restantes de Bolo amanhã')
+    // Padrão (Sem valores): específico na tela bloqueada, sem dinheiro.
+    expect([pay.body, rec.body]).toEqual([pay.plain, rec.plain])
+    expect(JSON.stringify(occ.map((o) => [o.title, o.body]))).not.toMatch(/15,00|300/)
+    const discreet = buildOccurrences(data, on({ privacy: 'discreet', followUp: false }), { now: NOW })
+    expect(discreet.map((o) => [o.title, o.body])).toEqual([
       ['Núcleo', 'Você tem uma conta a pagar'],
       ['Núcleo', 'Você tem um valor a receber'],
     ])
-    expect(JSON.stringify(occ)).not.toMatch(/15,00|300|1500|30000/)
+    const complete = buildOccurrences(data, on({ privacy: 'complete', followUp: false }), { now: NOW })
+    expect(complete.map((o) => o.body)).toEqual([pay.detail, rec.detail])
   })
 
   it('conta já paga não continua lembrando; cobrança pendente lembra uma vez', () => {

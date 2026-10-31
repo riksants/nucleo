@@ -16,7 +16,14 @@ const table = new Map<string, Row>()
 
 /** Just enough of the query builder: select().is().gt(), delete().in().is(), upsert(rows, { onConflict }). */
 const fake = {
-  from: () => ({
+  // Etapa 5: the app writes through sync_notifications (revision checked on the real server; here always up to date).
+  rpc: async (name: string, a: { p_upserts: Omit<Row, 'sent_at'>[]; p_deletes: string[] }) => {
+    if (name !== 'sync_notifications') return { data: null, error: { code: 'PGRST202', message: name } }
+    for (const k of a.p_deletes) if (table.get(k)?.sent_at === null) table.delete(k)
+    for (const r of a.p_upserts) if (!table.get(r.key)?.sent_at) table.set(r.key, { ...r, sent_at: null })
+    return { data: { status: 'ok' }, error: null }
+  },
+  from: (name: string) => name === 'notification_series' ? ({ select: async () => ({ data: [], error: null }) }) : ({
     select: () => {
       const filters: ((r: Row) => boolean)[] = []
       const q = {
@@ -56,7 +63,8 @@ const settings = { onboarded: true, baseCurrency: 'BRL', initialBalance: 0, star
 const e = { createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z' }
 const base = (): RecurringItem => ({ ...e, id: 'r1', title: 'Estudar inglês', rule: { type: 'weekdays', days: [1, 3, 5] }, time: '19:00', notes: '', active: true, startDate: '2026-10-01' })
 const data = (recurring: RecurringItem[]) => ({ recurring, completions: [], habits: [], tasks: [], events: [], routinePlans: [], mealPlans: [], meals: [], tools: [], sales: [], subscribers: [], subPlans: [], projects: [], lifePlans: [], planSteps: [], financeGoals: [], automationRuns: [] }) as unknown as DataState
-const sync = (recurring: RecurringItem[]) => syncSchedule(buildOccurrences(data(recurring), settings, { now: NOW }))
+const sync = (recurring: RecurringItem[]) =>
+  syncSchedule({ occurrences: buildOccurrences(data(recurring), settings, { now: NOW }), series: [], until: new Date(NOW.getTime() + 14 * 864e5), tz: 'America/Sao_Paulo', quiet: null, basis: { cursor: null, settingsAt: null } })
 const keysOf = (id: string) => [...table.keys()].filter((k) => k.startsWith(`recurring:${id}:`)).sort()
 /** One reminder row per occurrence and lead (no two rows for the same moment of the same item). */
 const noDuplicates = () => {

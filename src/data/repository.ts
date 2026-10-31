@@ -39,6 +39,8 @@ export interface Repository {
   /** Remote changes and sync status (synced repository only). */
   subscribe?(listener: (event: RepoEvent) => void): () => void
   status?(): SyncStatus
+  /** Synced accounts: the newest server change this device has downloaded (revision of its data). */
+  syncBasis?(): Promise<{ cursor: string | null }>
   syncNow?(): Promise<void>
   dispose?(): void
 }

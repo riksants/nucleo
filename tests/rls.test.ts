@@ -46,7 +46,8 @@ beforeAll(async () => {
   await db.query(`insert into auth.users (id) values ($1), ($2)`, [A, B])
   await as(A, `insert into records (collection, id, data, client_updated_at) values ('notes', 'n1', '{"title":"segredo de A"}', $1)`, [now()])
   await as(A, `insert into user_settings (data, client_updated_at) values ('{"baseCurrency":"EUR"}', $1)`, [now()])
-  await as(A, `insert into scheduled_notifications (key, fire_at, title, body) values ('k1', now(), 'Núcleo', 'Lembrete')`)
+  // Etapa 5: o app grava lembretes só por sync_notifications; aqui a linha é criada direto (como o servidor).
+  await db.query(`insert into scheduled_notifications (user_id, key, fire_at, title, body) values ($1, 'k1', now(), 'Núcleo', 'Lembrete')`, [A])
   // Starting Postgres (PGlite) and running every migration can take a while when all test files run at once.
 }, 60_000)
 
@@ -69,7 +70,7 @@ describe('isolamento entre contas (RLS)', () => {
     expect((await as(B, `update records set data = '{"title":"hack"}' where id = 'n1'`)).affectedRows).toBe(0)
     expect((await as(B, `delete from records where id = 'n1'`)).affectedRows).toBe(0)
     expect((await as(B, `update user_settings set data = '{}'`)).affectedRows).toBe(0)
-    expect((await as(B, `delete from scheduled_notifications`)).affectedRows).toBe(0)
+    await expect(as(B, `delete from scheduled_notifications`)).rejects.toThrow(/permission denied/)
     const row = (await as(A, `select data from records where id = 'n1'`)).rows[0]
     expect(row.data).toEqual({ title: 'segredo de A' })
   })

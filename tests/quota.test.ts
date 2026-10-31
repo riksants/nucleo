@@ -297,10 +297,20 @@ describe('notificações push', () => {
 })
 
 describe('lembretes agendados', () => {
-  const sched = (user: string, keys: string[], extra = '') =>
-    as(user, `insert into scheduled_notifications (key, fire_at, title, body${extra ? ', sent_at' : ''})
-              select k, now() + interval '1 day', 'Núcleo', 'Lembrete'${extra ? `, ${extra}` : ''} from unnest($1::text[]) k
-              on conflict (user_id, key) do update set fire_at = excluded.fire_at, title = excluded.title`, [keys])
+  // Etapa 5: o app só grava lembretes por sync_notifications (com a revisão); a cota continua valendo nesse caminho.
+  const basis = async (user: string) =>
+    ((await db.query<{ c: Date | null }>('select max(server_updated_at) as c from records where user_id = $1', [user])).rows[0].c as Date | null)?.toISOString() ?? null
+  const rpc = async (user: string, keys: string[], fireAt: string | null = null, deletes: string[] = []) => {
+    const fire = fireAt ?? new Date(Date.now() + 86_400_000).toISOString()
+    const res = await as(user, `select sync_notifications($1, null, $2, $3, $4, '[]', '{}', '{"tz":"Europe/Madrid"}') as r`, [
+      await basis(user),
+      new Date(Date.now() + 14 * 86_400_000).toISOString(),
+      JSON.stringify(keys.map((k) => ({ key: k, fire_at: fire, title: 'Núcleo', body: 'Lembrete', url: '' }))),
+      deletes,
+    ])
+    expect((res.rows[0].r as { status: string }).status).toBe('ok')
+  }
+  const sched = (user: string, keys: string[], fireAt: string | null = null) => rpc(user, keys, fireAt)
 
   it('limite de lembretes ativos; reagendar o mesmo lembrete não conta; outra conta livre', async () => {
     await setLimit('notifications.active', 3)
@@ -308,17 +318,16 @@ describe('lembretes agendados', () => {
     await sched(B, ['a', 'b', 'c'])
     await expect(sched(B, ['d'])).rejects.toMatchObject({ message: 'quota_exceeded:notifications.active:3' })
     await sched(C, ['a', 'b', 'c'])
-    await as(B, `delete from scheduled_notifications where key = 'a'`)
+    await rpc(B, [], null, ['a'])
     await sched(B, ['d'])
   })
 
   it('o app não consegue marcar como enviado (burlaria a contagem); o dispatcher consegue', async () => {
-    await expect(sched(B, ['e'], `'2020-01-01'::timestamptz`)).rejects.toMatchObject({ code: '23514' })
-    await as(B, `delete from scheduled_notifications where key = 'b'`)
-    await sched(B, ['e'], `'2020-01-01'::timestamptz`)
+    await expect(sched(B, ['e'], '2020-01-01T00:00:00Z')).rejects.toMatchObject({ code: '23514' })
+    await rpc(B, [], null, ['b'])
+    await sched(B, ['e'])
     expect((await as(B, `select sent_at from scheduled_notifications where key = 'e'`)).rows[0].sent_at).toBeNull()
-    await as(B, `update scheduled_notifications set sent_at = '2020-01-01' where key = 'e'`)
-    expect((await as(B, `select sent_at from scheduled_notifications where key = 'e'`)).rows[0].sent_at).toBeNull()
+    await expect(as(B, `update scheduled_notifications set sent_at = '2020-01-01' where key = 'e'`)).rejects.toThrow(/permission denied/)
     await db.query(`update scheduled_notifications set fire_at = now() - interval '1 minute' where user_id = $1 and key = 'e'`, [B])
     await db.exec('set role service_role')
     const sent = await db.query('select * from claim_due_notifications(50)')
