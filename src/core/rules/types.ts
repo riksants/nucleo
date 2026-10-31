@@ -31,6 +31,9 @@ export type EventKind =
   | 'goalSaved'
   | 'goalReached'
   | 'date'
+  | 'projectTasksDone'
+  | 'habitDone'
+  | 'toolDue'
 
 /** Names offered as {marcadores} in the texts of actions. */
 export interface EventNames {

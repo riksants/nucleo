@@ -1057,7 +1057,11 @@ export interface AutomationRun extends Entity {
   /** Etapa 4: a rule run waiting for confirmation that the person declined (nothing was done). */
   declined?: true
   /** Etapa 4: what the rule saw when it asked for confirmation (re-checked when confirmed). */
-  awaiting?: { eventKey: string; event: unknown }
+  awaiting?: { trigger: RuleTriggerKind; event: unknown }
+  /** Etapa 4: when a waiting rule run was confirmed. */
+  confirmedAt?: string
+  /** Etapa 4: "Pedir revisão" / "Me avisar" — shown in Pendências until the person marks it seen. */
+  notice?: { kind: 'review' | 'notify'; text: string; seenAt?: string }
   /** Etapa 4: an import of a document or pasted text (Importação inteligente). */
   smartImport?: SmartImportInfo
 }
@@ -1161,6 +1165,12 @@ export type RuleTriggerKind =
   | 'goalReached'
   | 'monthDay'
   | 'weekDay'
+  /** Etapa 4: the last open task of a project was completed. */
+  | 'projectTasksDone'
+  /** Etapa 4: a habit was marked as done (a training, a study session…). */
+  | 'habitDone'
+  /** Etapa 4 (by date): a subscription/tool charge day arrived (its "A pagar" or automatic payment). */
+  | 'toolDue'
 
 export interface RuleTrigger {
   kind: RuleTriggerKind
@@ -1204,6 +1214,10 @@ export type RuleAction =
   | { kind: 'setCategory'; category: string }
   | { kind: 'createNote'; title: string; body: string }
   | { kind: 'addInbox'; text: string }
+  /** Etapa 4: "Pedir revisão" — puts the item in Pendências with a link; changes nothing. */
+  | { kind: 'askReview'; text: string }
+  /** Etapa 4: "Me avisar" — a notice in Pendências; changes nothing. */
+  | { kind: 'notify'; text: string }
 
 export type RuleActionKind = RuleAction['kind']
 
@@ -1228,4 +1242,9 @@ export interface Rule extends Entity {
   paused?: { at: string; reason: string }
   /** 2.1: "Permitir que ações desta regra ativem outras regras". Missing = off (every older rule). */
   chain?: boolean
+  /**
+   * Etapa 4: "Pedir minha confirmação antes". The rule only asks (a run waiting in Pendências); on
+   * confirmation it checks everything again with the data of that moment and then acts.
+   */
+  confirm?: boolean
 }

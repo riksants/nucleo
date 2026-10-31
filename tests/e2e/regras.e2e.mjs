@@ -58,7 +58,7 @@ try {
   await sleep(2500)
 
   let text = await mainText()
-  r.check('Minhas regras abre com modelos prontos e nenhuma regra', text.includes('Minhas regras') && text.includes('Modelos prontos') && text.includes('Nenhuma regra ainda') && text.includes('Separe para impostos') && text.includes('Organize atrasos'), text.slice(0, 300).replace(/\n/g, ' | '))
+  r.check('Minhas regras abre com modelos prontos e nenhuma regra', text.includes('Minhas regras') && text.includes('Modelos prontos') && text.includes('Nenhuma regra ainda') && text.includes('Separe para impostos') && text.includes('Treinos') && text.includes('Alimentação'), text.slice(0, 300).replace(/\n/g, ' | '))
   r.check('nenhuma regra pronta vem ligada', (await idb(b, 'rules')).length === 0)
   r.check('sem rolagem horizontal no celular', await noHorizontalScroll(b))
 

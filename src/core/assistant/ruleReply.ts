@@ -12,6 +12,7 @@ import { triggerInfo } from '../rules/catalog'
 import { describeAction, describeRule, ruleNames } from '../rules/sentence'
 import type { RuleDraft } from '../rules/templates'
 import { ruleProblem } from '../rules/validate'
+import { findTwin } from '../rules/signature'
 import { todayIn, zoneOf } from '../period'
 import type { Reply } from './actions'
 import { findByName } from './actions'
@@ -19,6 +20,9 @@ import { proposalId } from './proposal'
 import type { RuleSketch } from './ruleSentence'
 
 export const RULE_EXAMPLES = [
+  'Quando eu registrar uma venda, adicionar uma tarefa para acompanhar o pagamento',
+  'Quando uma despesa passar de R$ 500, destacar para revisão',
+  'Quando eu concluir todas as tarefas de um projeto, me avisar',
   'Sempre que eu receber de um projeto, guarda 20% para Impostos',
   'Quando eu concluir um projeto, cria uma tarefa pedir avaliação daqui 3 dias',
   'Quando entrar mais de €1.000, guarda 10% para minha meta Viagem',
@@ -40,6 +44,8 @@ export interface RuleReplyCtx {
 export function ruleReply(sketch: RuleSketch, ctx: RuleReplyCtx): Reply {
   const { data, settings } = ctx
   if (!sketch.trigger) return { lines: ['Não entendi quando a regra deve rodar. Tente assim:'], list: RULE_EXAMPLES.map((title) => ({ title })), link: { label: 'Criar em Minhas regras', path: '/rules' } }
+  if (!sketch.actions.length && sketch.trigger.kind === 'habitDone' && /acompanhamento|progresso|meta/i.test(sketch.text))
+    return { lines: ['Isso o Núcleo já faz sozinho: as metas da semana de treino e os hábitos vinculados contam cada vez que você marca o hábito, sem precisar de regra. Se quiser que algo a mais aconteça (uma nota, um aviso), diga o que fazer.'] }
   if (!sketch.actions.length) return { lines: ['Não entendi o que a regra deve fazer. Tente assim:'], list: RULE_EXAMPLES.map((title) => ({ title })), link: { label: 'Criar em Minhas regras', path: '/rules' } }
   const info = triggerInfo(sketch.trigger.kind)
 
@@ -91,13 +97,19 @@ export function ruleReply(sketch: RuleSketch, ctx: RuleReplyCtx): Reply {
       actions.push({ kind: 'createNote', title: a.title, body: '' })
       continue
     }
+    if (a.kind === 'askReview' || a.kind === 'notify') {
+      actions.push({ kind: a.kind, text: a.text })
+      continue
+    }
     actions.push({ kind: 'addInbox', text: a.text })
   }
+  const extra: RuleCondition[] = sketch.trigger.kind === 'habitDone' && sketch.habitCategory ? [{ field: 'category', values: [sketch.habitCategory] }] : []
   for (const a of actions) if (!info.actions.includes(a.kind)) return stop(`“${cap(describeAction(a, ruleNames(data, settings)))}” não vale para este “quando”.`)
 
   const names = ruleNames(data, settings)
-  const sentence = describeRule({ trigger: sketch.trigger, conditions, actions }, names)
-  const draft: RuleDraft & { name: string } = { name: cap(sentence.dos[0]).slice(0, 60), trigger: sketch.trigger, conditions, actions }
+  const allConditions: RuleCondition[] = [...conditions, ...extra]
+  const sentence = describeRule({ trigger: sketch.trigger, conditions: allConditions, actions }, names)
+  const draft: RuleDraft & { name: string } = { name: cap(sentence.dos[0]).slice(0, 60), trigger: sketch.trigger, conditions: allConditions, actions }
   const problem = ruleProblem(draft, data)
   if (problem) return stop(`Quase lá: ${problem.charAt(0).toLowerCase()}${problem.slice(1)}.`)
 
@@ -110,8 +122,9 @@ export function ruleReply(sketch: RuleSketch, ctx: RuleReplyCtx): Reply {
     if (!g.inBalance) notes.push(`A meta ${g.name} não está marcada como “Este dinheiro está no meu saldo”: até você ligar isso na meta, a reserva não será feita.`)
   }
   for (const c of conditions) notes.push(`Só olha valores em ${c.currency}. Para comparar outras moedas pela cotação, ajuste no editor.`)
-  const twin = data.rules.find((r) => r.trigger.kind === draft.trigger.kind && JSON.stringify(r.actions) === JSON.stringify(actions) && JSON.stringify(r.conditions) === JSON.stringify(conditions))
-  if (twin) notes.push(`Você já tem uma regra igual: “${twin.name}”.`)
+  const twin = findTwin(draft, data.rules)
+  if (twin.same) notes.push(`Você já tem uma regra igual: “${twin.same.name}”.`)
+  else if (twin.similar) notes.push(`Parecida com “${twin.similar.name}”: as duas vão agir no mesmo acontecimento.`)
   notes.push('Ela fica ligada a partir de hoje. Tudo o que fizer aparece em “Feito pelo Núcleo”, com Desfazer. Nunca cria entradas ou saídas de dinheiro.')
 
   return {

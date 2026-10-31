@@ -8,9 +8,11 @@ import type { RuleDraft } from '../../core/rules/templates'
 import { TOKENS } from '../../core/rules/text'
 import { MAX_ACTIONS } from '../../core/rules/types'
 import { ruleProblem } from '../../core/rules/validate'
+import { findTwin } from '../../core/rules/signature'
+import { CATEGORY_LABEL as HABIT_CATEGORY_LABEL } from '../../core/weekGoals'
 import { useStore } from '../../data/store'
 import { CLIENT_STATUS, PROJECT_STATUS, TASK_PRIORITY } from '../../data/labels'
-import type { MoneyOrigin, Rule, RuleAction, RuleActionKind, RuleCondition, RuleConditionField, RuleTriggerKind, Weekday } from '../../data/types'
+import type { HabitCategory, MoneyOrigin, Rule, RuleAction, RuleActionKind, RuleCondition, RuleConditionField, RuleTriggerKind, Weekday } from '../../data/types'
 import { parseMoney } from '../../lib/calc'
 import { amountToInput } from '../../lib/money'
 import { AmountField } from '../../ui/AmountField'
@@ -155,6 +157,7 @@ function ConditionEditor({ c, trigger, onChange }: { c: RuleCondition; trigger: 
         </Field>
       )
     case 'category': {
+      if (trigger === 'habitDone') return <MultiChips values={c.values} options={(Object.keys(HABIT_CATEGORY_LABEL) as HabitCategory[]).map((k) => ({ value: k, label: HABIT_CATEGORY_LABEL[k] }))} onChange={(values) => onChange({ ...c, values })} />
       const type = info.income ? 'in' : 'out'
       return <MultiChips values={c.values} options={pickableCategories(settings, type).map((x) => ({ value: x.id, label: x.label }))} onChange={(values) => onChange({ ...c, values })} />
     }
@@ -203,6 +206,9 @@ function newAction(kind: RuleActionKind, trigger: RuleTriggerKind): RuleAction {
     case 'createNote':
       return { kind, title: '', body: '' }
     case 'addInbox':
+      return { kind, text: '' }
+    case 'askReview':
+    case 'notify':
       return { kind, text: '' }
   }
 }
@@ -307,6 +313,16 @@ function ActionEditor({ a, trigger, onChange }: { a: RuleAction; trigger: RuleTr
           <TokenChips kinds={trigger} onAdd={(t) => onChange({ ...a, text: append(a.text, t) })} />
         </>
       )
+    case 'askReview':
+    case 'notify':
+      return (
+        <>
+          <Field label={a.kind === 'askReview' ? 'O que revisar (opcional)' : 'Mensagem (opcional)'} hint="Aparece em Pendências, em “Feito pelo Núcleo”. Não muda nenhum registro.">
+            <TextInput value={a.text} onChange={(e) => onChange({ ...a, text: e.target.value })} placeholder={a.kind === 'askReview' ? 'ex.: Conferir esta despesa' : 'ex.: Projeto pronto para entregar'} />
+          </Field>
+          <TokenChips kinds={trigger} onAdd={(t) => onChange({ ...a, text: append(a.text, t) })} />
+        </>
+      )
   }
 }
 
@@ -361,9 +377,11 @@ export function RuleBuilder({ open, onClose, initial, existing, onSaved }: { ope
   const usedFields = new Set(draft.conditions.map((c) => c.field))
   const freeFields = info.conditions.filter((f) => !usedFields.has(f))
 
+  const twin = findTwin(draft, data.rules, existing?.id)
   const save = async (on: boolean) => {
     const problem = ruleProblem(draft, data)
     if (problem) return toast(problem, 'error')
+    if (twin.same) return toast(`Você já tem esta mesma regra: “${twin.same.name}”.`, 'error')
     const rule = await saveRule(draft, on, existing)
     toast(on ? 'Regra salva e ligada' : 'Regra salva desligada')
     onSaved?.(rule)
@@ -515,11 +533,31 @@ export function RuleBuilder({ open, onClose, initial, existing, onSaved }: { ope
             <Switch checked={Boolean(draft.chain)} />
           </button>
           {draft.chain && <p className="mt-2 text-[13px] leading-relaxed text-warn">Atenção: o que esta regra fizer (uma tarefa criada, um status mudado, uma reserva) poderá iniciar outras regras. No máximo 3 regras em sequência, nenhuma repetida; se houver risco de repetição, a cadeia para.</p>}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(draft.confirm)}
+            onClick={() => {
+              const { confirm: _k, ...rest } = draft
+              void _k
+              setDraft(draft.confirm ? rest : { ...rest, confirm: true })
+            }}
+            className="mt-2 flex w-full items-start gap-3 rounded-[var(--radius-field)] border border-line bg-raised px-4 py-3 text-left"
+          >
+            <span className="min-w-0 flex-1 text-[15px] leading-snug">
+              Pedir minha confirmação antes
+              <span className="mt-0.5 block text-[13px] text-faint">A regra só pergunta, em Pendências. Ao confirmar, o Núcleo confere tudo de novo e só então faz.</span>
+            </span>
+            <Switch checked={Boolean(draft.confirm)} />
+          </button>
         </section>
 
         <section className="rounded-[var(--radius-field)] border border-line bg-tint/[0.04] px-4 py-3.5">
           <p className="label-mono text-faint">Em resumo</p>
           <p className="mt-1 text-[15px] leading-relaxed">{sentence.summary}</p>
+          {draft.confirm && <p className="mt-2 text-[13px] leading-relaxed text-soft">Antes de fazer, pede sua confirmação.</p>}
+          {twin.same && <p className="mt-2 text-[13px] leading-relaxed text-warn">Você já tem esta mesma regra: “{twin.same.name}”. Ajuste algo ou edite a que existe.</p>}
+          {!twin.same && twin.similar && <p className="mt-2 text-[13px] leading-relaxed text-soft">Parecida com “{twin.similar.name}”: as duas vão agir no mesmo acontecimento.</p>}
           {warn.map((w) => (
             <p key={w} className="mt-2 text-[13px] leading-relaxed text-soft">
               {w}

@@ -23,6 +23,8 @@ export interface ActionsPlan {
   results: RunAction[]
   created: AutomationRun['created']
   changed: AutomationRun['changed']
+  /** Etapa 4: "Pedir revisão" / "Me avisar" — the run shows in Pendências (nothing is written). */
+  notice?: NonNullable<AutomationRun['notice']>
 }
 
 /** What a record looks like for "was it edited after the rule created it?" (dates and marks left out). */
@@ -73,6 +75,10 @@ export function actionName(a: RuleAction, work: Pick<Work, 'get'>): string {
       return 'Criar a nota'
     case 'addInbox':
       return 'Adicionar ao Inbox'
+    case 'askReview':
+      return 'Pedir revisão'
+    case 'notify':
+      return 'Avisar'
   }
 }
 
@@ -182,6 +188,15 @@ function one(rule: Rule, a: RuleAction, ev: RuleEvent, work: Work, ctx: RuleCtx,
       work.put('transactions', { ...tx, category: cat.id })
       plan.changed.push({ collection: 'transactions', id: tx.id, field: 'category', before: undefined, after: cat.id })
       return `aplicou a categoria ${cat.label}`
+    }
+
+    // Etapa 4: these two only ask the person (Pendências); they never change a record.
+    case 'askReview':
+    case 'notify': {
+      const text = fillTokens(a.text, ev.names).trim() || (a.kind === 'askReview' ? `Revisar: ${ev.label}` : ev.label)
+      const kind = plan.notice?.kind === 'review' || a.kind === 'askReview' ? 'review' : 'notify'
+      plan.notice = { kind, text: plan.notice ? `${plan.notice.text} · ${text}` : text }
+      return a.kind === 'askReview' ? `pediu sua revisão: “${text}”` : `avisou você: “${text}”`
     }
   }
 }

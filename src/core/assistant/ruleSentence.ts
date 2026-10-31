@@ -4,7 +4,7 @@
  * Deterministic and offline. Whatever it can't read stays empty, and the Assistant asks.
  * It never writes: the sketch becomes a rule only through the preview and "Confirmar e criar regra".
  */
-import type { Currency, RuleCondition, RuleTrigger, TaskPriority, Weekday } from '../../data/types'
+import type { Currency, HabitCategory, RuleCondition, RuleTrigger, TaskPriority, Weekday } from '../../data/types'
 
 export type SketchAction =
   | { kind: 'reservePercent'; percent: number; goal: string | null }
@@ -12,6 +12,8 @@ export type SketchAction =
   | { kind: 'createTask'; title: string; dueDays: number | null; priority: TaskPriority }
   | { kind: 'addInbox'; text: string }
   | { kind: 'createNote'; title: string }
+  | { kind: 'askReview'; text: string }
+  | { kind: 'notify'; text: string }
 
 export type SketchCondition = Extract<RuleCondition, { field: 'amount' }> | (Omit<Extract<RuleCondition, { field: 'amount' }>, 'currency'> & { currency: null })
 
@@ -21,6 +23,8 @@ export interface RuleSketch {
   trigger: RuleTrigger | null
   conditions: SketchCondition[]
   actions: SketchAction[]
+  /** Etapa 4: "quando eu registrar um treino" → habits of that kind only. */
+  habitCategory?: HabitCategory
   /** Choices already made by tapping a question (goal per action index; currency of the value). */
   goals?: Record<number, string>
   currency?: Currency
@@ -44,7 +48,9 @@ const original = (source: string, norm: string, piece: string) => {
 
 /** Looks like a rule: "sempre que / toda vez que / quando … + an action", or a date rule. */
 const RULE_START = /\b(sempre que|toda vez que|cada vez que|quando|todo dia \d{1,2}|todo mes|toda (segunda|terca|quarta|quinta|sexta|sabado|domingo)|todas as (segundas|tercas|quartas|quintas|sextas|sabados|domingos))\b/
-const ACTION_VERB = /\b(guarda|guarde|guardar|reserva|reserve|reservar|separa|separe|separar|cria|crie|criar|adiciona|adicione|coloca|coloque|anota|anote|manda|joga|bota|poe)\b/
+const ACTION_VERB = /\b(guarda|guarde|guardar|reserva|reserve|reservar|separa|separe|separar|cria|crie|criar|adiciona|adicione|coloca|coloque|anota|anote|manda|joga|bota|poe|destaca|destaque|pede|peca|avisa|avise|lembra|lembre|notifica|notifique)\b/
+/** Infinitives also start an action, but only right after a comma ("quando eu registrar uma venda, adicionar uma tarefa"). */
+const ACTION_INF = /\b(adicionar|colocar|destacar|pedir|avisar|lembrar|notificar|anotar|marcar|atualizar)\b/
 
 const WEEKDAYS: Record<string, Weekday> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 }
 
@@ -68,6 +74,10 @@ export function readAmount(t: string): { cents: number; currency: Currency | nul
 }
 
 function readTrigger(c: string): RuleTrigger | null {
+  // Etapa 4 triggers first (their words overlap with the older ones).
+  if (/\btodas as tarefas\b/.test(c) && /\b(conclu\w*|termin\w*|finaliz\w*|fizer)\b/.test(c)) return { kind: 'projectTasksDone' }
+  if (/\b(assinaturas?|ferramentas?)\b/.test(c) && /\b(venc\w*|cobr\w*|renov\w*)\b/.test(c)) return { kind: 'toolDue' }
+  if (/\b(habitos?|treinos?|treinar|academia|exercicios?)\b/.test(c) && /\b(registr\w*|conclu\w*|marc\w*|fizer|fiz|termin\w*|fazer)\b/.test(c)) return { kind: 'habitDone' }
   let m = c.match(/\btodo dia (\d{1,2})\b|\btodo mes no dia (\d{1,2})\b/)
   if (m) {
     const day = Number(m[1] ?? m[2])
@@ -94,7 +104,7 @@ function readTrigger(c: string): RuleTrigger | null {
   }
   if (/\bcliente\b/.test(c) && /\b(cadastr\w*|cri\w*|novo)\b/.test(c)) return { kind: 'clientCreated' }
   if (/\bmeta\b/.test(c) && /\b(ating\w*|bat\w*|complet\w*|chegar)\b/.test(c)) return { kind: 'goalReached' }
-  if (/\b(gast\w*|sair|sai|pagar uma conta)\b/.test(c)) return { kind: 'moneyOut' }
+  if (/\b(gast\w*|despesas?|sair|sai|pagar uma conta)\b/.test(c)) return { kind: 'moneyOut' }
   if (/\b(receb\w*|entrar|entra|cair|cai|chegar)\b/.test(c)) return { kind: 'moneyIn' }
   return null
 }
@@ -122,9 +132,33 @@ function readCondition(c: string): SketchCondition | null {
 const GOAL_TAIL = /\s*(?:para|pra|na|no|em)\s+(?:a\s+|o\s+)?(?:minha\s+|meu\s+)?(?:meta\s+(?:de\s+|do\s+|da\s+)?)?(.+)$/
 
 function readActions(src: string, a: string): SketchAction[] {
-  const parts = a.split(/\s*(?:,\s*)?\be\s+(?=(?:guarda|guarde|reserva|reserve|separa|separe|cria|crie|adiciona|adicione|coloca|coloque|anota|anote|manda|bota|poe)\b)/)
+  const parts = a.split(/\s*(?:,\s*)?\be\s+(?=(?:me\s+)?(?:guarda|guarde|reserva|reserve|separa|separe|cria|crie|criar|adiciona|adicione|adicionar|coloca|coloque|anota|anote|manda|bota|poe|destaca|destaque|destacar|pede|peca|pedir|avisa|avise|avisar|lembra|lembre|lembrar|notifica|notifique)\b)/)
   const out: SketchAction[] = []
   for (const p of parts) {
+    // Etapa 4: "destacar para revisão", "pedir revisão" — a request in Pendências, never a change.
+    if (/\b(?:destaca|destaque|destacar|marca|marque|marcar|coloca|colocar|separa|separar)\s+(?:para|pra)\s+revis\w*|\b(?:pede|peca|pedir)\s+(?:a\s+)?(?:minha\s+)?revis\w*|\bpara revisao\b/.test(p)) {
+      out.push({ kind: 'askReview', text: '' })
+      continue
+    }
+    let n = p.match(/\b(?:me\s+)?(?:avisa|avise|avisar|lembra|lembre|lembrar|notifica|notifique|notificar)\b\s*(?:me\s+)?(?:de\s+|que\s+|:\s*)?(.*)$/)
+    if (n) {
+      const rest = n[1].trim()
+      out.push({ kind: 'notify', text: rest ? cap(original(src, a, rest)) : '' })
+      continue
+    }
+    n = p.match(/\b(?:adicionar|colocar|criar)\s+(?:uma\s+)?tarefa\b\s*(?:para\s+|pra\s+|de\s+|:\s*)?(.*)$/)
+    if (n) {
+      let rest = n[1]
+      let dueDays: number | null = null
+      const d = rest.match(/\s*(?:para\s+|pra\s+)?(?:daqui(?: a)?|em|dentro de)\s+(\d{1,3})\s+dias?\b/) ?? rest.match(/\s*(?:para\s+|pra\s+)?(amanha|hoje|no mesmo dia)\b/)
+      if (d) {
+        dueDays = /^\d/.test(d[1]) ? Number(d[1]) : d[1] === 'amanha' ? 1 : 0
+        rest = rest.replace(d[0], ' ')
+      }
+      rest = rest.replace(/\s+/g, ' ').replace(/^(?:de |para |pra |:)/, '').trim()
+      out.push({ kind: 'createTask', title: rest ? cap(original(src, a, rest)) : '', dueDays, priority: /\burgente\b/.test(rest) ? 'high' : 'none' })
+      continue
+    }
     let m = p.match(/\b(?:guarda|guarde|guardar|reserva|reserve|reservar|separa|separe|separar|bota|poe|coloca|coloque)\s+(\d{1,3})\s?%(.*)$/)
     if (m) {
       const g = m[2].match(GOAL_TAIL)
@@ -171,12 +205,14 @@ function readActions(src: string, a: string): SketchAction[] {
 export function readRuleSentence(text: string): RuleSketch | null {
   const src = text.trim().replace(/\s+/g, ' ').replace(/[!?.]+$/g, '')
   const t = strip(src)
-  if (!RULE_START.test(t) || !ACTION_VERB.test(t)) return null
+  if (!RULE_START.test(t) || !(ACTION_VERB.test(t) || new RegExp(`,\\s*(?:me\\s+)?${ACTION_INF.source}`).test(t))) return null
   const start = t.match(RULE_START)!
   const at = start.index!
   // The "quando" clause runs from its keyword to the first action verb after it (or a comma).
   const after = t.slice(at)
-  const verb = after.slice(start[0].length).search(new RegExp(`(?:,\\s*|\\s)${ACTION_VERB.source}`))
+  const rest = after.slice(start[0].length)
+  const atComma = rest.search(new RegExp(`,\\s*(?:me\\s+)?(?:${ACTION_VERB.source}|${ACTION_INF.source})`))
+  const verb = atComma >= 0 ? atComma : rest.search(new RegExp(`(?:,\\s*|\\s)(?:me\\s+)?${ACTION_VERB.source}`))
   const clauseEnd = verb >= 0 ? at + start[0].length + verb : t.length
   let clause = t.slice(at, clauseEnd).replace(/,\s*$/, '')
   // The action may come before ("Guarda 20% para Viagem quando entrar mais de €1.000") or after it.
@@ -184,8 +220,10 @@ export function readRuleSentence(text: string): RuleSketch | null {
   clause = clause.replace(/^(sempre que|toda vez que|cada vez que|quando)\s+/, '')
   const actionSrc = src.slice(0, at) + ' ' + src.slice(clauseEnd)
   const actionNorm = (t.slice(0, at) + ' ' + t.slice(clauseEnd))
+  const habitCategory: HabitCategory | undefined = /\b(treinos?|treinar|academia|exercicios?)\b/.test(clause) ? 'training' : /\b(estud\w*)\b/.test(clause) ? 'study' : /\b(leitura|ler)\b/.test(clause) ? 'reading' : undefined
   return {
     text: src,
+    ...(habitCategory ? { habitCategory } : {}),
     trigger: readTrigger(clause),
     conditions: condition ? [condition] : [],
     actions: readActions(actionSrc.replace(/^[\s,]+/, ''), actionNorm.replace(/^[\s,]+/, '')).filter(Boolean),

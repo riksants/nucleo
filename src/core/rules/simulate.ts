@@ -121,6 +121,27 @@ function rebuild(rule: Pick<Rule, 'trigger'>, data: DataState, from: string, to:
       break
     case 'clientStatus':
       return { events: [], possible: false, notes: [] }
+    case 'projectTasksDone':
+      for (const p of data.projects) {
+        const tasks = data.tasks.filter((t) => t.projectId === p.id)
+        if (!tasks.length || !tasks.every((t) => t.status === 'done' && t.completedAt)) continue
+        const lastTask = [...tasks].sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))[0]
+        const day = dayOf(lastTask.completedAt!, tz)
+        if (!inside(day)) continue
+        const cliente = data.clients.find((c) => c.id === p.clientId)?.name
+        events.push({ key: `ptasks:${p.id}:sim`, kind: 'projectTasksDone', date: day, origin: { collection: 'projects', id: p.id, label: p.name }, label: `Todas as tarefas de ${p.name} concluídas`, clientId: p.clientId, projectId: p.id, text: p.name, names: { projeto: p.name, cliente, tarefa: lastTask.title } })
+      }
+      notes.push('Aproximado: usa a data em que a última tarefa de cada projeto foi concluída.')
+      break
+    case 'habitDone':
+      for (const c of data.completions) if (c.source === 'habit' && c.status === 'done' && inside(c.date)) events.push(...pastEvents(data, 'completions', c, null, ctx))
+      break
+    case 'toolDue':
+      for (const r of data.automationRuns) {
+        if (r.automation !== 'toolCharge' || r.status === 'undone' || !inside(r.date)) continue
+        events.push({ key: `tooldue:${r.id}`, kind: 'toolDue', date: r.date, origin: { collection: 'tools', id: r.origin.id, label: r.origin.label }, label: `Cobrança de ${r.origin.label}`, amount: r.amount, currency: r.currency, text: r.origin.label, names: { descricao: r.origin.label } })
+      }
+      break
     case 'date':
       for (const d of occurrences(rule, from, to)) events.push({ key: `day:${d}`, kind: 'date', date: d, origin: { collection: 'rules', id: '', label: '' }, label: `Dia ${d.slice(8, 10)}/${d.slice(5, 7)}`, names: {} })
       break

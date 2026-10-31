@@ -4,7 +4,7 @@
  * move to an account never do), so the same happening is never seen twice.
  */
 import type { BatchOp } from '../../data/repository'
-import type { Client, CollectionName, DataState, Entity, FinanceGoal, MoneyOrigin, Project, Sale, Subscriber, Task, Transaction } from '../../data/types'
+import type { Client, CollectionName, Completion, DataState, Entity, FinanceGoal, Habit, MoneyOrigin, Project, Sale, Subscriber, Task, Transaction } from '../../data/types'
 import { formatMoney } from '../../lib/money'
 import { dayOf } from '../indexes'
 import { zoneOf } from '../period'
@@ -93,6 +93,7 @@ export function detectEvents(before: DataState, ops: BatchOp[], ctx: RuleCtx): R
   const ms = ctx.now.getTime()
   const today = ctx.today
   const out: RuleEvent[] = []
+  const projectsDone = new Set<string>()
   // The last put of each record is what it became.
   const last = new Map<string, Extract<BatchOp, { op: 'put' }>>()
   for (const o of ops) if (o.op === 'put') last.set(`${o.collection}:${o.item.id}`, o)
@@ -142,7 +143,30 @@ export function detectEvents(before: DataState, ops: BatchOp[], ctx: RuleCtx): R
           if (!t.fromRoutine) out.push({ ...base, key: `task:${t.id}`, kind: 'taskCreated', label: `Tarefa criada: ${t.title}` })
         } else if (was.status !== 'done' && t.status === 'done') {
           out.push({ ...base, key: `taskdone:${t.id}:${t.completedAt ?? ms}`, kind: 'taskDone', label: `Tarefa concluída: ${t.title}` })
+          // Etapa 4: that was the last open task of its project.
+          if (t.projectId && !projectsDone.has(t.projectId)) {
+            const tasks = [...before.tasks.filter((x) => x.projectId === t.projectId && !last.has(`tasks:${x.id}`)), ...[...last.values()].filter((x) => x.collection === 'tasks' && (x.item as Task).projectId === t.projectId).map((x) => x.item as Task)]
+            if (tasks.length && tasks.every((x) => x.status === 'done')) {
+              projectsDone.add(t.projectId)
+              const p = find<Project>('projects', t.projectId)
+              const cliente = find<Client>('clients', p?.clientId)?.name
+              out.push({
+                key: `ptasks:${t.projectId}:${t.id}:${t.completedAt ?? ms}`, kind: 'projectTasksDone', date: today,
+                origin: { collection: 'projects', id: t.projectId, label: p?.name ?? 'Projeto' }, label: `Todas as tarefas de ${p?.name ?? 'um projeto'} concluídas`,
+                clientId: p?.clientId ?? null, projectId: t.projectId, text: p?.name, names: { projeto: p?.name, cliente, tarefa: t.title },
+              })
+            }
+          }
         }
+        break
+      }
+      case 'completions': {
+        const c = o.item as Completion
+        const was = prev as Completion | undefined
+        if (c.source !== 'habit' || c.status !== 'done' || was?.status === 'done') break
+        const h = find<Habit>('habits', c.sourceId)
+        if (!h) break
+        out.push({ key: `habit:${c.id}`, kind: 'habitDone', date: c.date, origin: { collection: 'habits', id: h.id, label: h.name }, label: `Hábito feito: ${h.name}`, category: h.category, text: h.name, names: {} })
         break
       }
       case 'clients': {

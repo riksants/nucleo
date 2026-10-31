@@ -1,7 +1,7 @@
 import { Check, CircleHelp, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { todayIn, zoneOf } from '../../core/period'
-import { describeCondition } from '../../core/rules/sentence'
+import { describeCondition, describeRule } from '../../core/rules/sentence'
 import { NO_HISTORY, simulateRule } from '../../core/rules/simulate'
 import type { RuleDraft } from '../../core/rules/templates'
 import { useStore } from '../../data/store'
@@ -15,7 +15,24 @@ const would = (text: string) =>
     .replace(/^criou /, 'criado ')
     .replace(/^adicionou /, 'adicionado ')
     .replace(/^mudou /, 'mudado ')
-    .replace(/^aplicou /, 'aplicado ')}`
+    .replace(/^aplicou /, 'aplicado ')
+    .replace(/^pediu /, 'pedido ')
+    .replace(/^avisou /, 'avisado ')}`
+
+/** When the data has nothing to replay: one example in words, clearly marked as not real. */
+function Example({ draft }: { draft: RuleDraft & { name: string } }) {
+  const names = useRuleNames()
+  const s = describeRule(draft, names)
+  return (
+    <div className="rounded-[var(--radius-field)] border border-dashed border-line px-3.5 py-2.5">
+      <p className="label-mono text-faint">Exemplo — não aconteceu</p>
+      <p className="mt-1 text-[14px] leading-relaxed text-soft">
+        Se {s.when.replace(/^eu /, 'você ')}
+        {s.ifs.length ? `, e ${s.ifs.join(' e ')}` : ''}, o Núcleo vai {s.dos.join(', depois ')}{draft.confirm ? ' — mas só depois que você confirmar em Pendências' : ''}.
+      </p>
+    </div>
+  )
+}
 
 /** "Testar esta regra": read only — computed on a copy, nothing is saved. */
 export function SimulationView({ draft }: { draft: RuleDraft & { name: string } }) {
@@ -24,7 +41,13 @@ export function SimulationView({ draft }: { draft: RuleDraft & { name: string } 
   const today = todayIn(zoneOf(settings))
   const sim = useMemo(() => simulateRule(draft, data, settings, convert, today), [draft, data, settings, convert, today])
 
-  if (!sim.possible) return <p className="text-[14px] leading-relaxed text-soft">{NO_HISTORY} O app não guarda o histórico de mudanças de status, então não dá para dizer o que teria acontecido.</p>
+  if (!sim.possible)
+    return (
+      <div className="space-y-3">
+        <p className="text-[14px] leading-relaxed text-soft">{NO_HISTORY} O app não guarda o histórico de mudanças de status, então não dá para dizer o que teria acontecido.</p>
+        <Example draft={draft} />
+      </div>
+    )
 
   const ran = sim.items.filter((x) => x.ran)
   const head = !sim.items.length
@@ -35,6 +58,7 @@ export function SimulationView({ draft }: { draft: RuleDraft & { name: string } 
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed">{head}</p>
+      {!sim.items.length && <Example draft={draft} />}
       {sim.items.length > 0 && (
         <ul className="space-y-2.5">
           {sim.items.slice(-10).reverse().map((it, i) => (

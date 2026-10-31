@@ -10,6 +10,7 @@ import type { BatchOp } from '../../data/repository'
 import type { Project, Rule } from '../../data/types'
 import { dayInMonth } from '../automation/dates'
 import { makeRun, type AutomationCtx } from '../automation/types'
+import { formatMoney } from '../../lib/money'
 import { addDaysToDate, weekdayOfDate } from '../period'
 import { triggerInfo } from './catalog'
 import { checkConditions } from './conditions'
@@ -65,6 +66,19 @@ export function planScheduledRules(actx: AutomationCtx): BatchOp[] {
         if (t.status === 'done' || !t.dueDate || t.dueDate >= today || t.dueDate < firstLateDay) continue
         const projeto = t.projectId ? (actx.data.projects.find((p) => p.id === t.projectId) as Project | undefined)?.name : undefined
         events.push({ key: `overdue:${t.id}:${t.dueDate}`, kind: 'taskOverdue', date: today, origin: { collection: 'tasks', id: t.id, label: t.title }, label: `Tarefa atrasada: ${t.title}`, projectId: t.projectId, priority: t.priority, text: t.title, names: { tarefa: t.title, projeto } })
+      }
+      executeEvents(events, [rule], work, ctx, own(rule.id), { chainRules })
+      continue
+    }
+    if (rule.trigger.kind === 'toolDue') {
+      // Etapa 4: the charge days the "Cobranças de assinaturas" automation really recorded (A pagar or paid),
+      // from the day the rule was on, the last week at most — never a guessed date.
+      const from = [rule.since, addDaysToDate(today, -7)].sort().at(-1)!
+      const events: RuleEvent[] = []
+      for (const r of actx.data.automationRuns) {
+        if (r.automation !== 'toolCharge' || r.status === 'undone' || r.date < from || r.date > today) continue
+        const valor = r.amount !== undefined && r.currency ? formatMoney(r.amount, r.currency) : undefined
+        events.push({ key: `tooldue:${r.id}`, kind: 'toolDue', date: r.date, origin: { collection: 'tools', id: r.origin.id, label: r.origin.label }, label: `Cobrança de ${r.origin.label}${valor ? `: ${valor}` : ''}`, amount: r.amount, currency: r.currency, text: r.origin.label, names: { valor, descricao: r.origin.label } })
       }
       executeEvents(events, [rule], work, ctx, own(rule.id), { chainRules })
       continue

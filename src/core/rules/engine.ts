@@ -156,6 +156,23 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
         work.put('automationRuns', makeRun({ id, automation: 'rule', date: ctx.today, summary: `Regra “${rule.name}” não rodou`, detail: `Não deu para conferir a condição: ${check.reason}.`, origin: ev.origin, created: [], changed: [], status: 'skipped', rule: { id: rule.id, name: rule.name }, cause, ...chainInfo }, ctx.now))
         continue
       }
+      if (rule.confirm) {
+        // "Pedir minha confirmação antes": only a preview on a throwaway copy; nothing else is written.
+        // The run waits in Pendências; confirming re-checks everything with the data of that moment.
+        const preview = planActions(rule, ev, new Work(work.snapshot()), ctx, id)
+        work.put(
+          'automationRuns',
+          makeRun(
+            {
+              id, automation: 'rule', date: ctx.today, summary: `Regra “${rule.name}” espera sua confirmação`, origin: ev.origin, created: [], changed: [], status: 'pending',
+              rule: { id: rule.id, name: rule.name }, cause, actions: preview.results.map((r) => ({ text: r.text, ok: r.ok, ...(r.def ? { def: r.def } : {}) })),
+              awaiting: { trigger: rule.trigger.kind, event: ev }, ...chainInfo,
+            },
+            ctx.now,
+          ),
+        )
+        continue
+      }
       const beforeRun = work.snapshot()
       const plan = planActions(rule, ev, work, ctx, id)
       const ok = plan.results.filter((r) => r.ok).map((r) => r.text)
@@ -174,6 +191,7 @@ export function executeEvents(events: RuleEvent[], rules: Rule[], work: Work, ct
           rule: { id: rule.id, name: rule.name },
           cause,
           actions: plan.results,
+          ...(plan.notice ? { notice: plan.notice } : {}),
           ...chainInfo,
         },
         ctx.now,

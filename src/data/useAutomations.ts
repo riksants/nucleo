@@ -7,6 +7,7 @@ import { runPut } from '../core/automation/types'
 import type { AutomationCtx } from '../core/automation/types'
 import { linkedRuleRuns, undoAction, undoRun } from '../core/automation/undo'
 import { attemptId, planRetry } from '../core/rules/retry'
+import { confirmRuleRun, declineRuleRun } from '../core/rules/confirm'
 import { planScheduledRules } from '../core/rules/schedule'
 import { todayIn, useToday, zoneOf } from '../core/period'
 import { applyOps } from '../core/rules/work'
@@ -206,5 +207,42 @@ export function useAutomationActions() {
   /** "Dispensar" a waiting item that is not a charge (a failed action, a review): it never comes back. */
   const dismiss = useCallback((run: AutomationRun) => commit([runPut({ ...run, dismissedAt: new Date().toISOString() })], { by: 'undo' }), [commit])
 
-  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry, confirmNoExpense, payNow, notYet, snooze, dismiss }
+  // Confirmations already sent from this screen: a second tap never sends one again.
+  const answered = useRef(new Set<string>())
+  /**
+   * "Confirmar" a rule that asked first: everything is checked again with the data of now (see core/rules/confirm.ts).
+   * Signed in, only with the sync idle and nothing waiting — otherwise another device may have answered.
+   */
+  const confirmRule = useCallback(
+    async (run: AutomationRun): Promise<{ ok: boolean; text: string }> => {
+      if (answered.current.has(run.id)) return { ok: false, text: 'Este pedido já foi respondido.' }
+      const syncSafe = syncAllowsAutomations(syncStatus) && navigator.onLine !== false
+      const now = new Date()
+      const r = confirmRuleRun(run, data, { settings, today: todayIn(zoneOf(settings), now), convert, now }, syncSafe)
+      if (typeof r === 'string') return { ok: false, text: r }
+      answered.current.add(run.id)
+      // Written as the rule's own write: it never starts other rules (no chains from a confirmation).
+      await commit(r.ops, { by: 'rule' })
+      return { ok: r.ok, text: r.text }
+    },
+    [data, settings, convert, commit, syncStatus],
+  )
+
+  /** "Pedir revisão" / "Me avisar": marked as seen (leaves Pendências; the run stays in Atividade). */
+  const seeNotice = useCallback((run: AutomationRun) => (run.notice ? commit([runPut({ ...run, notice: { ...run.notice, seenAt: new Date().toISOString() } })], { by: 'undo' }) : Promise.resolve()), [commit])
+
+  /** "Não fazer": closes the request without doing anything. */
+  const declineRule = useCallback(
+    async (run: AutomationRun): Promise<string | null> => {
+      if (answered.current.has(run.id)) return 'Este pedido já foi respondido.'
+      const ops = declineRuleRun(run, data, new Date())
+      if (typeof ops === 'string') return ops
+      answered.current.add(run.id)
+      await commit(ops, { by: 'undo' })
+      return null
+    },
+    [data, commit],
+  )
+
+  return { confirm, decline, undo, changeMonth, setEnabled, linkedRuns, undoOne, retry, confirmNoExpense, payNow, notYet, snooze, dismiss, confirmRule, declineRule, seeNotice }
 }

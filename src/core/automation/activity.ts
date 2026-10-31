@@ -167,14 +167,23 @@ export function pendingItems(data: Pick<DataState, 'automationRuns' | 'rules' | 
         next: income ? 'Confirmar o recebimento' : 'Confirmar o pagamento',
       })
     } else if (isAwaitingRule(r) && keep(r)) {
-      const review = r.actions?.every((a) => ['askReview', 'notify'].includes(a.def?.kind as string)) ?? false
       out.push({
-        key: r.id, kind: review ? 'review' : 'ruleConfirm', run: r, date: r.date, snoozable: true,
+        key: r.id, kind: 'ruleConfirm', run: r, date: r.date, snoozable: true,
         title: r.rule ? `Regra “${r.rule.name}”` : r.summary,
-        detail: review ? (r.detail ?? r.summary) : `Quer que eu faça: ${(r.actions ?? []).map((a) => a.text).join(' · ')}`,
-        next: review ? 'Revisar' : 'Confirmar ou dispensar',
+        detail: `Por causa de: ${r.cause?.label ?? r.origin.label}. Quer que eu faça: ${(r.actions ?? []).map((a) => a.text.replace(/^Não fez — /, '')).join(' · ')}`,
+        next: 'Confirmar ou não fazer',
       })
-    } else if (r.automation === 'rule' && r.status !== 'undone' && keep(r)) {
+    } else if (r.automation === 'rule' && r.status === 'done' && r.notice && !r.notice.seenAt && keep(r)) {
+      // "Pedir revisão" / "Me avisar": stays until the person marks it as seen.
+      out.push({
+        key: `${r.id}#notice`, kind: 'review', run: r, date: r.date, snoozable: true,
+        title: r.notice.text,
+        detail: `Regra “${r.rule?.name ?? ''}” · por causa de: ${r.cause?.label ?? r.origin.label}`,
+        next: r.notice.kind === 'review' ? 'Revisar' : 'Ver',
+        link: r.cause?.txId ? { path: '/finance', params: { open: r.cause.txId } } : undefined,
+      })
+    }
+    if (r.automation === 'rule' && r.status !== 'undone' && r.status !== 'pending' && keep(r)) {
       r.actions?.forEach((a, i) => {
         if (!offersRetry(r, i)) return
         out.push({

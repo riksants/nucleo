@@ -5,7 +5,7 @@
 import type { MoneyOrigin, RuleActionKind, RuleConditionField, RuleTriggerKind } from '../../data/types'
 import type { EventKind, EventNames } from './types'
 
-export type TriggerGroup = 'Dinheiro' | 'Vendas' | 'Projetos' | 'Tarefas' | 'Clientes' | 'Metas' | 'Datas'
+export type TriggerGroup = 'Dinheiro' | 'Vendas' | 'Projetos' | 'Tarefas' | 'Clientes' | 'Metas' | 'Hábitos' | 'Datas'
 
 export interface TriggerInfo {
   kind: RuleTriggerKind
@@ -27,7 +27,7 @@ export interface TriggerInfo {
 }
 
 const MONEY_IF: RuleConditionField[] = ['amount', 'category', 'client', 'project', 'text', 'weekday']
-const ALWAYS: RuleActionKind[] = ['createTask', 'createNote', 'addInbox']
+const ALWAYS: RuleActionKind[] = ['createTask', 'createNote', 'addInbox', 'askReview', 'notify']
 const MONEY_TOKENS: (keyof EventNames)[] = ['valor', 'descricao', 'cliente', 'projeto']
 
 export const TRIGGERS: TriggerInfo[] = [
@@ -48,11 +48,14 @@ export const TRIGGERS: TriggerInfo[] = [
   { kind: 'clientStatus', group: 'Clientes', label: 'um cliente mudar de status', base: 'clientStatus', conditions: ['status', 'statusBefore', 'client', 'text', 'weekday'], actions: [...ALWAYS], tokens: ['cliente'] },
   { kind: 'goalSaved', group: 'Metas', label: 'uma meta receber dinheiro guardado', base: 'goalSaved', conditions: ['goal', 'amount', 'weekday'], actions: [...ALWAYS], tokens: ['valor'] },
   { kind: 'goalReached', group: 'Metas', label: 'uma meta for atingida', base: 'goalReached', conditions: ['goal', 'weekday'], actions: [...ALWAYS], tokens: [] },
+  { kind: 'projectTasksDone', group: 'Projetos', label: 'todas as tarefas de um projeto forem concluídas', base: 'projectTasksDone', conditions: ['client', 'project', 'text', 'weekday'], actions: [...ALWAYS, 'projectStatus', 'clientStatus'], tokens: ['projeto', 'cliente', 'tarefa'] },
+  { kind: 'habitDone', group: 'Hábitos', label: 'eu marcar um hábito como feito', base: 'habitDone', conditions: ['category', 'text', 'weekday'], actions: [...ALWAYS], tokens: [] },
+  { kind: 'toolDue', group: 'Dinheiro', label: 'chegar o dia de cobrança de uma assinatura', base: 'toolDue', scheduled: true, conditions: ['amount', 'text'], actions: [...ALWAYS], tokens: ['valor', 'descricao'] },
   { kind: 'monthDay', group: 'Datas', label: 'chegar um dia do mês', base: 'date', scheduled: true, conditions: [], actions: [...ALWAYS], tokens: [] },
   { kind: 'weekDay', group: 'Datas', label: 'chegar um dia da semana', base: 'date', scheduled: true, conditions: [], actions: [...ALWAYS], tokens: [] },
 ]
 
-export const TRIGGER_GROUPS: TriggerGroup[] = ['Dinheiro', 'Projetos', 'Vendas', 'Tarefas', 'Clientes', 'Metas', 'Datas']
+export const TRIGGER_GROUPS: TriggerGroup[] = ['Dinheiro', 'Projetos', 'Vendas', 'Tarefas', 'Clientes', 'Metas', 'Hábitos', 'Datas']
 
 const BY_KIND = new Map(TRIGGERS.map((t) => [t.kind, t]))
 export const triggerInfo = (kind: RuleTriggerKind): TriggerInfo => BY_KIND.get(kind) ?? TRIGGERS[0]
@@ -81,6 +84,8 @@ export const ACTION_LABEL: Record<RuleActionKind, string> = {
   setCategory: 'Aplicar uma categoria',
   createNote: 'Criar uma nota',
   addInbox: 'Adicionar ao Inbox',
+  askReview: 'Pedir revisão (vai para Pendências)',
+  notify: 'Me avisar (vai para Pendências)',
 }
 
 export const ORIGIN_LABEL: Record<MoneyOrigin, string> = {

@@ -22,6 +22,12 @@ const clickIn = (text) => b.eval(`(() => { const d = [...document.querySelectorA
 /** Button with `label` inside the row (card child) whose text contains `rowText`. */
 const clickInRow = (rowText, label) =>
   b.eval(`(() => { const rows = [...document.querySelectorAll('main .card > div')].filter((x) => x.innerText.includes(${JSON.stringify(rowText)})); for (const row of rows) { const el = [...row.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})); if (el) { el.click(); return true } } return false })()`)
+/** Etapa 4: "Feito pelo Núcleo" has tabs (Atividade · Pendências · Automações). */
+const tab = async (label) => {
+  const ok = await b.eval(`(() => { const el = [...document.querySelectorAll('main [role=radio]')].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})); if (!el) return false; el.click(); return true })()`)
+  await sleep(500)
+  return ok
+}
 const put = (store, item) =>
   b.eval(`new Promise((res, rej) => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const tx = q.result.transaction(${JSON.stringify(store)}, 'readwrite'); tx.objectStore(${JSON.stringify(store)}).put(${JSON.stringify(item)}); tx.oncomplete = () => { q.result.close(); res(true) }; tx.onerror = () => rej(tx.error) } })`)
 const T = new Date().toISOString()
@@ -91,11 +97,17 @@ try {
   await b.goto(BASE + '#/automations')
   await sleep(1800)
   let page = await mainText()
-  r.check('"Feito pelo Núcleo": pendência, pagamento automático e reserva', page.includes('Esperando você') && page.includes('Pagamento automático de Figma') && page.includes('Núcleo reservou') && page.includes('Viagem'), page.slice(0, 500).replace(/\n/g, ' | '))
+  r.check('"Feito pelo Núcleo" abre em Pendências com a cobrança e as frases da semana', page.includes('Pendências (1)') && page.includes('Ana') && page.includes('Confirmar recebimento') && page.includes('registrou 1 pagamento automaticamente'), page.slice(0, 500).replace(/\n/g, ' | '))
+  await tab('Atividade')
+  page = await mainText()
+  r.check('Atividade: pagamento automático e reserva', page.includes('Pagamento automático de Figma') && page.includes('Núcleo reservou') && page.includes('Viagem'), page.slice(0, 500).replace(/\n/g, ' | '))
   const figmaRow = await b.eval(`[...document.querySelectorAll('main .card > div')].find((x) => x.innerText.includes('Pagamento automático de Figma'))?.innerText ?? ''`)
   r.check('valor aparece uma vez só na linha do histórico', (figmaRow.match(/20,00/g) || []).length === 1, figmaRow.replace(/\n/g, ' | '))
+  await tab('Automações')
   r.check('interruptores das 5 automações (com Vendas recorrentes)', (await b.eval(`document.querySelectorAll('main [role=switch]').length`)) === 5)
+  r.check('Automações mostram a última execução', (await mainText()).includes('Última vez'))
   r.check('sem rolagem horizontal em Feito pelo Núcleo (390px)', await noHorizontalScroll(b))
+  await tab('Pendências')
 
   // Confirm the receivable: only now the income exists
   r.check('abre "Confirmar recebimento"', await clickInRow('Ana', 'Confirmar recebimento'))
@@ -111,6 +123,7 @@ try {
   r.check('execução vira "feita" e o pagamento fica no assinante', runs.find((x) => x.id === subRun.id)?.status === 'done' && (await idb(b, 'subscribers', 's1')).payments.length === 1)
 
   // Undo the tool expense
+  await tab('Atividade')
   r.check('desfazer a saída da Figma', await clickInRow('Pagamento automático de Figma', 'Desfazer'))
   await sleep(600)
   await clickIn('Desfazer')

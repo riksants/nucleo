@@ -4,7 +4,8 @@ import { clearParams, navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
 import { describeRule } from '../../core/rules/sentence'
 import type { RuleSuggestion } from '../../core/rules/suggestions'
-import { TEMPLATES, type RuleDraft } from '../../core/rules/templates'
+import { TEMPLATE_GROUPS, TEMPLATES, type RuleDraft, type TemplateGroup } from '../../core/rules/templates'
+import { RuleSentenceBox } from './RuleSentenceBox'
 import { useStore } from '../../data/store'
 import type { Rule } from '../../data/types'
 import { parseMoney } from '../../lib/calc'
@@ -135,6 +136,7 @@ function RuleCard({ rule, onMenu, onEdit }: { rule: Rule; onMenu(r: Rule): void;
           <Switch checked={rule.on} />
         </button>
       </div>
+      {rule.confirm && !rule.paused && <p className="mt-1.5 text-[13px] text-faint">Pede sua confirmação antes de fazer.</p>}
       {rule.paused && <p className="mt-2 text-[13px] text-warn">Pausada por segurança: {rule.paused.reason.toLowerCase()}. Confira e ligue de novo.</p>}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-faint">
         <span>{stats.last ? `Última vez: ${ddmm(stats.last)}` : 'Ainda não rodou'}</span>
@@ -159,6 +161,8 @@ export function RulesPage() {
   const [builderOpen, setBuilderOpen] = useState(false)
   const [menu, setMenu] = useState<Rule | null>(null)
   const [fixed, setFixed] = useState<RuleSuggestion | null>(null)
+  const [group, setGroup] = useState<TemplateGroup>('Finanças')
+  const { settings } = useStore()
 
   const edit = (initial: Draft, existing?: Rule, suggestionKey?: string) => {
     setBuilder({ initial, existing, suggestion: suggestionKey })
@@ -207,6 +211,7 @@ export function RulesPage() {
       />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
         <div className="space-y-7">
+          <RuleSentenceBox onDraft={(d) => edit(d)} />
           {suggestion && (
             <section>
               <SectionTitle>Sugestão do Núcleo</SectionTitle>
@@ -232,11 +237,25 @@ export function RulesPage() {
         </div>
         <section>
           <SectionTitle>Modelos prontos</SectionTitle>
+          <div className="mb-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Área dos modelos">
+            {TEMPLATE_GROUPS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                role="radio"
+                aria-checked={group === g}
+                onClick={() => setGroup(g)}
+                className={`h-8 rounded-full px-3 text-[13px] font-medium transition-colors ${group === g ? 'bg-paper text-coal' : 'bg-tint/[0.06] text-soft hover:text-ink'}`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
           <div className="card divide-y divide-line overflow-hidden">
-            {TEMPLATES.map((t) => {
+            {TEMPLATES.filter((t) => t.group === group).map((t) => {
               const used = rules.some((r) => r.template === t.id)
               return (
-                <button key={t.id} type="button" onClick={() => edit(t.draft())} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
+                <button key={t.id} type="button" onClick={() => edit(t.draft(settings.baseCurrency))} className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-tint/[0.03] tap">
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2 text-[15px] font-medium">
                       {t.name}

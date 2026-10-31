@@ -1,4 +1,5 @@
 /** A rule in the person's words: "Quando eu receber pagamento de um projeto, se o valor for maior que €500: reservar 20% para Impostos". */
+import { CATEGORY_LABEL as HABIT_CATEGORY_LABEL } from '../weekGoals'
 import { CLIENT_STATUS, PROJECT_STATUS, TASK_PRIORITY } from '../../data/labels'
 import type { Cents, Currency, DataState, Rule, RuleAction, RuleCondition, Settings } from '../../data/types'
 import { formatMoney } from '../../lib/money'
@@ -40,7 +41,7 @@ export function describeCondition(c: RuleCondition, n: Names): string {
     case 'currency':
       return `a moeda for ${list(c.values)}`
     case 'category':
-      return `a categoria for ${list(c.values.map(n.category))}`
+      return `a categoria for ${list(c.values.map((v) => (HABIT_CATEGORY_LABEL as Record<string, string>)[v]?.toLowerCase() ?? n.category(v)))}`
     case 'origin':
       return `a origem for ${list(c.values.map((o) => ORIGIN_LABEL[o]))}`
     case 'client':
@@ -85,6 +86,10 @@ export function describeAction(a: RuleAction, n: Names): string {
       return `criar a nota “${a.title.trim() || '…'}”`
     case 'addInbox':
       return `adicionar “${a.text.trim() || '…'}” ao Inbox`
+    case 'askReview':
+      return `pedir minha revisão${a.text.trim() ? ` (“${a.text.trim()}”)` : ''}`
+    case 'notify':
+      return `me avisar${a.text.trim() ? ` (“${a.text.trim()}”)` : ''}`
   }
 }
 

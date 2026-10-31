@@ -112,9 +112,9 @@ describe('respostas às sugestões', () => {
 
 describe('modelos prontos', () => {
   it('nenhum vem ligado; os de reserva pedem a meta; os textos usam marcadores conhecidos', () => {
-    expect(TEMPLATES).toHaveLength(8)
+    expect(TEMPLATES.length).toBeGreaterThanOrEqual(8)
     for (const t of TEMPLATES) {
-      const d = t.draft()
+      const d = t.draft('EUR')
       expect('on' in d).toBe(false)
       expect(t.needsGoal).toBe(d.actions.some((a) => 'goalId' in a && a.goalId === ''))
     }

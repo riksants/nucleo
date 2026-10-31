@@ -263,7 +263,7 @@ export function AutomationSettings({ onHistory }: { onHistory?(id: AutomationId)
 /** One thing waiting for the person, with its next step. Charges open the usual confirmation sheet. */
 function PendingRow({ item, onConfirmCharge }: { item: PendingItem; onConfirmCharge(r: AutomationRun): void }) {
   const { settings } = useStore()
-  const { decline, snooze, dismiss, retry } = useAutomationActions()
+  const { decline, snooze, dismiss, retry, confirmRule, declineRule, seeNotice } = useAutomationActions()
   const { toast, confirm } = useFeedback()
   const [busy, setBusy] = useState(false)
   const today = todayIn(zoneOf(settings))
@@ -295,11 +295,30 @@ function PendingRow({ item, onConfirmCharge }: { item: PendingItem; onConfirmCha
             toast(r.text, r.ok ? 'success' : 'error')
           }),
       }
-    if (item.link) return { label: item.kind === 'lateSale' ? 'Abrir venda' : 'Abrir regra', run: () => navigate(item.link!.path as RoutePath, item.link!.params) }
+    if (item.kind === 'ruleConfirm' && run)
+      return {
+        label: 'Confirmar',
+        run: () =>
+          act(async () => {
+            const r = await confirmRule(run)
+            toast(r.text, r.ok ? 'success' : 'error')
+          }),
+      }
+    if (item.link) return { label: item.kind === 'lateSale' ? 'Abrir venda' : item.kind === 'review' ? 'Abrir movimentação' : 'Abrir regra', run: () => navigate(item.link!.path as RoutePath, item.link!.params) }
     return null
   })()
   const secondary = async () => {
     if (!run) return
+    if (item.kind === 'ruleConfirm') {
+      const ok = await confirm({ title: 'Não fazer?', message: 'A regra não faz nada desta vez. O pedido fica registrado em Atividade.', confirmLabel: 'Não fazer' })
+      if (!ok) return
+      const error = await declineRule(run)
+      return toast(error ?? 'Combinado: nada foi feito', error ? 'error' : 'success')
+    }
+    if (item.kind === 'review') {
+      await seeNotice(run)
+      return toast('Marcado como visto')
+    }
     if (item.kind === 'charge') {
       const ok = await confirm({
         title: income ? 'Não recebeu?' : 'Não pagou?',
@@ -329,9 +348,9 @@ function PendingRow({ item, onConfirmCharge }: { item: PendingItem; onConfirmCha
             {primary.label}
           </Button>
         )}
-        {run && (item.kind === 'charge' || item.kind === 'retry') && (
+        {run && item.kind !== 'pausedRule' && item.kind !== 'lateSale' && (
           <Button variant="ghost" onClick={secondary}>
-            {item.kind === 'charge' ? (income ? 'Não recebi' : 'Não paguei') : 'Dispensar'}
+            {item.kind === 'charge' ? (income ? 'Não recebi' : 'Não paguei') : item.kind === 'ruleConfirm' ? 'Não fazer' : item.kind === 'review' ? 'Visto' : 'Dispensar'}
           </Button>
         )}
         {item.snoozable && run && (
