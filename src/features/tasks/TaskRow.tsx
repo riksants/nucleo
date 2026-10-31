@@ -31,11 +31,35 @@ function CheckCircle({ checked }: { checked: boolean }) {
   )
 }
 
+const NEXT_PRIORITY: Record<Task['priority'], Task['priority']> = { none: 'low', low: 'medium', medium: 'high', high: 'none' }
+
 /**
  * `onPostpone`: shows a "move" button (Tarefas, Hoje) for tasks due today or late.
  * `emphasis`: a vermilion edge on high-priority tasks (lists sorted by relevance).
+ * `priorityTap`: the flag changes the priority in one tap (none → baixa → média → alta → none).
+ * `selecting`: the circle selects the task (several at once) instead of completing it.
  */
-export function TaskRow({ task, onOpen, showProject = true, onPostpone, emphasis }: { task: Task; onOpen(t: Task): void; showProject?: boolean; onPostpone?(t: Task): void; emphasis?: boolean }) {
+export function TaskRow({
+  task,
+  onOpen,
+  showProject = true,
+  onPostpone,
+  emphasis,
+  priorityTap,
+  selecting,
+  selected,
+  onSelect,
+}: {
+  task: Task
+  onOpen(t: Task): void
+  showProject?: boolean
+  onPostpone?(t: Task): void
+  emphasis?: boolean
+  priorityTap?: boolean
+  selecting?: boolean
+  selected?: boolean
+  onSelect?(t: Task): void
+}) {
   const { save } = useStore()
   const { toast } = useFeedback()
   const names = useNames()
@@ -66,10 +90,16 @@ export function TaskRow({ task, onOpen, showProject = true, onPostpone, emphasis
     >
       <div className="relative flex items-center gap-1 rounded-2xl px-1 hover:bg-tint/[0.03] tap">
         {emphasis && task.priority === 'high' && !done && <span aria-hidden className="absolute inset-y-3 left-0 w-[3px] rounded-full bg-expense" />}
-        <button type="button" onClick={toggle} aria-label={done ? 'Marcar como não feita' : 'Concluir tarefa'} className="grid size-12 shrink-0 place-items-center">
-          <CheckCircle checked={checked} />
-        </button>
-        <button type="button" onClick={() => onOpen(task)} className="min-w-0 flex-1 py-3 pr-2 text-left">
+        {selecting ? (
+          <button type="button" role="checkbox" aria-checked={!!selected} onClick={() => onSelect?.(task)} aria-label={`Selecionar ${task.title}`} className="grid size-12 shrink-0 place-items-center">
+            <span className={`grid size-6 place-items-center rounded-lg border-2 ${selected ? 'border-accent bg-accent text-on-accent' : 'border-check-line'}`}>{selected && <span className="text-[13px] leading-none font-bold">✓</span>}</span>
+          </button>
+        ) : (
+          <button type="button" onClick={toggle} aria-label={done ? 'Marcar como não feita' : 'Concluir tarefa'} className="grid size-12 shrink-0 place-items-center">
+            <CheckCircle checked={checked} />
+          </button>
+        )}
+        <button type="button" onClick={() => (selecting ? onSelect?.(task) : onOpen(task))} className="min-w-0 flex-1 py-3 pr-2 text-left">
           <span className="flex items-center gap-2">
             <span className={`relative truncate text-[15px] transition-colors duration-300 ${checked ? 'text-faint' : ''}`}>
               {task.title}
@@ -101,7 +131,21 @@ export function TaskRow({ task, onOpen, showProject = true, onPostpone, emphasis
             </span>
           )}
         </button>
-        {onPostpone && !done && (
+        {priorityTap && !done && !selecting && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = NEXT_PRIORITY[task.priority]
+              void save('tasks', { ...task, priority: next })
+              toast(next === 'none' ? 'Sem prioridade' : `Prioridade ${optionOf(TASK_PRIORITY, next).label.toLowerCase()}`)
+            }}
+            aria-label={`Prioridade de ${task.title}: ${task.priority === 'none' ? 'nenhuma' : optionOf(TASK_PRIORITY, task.priority).label}. Tocar muda.`}
+            className={`grid size-10 shrink-0 place-items-center rounded-xl hover:bg-tint/[0.05] ${task.priority === 'none' ? 'text-faint/60' : PRIORITY_TEXT[task.priority]}`}
+          >
+            <Flag size={18} fill={task.priority === 'high' ? 'currentColor' : 'none'} />
+          </button>
+        )}
+        {onPostpone && !done && !selecting && (
           <button type="button" onClick={() => onPostpone(task)} aria-label={`Adiar ${task.title}`} title="Adiar" className="grid size-11 shrink-0 place-items-center rounded-xl text-faint hover:bg-tint/[0.05] hover:text-ink">
             <CalendarClock size={18} />
           </button>

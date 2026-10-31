@@ -67,7 +67,8 @@ try {
   text = await b.text()
   r.check(`meta mostra ${thisWeekDays.length}/4 automaticamente`, text.includes(`${thisWeekDays.length} / 4`))
 
-  // Challenge from template: 5 trainings
+  // Challenge from template: 5 trainings (streaks and challenges sit under one disclosure)
+  await b.click('Sequências e desafios', 'button')
   await b.click('Escolher')
   await b.click('5 treinos em uma semana', 'button')
   await b.fill('Começa em', week)
@@ -81,6 +82,7 @@ try {
   await b.click('Concluir Treinar')
   await b.sleep(400)
   await b.goto(BASE + '#/week')
+  await b.click('Sequências e desafios', 'button')
   text = await b.text()
   r.check('treino de hoje atualiza meta e desafio juntos', text.includes(`${thisWeekDays.length + 1} / 4`) && text.includes(`${thisWeekDays.length + 1} de 5`))
   r.check('sequência aparece (hábito diário feito em dias seguidos)', text.toUpperCase().includes('SEQUÊNCIAS') && text.includes('Treinar'))

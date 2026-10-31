@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Compass, FolderHeart, ListTodo, MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Compass, FolderHeart, Link2, ListTodo, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
 import { useDailyActions } from '../../core/actions'
@@ -33,6 +33,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
   const { toast } = useFeedback()
   const today = nowIn(zoneOf(settings)).date
   const k = plan?.kind ?? kind
+  const objectives = data.lifePlans.filter((p) => p.kind === 'objective' && p.status !== 'archived' && p.id !== plan?.id)
   const hasSteps = plan ? data.planSteps.some((s) => s.planId === plan.id) : false
   const [d, set] = useDraft(open, () => ({
     title: plan?.title ?? initial?.title ?? '',
@@ -44,6 +45,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
     status: plan?.status ?? ('planning' as PlanStatus),
     notes: plan?.notes ?? initial?.notes ?? '',
     manual: plan?.manualProgress != null ? String(plan.manualProgress) : '',
+    objectiveId: plan?.objectiveId ?? '',
   }))
 
   const submit = async () => {
@@ -63,6 +65,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
       status: d.status,
       notes: d.notes.trim(),
       manualProgress: manual,
+      ...(k === 'project' ? { objectiveId: d.objectiveId || null } : {}),
       ...(initial?.fromInbox && !plan ? { fromInbox: initial.fromInbox } : {}),
     })
     toast(plan ? 'Salvo' : k === 'objective' ? 'Objetivo criado' : 'Projeto pessoal criado')
@@ -128,6 +131,18 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
             <TextInput inputMode="numeric" className="num" placeholder="—" value={d.manual} onChange={(e) => set('manual', e.target.value)} />
           </Field>
         )}
+        {k === 'project' && objectives.length > 0 && (
+          <Field label="Serve a um objetivo" hint="opcional">
+            <Select value={d.objectiveId} onChange={(e) => set('objectiveId', e.target.value)}>
+              <option value="">Nenhum</option>
+              {objectives.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <Field label="Observações" hint="opcional">
           <TextArea value={d.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
         </Field>
@@ -157,6 +172,15 @@ function StepRow({ step, plan, index, count, done }: { step: PlanStep; plan: Lif
   }
   const move = async (dir: -1 | 1) => {
     for (const s of moveStep(data.planSteps, plan.id, step.id, dir)) await save('planSteps', s)
+  }
+  const [linking, setLinking] = useState(false)
+  const [q, setQ] = useState('')
+  const candidates = linking ? data.tasks.filter((t) => t.status !== 'done' && !data.planSteps.some((s) => s.taskId === t.id) && (!q.trim() || t.title.toLowerCase().includes(q.trim().toLowerCase()))).slice(0, 30) : []
+  /** An existing task becomes this step's record (no copy): its completion completes the step. */
+  const link = async (taskId: string) => {
+    await save('planSteps', { ...step, taskId })
+    setLinking(false)
+    toast('Tarefa ligada à etapa')
   }
   const toTask = async () => {
     const created = await save('tasks', { title: step.title, projectId: null, dueDate: step.deadline, priority: 'none', status: 'todo', completedAt: null, notes: `${KIND_LABEL[plan.kind].one}: ${plan.title}`, planId: plan.id, stepId: step.id })
@@ -194,6 +218,31 @@ function StepRow({ step, plan, index, count, done }: { step: PlanStep; plan: Lif
             <ListTodo size={16} />
           </IconButton>
         )}
+        {!task && !done && (
+          <IconButton label={`Ligar uma tarefa existente a ${step.title}`} size="sm" onClick={() => setLinking(true)}>
+            <Link2 size={16} />
+          </IconButton>
+        )}
+        <Sheet open={linking} onClose={() => setLinking(false)} title="Ligar uma tarefa">
+          <div className="space-y-3">
+            <TextInput aria-label="Buscar tarefa" placeholder="Buscar tarefa" value={q} onChange={(e) => setQ(e.target.value)} />
+            {candidates.length ? (
+              <ul className="card divide-y divide-line">
+                {candidates.map((t) => (
+                  <li key={t.id}>
+                    <button type="button" onClick={() => link(t.id)} className="block w-full px-4 py-3 text-left text-[15px] hover:bg-tint/[0.03] tap">
+                      {t.title}
+                      {t.dueDate && <span className="block text-[12px] text-faint">prazo {formatDateValue(t.dueDate).toLowerCase()}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[14px] text-faint">Nenhuma tarefa em aberto para ligar.</p>
+            )}
+            <p className="text-[12px] text-faint">A tarefa continua em Tarefas; concluir uma conclui a outra.</p>
+          </div>
+        </Sheet>
         <IconButton label={`Excluir etapa ${step.title}`} size="sm" className="text-faint hover:text-expense" onClick={del}>
           <Trash2 size={16} />
         </IconButton>
@@ -214,6 +263,7 @@ export function PlanDetail({ plan, open, onClose, onEdit }: { plan: LifePlan | n
   if (!plan) return null
   const steps = stepsOf(data.planSteps, plan.id)
   const progress = planProgress(plan, data.planSteps, tasks)
+  const linkedProjects = data.lifePlans.filter((p) => p.kind === 'project' && p.objectiveId === plan.id && p.status !== 'archived')
 
   const addStep = async (t: string, dl = '') => {
     if (!t.trim()) return
@@ -268,7 +318,32 @@ export function PlanDetail({ plan, open, onClose, onEdit }: { plan: LifePlan | n
               <Progress value={progress.percent} tone={progress.percent === 100 ? 'positive' : 'goal'} />
             </div>
           )}
+          {progress.source !== 'steps' && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Atualizar o andamento">
+              <span className="mr-1 text-[13px] text-faint">Andamento:</span>
+              {[0, 25, 50, 75, 100].map((v) => (
+                <button key={v} type="button" aria-pressed={plan.manualProgress === v} onClick={() => save('lifePlans', { ...plan, manualProgress: v })} className={`press h-8 rounded-full px-3 text-[13px] font-medium ${plan.manualProgress === v ? 'bg-ink text-bg' : 'text-soft ring-1 ring-line ring-inset hover:text-ink'}`}>
+                  {v}%
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+        {plan.kind === 'objective' && linkedProjects.length > 0 && (
+          <section>
+            <p className="mb-1 text-[13px] font-semibold text-soft">Projetos que servem a este objetivo</p>
+            <ul className="card divide-y divide-line">
+              {linkedProjects.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 px-4 py-2.5 text-[14px]">
+                  <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                  <span className="num shrink-0 text-faint">
+                    <ProgressText plan={p} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section>
           <p className="mb-1 text-[13px] font-semibold text-soft">Etapas</p>
@@ -380,6 +455,7 @@ export function PlansView({ kind }: { kind: PlanKind }) {
   const test = (p: LifePlan) => (filter === 'open' ? p.status !== 'done' && p.status !== 'archived' : p.status === filter)
   const list = all.filter(test).sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999') || a.title.localeCompare(b.title))
   const open = data.lifePlans.find((p) => p.id === detail.item) ?? null
+  const tasksById = taskMap(data.tasks)
 
   return (
     <>
@@ -417,6 +493,14 @@ export function PlansView({ kind }: { kind: PlanKind }) {
                     <Progress value={pr.percent} tone={pr.percent === 100 ? 'positive' : 'goal'} />
                   </span>
                 )}
+                {(() => {
+                  const next = stepsOf(data.planSteps, p.id).find((s) => !stepDone(s, tasksById))
+                  return next && p.status !== 'done' ? (
+                    <span className="mt-2 block truncate text-[13px] text-soft">
+                      <span className="font-medium text-accent-hi">Próxima etapa:</span> {next.title}
+                    </span>
+                  ) : null
+                })()}
               </button>
             )
           })}

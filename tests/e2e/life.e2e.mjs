@@ -56,6 +56,9 @@ try {
   r.check('tocar no dia lista os itens daquele dia', (await b.text()).includes('Renovar passaporte'))
   await b.click('Renovar passaporte', 'button')
   await b.sleep(400)
+  // The day's item opens its details first (quick actions); "Editar" opens the task form.
+  await b.click('Editar', '[role=dialog] button')
+  await b.sleep(400)
   await fillIn('Título', 'Renovar passaporte (urgente)')
   await b.click('Salvar', '[role=dialog] button[type=submit]')
   await b.sleep(500)
@@ -72,7 +75,7 @@ try {
   await b.shot('vida-calendario')
 
   // Personal project with suggested + manual steps
-  await b.click('Projetos pessoais', '[role=radio]')
+  await b.click('Projetos', '[role=radio]')
   await b.click('Novo projeto')
   await fillIn('Nome', 'Viagem para Itália')
   await fillIn('Categoria', 'travel')
@@ -148,7 +151,7 @@ try {
   await b.sleep(300)
 
   // Archive / reopen / conclude
-  await b.click('Projetos pessoais', '[role=radio]')
+  await b.click('Projetos', '[role=radio]')
   await b.click('Mudança para Barcelona', 'button')
   await b.click('Arquivar', '[role=dialog] button')
   await b.sleep(300)
@@ -175,7 +178,7 @@ try {
   // "O que mudou?" from Semana
   await b.goto(BASE + '#/week')
   await b.sleep(1500)
-  await b.click('O que mudou?')
+  await b.click('Evolução')
   await b.sleep(800)
   text = await b.text()
   r.check('Semana leva ao "O que mudou?" sem duplicar conteúdo', text.includes('Semana × anterior') && /Comparação até/.test(text))
@@ -192,7 +195,7 @@ try {
   await b.sleep(400)
   r.check('calendário sem rolagem horizontal (1366px)', await noHorizontalScroll(b))
   await b.shot('vida-calendario-desktop')
-  await b.click('Projetos pessoais', '[role=radio]')
+  await b.click('Projetos', '[role=radio]')
   await b.sleep(300)
   r.check('projetos pessoais sem rolagem horizontal (1366px)', await noHorizontalScroll(b))
   await b.click('Viagem para Itália', 'button')

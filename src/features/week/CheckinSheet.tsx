@@ -24,6 +24,8 @@ export function CheckinSheet({ open, onClose, week }: { open: boolean; onClose()
   const { data, save } = useStore()
   const { toast } = useFeedback()
   const existing = data.weekCheckins.find((c) => c.id === week) ?? null
+  // The last answers before this week, to compare (most recent first), without any judgement.
+  const before = data.weekCheckins.filter((c) => c.week < week).sort((a, b) => (a.week < b.week ? 1 : -1)).slice(0, 4)
   // Reloaded from the saved record every time the sheet opens (also after a sync).
   const [d, set] = useDraft(open, () => ({ answers: (existing?.answers ?? {}) as WeekCheckin['answers'], note: existing?.note ?? '' }))
   const answers = d.answers
@@ -58,7 +60,14 @@ export function CheckinSheet({ open, onClose, week }: { open: boolean; onClose()
       <div className="space-y-4">
         {CHECKIN_TOPICS.map((t) => (
           <div key={t.id}>
-            <p className="mb-2 text-[15px]">{t.question}</p>
+            <p className="mb-2 flex items-baseline justify-between gap-2 text-[15px]">
+              {t.question}
+              {before.some((c) => c.answers[t.id]) && (
+                <span className="num shrink-0 text-[12px] text-faint" title="Semanas anteriores, da mais recente">
+                  antes: {before.map((c) => c.answers[t.id] ?? '–').join(' · ')}
+                </span>
+              )}
+            </p>
             <div className="flex gap-2" role="radiogroup" aria-label={t.question}>
               {SCALE.map((v) => {
                 const on = answers[t.id] === v

@@ -915,6 +915,8 @@ export interface LifePlan extends Entity {
   convertedAt?: string
   /** Inbox item it came from (traceability). */
   fromInbox?: string
+  /** A personal project can serve an objective (optional): the objective lists its projects. */
+  objectiveId?: string | null
 }
 
 /**

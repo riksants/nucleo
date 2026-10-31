@@ -38,6 +38,24 @@
 - Conferido em produção (2 contas de teste, apagadas): app real → servidor → cron → push com o app fechado,
   "antes e na hora", cancelado não chega, remarcado chega no novo horário, cada aviso uma vez, isolamento.
 
+## Etapa 3: Anotações, Tarefas, Semana, Vida e Senhas (2026-11-01, branch `feat/etapa3-areas`)
+
+- Senhas: nenhuma senha (selada ou antiga em texto puro) aparece ou é copiada sem o cofre aberto. A migração das
+  antigas sela, decifra de volta e compara, salva e confere de novo antes de considerar feito; uma que falhe fica
+  como estava. Revelada some em 30 s; o formulário apaga a senha da tela quando o cofre fecha; a área de
+  transferência é limpa em 60 s só quando o sistema deixa (no iPhone não deixa: nada é prometido).
+- Texto puro fora do app: o servidor nunca aceitou senha em texto puro (`records_no_plain_password`, desde a
+  primeira migração), então banco, histórico e backup diário não têm cópias. No aparelho, a fila de envio é
+  reescrita na mesma transação do registro. Fora do controle do app: arquivos de backup baixados por versões
+  muito antigas (o backup atual já exclui senhas em texto puro) e o que a pessoa copiou/colou em outros lugares.
+- Anotações: índice por versão da nota (prévia, checklist, busca no texto inteiro já em minúsculas/sem acento),
+  sugestões só nos primeiros 20 mil caracteres, editor não controlado (sem re-render por tecla), rascunho local
+  recuperável (até 1,5 milhão de caracteres), limite de 2 milhões de caracteres avisado antes de salvar.
+- Semana: o cálculo do Score não mudou; aparece ≈ de 5 em 5 com uma palavra (Muito consistente / Consistente /
+  Parcial / Começando). "Avançou / Ficou pendente" só com registros.
+- Vida: `objectiveId` opcional em projeto pessoal; tarefa existente pode ser ligada a uma etapa (sem cópia).
+- Sem migração de banco nesta etapa.
+
 ## Etapa 2: Rotina, Alimentação, Caixa de entrada, Assinaturas e Portfólio (2026-10-31, branch `feat/etapa2-areas`)
 
 - Sem migração; campos opcionais no JSON de `records`: bloco da rotina `remindMin` (número ou `false`), rotina

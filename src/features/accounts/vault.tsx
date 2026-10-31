@@ -10,7 +10,8 @@ interface VaultApi {
   /** Accounts still holding a plain-text password from before the vault existed. */
   plainCount: number
   create(password: string, withRecovery: boolean): Promise<{ recoveryCode: string | null; migrated: number }>
-  unlock(password: string): Promise<void>
+  /** Resolves with how many passwords from before the vault were protected (sealed and checked) on the way. */
+  unlock(password: string): Promise<number>
   recover(code: string, newPassword: string): Promise<void>
   changePassword(current: string, next: string): Promise<void>
   setAutoLock(minutes: number): Promise<void>
@@ -75,20 +76,35 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return { ...account, password: '', secret: sealed }
   }, [])
 
+  /**
+   * Moves passwords from before the vault into it, one account at a time: sealed, decrypted back and compared,
+   * then saved; the saved record is checked again (sealed, no plain text). An account that fails keeps its
+   * password as it was (nothing is deleted before its sealed copy is confirmed) and the error is reported.
+   */
+  const migrate = useCallback(
+    async (k: CryptoKey, accounts: Account[]): Promise<number> => {
+      let done = 0
+      for (const account of accounts) {
+        const sealed = await sealAccountWith(k, account)
+        const saved = await save('accounts', sealed)
+        if (saved.password || !saved.secret || (await open(k, saved.secret)) !== account.password) throw new Error(`Falha ao conferir a senha de “${account.name}” depois de salvar.`)
+        done++
+      }
+      return done
+    },
+    [save, sealAccountWith],
+  )
+
   const create = useCallback<VaultApi['create']>(
     async (password, withRecovery) => {
       if (meta) throw new Error('O cofre já existe.')
       const created = await createVault(password, withRecovery)
       await updateSettings({ vault: created.meta })
       setKey(created.key)
-      let migrated = 0
-      for (const account of plainAccounts) {
-        await save('accounts', await sealAccountWith(created.key, account))
-        migrated++
-      }
+      const migrated = await migrate(created.key, plainAccounts)
       return { recoveryCode: created.recoveryCode, migrated }
     },
-    [meta, updateSettings, plainAccounts, save, sealAccountWith],
+    [meta, updateSettings, plainAccounts, migrate],
   )
 
   const unlock = useCallback(
@@ -96,10 +112,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (!meta) throw new Error('Crie o cofre primeiro.')
       const k = await unlockWithPassword(meta, password)
       setKey(k)
-      // Passwords that arrived in plain text (e.g. an old backup) are sealed on first unlock.
-      for (const account of plainAccounts) await save('accounts', await sealAccountWith(k, account))
+      // Passwords that arrived in plain text (from before the vault, an old backup) are sealed on unlock.
+      return migrate(k, plainAccounts)
     },
-    [meta, plainAccounts, save, sealAccountWith],
+    [meta, plainAccounts, migrate],
   )
 
   const recover = useCallback(

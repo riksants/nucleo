@@ -92,3 +92,14 @@ export function describeChange(current: number | null, previous: number | null):
   if (Math.abs(d) <= 2) return 'parecido com a semana passada'
   return d > 0 ? `+${d} em relação à semana passada` : `${d} em relação à semana passada`
 }
+
+/**
+ * How the score is shown: an approximate value (nearest 5) and a neutral word about consistency, never a
+ * verdict. The exact number is still the one stored; showing "73" would suggest a precision the data lacks.
+ */
+export function scoreBand(overall: number | null): { approx: number; label: string } | null {
+  if (overall === null) return null
+  const approx = Math.min(100, Math.max(0, Math.round(overall / 5) * 5))
+  const label = overall >= 80 ? 'Muito consistente' : overall >= 60 ? 'Consistente' : overall >= 40 ? 'Parcial' : 'Começando'
+  return { approx, label }
+}

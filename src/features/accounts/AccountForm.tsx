@@ -28,10 +28,13 @@ export function AccountForm({ open, onClose, account, onVault }: { open: boolean
   // Sealed password, decrypted only while the form is open and the vault is unlocked.
   const [loaded, setLoaded] = useState<string | null>(null)
   const legacy = Boolean(account?.password)
-  const canEditPassword = legacy || vault.unlocked
+  // Any password — sealed or one from before the vault — is shown and edited only with the vault unlocked.
+  const canEditPassword = vault.unlocked
   useEffect(() => {
     setReveal(false)
     setLoaded(null)
+    // Locked while the form is open: the decrypted password leaves the screen (the saved one is untouched).
+    if (open && account?.secret && !vault.unlocked) set('password', '')
     if (!open || !account?.secret || !vault.unlocked) return
     vault.reveal(account.secret).then((plain) => {
       setLoaded(plain)
@@ -89,14 +92,14 @@ export function AccountForm({ open, onClose, account, onVault }: { open: boolean
             <TextInput autoComplete="off" value={d.username} onChange={(e) => set('username', e.target.value)} {...noAuto} />
           </Field>
         </div>
-        <Field label="Senha" hint={!vault.exists ? 'requer o cofre' : !vault.unlocked && !legacy ? 'cofre fechado' : undefined}>
+        <Field label="Senha" hint={!vault.exists ? 'requer o cofre' : !vault.unlocked ? 'cofre fechado' : undefined}>
           {!canEditPassword ? (
             <button
               type="button"
               onClick={() => onVault(vault.exists ? 'unlock' : 'create')}
               className="flex h-12 w-full items-center rounded-[var(--radius-field)] border border-dashed border-line-strong px-4 text-left text-[15px] text-soft hover:text-ink"
             >
-              {vault.exists ? (account?.secret ? 'Abrir o cofre para ver ou alterar' : 'Abrir o cofre para guardar a senha') : 'Criar o cofre para guardar senhas'}
+              {vault.exists ? (account?.secret || legacy ? 'Abrir o cofre para ver ou alterar' : 'Abrir o cofre para guardar a senha') : legacy ? 'Criar o cofre para proteger esta senha' : 'Criar o cofre para guardar senhas'}
             </button>
           ) : (
           <div className="relative">

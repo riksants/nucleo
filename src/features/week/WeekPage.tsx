@@ -1,4 +1,4 @@
-import { CalendarRange, ChevronLeft, ChevronRight, GitCompareArrows, MessageCircle, MessageCircleHeart } from 'lucide-react'
+import { CalendarRange, CalendarDays, ChevronLeft, ChevronRight, GitCompareArrows, MessageCircle, MessageCircleHeart } from 'lucide-react'
 import { useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -20,6 +20,13 @@ import { PlanWeek } from './PlanWeek'
 import { ScoreCard } from './ScoreCard'
 import { StreaksSection } from './StreaksSection'
 import { useWeek } from './useWeek'
+import { weekHighlights } from '../../core/weekHighlights'
+import { scoreBand } from '../../core/score'
+import { MoreOptions } from '../daily/SmartCapture'
+import { TaskRow } from '../tasks/TaskRow'
+import { TaskForm } from '../tasks/TaskForm'
+import { useSheet } from '../../ui/formHooks'
+import type { Task } from '../../data/types'
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -52,6 +59,9 @@ export function WeekPage() {
   const sentences = summarySentences(w.flat, { current: w.isCurrent, currency: settings.baseCurrency, skipFinance: money })
   const comparison = compareWeeks(w.flat, w.prevFlat)
   const checkinDone = data.weekCheckins.some((c) => c.id === w.week)
+  const highlights = weekHighlights(data, w.week, w.today, w.goals.filter((_, i) => goals[i].achieved).map((g) => g.id))
+  const band = settings.hideScore ? null : scoreBand(w.score.overall)
+  const taskSheet = useSheet<Task>()
   // Sunday: a gentle, optional suggestion (no notification).
   const suggestPlan = now.weekday === 0 && w.isCurrent
 
@@ -67,8 +77,16 @@ export function WeekPage() {
   return (
     <>
       <PageHeader
+        rich
+        icon={CalendarDays}
+        eyebrow={w.isCurrent ? 'Esta semana' : w.snapshot ? 'Semana fechada' : 'Semana anterior'}
         title="Semana"
         subtitle={weekLabel(w.week)}
+        stats={[
+          { label: 'Concluído', value: h.itemsPercent !== null ? `${h.itemsPercent}%` : '—' },
+          { label: 'Metas', value: goals.length ? `${goalsDone}/${goals.length}` : '—' },
+          { label: 'Score', value: band ? `≈ ${band.approx}` : '—' },
+        ]}
         actions={
           <div className="flex items-center gap-1">
             <IconButton label="Semana anterior" size="sm" onClick={() => setAnchor(addDaysToDate(w.week, -7))}>
@@ -123,6 +141,33 @@ export function WeekPage() {
             </div>
           </section>
 
+          {(highlights.advancedTotal > 0 || highlights.pendingTotal > 0) && (
+            <section className="grid gap-3 sm:grid-cols-2" aria-label="Avançou e ficou pendente">
+              <div className="card p-4">
+                <p className="text-[13px] font-semibold text-income">Avançou{highlights.advancedTotal > 3 ? ` · ${highlights.advancedTotal}` : ''}</p>
+                {highlights.advanced.length ? (
+                  <ul className="mt-1.5 space-y-1 text-[14px] leading-snug">
+                    {highlights.advanced.map((a) => (
+                      <li key={a.key} className="truncate">
+                        {a.text}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1.5 text-[14px] text-faint">Nada concluído ainda nesta semana.</p>
+                )}
+              </div>
+              <div className="card p-1.5">
+                <p className="px-2.5 pt-2.5 text-[13px] font-semibold text-warn">Ficou pendente{highlights.pendingTotal > 3 ? ` · ${highlights.pendingTotal}` : ''}</p>
+                {highlights.pending.length ? (
+                  highlights.pending.map((p) => <TaskRow key={p.key} task={p.task} onOpen={taskSheet.show} showProject={false} />)
+                ) : (
+                  <p className="px-2.5 pt-1.5 pb-2.5 text-[14px] text-faint">Nenhuma tarefa com prazo em aberto.</p>
+                )}
+              </div>
+            </section>
+          )}
+
           <section>
             <SectionTitle>Resumo</SectionTitle>
             {sentences.length ? (
@@ -147,8 +192,12 @@ export function WeekPage() {
         <div className="space-y-7">
           {!settings.hideScore && <ScoreCard overall={w.score.overall} areas={w.score.areas} previous={w.prevOverall} version={w.score.version} details={w.score.live ? Object.fromEntries(Object.entries(w.score.live.areas).map(([k, v]) => [k, v.detail])) : undefined} />}
 
-          {w.isCurrent && <StreaksSection today={w.today} index={w.index} />}
-          {w.isCurrent && <ChallengesSection today={w.today} index={w.index} />}
+          {w.isCurrent && (
+            <MoreOptions label="Sequências e desafios">
+              <StreaksSection today={w.today} index={w.index} />
+              <ChallengesSection today={w.today} index={w.index} />
+            </MoreOptions>
+          )}
 
           <section>
             <SectionTitle>Check-in</SectionTitle>
@@ -170,7 +219,7 @@ export function WeekPage() {
                 <GitCompareArrows size={20} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium">O que mudou?</span>
+                <span className="block text-[15px] font-medium">Evolução</span>
                 <span className="text-[13px] text-faint">Você em relação à semana e ao mês anteriores</span>
               </span>
               <ChevronRight size={18} className="text-accent-hi" />
@@ -192,6 +241,7 @@ export function WeekPage() {
         </div>
       </div>
       <CheckinSheet open={checkin} onClose={() => setCheckin(false)} week={w.week} />
+      <TaskForm open={taskSheet.open} onClose={taskSheet.close} task={taskSheet.item} />
     </>
   )
 }

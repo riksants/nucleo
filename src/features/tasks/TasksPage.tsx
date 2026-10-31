@@ -1,9 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, CalendarDays, Clock, Flag, ListTodo } from 'lucide-react'
+import { ArrowUp, CalendarDays, CheckSquare, Clock, Flag, ListTodo, Repeat, X } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { addDaysToDate, todayIn, zoneOf } from '../../core/period'
 import { parseQuickTask } from '../../core/quickParse'
+import { answerCapture, parseCapture } from '../../core/capture'
+import { describeRule } from '../../core/recurrence'
+import { isEnabled } from '../../app/modules'
+import { Button } from '../../ui/Button'
+import { Chips } from '../../ui/Segmented'
+import { RecurringForm } from '../recurring/RecurringForm'
+import { useNames } from '../shared/useNames'
 import { useStore } from '../../data/store'
 import { sortOpenTasks } from '../../data/selectors'
 import type { Task, TaskStatus } from '../../data/types'
@@ -56,7 +63,7 @@ function doneGroups(tasks: Task[], today: string): Group[] {
 }
 
 export function TasksPage() {
-  const { data, save, settings } = useStore()
+  const { data, save, remove, settings } = useStore()
   const { toast } = useFeedback()
   const reduce = usePrefersReducedMotion()
   const [tab, setTab] = usePref<TaskStatus>('tasks.tab', 'todo')
@@ -74,25 +81,73 @@ export function TasksPage() {
   const doneToday = data.tasks.filter((t) => t.status === 'done' && (t.completedAt ?? '').slice(0, 10) === today).length
   // Today's progress: what was due today (or done today) and is done.
   const todayTotal = dueToday + doneToday
-  const groups = tab === 'done' ? doneGroups(data.tasks.filter((t) => t.status === 'done'), today) : openGroups(data.tasks.filter((t) => t.status === tab), today)
+  const names = useNames()
+  // Filters: priority, deadline, project (only the ones that have something).
+  const [filter, setFilter] = usePref<string>('tasks.filter', 'all')
+  const [selecting, setSelecting] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [recurring, setRecurring] = useState<{ title: string; rule: NonNullable<ReturnType<typeof parseCapture>['rule']>; time: string } | null>(null)
+  const pass = (t: Task) =>
+    filter === 'all' ? true : filter === 'high' ? t.priority === 'high' : filter === 'dated' ? !!t.dueDate : filter === 'undated' ? !t.dueDate : filter.startsWith('p:') ? t.projectId === filter.slice(2) : true
+  const pool = data.tasks.filter(pass)
+  const groups = tab === 'done' ? doneGroups(pool.filter((t) => t.status === 'done'), today) : openGroups(pool.filter((t) => t.status === tab), today)
+  const projectsWithTasks = [...new Set(open.map((t) => t.projectId).filter(Boolean) as string[])].slice(0, 4)
+  const filters = [
+    { value: 'all', label: 'Todas' },
+    ...(open.some((t) => t.priority === 'high') ? [{ value: 'high', label: 'Alta prioridade' }] : []),
+    { value: 'dated', label: 'Com prazo' },
+    { value: 'undated', label: 'Sem prazo' },
+    ...projectsWithTasks.map((id) => ({ value: `p:${id}`, label: names.project(id) ?? 'Projeto' })),
+  ]
 
-  // What the quick field understood so far ("amanhã às 10h", "urgente"): shown before saving.
-  const parsed = quick.trim() ? parseQuickTask(quick, today) : null
-  const understood = parsed && (parsed.dueDate || parsed.priority !== 'none') ? parsed : null
-
-  const quickAdd = async (e: FormEvent) => {
-    e.preventDefault()
+  // What the quick field understood ("sexta às 15h", "urgente", "toda segunda"): shown before saving.
+  const [hour, setHour] = useState<string | null>(null)
+  const priority = quick.trim() ? parseQuickTask(quick, today).priority : 'none'
+  const captured = quick.trim() ? parseCapture(quick.replace(/(^|\s)(!{1,3}|urgente)(?=\s|$)/gi, ' '), today) : null
+  const resolved = captured && hour ? answerCapture(captured, { time: hour }) : captured
+  const parsed = resolved ? { title: resolved.title || quick.trim(), dueDate: resolved.date ?? (resolved.time ? today : ''), dueTime: resolved.time ?? '', priority } : null
+  const understood = parsed && (parsed.dueDate || parsed.dueTime || parsed.priority !== 'none') ? parsed : null
+  const repeats = resolved?.rule && isEnabled(settings, 'recurring') ? resolved.rule : null
+  const quickAdd = async (e?: FormEvent) => {
+    e?.preventDefault()
     // A second Enter while the first is saving must not create the same task twice.
     if (!parsed || adding.current) return
+    // "toda segunda": a task doesn't repeat — it becomes a recurring item, checked in its form.
+    if (repeats) return setRecurring({ title: parsed.title, rule: repeats, time: parsed.dueTime })
+    // An hour that could be morning or afternoon is asked first.
+    if (resolved?.timeOptions) return toast('Escolha o horário abaixo', 'error')
     adding.current = true
     try {
-      await save('tasks', { title: parsed.title, projectId: null, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority, status: tab === 'done' ? 'todo' : tab, completedAt: null })
+      await save('tasks', { title: parsed.title, projectId: filter.startsWith('p:') ? filter.slice(2) : null, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority, status: tab === 'done' ? 'todo' : tab, completedAt: null })
       setQuick('')
+      setHour(null)
       toast(parsed.dueDate ? `Tarefa criada para ${parsed.dueDate === today ? 'hoje' : formatDateValue(parsed.dueDate)}` : 'Tarefa criada')
     } finally {
       adding.current = false
     }
   }
+
+  // Several at once, always undoable: the previous versions are kept until the toast goes away.
+  const chosen = data.tasks.filter((t) => picked.has(t.id))
+  const bulk = async (kind: 'done' | 'tomorrow' | 'delete') => {
+    const before = chosen.map((t) => ({ ...t }))
+    if (!before.length) return
+    if (kind === 'delete') for (const t of before) await remove('tasks', t.id)
+    else for (const t of before) await save('tasks', kind === 'done' ? { ...t, status: 'done', completedAt: t.completedAt ?? new Date().toISOString() } : { ...t, dueDate: addDaysToDate(today, 1) })
+    setPicked(new Set())
+    setSelecting(false)
+    const n = before.length
+    toast(kind === 'delete' ? `${n} ${n === 1 ? 'tarefa excluída' : 'tarefas excluídas'}` : kind === 'done' ? `${n} ${n === 1 ? 'tarefa concluída' : 'tarefas concluídas'}` : `${n} para amanhã`, 'success', {
+      label: 'Desfazer',
+      run: () => void Promise.all(before.map((t) => save('tasks', t))),
+    })
+  }
+  const toggleSelect = (t: Task) => setPicked((p) => {
+    const next = new Set(p)
+    if (next.has(t.id)) next.delete(t.id)
+    else next.add(t.id)
+    return next
+  })
 
   return (
     <>
@@ -113,7 +168,7 @@ export function TasksPage() {
         <div className="flex gap-2">
           <input
             value={quick}
-            onChange={(e) => setQuick(e.target.value)}
+            onChange={(e) => (setQuick(e.target.value), setHour(null))}
             placeholder="Nova tarefa… ex.: ligar pro banco amanhã 10h"
             aria-label="Adicionar tarefa rápida"
             enterKeyHint="done"
@@ -152,6 +207,21 @@ export function TasksPage() {
               </motion.p>
             )}
           </AnimatePresence>
+          {resolved?.timeOptions && (
+            <p className="flex flex-wrap items-center gap-1.5 px-1 pt-1 text-[13px] text-soft">
+              Qual horário?
+              {resolved.timeOptions.map((t) => (
+                <button key={t} type="button" onClick={() => setHour(t)} className="press h-7 rounded-full border border-line bg-surface px-2.5 text-[13px] font-medium">
+                  {t}
+                </button>
+              ))}
+            </p>
+          )}
+          {repeats && (
+            <p className="flex flex-wrap items-center gap-1.5 px-1 pt-1 text-[13px] text-soft">
+              <Repeat size={14} className="text-accent-hi" /> Repete ({describeRule(repeats).toLowerCase()}): Enter cria como <span className="font-medium text-ink">Recorrente</span>, para conferir.
+            </p>
+          )}
         </div>
       </form>
 
@@ -166,7 +236,7 @@ export function TasksPage() {
         </div>
       )}
 
-      <div className="mb-5">
+      <div className="mb-3">
         <Segmented
           variant="underline"
           block
@@ -179,9 +249,16 @@ export function TasksPage() {
             { value: 'done', label: `Feito · ${count('done')}` },
           ]}
         />
-        <p className="mt-2 px-1 text-[13px] text-faint">
-          {tab === 'todo' ? 'Ainda não começadas, das mais urgentes para as sem prazo.' : tab === 'doing' ? 'Em andamento: o que você já começou.' : 'Concluídas, das mais recentes.'}
-        </p>
+      </div>
+      <div className="mb-5 flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <Chips value={filters.some((f) => f.value === filter) ? filter : 'all'} onChange={setFilter} options={filters} />
+        </div>
+        {tab !== 'done' && groups.length > 0 && (
+          <button type="button" aria-pressed={selecting} aria-label={selecting ? 'Cancelar seleção' : 'Selecionar'} title={selecting ? 'Cancelar seleção' : 'Selecionar várias'} onClick={() => (setSelecting(!selecting), setPicked(new Set()))} className={`press grid size-9 shrink-0 place-items-center rounded-full ${selecting ? 'bg-ink text-bg' : 'text-soft ring-1 ring-line ring-inset hover:text-ink'}`}>
+            {selecting ? <X size={16} /> : <CheckSquare size={16} />}
+          </button>
+        )}
       </div>
 
       {groups.length ? (
@@ -195,7 +272,7 @@ export function TasksPage() {
               <div className={`card p-1.5 ${g.tone === 'late' ? 'border-expense/25' : ''}`}>
                 <AnimatePresence initial={false}>
                   {g.tasks.map((t) => (
-                    <TaskRow key={t.id} task={t} onOpen={form.show} emphasis onPostpone={g.tone ? setPostponing : undefined} />
+                    <TaskRow key={t.id} task={t} onOpen={form.show} emphasis onPostpone={g.tone ? setPostponing : undefined} priorityTap={tab !== 'done'} selecting={selecting} selected={picked.has(t.id)} onSelect={toggleSelect} />
                   ))}
                 </AnimatePresence>
               </div>
@@ -213,7 +290,31 @@ export function TasksPage() {
         />
       )}
 
+      {selecting && picked.size > 0 && (
+        <div className="fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+84px)] z-[60] flex justify-center px-4 lg:bottom-8 lg:pl-64">
+          <div className="flex items-center gap-1.5 rounded-full border border-line-strong bg-elevated/95 p-1.5 shadow-xl shadow-shade/50 backdrop-blur-md">
+            <span className="px-2.5 text-[14px] font-semibold">{picked.size}</span>
+            <Button className="h-10! px-4!" onClick={() => bulk('done')}>
+              Concluir
+            </Button>
+            <Button variant="secondary" className="h-10! px-3.5!" onClick={() => bulk('tomorrow')}>
+              Amanhã
+            </Button>
+            <Button variant="danger" className="h-10! px-3.5!" onClick={() => bulk('delete')}>
+              Excluir
+            </Button>
+          </div>
+        </div>
+      )}
+
       <TaskForm open={form.open} onClose={form.close} task={form.item} />
+      <RecurringForm
+        open={!!recurring}
+        onClose={() => setRecurring(null)}
+        item={null}
+        initial={recurring ? { title: recurring.title, rule: recurring.rule, time: recurring.time } : undefined}
+        onSaved={() => (setQuick(''), setRecurring(null))}
+      />
       <PostponeSheet task={postponing} onClose={() => setPostponing(null)} />
     </>
   )

@@ -116,8 +116,8 @@ export function VaultUnlockSheet({ open, onClose, onUnlocked }: { open: boolean;
   const submit = async () => {
     if (mode === 'unlock') {
       if (!d.password) return 'Digite a senha do cofre'
-      await vault.unlock(d.password)
-      toast('Cofre aberto')
+      const migrated = await vault.unlock(d.password)
+      toast(migrated ? `Cofre aberto · ${migrated} ${migrated === 1 ? 'senha antiga protegida' : 'senhas antigas protegidas'}` : 'Cofre aberto')
     } else {
       const problem = vaultPasswordProblem(d.next)
       if (problem) return problem
@@ -185,7 +185,7 @@ export function VaultBar({ onCreate, onUnlock }: { onCreate(): void; onUnlock():
           <p className="text-[15px] font-medium">Senhas sem cofre</p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-faint">
             {vault.plainCount ? `${vault.plainCount} ${vault.plainCount === 1 ? 'senha está salva' : 'senhas estão salvas'} sem criptografia. ` : ''}
-            Crie o cofre para guardar senhas com criptografia.
+            Crie o cofre para guardar senhas com criptografia{vault.plainCount ? ': as antigas são protegidas na hora, uma a uma, e conferidas' : ''}.
           </p>
           <Button className="mt-3" onClick={onCreate}>
             Criar cofre
@@ -200,7 +200,7 @@ export function VaultBar({ onCreate, onUnlock }: { onCreate(): void; onUnlock():
         {vault.unlocked ? <LockOpen size={18} /> : <ShieldCheck size={18} />}
       </span>
       <p className="min-w-0 flex-1 text-[14px] leading-snug text-soft">
-        {vault.unlocked ? `Cofre aberto · fecha após ${vault.meta?.autoLockMin} min sem uso` : 'Cofre fechado · senhas criptografadas'}
+        {vault.unlocked ? `Cofre aberto · fecha após ${vault.meta?.autoLockMin} min sem uso` : vault.plainCount ? `Cofre fechado · ${vault.plainCount} ${vault.plainCount === 1 ? 'senha antiga será protegida' : 'senhas antigas serão protegidas'} ao abrir` : 'Cofre fechado · senhas criptografadas'}
       </p>
       {vault.unlocked ? (
         <Button variant="secondary" icon={<Lock size={16} />} onClick={vault.lock}>

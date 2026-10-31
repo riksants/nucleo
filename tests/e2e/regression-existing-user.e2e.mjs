@@ -62,7 +62,7 @@ try {
   // Accounts: plain password is hidden by default and the vault banner offers protection.
   await b.goto(BASE + '#/accounts')
   text = await b.text()
-  check('senha antiga oculta por padrão', !text.includes('segredo123') && text.includes('••••'))
+  check('senha antiga oculta por padrão (nem pontinhos: sem cofre ela não é exibida)', !text.includes('segredo123') && text.includes('A proteger'))
   check('aviso de senhas sem cofre', text.includes('Senhas sem cofre'))
   await b.click('Criar cofre')
   await b.fill('Senha do cofre', 'minha-senha-cofre-1')
@@ -81,20 +81,28 @@ try {
   check('senha antiga migrada para o cofre (sem texto aberto)', acc.password === '' && acc.secret?.ct && !JSON.stringify(acc).includes('segredo123'))
   const metaStr = await b.eval(`new Promise(r => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const g = q.result.transaction('meta').objectStore('meta').get('settings'); g.onsuccess = () => { q.result.close(); r(JSON.stringify(g.result.vault)) } } })`)
   check('cofre não guarda a senha nem a chave aberta', !metaStr.includes('minha-senha-cofre-1') && !metaStr.includes(code ?? 'x'))
-  // Reveal while unlocked
+  // Reveal while unlocked (in the access details)
+  await b.click('Banco X', 'main button')
   await b.click('Mostrar senha')
   text = await b.text()
   check('revelar exige ação e funciona com cofre aberto', text.includes('segredo123'))
-  await b.click('Fechar', 'button')
+  await b.eval(`document.querySelector('[role=dialog] button[aria-label="Fechar"]')?.click()`)
+  await b.sleep(400)
+  await b.click('Fechar', 'main button')
   text = await b.text()
   check('ao fechar o cofre a senha volta a ficar oculta', !text.includes('segredo123') && text.includes('Cofre fechado'))
+  await b.click('Banco X', 'main button')
   await b.click('Mostrar senha')
   text = await b.text()
   check('com cofre fechado, revelar pede a senha do cofre', text.includes('Desbloquear cofre') && !text.includes('segredo123'))
   await b.fill('Senha do cofre', 'senha-errada-123')
   await b.click('Desbloquear', 'button[type=submit]')
-  await b.sleep(1500)
-  text = await b.text()
+  // The answer comes after the key derivation (slow on purpose) and shows briefly.
+  text = ''
+  for (let i = 0; i < 40 && !text.includes('incorreta'); i++) {
+    await b.sleep(250)
+    text = await b.text()
+  }
   check('senha do cofre errada é recusada', text.includes('incorreta'))
   await b.shot('t1-cofre-errado')
 } catch (err) {

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
+import { Compass } from 'lucide-react'
+import { stepDone, taskMap } from '../../core/plans'
 import { useStore } from '../../data/store'
 import { Segmented } from '../../ui/Segmented'
 import { ChangesView } from './ChangesView'
@@ -10,9 +12,9 @@ import { PlansView } from './Plans'
 type View = 'calendar' | 'projects' | 'objectives' | 'changes'
 const VIEWS: { value: View; label: string }[] = [
   { value: 'calendar', label: 'Calendário' },
-  { value: 'projects', label: 'Projetos pessoais' },
+  { value: 'projects', label: 'Projetos' },
   { value: 'objectives', label: 'Objetivos' },
-  { value: 'changes', label: 'O que mudou?' },
+  { value: 'changes', label: 'Evolução' },
 ]
 
 /** "Vida": internal navigation (no new tabs in the bottom bar). */
@@ -32,7 +34,23 @@ export function LifePage() {
 
   return (
     <>
-      <PageHeader title="Vida" />
+      <PageHeader
+        rich
+        icon={Compass}
+        eyebrow="Projetos pessoais, objetivos e evolução"
+        title="Vida"
+        stats={(() => {
+          const active = data.lifePlans.filter((p) => p.status !== 'done' && p.status !== 'archived')
+          const tasks = taskMap(data.tasks)
+          const ids = new Set(active.map((p) => p.id))
+          const open = data.planSteps.filter((s) => ids.has(s.planId) && !stepDone(s, tasks)).length
+          return [
+            { label: 'Projetos ativos', value: active.filter((p) => p.kind === 'project').length },
+            { label: 'Objetivos', value: active.filter((p) => p.kind === 'objective').length },
+            { label: 'Etapas a fazer', value: open },
+          ]
+        })()}
+      />
       <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
         <Segmented<View> variant="underline" size="sm" label="Vida" value={view} onChange={setView} options={VIEWS} />
       </div>
