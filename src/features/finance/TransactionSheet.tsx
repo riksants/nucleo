@@ -14,6 +14,7 @@ import { useDraft } from '../../ui/formHooks'
 import { CurrencyPicker, Select } from '../../ui/Field'
 import { NO_CATEGORY, pickableCategories } from '../../core/financeCategories'
 import { ToggleRow } from '../planner/controls'
+import { MoreOptions } from '../daily/SmartCapture'
 import { Sheet } from '../../ui/Sheet'
 import { AmountField } from '../../ui/AmountField'
 
@@ -300,9 +301,11 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
                 Gasto desnecessário
               </ToggleRow>
             )}
-            <ToggleRow checked={draft.transfer} onChange={(v) => set('transfer', v)} hint="Fica no saldo como o banco mostra, mas não conta como entrada nem saída nos totais, categorias e regras.">
-              Transferência entre minhas contas
-            </ToggleRow>
+            <MoreOptions defaultOpen={draft.transfer}>
+              <ToggleRow checked={draft.transfer} onChange={(v) => set('transfer', v)} hint="Fica no saldo como o banco mostra, mas não conta como entrada nem saída nos totais, categorias e regras.">
+                Transferência entre minhas contas
+              </ToggleRow>
+            </MoreOptions>
           </div>
         )}
         <button type="submit" hidden />

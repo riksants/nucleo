@@ -38,6 +38,32 @@
 - Conferido em produção (2 contas de teste, apagadas): app real → servidor → cron → push com o app fechado,
   "antes e na hora", cancelado não chega, remarcado chega no novo horário, cada aviso uma vez, isolamento.
 
+## Etapa 4: Automações, Regras e Importações Inteligentes (2026-10-31, branch `feat/etapa4-automacoes`)
+
+- Sem migração de banco. Campos novos, todos opcionais (registros antigos continuam como estavam):
+  `Transaction.transfer`, `Rule.confirm`, `AutomationRun.snoozedUntil/dismissedAt/declined/awaiting/confirmedAt/
+  notice/smartImport`, `BankImportInfo.transfers/fileHash`, formatos `xlsx`/`text` e automação `smartImport`.
+- Transferência entre contas próprias: a movimentação fica no saldo como o banco mostra (entrada/saída comum) e
+  só sai de entradas/saídas, categorias, previsões, sugestões e gatilhos de regras. Os dois lados são
+  preservados; desfazer a importação devolve a marca da outra parte.
+- "Pedir minha confirmação antes": confirmar exige este aparelho sincronizado e revalida tudo; ids fixos
+  (dois aparelhos que confirmam ao mesmo tempo escrevem os mesmos registros). Confirmação não inicia cadeia.
+- "Me avisar" / "Pedir revisão" vão para Pendências em "Feito pelo Núcleo" e para o número no menu. **Ainda não
+  enviam notificação push** (avaliar ligar ao motor de lembretes numa próxima etapa).
+- Importação inteligente: PDF.js 6.4.299 (o 5.x tem GHSA-hq66-cqwq-w95j), carregado só ao abrir um PDF e fora do
+  pré-cache do PWA — importar PDF precisa de internet na primeira vez. Sem OCR: foto e PDF digitalizado são
+  recusados com motivo (dica: Texto ao Vivo do iPhone). `.doc`/`.xls` antigos e `.ods` não são lidos.
+- Microfone: usa o reconhecimento de voz do navegador quando existe; no app instalado no iPhone pode não
+  funcionar — o ditado do teclado do iOS sempre funciona.
+- e2e: `tests/e2e/etapa4.e2e.mjs` (Feito pelo Núcleo, regras com confirmação/revisão, extrato colado com
+  transferência, cadastro inteligente, PDF real lido no navegador, 320/375/390 px nos dois temas).
+- Validação (31/10, sábado): unidade 910/910; todos os e2e locais e de nuvem rodados um a um. Falhas iguais na
+  `main` (comparadas num worktree, não são da Etapa 4): agenda 11/13 e etapa1-dia 41/43 (horário/fim de semana),
+  finishing 10/11, home-switch 8/9, organization 22/23, visual-review 12/14, visual-review-3 3/4,
+  regression-new-user 29/30, regression-account-sync (SecurityError do IndexedDB), assistant-sync 4/6,
+  auth-sessions 44/48 (login/sincronização no mock — novo na lista, também na `main`) e transitions-a11y
+  (oscila em ~200 ms na `main` também). auth-captcha não foi rodado (sem relação com esta etapa).
+
 ## Etapa 3: Anotações, Tarefas, Semana, Vida e Senhas (2026-11-01, branch `feat/etapa3-areas`)
 
 - Senhas: nenhuma senha (selada ou antiga em texto puro) aparece ou é copiada sem o cofre aberto. A migração das
