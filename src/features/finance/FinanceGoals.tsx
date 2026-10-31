@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { Flag, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { calculatedPreview } from '../../core/automation/goalSave'
@@ -36,6 +37,7 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
   const { toast, confirm } = useFeedback()
   const del = useDelete()
   const today = nowIn(zoneOf(settings)).date
+  const al = useAlertsDraft(open, goal)
   const [d, set] = useDraft(open, () => ({
     inBalance: Boolean(goal?.inBalance),
     auto: Boolean(goal?.autoSave),
@@ -97,6 +99,7 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
       currency: d.currency,
       note: d.note.trim(),
       status: goal?.status ?? 'active',
+      ...al.fields,
       // The first point is the starting value; later changes are what was saved over time.
       history: !goal ? startHistory(saved, today) : goal.saved === saved ? goal.history : withSaved(goal, saved, today),
     })
@@ -173,6 +176,7 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
         <Field label="Observação" hint="opcional">
           <TextArea value={d.note} onChange={(e) => set('note', e.target.value)} rows={2} />
         </Field>
+        {d.deadline && al.render(false, 'para o prazo da meta')}
       </FormGrid>
     </FormSheet>
   )

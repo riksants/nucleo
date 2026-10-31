@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { useStore } from '../../data/store'
 import type { CalendarEvent } from '../../data/types'
@@ -29,6 +30,7 @@ export function EventForm({
   const { save } = useStore()
   const { toast } = useFeedback()
   const del = useDelete()
+  const al = useAlertsDraft(open, event)
   const [d, set, setAll] = useDraft(open, () => ({
     title: event?.title ?? initial?.title ?? '',
     date: event?.date ?? initial?.date ?? '',
@@ -43,7 +45,7 @@ export function EventForm({
     if (!isTime(d.start)) return 'Informe o horário de início'
     const end = d.end || plusHour(d.start)
     if (!isTime(end) || toMinutes(end) <= toMinutes(d.start)) return 'O fim precisa ser depois do início'
-    const saved = await save('events', { ...event, title: d.title.trim(), date: d.date, start: d.start, end, notes: d.notes.trim() })
+    const saved = await save('events', { ...event, title: d.title.trim(), date: d.date, start: d.start, end, notes: d.notes.trim(), ...al.fields })
     toast(event ? 'Compromisso atualizado' : 'Compromisso criado')
     onSaved?.(saved)
     onClose()
@@ -78,6 +80,7 @@ export function EventForm({
         <Field label="Observações" hint="opcional">
           <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
+        {d.date && al.render(!!d.start)}
       </FormGrid>
     </FormSheet>
   )

@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { PROJECT_KIND, PROJECT_STATUS } from '../../data/labels'
 import { belongsToProject, projectChargedProblem } from '../../data/receipts'
 import { newId, useStore } from '../../data/store'
@@ -36,6 +37,7 @@ export function ProjectForm({
   const { saveProject, removeProject, linkedCount } = useReceipts()
   // Payments are in this currency (and in Financeiro): it can't change anymore.
   const currencyLocked = (project?.payments?.length ?? 0) > 0
+  const al = useAlertsDraft(open, project)
   const [d, set] = useDraft(open, () => ({
     name: project?.name ?? initial?.name ?? '',
     clientId: project?.clientId ?? null,
@@ -58,7 +60,7 @@ export function ProjectForm({
     const chargedProblem = project ? projectChargedProblem(project, charged, project.currency) : null
     if (chargedProblem) return chargedProblem
     const endDate = d.status === 'done' && !d.endDate ? toDateInput() : d.endDate
-    const fields = { ...d, name: d.name.trim(), link: d.link.trim(), notes: d.notes.trim(), charged, endDate, currency: currencyLocked ? project!.currency : d.currency }
+    const fields = { ...d, name: d.name.trim(), link: d.link.trim(), notes: d.notes.trim(), charged, endDate, currency: currencyLocked ? project!.currency : d.currency, ...al.fields }
     // Every project goes through the receipts layer: a new name reaches its incomes in Financeiro,
     // and concluding/reopening it updates its client (automation).
     const now = new Date().toISOString()
@@ -150,6 +152,7 @@ export function ProjectForm({
         <Field label="Observações" hint="opcional">
           <TextArea value={d.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
+        {d.dueDate && al.render(false)}
       </FormGrid>
     </FormSheet>
   )

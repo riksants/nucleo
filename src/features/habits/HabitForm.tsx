@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { BedDouble, BookOpen, Brain, Droplets, Dumbbell, GraduationCap, Salad, type LucideIcon } from 'lucide-react'
 import { isTime } from '../../../supabase/functions/_shared/planner/time.ts'
 import { isEnabled } from '../../app/modules'
@@ -57,6 +58,7 @@ export function HabitForm({ open, onClose, habit, initial }: { open: boolean; on
   const { data, save, remove, settings } = useStore()
   const { toast, confirm } = useFeedback()
   const now = nowIn(zoneOf(settings))
+  const al = useAlertsDraft(open, habit)
   const [d, set, setAll] = useDraft(open, () => ({
     name: habit?.name ?? initial?.name ?? '',
     rule: (habit?.rule ?? initial?.rule ?? { type: 'daily' }) as RecurrenceRule,
@@ -90,6 +92,7 @@ export function HabitForm({ open, onClose, habit, initial }: { open: boolean; on
       active: d.active,
       category: d.category || undefined,
       remind: d.remind ? undefined : false,
+      ...al.fields,
       link,
       autoFromLink: link && d.auto ? true : undefined,
       startDate: habit?.startDate ?? now.date,
@@ -226,6 +229,7 @@ export function HabitForm({ open, onClose, habit, initial }: { open: boolean; on
             Ativo
           </ToggleRow>
         )}
+        {d.time && d.remind && al.render(true, 'opcional · além do aviso no horário, escolha outros')}
       </FormGrid>
     </FormSheet>
   )

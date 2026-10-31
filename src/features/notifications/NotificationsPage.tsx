@@ -1,5 +1,5 @@
 import { AlarmClock, Bell, BellOff, CalendarClock, CheckCheck, ChevronRight, CircleDollarSign, HandCoins, Hourglass, ListChecks, Repeat, Settings2, Sparkles, Target, Timer, Utensils, type LucideIcon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { clearParams, useRoute } from '../../app/router'
 import { useStore } from '../../data/store'
@@ -96,15 +96,12 @@ export function NotificationsPage() {
 
   useEffect(() => {
     void refreshHistory(Boolean(userId))
-    if (params.get('at')) clearParams()
-  }, [userId])
+    if (focusAt) clearParams()
+  }, [userId, focusAt])
 
   const { past, upcoming } = feedEntries()
-  const group = useMemo(() => {
-    if (!focusAt) return []
-    const t = Date.parse(focusAt)
-    return past.filter((e) => Math.abs(e.at.getTime() - t) < 60_000)
-  }, [focusAt, past])
+  // Opened from a grouped notification: the reminders of that minute first, each with its own link.
+  const group = focusAt ? past.filter((e) => Math.abs(e.at.getTime() - Date.parse(focusAt)) < 60_000) : []
   const active = past.filter((e) => !e.dismissed)
   const unread = active.filter(isUnread)
   const earlier = active.filter((e) => !isUnread(e))

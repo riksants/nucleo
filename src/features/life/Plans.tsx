@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { ArrowDown, ArrowUp, Compass, FolderHeart, Link2, ListTodo, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
@@ -35,6 +36,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
   const k = plan?.kind ?? kind
   const objectives = data.lifePlans.filter((p) => p.kind === 'objective' && p.status !== 'archived' && p.id !== plan?.id)
   const hasSteps = plan ? data.planSteps.some((s) => s.planId === plan.id) : false
+  const al = useAlertsDraft(open, plan)
   const [d, set] = useDraft(open, () => ({
     title: plan?.title ?? initial?.title ?? '',
     description: plan?.description ?? '',
@@ -65,6 +67,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
       status: d.status,
       notes: d.notes.trim(),
       manualProgress: manual,
+      ...al.fields,
       ...(k === 'project' ? { objectiveId: d.objectiveId || null } : {}),
       ...(initial?.fromInbox && !plan ? { fromInbox: initial.fromInbox } : {}),
     })
@@ -146,6 +149,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
         <Field label="Observações" hint="opcional">
           <TextArea value={d.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
         </Field>
+        {d.deadline && al.render(false, 'para o prazo')}
       </FormGrid>
     </FormSheet>
   )

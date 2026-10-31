@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { buildInstallments, itemsSummary, nextRepeat } from '../../core/salesSmart'
@@ -65,6 +66,7 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
   const [mustChoose, setMustChoose] = useState(false)
   const today = todayIn(zoneOf(settings))
   const editing = Boolean(sale)
+  const al = useAlertsDraft(open, sale)
   const [d, set, setAll] = useDraft(open, () => {
     // "Valor" is before the discount (the sale keeps the total after it).
     const total = sale ? sale.total + (sale.discount ?? 0) : (initial?.total ?? null)
@@ -140,6 +142,7 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
       currency: d.currency,
       dueDate,
       notes: d.notes,
+      ...al.fields,
     } as Sale
     if (useItems) next.items = d.items.filter((r) => r.name.trim()).map((r) => ({ id: r.id, name: r.name.trim(), quantity: Number(r.qty.replace(',', '.')) || 1, price: parseMoney(r.price) ?? 0 }))
     else delete next.items
@@ -245,6 +248,7 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
             <TextInput type="date" value={d.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
           </Field>
         )}
+        {owed > 0 && (d.instOn || d.dueDate) && al.render(false, d.instOn ? 'para cada parcela' : undefined)}
         {total > 0 && (
           <p className="num rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft">
             Total {formatMoney(total, d.currency)}

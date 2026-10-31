@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { newId, useStore } from '../../data/store'
@@ -111,6 +112,7 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
   const { save, data } = useStore()
   const { toast } = useFeedback()
   const del = useDelete()
+  const al = useAlertsDraft(open, subscriber)
   const [d, set, setAll] = useDraft(open, () => ({
     offeringId: subscriber?.offeringId ?? defaultOfferingId ?? data.offerings[0]?.id ?? '',
     planId: subscriber?.planId ?? '',
@@ -133,7 +135,7 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
     const name = d.name.trim() || client?.name || ''
     if (!name) return 'Informe o nome do assinante'
     const cancelledAt = d.status === 'cancelled' ? subscriber?.cancelledAt || toDateInput() : ''
-    await save('subscribers', { ...subscriber, ...d, planId, name, cancelledAt, payments: subscriber?.payments ?? [] })
+    await save('subscribers', { ...subscriber, ...d, planId, name, cancelledAt, payments: subscriber?.payments ?? [], ...al.fields })
     toast(subscriber ? 'Assinante atualizado' : 'Assinante adicionado')
     onClose()
   }
@@ -194,6 +196,7 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
             <TextInput type="date" value={d.nextCharge} onChange={(e) => set('nextCharge', e.target.value)} />
           </Field>
         </div>
+        {d.nextCharge && al.render(false, 'para cada cobrança')}
         <Field label="Situação">
           <Segmented block value={d.status} onChange={(v) => set('status', v)} options={(Object.keys(SUBSCRIBER_STATUS_LABEL) as SubscriberStatus[]).map((v) => ({ value: v, label: SUBSCRIBER_STATUS_LABEL[v] }))} />
         </Field>

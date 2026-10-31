@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { TOOL_BILLING, TOOL_STATUS } from '../../data/labels'
 import { pauseTool, resumeTool, withStatus } from '../../core/toolPause'
 import { todayIn, zoneOf } from '../../core/period'
@@ -18,6 +19,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
   const { toast, confirm } = useFeedback()
   const today = todayIn(zoneOf(settings))
   const del = useDelete()
+  const al = useAlertsDraft(open, tool)
   const [d, set] = useDraft(open, () => ({
     name: tool?.name ?? '',
     link: tool?.link ?? '',
@@ -70,6 +72,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
       price,
       nextCharge: dated ? d.nextCharge : '',
       status: free && d.status === 'active' ? 'free' : d.status,
+      ...al.fields,
     } as Tool
     // Choosing "Pausada" in the list works like the button: no charge while paused, nothing charged afterwards.
     await save('tools', withStatus(tool, next, today))
@@ -215,6 +218,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
             </ul>
           </section>
         )}
+        {dated && al.render(false, 'se escolher, substitui o “avisar antes” acima')}
       </FormGrid>
     </FormSheet>
   )

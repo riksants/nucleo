@@ -1,3 +1,4 @@
+import { AlertsField, alertFields } from '../reminders/AlertsField'
 import { Crosshair } from 'lucide-react'
 import { navigate } from '../../app/router'
 import { TASK_PRIORITY, TASK_STATUS } from '../../data/labels'
@@ -38,12 +39,14 @@ export function TaskForm({
     priority: task?.priority ?? ('none' as TaskPriority),
     status: task?.status ?? ('todo' as TaskStatus),
     notes: task?.notes ?? initial?.notes ?? '',
+    alerts: task?.alerts ?? [],
+    alertsOff: task?.alertsOff ?? false,
   }))
 
   const submit = async () => {
     if (!d.title.trim()) return 'Escreva o título da tarefa'
     const completedAt = d.status === 'done' ? (task?.completedAt ?? new Date().toISOString()) : null
-    const saved = await save('tasks', { ...task, ...d, dueTime: d.dueDate ? d.dueTime : '', title: d.title.trim(), notes: d.notes.trim(), completedAt })
+    const saved = await save('tasks', { ...task, ...d, ...alertFields(d.alerts, d.alertsOff), dueTime: d.dueDate ? d.dueTime : '', title: d.title.trim(), notes: d.notes.trim(), completedAt })
     toast(task ? 'Tarefa atualizada' : 'Tarefa criada')
     onSaved?.(saved)
     onClose()
@@ -91,6 +94,9 @@ export function TaskForm({
               <TextInput type="time" value={d.dueTime} onChange={(e) => set('dueTime', e.target.value)} />
             </Field>
           </div>
+        )}
+        {d.dueDate && (
+          <AlertsField value={d.alerts} off={d.alertsOff} timed={!!d.dueTime} onChange={(a, off) => (set('alerts', a), set('alertsOff', off))} />
         )}
         <div className="half">
           <Field label="Prioridade">

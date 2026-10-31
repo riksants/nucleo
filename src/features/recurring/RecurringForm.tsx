@@ -1,3 +1,4 @@
+import { useAlertsDraft } from '../reminders/AlertsField'
 import { isTime } from '../../../supabase/functions/_shared/planner/time.ts'
 import { completionId } from '../../core/completions'
 import { endRecurring, recurringOn, recurringState } from '../../core/habits'
@@ -41,6 +42,7 @@ export function RecurringForm({
   const { data, save, remove, settings } = useStore()
   const { toast, confirm } = useFeedback()
   const now = nowIn(zoneOf(settings))
+  const al = useAlertsDraft(open, item)
   const [d, set, setAll] = useDraft(open, () => ({
     title: item?.title ?? initial?.title ?? '',
     rule: (item?.rule ?? initial?.rule ?? { type: 'weekdays', days: [now.weekday] }) as RecurrenceRule,
@@ -74,6 +76,7 @@ export function RecurringForm({
       remindMin: d.remindMin === '' || !d.time ? undefined : Number(d.remindMin),
       startDate: d.startDate,
       endDate: d.endDate || undefined,
+      ...al.fields,
     })
     toast(item ? 'Item atualizado' : 'Item recorrente criado')
     onSaved?.(saved)
@@ -191,6 +194,7 @@ export function RecurringForm({
             <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
           </Field>
         </MoreOptions>
+        {al.render(!!d.time, 'se escolher, substitui os avisos acima')}
       </FormGrid>
     </FormSheet>
   )
