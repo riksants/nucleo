@@ -26,7 +26,7 @@ begin
   end loop;
 end $$;
 
-select cron.unschedule(jobname) from cron.job where jobname in ('nucleo-push-dispatch', 'nucleo-push-cleanup');
+select cron.unschedule(jobname) from cron.job where jobname in ('nucleo-push-dispatch', 'nucleo-push-cleanup', 'nucleo-push-renew');
 
 select cron.schedule(
   'nucleo-push-dispatch',
@@ -44,14 +44,23 @@ select cron.schedule(
   $$
 );
 
--- Limpeza semanal: lembretes de mais de 14 dias atrás (o envio só pega os das últimas 6 horas,
--- então nada que ainda seria enviado sai daqui) e o registro de execuções do cron (1.440 linhas
--- por dia com a tarefa de cada minuto).
+-- Etapa 5 (depois da migração 20261101000000): de hora em hora, o servidor cria as próximas
+-- ocorrências dos lembretes que se repetem (contas, hábitos, rotina, assinaturas) e das datas
+-- distantes, para que continuem chegando mesmo sem abrir o app. Só SQL, sem chamada externa.
+select cron.schedule(
+  'nucleo-push-renew',
+  '7 * * * *',
+  $$ select public.renew_notifications(null); $$
+);
+
+-- Limpeza semanal: histórico da central com mais de 35 dias (a central mostra 30; o envio só pega
+-- os das últimas 6 horas, então nada que ainda seria enviado sai daqui) e o registro de execuções
+-- do cron (1.440 linhas por dia com a tarefa de cada minuto).
 select cron.schedule(
   'nucleo-push-cleanup',
   '17 4 * * 0',
   $$
-  delete from public.scheduled_notifications where fire_at < now() - interval '14 days';
+  delete from public.scheduled_notifications where fire_at < now() - interval '35 days';
   delete from cron.job_run_details where end_time < now() - interval '7 days';
   $$
 );

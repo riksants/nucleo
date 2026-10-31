@@ -1,5 +1,32 @@
 # Pendências
 
+## Etapa 5: notificações confiáveis (2026-10-31, branch `feat/etapa5`) — NADA aplicado em produção
+
+O app funciona com ou sem a migração: sem ela, grava lembretes pelo caminho antigo (sem revisão, sem
+séries, sem histórico de envio) e a central usa o registro local.
+
+Ativação, nesta ordem (cada passo precisa da autorização do dono):
+1. Publicar o app (merge + push na main → GitHub Pages). O app novo já sabe usar o servidor antigo.
+2. Aplicar `supabase/migrations/20261101000000_notificacoes_etapa5.sql` (SQL Editor). A partir daqui o
+   app só grava lembretes por `sync_notifications` (o caminho antigo fica recusado: aparelhos com a
+   versão velha param de mexer na fila, o que é o objetivo).
+3. Publicar a função `push-dispatch` nova (agrupamento, resultado por lembrete, envio em paralelo):
+   `supabase functions deploy push-dispatch --use-api --no-verify-jwt`. Sem a migração ela continua
+   funcionando (o resultado só não é guardado).
+4. Rodar `supabase/cron-etapa5.sql` (renovação de hora em hora + histórico de 35 dias).
+5. Conferir: `select jobname, schedule from cron.job;` e, no app, Notificações → "Enviar teste".
+
+Custos: nenhum novo. A renovação é SQL dentro do Postgres (sem chamada de função); o envio continua
+com o cron de cada minuto (~43 mil execuções/mês de 500 mil no plano grátis).
+
+Limites conhecidos:
+- Sem conta não existe push com o app fechado (precisa de servidor); a tela explica e oferece a conta.
+- "Enviado" = o serviço de push aceitou. Entrega/leitura não são confirmáveis pelo Web Push.
+- Hábito vinculado a um recorrente/rotina não tem série própria (o anfitrião avisa nos dias dele);
+  nos outros dias, só com o app aberto em até 14 dias.
+- Etapas de projetos pessoais seguem o padrão (sem editor de avisos próprio).
+- iPhone: sem botões de ação na notificação (limitação do iOS para PWA).
+
 ## Lembretes com o app fechado — LIGADO em 2026-10-30
 
 - Função `push-dispatch` publicada (sem verificação de JWT do gateway; recusa sem `DISPATCH_SECRET` → 403).
