@@ -121,7 +121,8 @@ try {
 
   // ---------- Rotina (manual, sem IA)
   await b.goto(BASE + '#/routine')
-  await b.click('Começar')
+  check('Rotina vazia oferece adicionar atividade direto', (await b.text()).includes('Adicionar atividade'))
+  await b.click('Montar com perguntas')
   await b.click('Só rotina')
   await b.click('Continuar') // sono
   await b.click('Adicionar compromisso')
@@ -132,8 +133,8 @@ try {
   await b.click('Continuar') // atividades
   await b.click('Continuar') // descanso
   text = await b.text()
-  check('revisão informa o que vai para a IA e pede consentimento', text.includes('O que será enviado para a IA') && text.includes('Concordo'))
-  check('sem conta, IA desativada e montar à mão disponível', text.includes('A IA funciona com uma conta conectada'))
+  check('IA não configurada: diz isso claramente, sem pedir envio de dados', text.includes('A geração por IA ainda não está ligada') && !text.includes('Concordo'))
+  check('montar à mão disponível', text.includes('Montar à mão'))
   await b.shot('t2-revisao')
   await b.click('Montar à mão')
   await b.sleep(800)
@@ -180,7 +181,7 @@ try {
   await b.sleep(400)
   text = await b.text()
   check('lista de compras também bloqueia alergênico', text.includes('não combina com: Amendoim'))
-  await b.click('Aprovar plano')
+  await b.click('Aprovar modelo')
   await b.shot('t2-alimentacao')
 
   // ---------- Lembretes

@@ -95,7 +95,7 @@ try {
   await A.click('Adicionar', '[role=dialog] button[type=submit]')
   await A.sleep(400)
   await A.click('Marcar Almoço como realizada')
-  await A.click('Lista de compras', '[role=radio]')
+  await A.click('Compras', '[role=radio]')
   await A.sleep(400)
   await typeInto(A, 'input[aria-label="Adicionar item à lista"]', 'Sabão')
   await A.click('Adicionar item')

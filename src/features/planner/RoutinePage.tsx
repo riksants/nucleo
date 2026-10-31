@@ -3,23 +3,23 @@ import { useMemo, useState } from 'react'
 import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
 import { nextUp, timeState } from '../../core/timeState'
 import { useNow } from '../../lib/hooks'
-import { ConfirmList, DayTimeline } from '../daily/DayParts'
+import { DayTimeline } from '../daily/DayParts'
+import { ToggleRow } from './controls'
+import { ActivitySheet } from './ActivitySheet'
 import { useDailyActions } from '../../core/actions'
 import { indexCompletions, routineStatus } from '../../core/completions'
 import { nowIn, todayIn, useToday, weekDates, weekdayOfDate, zoneOf } from '../../core/period'
-import { DAY_LONG, DAY_SHORT, emptyRoutineAnswers, findConflicts, KIND_LABEL, sortBlocks, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
-import { isTime, toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
+import { DAY_LONG, DAY_SHORT, emptyRoutineAnswers, findConflicts, WEEKDAYS } from '../../../supabase/functions/_shared/planner/schedule.ts'
+import { toMinutes } from '../../../supabase/functions/_shared/planner/time.ts'
 import { navigate } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
-import { newId, useStore } from '../../data/store'
+import { useStore } from '../../data/store'
 import type { BlockKind, RoutineAnswers, RoutineBlock, RoutinePlan, Weekday } from '../../data/types'
 import { toDateInput } from '../../lib/dates'
 import { Button } from '../../ui/Button'
 import { Badge, EmptyState, Progress } from '../../ui/Display'
 import { useFeedback } from '../../ui/Feedback'
-import { Field, FormGrid, Select, TextInput } from '../../ui/Field'
-import { FormSheet } from '../../ui/FormSheet'
-import { useDraft, useSheet } from '../../ui/formHooks'
+import { useSheet } from '../../ui/formHooks'
 import { Chips } from '../../ui/Segmented'
 import { usePlans, ROUTINE_CURRENT, ROUTINE_DRAFT } from './plans'
 
@@ -40,80 +40,6 @@ export function dateOfWeekday(day: Weekday, today = new Date()): string {
   const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset)
   const offset = (day + 6) % 7
   return toDateInput(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + offset))
-}
-
-function BlockSheet({ open, onClose, block, plan, answers }: { open: boolean; onClose(): void; block: RoutineBlock | null; plan: RoutinePlan; answers: RoutineAnswers }) {
-  const { save } = useStore()
-  const { toast } = useFeedback()
-  const [d, set] = useDraft(open, () => ({
-    day: String(block?.day ?? 1),
-    start: block?.start ?? '19:00',
-    end: block?.end ?? '19:30',
-    title: block?.title ?? '',
-    kind: (block?.kind ?? 'activity') as BlockKind,
-  }))
-
-  const submit = async () => {
-    if (!d.title.trim()) return 'Dê um nome'
-    if (!isTime(d.start) || !isTime(d.end) || toMinutes(d.end) <= toMinutes(d.start)) return 'Confira os horários'
-    const next: RoutineBlock = { id: block?.id ?? newId(), day: Number(d.day) as Weekday, start: d.start, end: d.end, title: d.title.trim(), kind: d.kind, fixed: block?.fixed ?? false }
-    const blocks = sortBlocks([...plan.blocks.filter((b) => b.id !== next.id), next])
-    const clash = findConflicts(blocks, answers).find((c) => c.ids.includes(next.id))
-    if (clash) return clash.message
-    await save('routinePlans', { ...plan, blocks })
-    toast(block ? 'Horário atualizado' : 'Adicionado à rotina')
-    onClose()
-  }
-
-  const remove = async () => {
-    if (!block) return
-    await save('routinePlans', { ...plan, blocks: plan.blocks.filter((b) => b.id !== block.id) })
-    toast('Removido da rotina')
-    onClose()
-  }
-
-  return (
-    <FormSheet open={open} onClose={onClose} title={block ? 'Editar horário' : 'Novo horário'} onSubmit={submit} onDelete={block ? remove : undefined}>
-      <FormGrid>
-        <Field label="O quê">
-          <TextInput value={d.title} onChange={(e) => set('title', e.target.value)} autoFocus={!block} />
-        </Field>
-        <div className="half">
-          <Field label="Dia">
-            <Select value={d.day} onChange={(e) => set('day', e.target.value)}>
-              {WEEKDAYS.map((w) => (
-                <option key={w} value={w}>
-                  {DAY_LONG[w]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className="half">
-          <Field label="Tipo">
-            <Select value={d.kind} onChange={(e) => set('kind', e.target.value as BlockKind)}>
-              {(Object.keys(KIND_LABEL) as BlockKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {KIND_LABEL[k]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className="half">
-          <Field label="Início">
-            <TextInput type="time" value={d.start} onChange={(e) => set('start', e.target.value)} />
-          </Field>
-        </div>
-        <div className="half">
-          <Field label="Fim">
-            <TextInput type="time" value={d.end} onChange={(e) => set('end', e.target.value)} />
-          </Field>
-        </div>
-        {block?.fixed && <p className="text-[13px] text-faint">Este horário veio de um compromisso fixo do questionário.</p>}
-      </FormGrid>
-    </FormSheet>
-  )
 }
 
 export function DayAgenda({ plan, day, editable, onEdit, answers }: { plan: RoutinePlan; day: Weekday; editable: boolean; onEdit(b: RoutineBlock): void; answers: RoutineAnswers }) {
@@ -209,8 +135,8 @@ function useRoutineStats() {
  * The saved routine: pick a day of this week, see its progress, confirm what ended ("ia até 10:30 — você
  * concluiu?") and the day as a timeline. Marking stays with the person: the clock never marks anything.
  */
-function SavedRoutine({ plan, answers, onEdit }: { plan: RoutinePlan; answers: RoutineAnswers; onEdit(b: RoutineBlock | null): void }) {
-  const { data, settings } = useStore()
+function SavedRoutine({ plan, answers, onEdit }: { plan: RoutinePlan; answers: RoutineAnswers; onEdit(b: RoutineBlock | null, day: Weekday): void }) {
+  const { data, settings, save } = useStore()
   const tz = zoneOf(settings)
   const today = useToday(tz)
   const clock = useNow(30_000)
@@ -222,7 +148,7 @@ function SavedRoutine({ plan, answers, onEdit }: { plan: RoutinePlan; answers: R
   const t = tally(items)
   // The same clash repeated on several days reads as one line ("… em 5 dias").
   const conflicts = [...findConflicts(plan.blocks, answers).reduce((m, c) => m.set(c.message, (m.get(c.message) ?? 0) + 1), new Map<string, number>())].map(([message, n]) => ({ message: n > 1 ? `${message} (${n} dias)` : message }))
-  const open = (item: AgendaItem) => item.source.kind === 'routine' && onEdit(item.source.block)
+  const open = (item: AgendaItem) => item.source.kind === 'routine' && onEdit(item.source.block, item.source.block.day)
 
   return (
     <>
@@ -276,17 +202,31 @@ function SavedRoutine({ plan, answers, onEdit }: { plan: RoutinePlan; answers: R
               </span>
             </div>
           )}
-          {date === today && <ConfirmList items={items} today={today} nowTime={nowTime} />}
           <section aria-label="Horários do dia">
             <div className="mb-2 flex items-center justify-between gap-2 px-1">
               <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{date === today ? 'Hoje' : DAY_LONG[weekdayOfDate(date) as Weekday]}</h2>
-              <button type="button" onClick={() => onEdit(null)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-medium text-accent-hi hover:bg-accent/[0.08]">
-                <Plus size={16} /> Horário
+              <button type="button" onClick={() => onEdit(null, weekdayOfDate(date) as Weekday)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-medium text-accent-hi hover:bg-accent/[0.08]">
+                <Plus size={16} /> Atividade
               </button>
             </div>
-            <DayTimeline items={items} today={today} nowTime={nowTime} onOpen={open} emptyText="Nada planejado neste dia." />
-            <p className="mt-2 px-1 text-[13px] text-faint">Toque no círculo para marcar como feito; toque no horário para editar.</p>
+            {/* A day before the routine existed (added this week): its plan still shows, to see and edit. */}
+            {!items.length && plan.blocks.some((x) => x.day === weekdayOfDate(date)) ? (
+              <>
+                <DayAgenda plan={plan} day={weekdayOfDate(date) as Weekday} editable answers={answers} onEdit={(x) => onEdit(x, x.day)} />
+                <p className="mt-2 px-1 text-[13px] text-faint">Vale a partir {[0, 6].includes(weekdayOfDate(date)) ? 'do próximo' : 'da próxima'} {DAY_LONG[weekdayOfDate(date) as Weekday].toLowerCase()}.</p>
+              </>
+            ) : (
+              <DayTimeline items={items} today={today} nowTime={nowTime} onOpen={open} emptyText="Nada planejado neste dia." periods />
+            )}
+            <p className="mt-2 px-1 text-[13px] text-faint">Toque no círculo para marcar como feito; toque na atividade para editar.</p>
           </section>
+          <ToggleRow
+            checked={Boolean(plan.autoFromEvidence)}
+            onChange={(v) => save('routinePlans', { ...plan, autoFromEvidence: v || undefined })}
+            hint={plan.autoFromEvidence ? 'Treino ou estudo é marcado quando o hábito ligado é feito (à mão ou pela sessão de foco). Desfazer o hábito desfaz.' : 'Desligado: quando houver registro, a rotina só sugere concluir.'}
+          >
+            Marcar com registros reais
+          </ToggleRow>
         </div>
         <section aria-label="Resumo da semana" className="hidden lg:block">
           <h2 className="mb-2 px-1 text-[13px] font-semibold text-soft">Semana</h2>
@@ -317,7 +257,8 @@ export function RoutinePage() {
   const { confirm, toast } = useFeedback()
   const { routine, routineDraft, profile } = usePlans()
   const routineStats = useRoutineStats()
-  const blockSheet = useSheet<{ block: RoutineBlock | null; plan: RoutinePlan }>()
+  const blockSheet = useSheet<{ block: RoutineBlock | null; plan: RoutinePlan | null; day: Weekday }>()
+  const todayWd = new Date().getDay() as Weekday
   const answers = profile?.routine ?? { ...emptyRoutineAnswers(), wakeWeekday: '00:00', sleepWeekday: '00:00', wakeWeekend: '00:00', sleepWeekend: '00:00' }
   const draftConflicts = routineDraft ? findConflicts(routineDraft.blocks, answers) : []
 
@@ -348,7 +289,7 @@ export function RoutinePage() {
         stats={routine ? routineStats(routine) : undefined}
         actions={
           <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>
-            {profile ? 'Refazer' : 'Montar'}
+            {profile ? 'Refazer com perguntas' : 'Montar com perguntas'}
           </Button>
         }
       />
@@ -372,35 +313,45 @@ export function RoutinePage() {
               <Button onClick={approve} disabled={draftConflicts.length > 0}>
                 Aprovar e salvar
               </Button>
-              <Button variant="secondary" icon={<Plus size={18} />} onClick={() => blockSheet.show({ block: null, plan: routineDraft })}>
-                Horário
+              <Button variant="secondary" icon={<Plus size={18} />} onClick={() => blockSheet.show({ block: null, plan: routineDraft, day: todayWd })}>
+                Atividade
               </Button>
               <Button variant="ghost" onClick={discard}>
                 Descartar
               </Button>
             </div>
           </div>
-          <WeekView plan={routineDraft} editable answers={answers} onEdit={(b) => blockSheet.show({ block: b, plan: routineDraft })} />
+          <WeekView plan={routineDraft} editable answers={answers} onEdit={(b) => blockSheet.show({ block: b, plan: routineDraft, day: b?.day ?? todayWd })} />
         </section>
       )}
 
       {routine ? (
         <section>
           {routineDraft && <h2 className="mb-3 px-1 text-[13px] font-semibold text-soft">Rotina salva</h2>}
-          <SavedRoutine plan={routine} answers={answers} onEdit={(b) => blockSheet.show({ block: b, plan: routine })} />
+          <SavedRoutine plan={routine} answers={answers} onEdit={(b, day) => blockSheet.show({ block: b, plan: routine, day })} />
         </section>
       ) : (
         !routineDraft && (
           <EmptyState
             icon={<CalendarClock size={20} />}
             title="Nenhuma rotina ainda"
-            text="Responda algumas perguntas e receba uma agenda semanal que respeita seus horários. Também dá para montar à mão."
-            action="Começar"
-            onAction={() => navigate('/planner')}
+            text="Adicione suas atividades (uma vez, em vários dias) ou responda algumas perguntas para montar a semana."
+            action="Adicionar atividade"
+            onAction={() => blockSheet.show({ block: null, plan: null, day: todayWd })}
           />
         )
       )}
-      {blockSheet.item && <BlockSheet open={blockSheet.open} onClose={blockSheet.close} block={blockSheet.item.block} plan={blockSheet.item.plan.id === ROUTINE_DRAFT ? (routineDraft ?? blockSheet.item.plan) : (routine ?? blockSheet.item.plan)} answers={answers} />}
+      {/* Always the latest version of the plan, so a save never brings back or drops other blocks. */}
+      {blockSheet.item && (
+        <ActivitySheet
+          open={blockSheet.open}
+          onClose={blockSheet.close}
+          block={blockSheet.item.block}
+          plan={blockSheet.item.plan?.id === ROUTINE_DRAFT ? (routineDraft ?? blockSheet.item.plan) : (routine ?? null)}
+          answers={answers}
+          day={blockSheet.item.day}
+        />
+      )}
     </>
   )
 }

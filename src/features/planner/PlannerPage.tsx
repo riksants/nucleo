@@ -12,7 +12,7 @@ import { useFeedback } from '../../ui/Feedback'
 import { Field, Select, TextArea, TextInput } from '../../ui/Field'
 import { Segmented } from '../../ui/Segmented'
 import { useSession } from '../account/session'
-import { newRequestId, PlannerError, requestPlan } from './api'
+import { AI_PLANNER, newRequestId, PlannerError, requestPlan } from './api'
 import { ChipSelect, DayPicker, NumberInput, TimeInput, ToggleRow } from './controls'
 import { defaultProfile, MEALS_DRAFT, PROFILE_ID, ROUTINE_DRAFT, usePlans } from './plans'
 
@@ -582,6 +582,12 @@ export function PlannerPage() {
               </div>
             )}
 
+            {!AI_PLANNER && (
+              <p className="rounded-2xl bg-tint/[0.04] p-4 text-[14px] leading-relaxed text-soft">
+                A geração por IA ainda não está ligada neste app. Monte à mão a partir das suas respostas: chega como rascunho, você edita, revisa e aprova antes de usar.
+              </p>
+            )}
+            {AI_PLANNER && (
             <div className="card space-y-3 p-4">
               <p className="flex items-center gap-2 text-[15px] font-medium">
                 <ShieldCheck size={18} className="text-accent-hi" /> O que será enviado para a IA
@@ -600,17 +606,20 @@ export function PlannerPage() {
                 Concordo com o envio desses dados para gerar a proposta.
               </label>
             </div>
-            {!userId && <p className="rounded-2xl bg-tint/[0.04] p-4 text-[14px] leading-relaxed text-soft">A IA funciona com uma conta conectada (a chave fica no servidor). Sem conta, monte o plano à mão.</p>}
+            )}
+            {AI_PLANNER && !userId && <p className="rounded-2xl bg-tint/[0.04] p-4 text-[14px] leading-relaxed text-soft">A IA funciona com uma conta conectada (a chave fica no servidor). Sem conta, monte o plano à mão.</p>}
             {error && (
               <p role="alert" className="rounded-2xl bg-expense/10 p-4 text-[15px] leading-relaxed text-expense">
                 {error}
               </p>
             )}
             <div className="space-y-2.5">
-              <Button size="lg" block icon={<MessageCircle size={18} />} disabled={busy || blocked || !userId || (clinical && !usesRoutine)} onClick={generate}>
-                {busy ? 'Gerando… pode levar um minuto' : 'Gerar proposta com IA'}
-              </Button>
-              <Button size="lg" variant="secondary" block disabled={busy || fit.fixedConflicts.length > 0} onClick={manual}>
+              {AI_PLANNER && (
+                <Button size="lg" block icon={<MessageCircle size={18} />} disabled={busy || blocked || !userId || (clinical && !usesRoutine)} onClick={generate}>
+                  {busy ? 'Gerando… pode levar um minuto' : 'Gerar proposta com IA'}
+                </Button>
+              )}
+              <Button size="lg" variant={AI_PLANNER ? 'secondary' : 'primary'} block disabled={busy || fit.fixedConflicts.length > 0} onClick={manual}>
                 Montar à mão
               </Button>
               <p className="text-center text-[13px] text-faint">A proposta chega como rascunho. Nada substitui o que já está salvo sem você confirmar.</p>

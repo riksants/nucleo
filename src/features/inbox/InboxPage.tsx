@@ -24,7 +24,9 @@ import { PlanForm } from '../life/Plans'
 import { MealForm } from '../meals/MealForm'
 import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useOpenParam } from '../useOpenParam'
-import { markOrganized, splitCapture, suggestedDate } from './inbox'
+import { duplicateOf, markOrganized, shoppingItems, splitCapture, suggestedDate } from './inbox'
+import { parseCapture } from '../../core/capture'
+import { Button } from '../../ui/Button'
 
 type Target = 'task' | 'event' | 'note' | 'project' | 'lifeProject' | 'objective' | 'meal' | 'bill'
 type Tab = 'new' | 'done' | 'archived'
@@ -79,6 +81,8 @@ export function InboxPage() {
     e.preventDefault()
     const value = text.trim()
     if (!value || adding.current) return
+    const same = duplicateOf(data.inbox, value)
+    if (same && !(await confirm({ title: 'Já está na caixa de entrada', message: `“${same.text.slice(0, 120)}” ainda está em Novos. Guardar de novo?`, confirmLabel: 'Guardar de novo' }))) return
     adding.current = true
     try {
       await save('inbox', { text: value, status: 'open', convertedTo: null, processedAt: null })
@@ -102,13 +106,29 @@ export function InboxPage() {
     void save('inbox', markOrganized(target.item, { collection, id: saved.id }))
   }
 
-  /** Straight to this week's shopping list; the inbox item stays, linked to it. */
-  const toShopping = async (item = organize.item) => {
+  /** Shopping: the items found in the text are shown first (each can be unticked); nothing is created before. */
+  const [shop, setShop] = useState<{ item: InboxItem; names: { name: string; on: boolean }[] } | null>(null)
+  const toShopping = (item = organize.item) => {
     if (!item) return
-    const saved = await save('shoppingItems', { week: weekStart(today), kind: 'manual', name: splitCapture(item.text).title.slice(0, 120), qty: '', unit: '', category: 'Outros', checked: false, note: '', origin: 'inbox' })
-    await save('inbox', markOrganized(item, { collection: 'shoppingItems', id: saved.id }))
+    const names = shoppingItems(item.text)
+    setShop({ item, names: (names.length ? names : [splitCapture(item.text).title]).map((name) => ({ name, on: true })) })
     organize.close()
-    toast('Foi para a Lista de compras')
+  }
+  const confirmShopping = async () => {
+    if (!shop) return
+    const chosen = shop.names.filter((n) => n.on && n.name.trim())
+    // Items already on this week's list (not bought) are not added twice.
+    const week = weekStart(today)
+    const onList = new Set(data.shoppingItems.filter((x) => x.week === week && x.kind === 'manual' && !x.checked).map((x) => x.name.trim().toLowerCase()))
+    const fresh = chosen.filter((n) => !onList.has(n.name.trim().toLowerCase()))
+    let first: { id: string } | null = null
+    for (const n of fresh) {
+      const saved = await save('shoppingItems', { week, kind: 'manual', name: n.name.trim().slice(0, 120), qty: '', unit: '', category: 'Outros', checked: false, note: '', origin: 'inbox' })
+      first ??= saved
+    }
+    await save('inbox', markOrganized(shop.item, first ? { collection: 'shoppingItems', id: first.id } : null))
+    setShop(null)
+    toast(fresh.length === chosen.length ? (fresh.length === 1 ? 'Foi para a Lista de compras' : `${fresh.length} itens na Lista de compras`) : `${fresh.length} adicionados · ${chosen.length - fresh.length} já estavam na lista`)
   }
 
   /** A suggestion only opens the right form, filled in: nothing is created until the person saves it. */
@@ -136,7 +156,8 @@ export function InboxPage() {
     if (!ok) return
     await remove('inbox', item.id)
     organize.close()
-    toast('Item excluído')
+    // A few seconds to take it back (the same record, nothing lost).
+    toast('Item excluído', 'success', { label: 'Desfazer', run: () => void save('inbox', item) })
   }
 
   const convertedLabel = (to: { collection: CollectionName; id: string }) => {
@@ -147,8 +168,11 @@ export function InboxPage() {
     const plan = data.lifePlans.find((p) => p.id === to.id)
     return plan?.kind === 'objective' ? 'objetivo' : 'projeto pessoal'
   }
-  const split = target ? splitCapture(target.item.text) : { title: '', notes: '' }
-  const date = target ? (target.suggestion?.date ?? suggestedDate(target.item.text, today)) : ''
+  const raw = target ? splitCapture(target.item.text) : { title: '', notes: '' }
+  const parsed = target && !raw.notes ? parseCapture(raw.title, today) : null
+  // Task / appointment: the sentence without its date and time words; the full text stays in the inbox item.
+  const split = { ...raw, title: (target?.type === 'task' || target?.type === 'event') && parsed?.title ? parsed.title : raw.title }
+  const date = target ? (target.suggestion?.date ?? parsed?.date ?? suggestedDate(target.item.text, today)) : ''
   const close = () => setTarget(null)
 
   return (
@@ -225,22 +249,22 @@ export function InboxPage() {
           onAction={() => setQuery('')}
         />
       ) : tab === 'new' ? (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
+        <div className="card divide-y divide-line">
           {list.map((item) => (
-            <article key={item.id} className="card p-4">
+            <article key={item.id} className="px-4 py-3">
               <button type="button" onClick={() => organize.show(item)} className="block w-full text-left">
-                <span className="block text-[16px] leading-snug font-medium break-words whitespace-pre-wrap">{item.text}</span>
-                <span className="mt-1 block text-[12px] text-faint">{formatDateTime(item.createdAt)}</span>
+                <span className="block text-[15px] leading-snug font-medium break-words whitespace-pre-wrap">{item.text}</span>
+                <span className="mt-0.5 block text-[12px] text-faint">{formatDateTime(item.createdAt)}</span>
               </button>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {suggestFor(item.text, today, on)
                   .slice(0, 2)
                   .map((s) => (
-                    <button key={s.kind} type="button" onClick={() => apply(item, s)} className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-accent/[0.12] px-3 text-[13px] font-semibold text-accent-hi hover:bg-accent/[0.2]">
+                    <button key={s.kind} type="button" onClick={() => apply(item, s)} className="press inline-flex h-8 items-center gap-1.5 rounded-full bg-accent/[0.12] px-3 text-[13px] font-semibold text-accent-hi hover:bg-accent/[0.2]">
                       {ICON[s.kind]} {s.label}
                     </button>
                   ))}
-                <button type="button" onClick={() => organize.show(item)} className="press inline-flex h-9 items-center rounded-full px-3 text-[13px] font-medium text-soft ring-1 ring-line ring-inset hover:text-ink">
+                <button type="button" onClick={() => organize.show(item)} className="press inline-flex h-8 items-center rounded-full px-3 text-[13px] font-medium text-soft ring-1 ring-line ring-inset hover:text-ink">
                   Outro…
                 </button>
               </div>
@@ -259,7 +283,7 @@ export function InboxPage() {
               </span>
               {!item.convertedTo && (
                 <button type="button" onClick={() => reopen(item)} className="shrink-0 rounded-xl px-2.5 py-2 text-[13px] font-medium text-soft hover:bg-tint/[0.04] hover:text-ink">
-                  Reabrir
+                  Recuperar
                 </button>
               )}
             </div>
@@ -275,7 +299,7 @@ export function InboxPage() {
           {isEnabled(settings, 'notes') && <Choice icon={<NotebookPen size={18} />} label="Anotação" hint="Vai para Anotações" onClick={() => start('note')} />}
           {isEnabled(settings, 'recurring') && <Choice icon={<ListRestart size={18} />} label="Recorrente" hint="Conta ou rotina que se repete, com lembrete" onClick={() => start('bill')} />}
           {isEnabled(settings, 'projects') && <Choice icon={<FolderKanban size={18} />} label="Projeto de trabalho" hint="Abre o formulário de Projetos de trabalho" onClick={() => start('project')} />}
-          {isEnabled(settings, 'meals') && <Choice icon={<ShoppingBasket size={18} />} label="Item da lista de compras" hint="Vai direto para a lista desta semana" onClick={() => toShopping()} />}
+          {isEnabled(settings, 'meals') && <Choice icon={<ShoppingBasket size={18} />} label="Lista de compras" hint="Separa os itens; você confere antes" onClick={() => toShopping()} />}
           {isEnabled(settings, 'meals') && <Choice icon={<Salad size={18} />} label="Refeição" hint="Abre o formulário rápido de refeição" onClick={() => start('meal')} />}
           {isEnabled(settings, 'life') && <Choice icon={<FolderHeart size={18} />} label="Projeto pessoal" hint="Viagem, mudança, reforma… com etapas" onClick={() => start('lifeProject')} />}
           {isEnabled(settings, 'life') && <Choice icon={<Compass size={18} />} label="Objetivo" hint="Algo maior, de médio ou longo prazo" onClick={() => start('objective')} />}
@@ -286,8 +310,38 @@ export function InboxPage() {
         </button>
       </Sheet>
 
-      <TaskForm open={target?.type === 'task'} onClose={close} task={null} initial={{ title: split.title, notes: split.notes, dueDate: date, dueTime: target?.suggestion?.time }} onSaved={converted('tasks')} />
-      <EventForm open={target?.type === 'event'} onClose={close} event={null} initial={{ title: split.title, notes: split.notes, date, start: target?.suggestion?.time }} onSaved={converted('events')} />
+      <Sheet
+        open={!!shop}
+        onClose={() => setShop(null)}
+        title="Para a lista de compras"
+        footer={
+          <Button size="lg" block disabled={!shop?.names.some((n) => n.on)} onClick={confirmShopping}>
+            {(() => {
+              const n = shop?.names.filter((x) => x.on).length ?? 0
+              return n === 1 ? 'Adicionar 1 item' : `Adicionar ${n} itens`
+            })()}
+          </Button>
+        }
+      >
+        {shop && (
+          <div className="space-y-3">
+            <p className="text-[14px] text-faint">Desta semana. O texto original fica guardado em Organizados.</p>
+            <ul className="card divide-y divide-line">
+              {shop.names.map((n, i) => (
+                <li key={i}>
+                  <label className="flex items-center gap-3 px-4 py-3">
+                    <input type="checkbox" className="size-5 shrink-0 accent-[var(--color-accent)]" checked={n.on} onChange={(e) => setShop({ ...shop, names: shop.names.map((x, j) => (j === i ? { ...x, on: e.target.checked } : x)) })} />
+                    <input aria-label={`Item ${i + 1}`} value={n.name} onChange={(e) => setShop({ ...shop, names: shop.names.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} className="min-w-0 flex-1 bg-transparent text-[15px] focus:outline-none" />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Sheet>
+
+      <TaskForm open={target?.type === 'task'} onClose={close} task={null} initial={{ title: split.title, notes: split.notes, dueDate: date, dueTime: target?.suggestion?.time ?? parsed?.time }} onSaved={converted('tasks')} />
+      <EventForm open={target?.type === 'event'} onClose={close} event={null} initial={{ title: split.title, notes: split.notes, date, start: target?.suggestion?.time ?? parsed?.time }} onSaved={converted('events')} />
       <NoteEditor open={target?.type === 'note'} onClose={close} note={null} initial={{ title: split.notes ? split.title : '', body: split.notes || split.title }} onSaved={converted('notes')} />
       <RecurringForm
         open={target?.type === 'bill'}

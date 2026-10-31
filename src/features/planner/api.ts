@@ -46,3 +46,9 @@ export async function requestPlan(body: PlannerRequest): Promise<PlannerResponse
 export function newRequestId(): string {
   return crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
 }
+
+/**
+ * The AI proposal needs the `planner` function and a provider key on the server. Until both are configured
+ * (VITE_PLANNER_AI=on in the build), the app offers only the manual path, and never promises an AI result.
+ */
+export const AI_PLANNER = import.meta.env.VITE_PLANNER_AI === 'on'

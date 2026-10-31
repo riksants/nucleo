@@ -439,8 +439,8 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
     for (const date of dates) {
       const day = weekdayOfDate(date)
       for (const b of routine.blocks) {
-        // Already marked as done (early): nothing to remind.
-        if (b.day !== day || b.kind === 'meal' || !isTime(b.start) || routineStatus(index, routine, b.id, date) === 'done') continue
+        // Already marked as done (early), or this activity's reminder is off: nothing to remind.
+        if (b.day !== day || b.kind === 'meal' || !isTime(b.start) || b.remindMin === false || routineStatus(index, routine, b.id, date) === 'done') continue
         const label = b.kind === 'commute' ? `${b.title} — hora de sair` : b.title
         timed(
           ctx,
@@ -453,6 +453,7 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
             url: '#/today',
           },
           zonedToInstant(date, b.start, tz),
+          typeof b.remindMin === 'number' ? { leadMin: b.remindMin } : {},
         )
         // When a block ends it just reads "Horário encerrado" in Hoje: no "concluiu?" is asked.
       }
@@ -584,7 +585,8 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
       const date = nextChargeDate(t, now)
       // Already marked as paid ("Já paguei") or settled: no reminder for that charge.
       if (runs.some((r) => r.automation === 'toolCharge' && r.origin.id === t.id && r.date === date && r.status !== 'pending')) continue
-      const d = prefs.kinds.payments.daysBefore
+      // The subscription's own "avisar N dias antes" wins over the general setting.
+      const d = t.remindDays ?? prefs.kinds.payments.daysBefore
       dated(
         ctx,
         {
@@ -596,13 +598,14 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
           url: `#/tools?open=${t.id}`,
         },
         date,
+        typeof t.remindDays === 'number' ? { daysBefore: t.remindDays } : {},
       )
     }
     // Charged and still waiting for the person ("A pagar" in Feito pelo Núcleo): one reminder the next day.
     for (const r of runs) {
       if (r.automation !== 'toolCharge' || r.status !== 'pending' || (r.date !== yesterday && r.date !== today)) continue
       const t = data.tools.find((x) => x.id === r.origin.id)
-      if (!t) continue
+      if (!t || t.status === 'paused') continue
       followUp(
         ctx,
         {

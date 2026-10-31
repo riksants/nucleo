@@ -130,7 +130,7 @@ try {
   await b.fill('Início', '15:00')
   await b.click('Criar compromisso', 'button[type=submit]')
   await b.sleep(600)
-  const consult = (await idb(b, 'events')).find((x) => x.title === 'Consulta amanhã')
+  const consult = (await idb(b, 'events')).find((x) => x.title === 'Consulta')
   r.check('item da caixa vira compromisso amanhã (data sugerida)', consult?.date === tomorrow && consult.start === '15:00')
   await b.goto(BASE + '#/agenda')
   // Tomorrow on the week strip (next week's first day when today is Sunday).
@@ -139,7 +139,7 @@ try {
     await b.eval(`document.querySelector('[role=tab]')?.click()`)
   }
   await b.sleep(400)
-  r.check('…e aparece na Agenda de amanhã', (await b.text()).includes('Consulta amanhã'))
+  r.check('…e aparece na Agenda de amanhã', (await b.text()).includes('Consulta'))
 
   r.check('sem rolagem horizontal (390px)', await noHorizontalScroll(b))
 

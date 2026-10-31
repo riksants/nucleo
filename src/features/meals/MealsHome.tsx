@@ -19,11 +19,11 @@ import { WeekPlanner } from './WeekPlanner'
 type View = 'week' | 'shopping' | 'plan'
 const VIEWS: { value: View; label: string }[] = [
   { value: 'week', label: 'Semana' },
-  { value: 'shopping', label: 'Lista de compras' },
-  { value: 'plan', label: 'Plano com IA' },
+  { value: 'shopping', label: 'Compras' },
+  { value: 'plan', label: 'Modelo' },
 ]
 
-/** "Alimentação": Semana · Lista de compras · Plano com IA. Organisation only. */
+/** "Alimentação": Semana (dia a dia) · Compras · Modelo da semana. Organisation only. */
 export function MealsPage() {
   const { data, settings } = useStore()
   const { params } = useRoute()
@@ -52,7 +52,7 @@ export function MealsPage() {
       <PageHeader
         rich
         icon={Salad}
-        eyebrow={hasDraft ? 'Rascunho do plano para revisar' : data.mealPlans.some((p) => p.id === MEALS_CURRENT) ? 'Plano aprovado' : 'Organização das refeições'}
+        eyebrow={hasDraft ? 'Modelo para revisar' : data.mealPlans.some((p) => p.id === MEALS_CURRENT) ? 'Modelo aprovado' : 'Organização das refeições'}
         title="Alimentação"
         stats={[
           { label: 'Hoje', value: todays.length ? `${todays.filter((m) => m.done).length}/${todays.length}` : '—' },

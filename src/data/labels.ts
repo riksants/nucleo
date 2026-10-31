@@ -56,6 +56,7 @@ export const TOOL_STATUS: Option<ToolStatus>[] = [
   { value: 'active', label: 'Ativa', tone: 'accent' },
   { value: 'trial', label: 'Teste', tone: 'accent' },
   { value: 'free', label: 'Gratuita', tone: 'positive' },
+  { value: 'paused', label: 'Pausada', tone: 'warn' },
   { value: 'cancelled', label: 'Cancelada', tone: 'neutral' },
 ]
 

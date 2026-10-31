@@ -9,6 +9,7 @@ import type { BlockKind, CalendarEvent, DataState, Habit, MealEntry, MealPlan, P
 import { indexCompletions, routineStatus, statusOf, type CompletionIndex } from './completions'
 import { habitsDue, recurringDue, recurringTime } from './habits'
 import { habitHostOn } from './habitLink'
+import { evidenceFor } from './routine'
 import { addDaysToDate, nowIn, weekdayOfDate, weekStart, zoneOf } from './period'
 import { mealTitle, weeksWithMeals } from './meals'
 import { eventsByDate, mealsByDate, tasksByDate } from './indexes'
@@ -50,6 +51,8 @@ export interface AgendaItem {
   markable?: boolean
   /** For routine blocks: work, training, study… */
   blockKind?: BlockKind
+  /** Routine block still open with a real record backing it that day (a habit marked, a focus session): suggest. */
+  evidence?: { habitName: string; via: string }
   /** Habits linked to this item on this day: shown on this line instead of a second one. */
   habits?: { habit: Habit; status: 'done' | 'skipped' | 'pending' }[]
   source: AgendaSource
@@ -131,6 +134,11 @@ function dayItems(ctx: Ctx, date: string): AgendaItem[] {
         blockKind: block.kind,
         source: { kind: 'routine', block, plan },
       })
+      const last = out[out.length - 1]
+      if (last.status === 'pending') {
+        const ev = evidenceFor(data, block, date)
+        if (ev) last.evidence = { habitName: ev.habit.name, via: ev.via }
+      }
     }
   }
 

@@ -38,6 +38,23 @@
 - Conferido em produção (2 contas de teste, apagadas): app real → servidor → cron → push com o app fechado,
   "antes e na hora", cancelado não chega, remarcado chega no novo horário, cada aviso uma vez, isolamento.
 
+## Etapa 2: Rotina, Alimentação, Caixa de entrada, Assinaturas e Portfólio (2026-10-31, branch `feat/etapa2-areas`)
+
+- Sem migração; campos opcionais no JSON de `records`: bloco da rotina `remindMin` (número ou `false`), rotina
+  `autoFromEvidence`, assinatura `status: 'paused'`, `pausedAt`, `resumedAt`, `remindDays`; portfólio
+  `category`, `status`, `projectId`. Um aparelho com a versão antiga mostra uma assinatura pausada com status
+  desconhecido (e não a cobra: a automação antiga só cobra `active`).
+- Rotina: adicionar só acrescenta blocos (nunca regrava os outros); editar/remover pergunta "só este dia" ou
+  "todos os dias com esta atividade" (mesmo nome e horários). Evidência = hábito de treino/estudo marcado (à mão
+  ou pela sessão de foco); com "Marcar com registros reais" ligado o bloco é marcado com `via`, e desmarcar o
+  hábito desfaz. Dias da semana anteriores à criação da rotina mostram o modelo ("vale a partir da próxima…").
+- Assinaturas: pausar guarda histórico e não cobra nem avisa; retomar põe o próximo vencimento no ciclo a partir
+  de hoje e a automação nunca cria cobrança anterior a `resumedAt`.
+- Alimentação: "Plano com IA" virou "Modelo" (aba) / "Modelo da semana". A função `planner` não está publicada;
+  o botão de IA só aparece com `VITE_PLANNER_AI=on` no build (ligado só no build de teste `e2e-cloud`).
+  `core/mealText.ts` (`MealDraft`) é o formato que a Importação da Etapa 4 deve produzir.
+- e2e `etapa2-areas` 30/30. Não rodado nesta etapa: `regression-account-sync` (fluxo de IA no build de teste).
+
 ## Dia a dia, Etapa 1: Início, Hoje, Agenda, Hábitos e Recorrentes (2026-10-31, branch `feat/etapa1-dia`)
 
 - Sem migração: os campos novos são opcionais dentro do JSON de `records` (mesma RLS). Recorrente: `endDate`,

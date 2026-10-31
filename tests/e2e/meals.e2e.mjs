@@ -40,7 +40,7 @@ try {
   await b.goto(BASE + '#/meals')
   await b.sleep(900)
   let text = await b.text()
-  r.check('Alimentação abre com Semana · Lista de compras · Plano com IA', text.includes('Semana') && text.includes('Lista de compras') && text.includes('Plano com IA') && text.includes('Usar plano aprovado'))
+  r.check('Alimentação abre com Semana · Compras · Modelo', text.includes('Semana') && text.includes('Compras') && text.includes('Modelo') && text.includes('Usar modelo aprovado'))
   r.check('a semana mostra os 7 dias com datas reais', (await b.eval(`document.querySelectorAll('[role=tablist][aria-label="Dias da semana"] [role=tab]').length`)) === 7)
   const pickDay = (date) => b.eval(`document.querySelectorAll('[role=tablist][aria-label="Dias da semana"] [role=tab]')[${(weekday(date) + 6) % 7}].click()`)
 
@@ -72,7 +72,7 @@ try {
   r.check('marcar como realizada grava no próprio registro', (await idb(b, 'meals', lunch.id)).done === true)
 
   // Shopping list: consolidated, nothing invented
-  await b.click('Lista de compras', '[role=radio]')
+  await b.click('Compras', '[role=radio]')
   await b.sleep(500)
   text = await b.text()
   r.check('lista consolidada: Frango 400 g e Bananas 5 un (um item cada)', text.includes('Frango') && text.includes('400 g') && text.includes('Bananas') && text.includes('5 un') && (text.match(/Frango/g) || []).length === 1)
@@ -94,7 +94,7 @@ try {
   await fillIn('Ingredientes', '200 g de frango\nArroz\n6 bananas')
   await b.click('Salvar', '[role=dialog] button[type=submit]')
   await b.sleep(400)
-  await b.click('Lista de compras', '[role=radio]')
+  await b.click('Compras', '[role=radio]')
   await b.sleep(400)
   r.check('mudar a refeição atualiza a quantidade e mantém "comprado" e o item manual', (await b.eval(`[...document.querySelectorAll('[role=checkbox]')].find(c => c.textContent.startsWith('Bananas'))?.getAttribute('aria-checked')`)) === 'true' && (await b.text()).includes('8 un') && (await b.text()).includes('Detergente'))
   r.check('lista de compras sem rolagem horizontal (390px)', await noHorizontalScroll(b))
@@ -142,10 +142,10 @@ try {
 
   // AI plan tab: its own list + copy without obvious duplicates
   await b.click('Voltar para esta semana')
-  await b.click('Plano com IA', '[role=radio]')
+  await b.click('Modelo', '[role=radio]')
   await b.sleep(400)
   text = await b.text()
-  r.check('Plano com IA continua igual, com "Lista sugerida pelo plano"', text.toUpperCase().includes('LISTA SUGERIDA PELO PLANO') && text.includes('Marmita da IA'))
+  r.check('Modelo da semana continua igual, com "Lista sugerida pelo modelo"', text.toUpperCase().includes('LISTA SUGERIDA PELO MODELO') && text.includes('Marmita da IA'))
   await b.click('Copiar para Lista de compras')
   await b.click('Copiar', '[role=dialog] button')
   await b.sleep(500)
@@ -156,11 +156,14 @@ try {
   await b.goto(BASE + '#/inbox')
   await b.sleep(600)
   await b.click('Comprar pilhas', 'button')
-  await b.click('Item da lista de compras', '[role=dialog] button')
+  await b.click('Lista de compras', '[role=dialog] button')
+  await b.sleep(500)
+  r.check('compras: mostra os itens antes de criar', (await b.text()).includes('Adicionar 1 item') && !(await idb(b, 'shoppingItems')).some((i) => i.origin === 'inbox'))
+  await b.click('Adicionar 1 item', '[role=dialog] button')
   await b.sleep(500)
   items = await idb(b, 'shoppingItems')
   const inboxItem = await idb(b, 'inbox', 'in1')
-  r.check('Caixa de Entrada vira item da lista de compras, com rastreio', items.some((i) => i.name === 'Comprar pilhas' && i.origin === 'inbox' && i.week === week) && inboxItem.convertedTo?.collection === 'shoppingItems')
+  r.check('Caixa de Entrada vira item da lista de compras, com rastreio', items.some((i) => i.name === 'Pilhas' && i.origin === 'inbox' && i.week === week) && inboxItem.convertedTo?.collection === 'shoppingItems')
 
   // Search
   await b.goto(BASE + '#/search')
@@ -179,7 +182,7 @@ try {
   await b.sleep(800)
   r.check('Semana sem rolagem horizontal (1366px)', await noHorizontalScroll(b))
   await b.shot('alimentacao-desktop')
-  await b.click('Lista de compras', '[role=radio]')
+  await b.click('Compras', '[role=radio]')
   await b.sleep(300)
   r.check('Lista de compras sem rolagem horizontal (1366px)', await noHorizontalScroll(b))
 } catch (err) {

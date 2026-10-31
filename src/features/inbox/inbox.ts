@@ -17,6 +17,33 @@ export function suggestedDate(text: string, today: string): string {
   return ''
 }
 
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+/** Same text already waiting in the inbox (case, accents and punctuation ignored). */
+export function duplicateOf(items: InboxItem[], text: string): InboxItem | null {
+  const key = fold(text)
+  return (key && items.find((i) => i.status === 'open' && fold(i.text) === key)) || null
+}
+
+/**
+ * "Comprar arroz, ovos e leite" → ["Arroz", "Ovos", "Leite"]. Only splits what was written; the person
+ * confirms (and can untick) before anything goes to the list.
+ */
+export function shoppingItems(text: string): string[] {
+  const body = text
+    .split('\n')[0]
+    .replace(/^\s*(?:preciso\s+)?(?:comprar|compra|compras|mercado|supermercado|feira|lista de compras)\s*(?:de|:|-)?\s*/i, '')
+    .replace(/\s+(?:no|na|do|da)\s+(?:mercado|supermercado|feira)\b.*$/i, '')
+    .replace(/[.!]+$/, '')
+  return [...new Set(body.split(/\s*(?:,|;|\+|\s+e\s+)\s*/i).map((x) => x.trim()).filter((x) => x.length > 0 && x.length <= 80))].map((x) => x[0].toUpperCase() + x.slice(1))
+}
+
 export function markOrganized(item: InboxItem, convertedTo: { collection: CollectionName; id: string } | null): InboxItem {
   return { ...item, status: 'done', convertedTo, processedAt: new Date().toISOString() }
 }

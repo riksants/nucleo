@@ -45,7 +45,8 @@ export function planToolCharges(ctx: AutomationCtx, since: string): ItemPlan[] {
     const { due, next } = once
       ? { due: t.nextCharge >= since && t.nextCharge <= ctx.today ? [t.nextCharge] : [], next: t.nextCharge }
       : cycleDates(t.nextCharge, anchor, t.billing === 'monthly' ? 1 : 12, since, ctx.today, MAX_RUNS_PER_ITEM)
-    const todo = due.filter((d) => !known.has(toolRunId(t.id, d)))
+    // Never a charge from before a resume (the paused period is not charged afterwards).
+    const todo = due.filter((d) => !known.has(toolRunId(t.id, d)) && !(t.resumedAt && d < t.resumedAt))
     // Only a new run moves the date: a charge that was undone (date restored) is not moved again.
     if (!todo.length) continue
     // Considered paid but no rate yet: wait, so the expense is never invented.

@@ -12,20 +12,18 @@ import { formatMoney } from '../../lib/money'
 import { usePref } from '../../lib/prefs'
 import { Badge, EmptyState, SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
-import { Chips } from '../../ui/Segmented'
+import { isEnabled } from '../../app/modules'
 import { useOpenParam } from '../useOpenParam'
 import { ToolForm } from './ToolForm'
 import { DueCard, PaySheet } from './ToolPay'
 import { PendingCharges } from '../automations/PendingCharges'
 import { pendingRuns } from '../automations/runs'
 
-type Filter = 'all' | 'paying' | 'free' | 'cancelled'
-
-const FILTERS: { value: Filter; label: string; test(t: Tool): boolean }[] = [
-  { value: 'all', label: 'Todas', test: () => true },
-  { value: 'paying', label: 'Pagando', test: (t) => isPaidTool(t) },
-  { value: 'free', label: 'Grátis', test: (t) => t.billing === 'free' || t.status === 'free' },
-  { value: 'cancelled', label: 'Canceladas', test: (t) => t.status === 'cancelled' },
+/** Ativas (pagando, em teste, grátis) · Pausadas · Encerradas: each subscription in exactly one group. */
+const GROUPS: { id: 'active' | 'paused' | 'ended'; label: string; test(t: Tool): boolean }[] = [
+  { id: 'active', label: 'Ativas', test: (t) => t.status !== 'paused' && t.status !== 'cancelled' },
+  { id: 'paused', label: 'Pausadas', test: (t) => t.status === 'paused' },
+  { id: 'ended', label: 'Encerradas', test: (t) => t.status === 'cancelled' },
 ]
 
 const PER = { monthly: '/mês', yearly: '/ano', once: ' único', free: '' }
@@ -69,7 +67,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
           <span className={`block truncate text-[15px] font-medium ${cancelled ? 'text-faint line-through' : ''}`}>{tool.name}</span>
           <span className="mt-0.5 block truncate text-[13px] text-faint">
             {tool.plan && `${tool.plan} · `}
-            {rel ? <span className={rel.days <= 2 ? 'font-medium text-warn' : ''}>Cobra {rel.days <= 1 ? rel.label.toLowerCase() : formatDateValue(next).toLowerCase()}</span> : free ? 'Gratuita' : status.label}
+            {rel ? <span className={rel.days <= 2 ? 'font-medium text-warn' : ''}>Cobra {rel.days <= 1 ? rel.label.toLowerCase() : formatDateValue(next).toLowerCase()}</span> : tool.status === 'paused' ? 'Pausada' : free ? 'Gratuita' : status.label}
           </span>
         </span>
         <span className="shrink-0 text-right">
@@ -77,7 +75,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
             {free ? 'Grátis' : formatMoney(tool.price, tool.currency)}
             {tool.price > 0 && <span className="text-[12px] font-normal text-faint">{PER[tool.billing]}</span>}
           </span>
-          {tool.status !== 'active' && tool.status !== 'free' && !cancelled && (
+          {tool.status !== 'active' && tool.status !== 'free' && tool.status !== 'paused' && !cancelled && (
             <span className="mt-1 inline-block">
               <Badge tone={status.tone}>{status.label}</Badge>
             </span>
@@ -95,7 +93,7 @@ function ToolRow({ tool, onOpen }: { tool: Tool; onOpen(t: Tool): void }) {
 
 export function ToolsPage() {
   const { data, settings, displayCurrency, convert } = useStore()
-  const [filter, setFilter] = usePref<Filter>('tools.filter', 'all')
+  const [showEnded, setShowEnded] = usePref<boolean>('tools.showEnded', false)
   const form = useSheet<Tool>()
   const pay = useSheet<Tool>()
   useOpenParam(data.tools, form.show)
@@ -104,8 +102,7 @@ export function ToolsPage() {
   const spending = toolSpending(data.tools, displayCurrency, convert)
   const currencies = byCurrency(data.tools)
   const mixed = currencies.length > 1
-  const test = FILTERS.find((f) => f.value === filter)?.test ?? (() => true)
-  const list = [...data.tools].filter(test).sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active') || a.name.localeCompare(b.name))
+  const sorted = [...data.tools].sort((a, b) => Number(isPaidTool(b)) - Number(isPaidTool(a)) || a.name.localeCompare(b.name))
 
   const toolRuns = data.automationRuns.filter((r) => r.automation === 'toolCharge')
   const waiting = pendingRuns(toolRuns)
@@ -200,45 +197,53 @@ export function ToolsPage() {
                     const rel = relativeDays(date)
                     const canPay = date <= addDaysToDate(today, EARLY_DAYS)
                     return (
-                      <div key={tool.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                      <div key={tool.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
                         <span className={`flex w-12 shrink-0 flex-col items-center rounded-xl py-1.5 ${rel && rel.days <= 2 ? 'bg-accent/[0.12] text-accent-hi' : 'bg-tint/[0.05]'}`}>
                           <span className="num text-[17px] leading-none font-semibold">{Number(date.slice(8))}</span>
                           <span className="mt-0.5 text-[10px] font-semibold tracking-wide text-faint uppercase">{MONTH.format(new Date(`${date}T12:00:00Z`)).replace('.', '')}</span>
                         </span>
-                        <button type="button" onClick={() => form.show(tool)} className="min-w-0 flex-1 text-left">
+                        <button type="button" onClick={() => form.show(tool)} className="min-w-[8rem] flex-1 text-left">
                           <span className="block truncate text-[15px] font-medium">{tool.name}</span>
                           <span className="num block text-[12px] text-faint">
                             {formatMoney(tool.price, tool.currency)} · {rel?.label}
                           </span>
                         </button>
                         {canPay && (
-                          <button type="button" onClick={() => pay.show(tool)} className="press h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold text-accent-hi ring-1 ring-accent/30 ring-inset hover:bg-accent/[0.08]">
-                            Já paguei
+                          <button type="button" onClick={() => pay.show(tool)} className="press ml-auto h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold text-accent-hi ring-1 ring-accent/30 ring-inset hover:bg-accent/[0.08]">
+                            Marcar como pago
                           </button>
                         )}
                       </div>
                     )
                   })}
                 </div>
-                <p className="mt-2 px-1 text-[12px] text-faint">O Núcleo avisa 2 dias antes e no dia (Configurações → Lembretes).</p>
+                <p className="mt-2 px-1 text-[12px] text-faint">Avisos conforme Notificações, ou a antecedência escolhida em cada assinatura.</p>
               </section>
             )}
           </div>
 
-          <section aria-label="Suas assinaturas">
-            <div className="mb-3">
-              <Chips value={filter} onChange={setFilter} options={FILTERS} />
-            </div>
-            {list.length ? (
-              <div className="card p-1.5">
-                {list.map((t) => (
-                  <ToolRow key={t.id} tool={t} onOpen={form.show} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState compact icon={<Wrench size={20} />} title="Nada por aqui" action={filter !== 'all' ? 'Ver todas' : undefined} onAction={() => setFilter('all')} />
-            )}
-          </section>
+          <div className="space-y-6">
+            {GROUPS.map((g) => {
+              const items = sorted.filter(g.test)
+              if (!items.length) return null
+              const folded = g.id === 'ended' && !showEnded
+              return (
+                <section key={g.id} aria-label={g.label}>
+                  <SectionTitle action={g.id === 'ended' ? (folded ? 'Mostrar' : 'Esconder') : undefined} onAction={() => setShowEnded(!showEnded)}>
+                    {`${g.label} · ${items.length}`}
+                  </SectionTitle>
+                  {!folded && (
+                    <div className="card p-1.5">
+                      {items.map((t) => (
+                        <ToolRow key={t.id} tool={t} onOpen={form.show} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )
+            })}
+            {isEnabled(settings, 'subscribers') && <p className="px-1 text-[12px] text-faint">Aqui ficam só as assinaturas que você paga. Cobranças de clientes ficam em Assinantes.</p>}
+          </div>
         </div>
       )}
       <ToolForm open={form.open} onClose={form.close} tool={form.item} />

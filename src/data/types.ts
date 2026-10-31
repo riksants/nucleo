@@ -275,7 +275,7 @@ export interface FocusSession extends Entity {
 }
 
 export type ToolBilling = 'monthly' | 'yearly' | 'once' | 'free'
-export type ToolStatus = 'active' | 'cancelled' | 'trial' | 'free'
+export type ToolStatus = 'active' | 'cancelled' | 'trial' | 'free' | 'paused'
 
 export interface Tool extends Entity {
   name: string
@@ -296,6 +296,11 @@ export interface Tool extends Entity {
    * touching the balance; 'presumeDeduct' also records the expense (the person authorized it beforehand).
    */
   afterDue?: 'ask' | 'presume' | 'presumeDeduct'
+  /** Days before the charge to remind (0 = on the day). Missing = the general setting. */
+  remindDays?: number
+  /** Paused since (no charges, no reminders) / resumed on: charges before this date are never created afterwards. */
+  pausedAt?: string
+  resumedAt?: string
 }
 
 export interface Account extends Entity {
@@ -454,6 +459,11 @@ export interface PlannerProfile extends Entity {
 
 
 export interface RoutinePlan extends Entity {
+  /**
+   * Mark a block as done by itself when there is a real record for it that day (its linked habit marked, or a
+   * focus session that reached a training/study habit's goal). Off by default: then it is only suggested.
+   */
+  autoFromEvidence?: boolean
   status: 'draft' | 'approved'
   source: 'ai' | 'manual'
   blocks: RoutineBlock[]
@@ -494,6 +504,10 @@ export interface PortfolioItem extends Entity {
   date: string
   image: string
   notes: string
+  /** Optional organisation (Etapa 2): a free category, where it stands, and the Núcleo project it came from. */
+  category?: string
+  status?: 'done' | 'inProgress' | 'paused'
+  projectId?: string | null
 }
 
 export interface Rates {

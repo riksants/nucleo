@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, MessageCircle, Plus, Settings2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ClipboardPaste, Copy, History, MessageCircle, Plus, Settings2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DEFAULT_MEAL_TYPES, copyWeek, fromTemplate, mealsOfWeek, mealTitle, mealTypes, sortMeals, typeLabel, weekDays } from '../../core/meals'
 import { addDaysToDate, useToday, weekStart, zoneOf } from '../../core/period'
@@ -15,6 +15,7 @@ import { Switch } from '../settings/ModulePicker'
 import { weekLabel } from '../week/GoalForm'
 import { MealForm, type MealInitial } from './MealForm'
 import { DayStrip, MealTypeIcon } from './MealParts'
+import { PasteSheet, RepeatSheet } from './QuickMeals'
 import { MEALS_CURRENT } from '../planner/plans'
 
 const DAY_NAME = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -102,6 +103,15 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
     setInitial({ date })
     form.show()
   }
+  const [repeat, setRepeat] = useState(false)
+  const [paste, setPaste] = useState(false)
+  const [showWeek, setShowWeek] = useState(false)
+  /** A meal used before, on this day: the usual form, filled in (checked there before saving). */
+  const repeatOn = (m: MealEntry) => {
+    setRepeat(false)
+    setInitial({ date: day, type: m.type, name: m.name, time: m.time, ingredients: m.ingredients })
+    form.show()
+  }
   const copyPrevious = async () => {
     const ok = await confirm({
       title: 'Copiar a semana anterior?',
@@ -114,10 +124,10 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
   }
   const useTemplate = async () => {
     if (!template) return
-    const ok = await confirm({ title: 'Usar o plano aprovado nesta semana?', message: `${template.meals.length} refeições do plano serão criadas nos dias desta semana. O plano continua igual.`, confirmLabel: 'Usar' })
+    const ok = await confirm({ title: 'Usar o modelo aprovado nesta semana?', message: `${template.meals.length} refeições do modelo serão criadas nos dias desta semana, como planejadas. O modelo continua igual.`, confirmLabel: 'Usar' })
     if (!ok) return
     for (const m of fromTemplate(template, week, settings)) await save('meals', m)
-    toast('Plano aplicado nesta semana')
+    toast('Modelo aplicado nesta semana')
   }
 
   return (
@@ -149,8 +159,16 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
               {DAY_NAME[wd]} <span className="font-normal text-faint">{day.slice(8, 10)}/{day.slice(5, 7)}</span>
               {day === today && <span className="ml-2 text-[12px] font-semibold text-accent-hi">hoje</span>}
             </h2>
-            <button type="button" onClick={() => addOn(day)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-accent-hi hover:bg-accent/[0.08]">
+            <button type="button" onClick={() => addOn(day)} className="press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-accent-hi hover:bg-accent/[0.08]">
               <Plus size={16} /> Refeição
+            </button>
+          </div>
+          <div className="no-scrollbar -mx-1 mb-2.5 flex gap-2 overflow-x-auto px-1">
+            <button type="button" onClick={() => setRepeat(true)} className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-soft hover:text-ink">
+              <History size={14} /> Repetir anterior
+            </button>
+            <button type="button" onClick={() => setPaste(true)} className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] font-medium text-soft hover:text-ink">
+              <ClipboardPaste size={14} /> Colar várias
             </button>
           </div>
           {list.length ? (
@@ -159,12 +177,13 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
                 <div key={m.id} className="flex items-center gap-3 px-3 py-2.5">
                   <MealTypeIcon type={m.type} />
                   <button type="button" onClick={() => form.show(m)} className="min-w-0 flex-1 text-left">
-                    <span className="flex items-baseline gap-2">
-                      <span className={`truncate text-[15px] font-medium ${m.done ? 'text-faint line-through' : ''}`}>{mealTitle(settings, m)}</span>
-                      {m.time && <span className="num shrink-0 text-[12px] text-faint">{m.time}</span>}
+                    <span className="flex items-center gap-2">
+                      {m.time && <span className="num shrink-0 text-[13px] font-medium text-soft">{m.time}</span>}
+                      <span className={`truncate text-[15px] font-medium ${m.done ? 'text-faint' : ''}`}>{mealTitle(settings, m)}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.done ? 'bg-income/[0.14] text-income' : 'bg-tint/[0.06] text-faint'}`}>{m.done ? 'Feita' : 'Planejada'}</span>
                     </span>
                     {(m.name && m.type) || m.ingredients.length ? (
-                      <span className="block truncate text-[13px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(', ')].filter(Boolean).join(' · ')}</span>
+                      <span className="mt-0.5 block truncate text-[13px] text-faint">{[m.name && m.type ? typeLabel(settings, m.type) : '', m.ingredients.join(' · ')].filter(Boolean).join(' — ')}</span>
                     ) : null}
                   </button>
                   <CheckButton status={m.done ? 'done' : 'pending'} onClick={() => setMealDone(m, !m.done)} label={m.done ? `Desmarcar ${mealTitle(settings, m)}` : `Marcar ${mealTitle(settings, m)} como realizada`} />
@@ -185,7 +204,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
                 )}
                 {!meals.length && template && (
                   <Button variant="ghost" icon={<MessageCircle size={16} />} onClick={useTemplate}>
-                    Usar plano aprovado
+                    Usar modelo aprovado
                   </Button>
                 )}
               </div>
@@ -193,7 +212,10 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
           )}
         </section>
 
-        <section aria-label="Resumo da semana" className="hidden lg:block">
+        <button type="button" aria-expanded={showWeek} onClick={() => setShowWeek(!showWeek)} className="-mt-2 px-1 text-left text-[13px] font-semibold text-soft hover:text-ink lg:hidden">
+          {showWeek ? 'Esconder a semana' : 'Ver a semana inteira'}
+        </button>
+        <section aria-label="Resumo da semana" className={showWeek ? 'block' : 'hidden lg:block'}>
           <h2 className="mb-2 px-1 text-[13px] font-semibold text-soft">Semana</h2>
           <ul className="card divide-y divide-line">
             {days.map((d) => {
@@ -202,7 +224,7 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
               return (
                 <li key={d}>
                   <button type="button" onClick={() => setPicked(d)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-tint/[0.03] ${d === day ? 'text-accent-hi' : ''}`}>
-                    <span className="w-24 shrink-0 text-[14px] font-medium">{DAY_NAME[w]}</span>
+                    <span className="w-[4.5rem] shrink-0 text-[14px] font-medium">{DAY_NAME[w]}</span>
                     <span className="min-w-0 flex-1 truncate text-[13px] text-faint">{ms.length ? ms.map((m) => mealTitle(settings, m)).join(' · ') : 'Nada planejado'}</span>
                     <span className="num shrink-0 text-[13px] text-soft">{ms.filter((m) => m.done).length}/{ms.length}</span>
                   </button>
@@ -220,6 +242,8 @@ export function WeekPlanner({ week, onWeek }: { week: WeekId; onWeek(w: WeekId):
 
       <MealForm open={form.open} onClose={form.close} meal={form.item} initial={form.item ? undefined : initial} />
       <MealTypesSheet open={typesOpen} onClose={() => setTypesOpen(false)} />
+      <RepeatSheet open={repeat} onClose={() => setRepeat(false)} onPick={repeatOn} />
+      <PasteSheet open={paste} onClose={() => setPaste(false)} date={day} />
     </div>
   )
 }

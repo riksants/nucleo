@@ -92,6 +92,8 @@ export interface RoutineBlock {
   kind: BlockKind
   /** Comes from a fixed answer: generation must keep it as is. */
   fixed: boolean
+  /** Reminder for this activity: minutes before (0 = at the time). Missing = the general setting; false = none. */
+  remindMin?: number | false
 }
 
 export interface PlannedMeal {

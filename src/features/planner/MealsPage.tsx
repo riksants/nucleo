@@ -13,6 +13,7 @@ import { Field, FormGrid, Select, TextArea, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useDraft, useSheet } from '../../ui/formHooks'
 import { MEALS_CURRENT, MEALS_DRAFT, usePlans } from './plans'
+import { AI_PLANNER } from './api'
 import { mealsOfWeek, weekDays } from '../../core/meals'
 import { DayStrip, MealTypeIcon, typeFromTime } from '../meals/MealParts'
 import { todayIn, weekStart, zoneOf } from '../../core/period'
@@ -133,7 +134,7 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
     const fresh = plan.shopping.filter((s) => s.item.trim() && !have.has(normalizeName(s.item)))
     const unique = [...new Map(fresh.map((s) => [normalizeName(s.item), s])).values()]
     if (!unique.length) return toast('Esses itens já estão na Lista de compras desta semana')
-    const ok = await confirm({ title: 'Copiar para Lista de compras?', message: `${unique.length} ${unique.length === 1 ? 'item vai' : 'itens vão'} para a lista desta semana como itens seus. ${plan.shopping.length - unique.length ? `${plan.shopping.length - unique.length} já estavam lá. ` : ''}A lista do plano continua igual.`, confirmLabel: 'Copiar' })
+    const ok = await confirm({ title: 'Copiar para Lista de compras?', message: `${unique.length} ${unique.length === 1 ? 'item vai' : 'itens vão'} para a lista desta semana como itens seus. ${plan.shopping.length - unique.length ? `${plan.shopping.length - unique.length} já estavam lá. ` : ''}A lista do modelo continua igual.`, confirmLabel: 'Copiar' })
     if (!ok) return
     for (const s of unique) await save('shoppingItems', { week, kind: 'manual', name: s.item.trim().slice(0, 120), qty: s.qty ?? '', unit: '', category: guessCategory(normalizeName(s.item)), checked: false, note: '', origin: 'plan' })
     toast('Copiado para a Lista de compras')
@@ -150,7 +151,7 @@ function Shopping({ plan, answers }: { plan: MealPlan; answers: MealAnswers }) {
   return (
     <section>
       <SectionTitle action={plan.status === 'approved' && plan.shopping.length ? 'Copiar para Lista de compras' : undefined} onAction={copy}>
-        Lista sugerida pelo plano
+        Lista sugerida pelo modelo
       </SectionTitle>
       <div className="card p-1.5">
         {plan.shopping.map((s, i) => (
@@ -191,7 +192,7 @@ function PlanView({ plan, answers, onEdit }: { plan: MealPlan; answers: MealAnsw
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
       <section className="space-y-3">
-        <DayStrip days={dates} value={date} today={today} counts={counts} onPick={setDate} label="Dias do plano" />
+        <DayStrip days={dates} value={date} today={today} counts={counts} onPick={setDate} label="Dias do modelo" />
         <div className="flex items-center justify-between gap-2 px-1">
           <h3 className="text-[15px] font-semibold">{DAY_LONG[day]}</h3>
           <button type="button" onClick={() => onEdit(null)} className="press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-semibold text-accent-hi hover:bg-accent/[0.08]">
@@ -221,7 +222,7 @@ export function AiPlanView() {
     const approved = { ...mealsDraft, id: MEALS_CURRENT, status: 'approved' as const, createdAt: meals?.createdAt ?? mealsDraft.createdAt }
     await save('mealPlans', approved)
     await remove('mealPlans', MEALS_DRAFT)
-    toast('Plano aprovado')
+    toast('Modelo aprovado')
     // Approved: offer the shopping list of this week (only items not there yet; manual items untouched).
     if (approved.shopping.length) await copyShopping(approved)
   }
@@ -231,7 +232,7 @@ export function AiPlanView() {
     const have = keysOnList(buildList(mealsOfWeek(data.meals, week), data.shoppingItems, week))
     const fresh = [...new Map(plan.shopping.filter((s) => s.item.trim() && !have.has(normalizeName(s.item))).map((s) => [normalizeName(s.item), s])).values()]
     if (!fresh.length) return
-    const ok = await confirm({ title: 'Gerar a lista de compras?', message: `${fresh.length} ${fresh.length === 1 ? 'item do plano vai' : 'itens do plano vão'} para a Lista de compras desta semana, agrupados por categoria. O que já está lá não se repete.`, confirmLabel: 'Gerar lista' })
+    const ok = await confirm({ title: 'Gerar a lista de compras?', message: `${fresh.length} ${fresh.length === 1 ? 'item do modelo vai' : 'itens do modelo vão'} para a Lista de compras desta semana, agrupados por categoria. O que já está lá não se repete.`, confirmLabel: 'Gerar lista' })
     if (!ok) return
     for (const s of fresh) await save('shoppingItems', { week, kind: 'manual', name: s.item.trim().slice(0, 120), qty: s.qty ?? '', unit: '', category: guessCategory(normalizeName(s.item)), checked: false, note: '', origin: 'plan' })
     toast('Lista de compras gerada')
@@ -247,9 +248,9 @@ export function AiPlanView() {
   return (
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[14px] text-soft">Modelo semanal montado com IA — não é prescrição.</p>
+        <p className="text-[14px] text-soft"><span className="font-semibold text-ink">Modelo da semana. </span>{AI_PLANNER ? 'Você revisa e aprova antes de usar. Não é prescrição.' : 'Monte à mão (ou a partir das suas respostas), revise e aprove. Não é prescrição.'}</p>
         <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>
-          {profile ? 'Refazer' : 'Montar'}
+          {profile ? 'Refazer com perguntas' : 'Responder perguntas'}
         </Button>
       </div>
 
@@ -284,7 +285,7 @@ export function AiPlanView() {
             {mealsDraft.notes && <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-soft">{mealsDraft.notes}</p>}
             <div className="flex flex-wrap gap-2">
               <Button icon={<Check size={18} />} onClick={approve}>
-                Aprovar plano
+                Aprovar modelo
               </Button>
               <Button variant="ghost" onClick={discard}>
                 Descartar rascunho
@@ -298,14 +299,28 @@ export function AiPlanView() {
       {meals ? (
         <section>
           <div className="mb-4 flex flex-wrap items-center gap-2 px-1">
-            <Badge tone="positive">Plano aprovado</Badge>
-            <span className="text-[13px] text-faint">{mealsDraft ? 'É o que vale até você aprovar o rascunho acima.' : 'Use na Semana com “Usar plano aprovado”.'}</span>
+            <Badge tone="positive">Modelo aprovado</Badge>
+            <span className="text-[13px] text-faint">{mealsDraft ? 'É o que vale até você aprovar o rascunho acima.' : 'Use na Semana com “Usar modelo aprovado”.'}</span>
           </div>
           <PlanView plan={meals} answers={answers} onEdit={(m) => sheet.show({ meal: m, planId: MEALS_CURRENT })} />
         </section>
       ) : (
         !mealsDraft && (
-          <EmptyState icon={<Salad size={20} />} title="Nenhum planejamento ainda" text="Responda um questionário curto e receba refeições da semana e lista de compras, respeitando alergias e restrições." action="Começar" onAction={() => navigate('/planner')} />
+          <div className="space-y-3">
+            <EmptyState
+              icon={<Salad size={20} />}
+              title="Nenhum modelo ainda"
+              text="Um modelo da semana com refeições e horários: você monta, revisa e aprova. Depois ele preenche a semana e a lista de compras."
+              action="Montar modelo"
+              onAction={() => save('mealPlans', { id: MEALS_DRAFT, status: 'draft', source: 'manual', meals: [], shopping: [], notes: '', removed: [] })}
+            />
+            <p className="text-center text-[13px] text-faint">
+              Prefere responder algumas perguntas (horários, restrições)?{' '}
+              <button type="button" onClick={() => navigate('/planner')} className="font-medium text-accent-hi hover:text-ink">
+                Montar com perguntas
+              </button>
+            </p>
+          </div>
         )
       )}
 

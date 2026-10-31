@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useStore } from '../data/store'
 import type { Completion, CompletionSource, MealEntry, RoutinePlan, Task } from '../data/types'
 import { completionId } from './completions'
+import { blocksBackedBy, ROUTINE_ID } from './routine'
 
 export function useDailyActions() {
   const { data, save, remove } = useStore()
@@ -18,12 +19,23 @@ export function useDailyActions() {
       const existing = data.completions.find((c) => c.id === id)
       if (status === null) {
         if (existing) await remove('completions', id)
+        // What was marked from this record (a routine block backed by this habit) goes back too.
+        for (const c of data.completions) if (c.via === id && c.id !== id) await remove('completions', c.id)
         return
       }
       const { via: _was, ...rest } = existing ?? ({} as Partial<Completion>)
       await save('completions', { ...rest, id, source, sourceId, date, status, ...(via ? { via } : {}) })
+      // A habit marked done (by hand or by a focus session that reached its goal) is a real record: with
+      // "Marcar a rotina com registros" on, the routine block it backs that day is marked too, with its origin.
+      if (source === 'habit' && status === 'done' && !via?.startsWith('routine:')) {
+        const plan = data.routinePlans.find((p) => p.id === ROUTINE_ID)
+        const habit = data.habits.find((h) => h.id === sourceId)
+        if (plan?.autoFromEvidence && habit) {
+          for (const b of blocksBackedBy(plan, habit, date, data.completions)) await save('completions', { id: completionId('routine', b.id, date), source: 'routine', sourceId: b.id, date, status: 'done', via: id })
+        }
+      }
     },
-    [data.completions, save, remove],
+    [data.completions, data.routinePlans, data.habits, save, remove],
   )
 
   const completeTask = useCallback(

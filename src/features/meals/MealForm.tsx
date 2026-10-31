@@ -23,6 +23,9 @@ export interface MealInitial {
   date?: string
   name?: string
   type?: string
+  /** "Repetir uma refeição": the rest of the meal being repeated. */
+  time?: string
+  ingredients?: string[]
 }
 
 /**
@@ -39,8 +42,8 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
     date: meal?.date ?? initial?.date ?? '',
     type: meal?.type ?? initial?.type ?? '',
     name: meal?.name ?? initial?.name ?? '',
-    time: meal?.time ?? '',
-    ingredients: (meal?.ingredients ?? []).join('\n'),
+    time: meal?.time ?? initial?.time ?? '',
+    ingredients: (meal?.ingredients ?? initial?.ingredients ?? []).join('\n'),
     description: meal?.description ?? '',
     notes: meal?.notes ?? '',
     copies: [] as string[],
@@ -96,6 +99,24 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
         <Field label="Ingredientes" hint="opcional · um por linha">
           <TextArea rows={3} value={d.ingredients} placeholder={'200 g de frango\nArroz\n1 banana'} onChange={(e) => set('ingredients', e.target.value)} />
         </Field>
+        {week && (
+          <div>
+            <p className="mb-2 text-[13px] font-semibold text-soft">Copiar também para</p>
+            <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+              {weekDays(week)
+                .filter((x) => x !== d.date)
+                .map((x) => {
+                  const on = d.copies.includes(x)
+                  return (
+                    <button key={x} type="button" aria-pressed={on} onClick={() => set('copies', on ? d.copies.filter((c) => c !== x) : [...d.copies, x])} className={`press h-9 shrink-0 rounded-full border px-3 text-[13px] ${on ? 'border-transparent bg-ink text-bg' : 'border-line bg-surface text-soft hover:text-ink'}`}>
+                      {dayChip(x)}
+                    </button>
+                  )
+                })}
+            </div>
+            <p className="mt-2 text-[13px] text-faint">Uma cópia em cada dia escolhido, como planejada (não feita).</p>
+          </div>
+        )}
         {!more ? (
           <button type="button" onClick={() => setMore(true)} className="-mt-1 justify-self-start text-[14px] font-medium text-accent-hi hover:text-ink">
             Mais opções
@@ -108,24 +129,6 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
             <Field label="Observação" hint="opcional">
               <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
             </Field>
-            {week && (
-              <div>
-                <p className="mb-2 text-[13px] font-semibold text-soft">Repetir também em</p>
-                <div className="flex flex-wrap gap-2">
-                  {weekDays(week)
-                    .filter((x) => x !== d.date)
-                    .map((x) => {
-                      const on = d.copies.includes(x)
-                      return (
-                        <button key={x} type="button" aria-pressed={on} onClick={() => set('copies', on ? d.copies.filter((c) => c !== x) : [...d.copies, x])} className={`press h-10 rounded-full border px-3.5 text-[14px] ${on ? 'border-transparent bg-ink text-bg' : 'border-line bg-surface text-soft hover:text-ink'}`}>
-                          {dayChip(x)}
-                        </button>
-                      )
-                    })}
-                </div>
-                <p className="mt-2 text-[13px] text-faint">Cria uma cópia em cada dia escolhido (sem marcar como realizada).</p>
-              </div>
-            )}
           </>
         )}
       </FormGrid>

@@ -133,7 +133,9 @@ function HabitTags({ item }: { item: AgendaItem }) {
  */
 function TimelineRow({ item, state, onOpen, last, next, nowTime }: { item: AgendaItem; state: TimeState; onOpen(item: AgendaItem): void; last: boolean; next?: boolean; nowTime: string }) {
   const toggle = useToggleItem()
-  const { moveTask } = useDailyActions()
+  const { moveTask, setCompletion } = useDailyActions()
+  // Marked from the habit's record: keeps the origin, so unmarking the habit undoes it too.
+  const setRoutineFrom = (i: AgendaItem) => i.source.kind === 'routine' && i.evidence && setCompletion('routine', i.source.block.id, i.date, 'done', i.evidence.via)
   const muted = state === 'done' || state === 'missed' || state === 'ended'
   const late = state === 'awaiting'
   const until = next && state === 'scheduled' ? minutesUntil(item, nowTime) : null
@@ -156,10 +158,18 @@ function TimelineRow({ item, state, onOpen, last, next, nowTime }: { item: Agend
             {item.source.kind === 'routine' && item.source.block.fixed && <span>· fixo</span>}
             <HabitTags item={item} />
             {until !== null && <span className="font-semibold text-accent-hi">· A seguir, {inWords(until)}</span>}
+            {item.evidence && <span className="font-medium text-income">· {item.evidence.habitName} registrado</span>}
             {state !== 'scheduled' && state !== 'anytime' && <span className={state === 'now' ? 'font-semibold text-accent-hi' : late ? 'font-semibold text-warn' : ''}>· {stateWords(item, state)}</span>}
           </span>
         </button>
         {isMarkable(item) && <CheckButton status={item.status === 'ended' ? 'pending' : item.status} onClick={() => toggle(item)} label={item.status === 'done' ? `Desmarcar ${item.title}` : `Concluir ${item.title}`} />}
+        {item.evidence && item.status === 'pending' && !late && (
+          <div className="flex w-full px-3 pb-2.5">
+            <button type="button" onClick={() => setRoutineFrom(item)} className="press inline-flex h-8 items-center gap-1 rounded-full bg-income/[0.14] px-3 text-[13px] font-semibold text-income hover:bg-income/[0.2]">
+              <Check size={14} strokeWidth={2.6} /> Concluir pela evidência
+            </button>
+          </div>
+        )}
         {late && (
           <div className="flex w-full flex-wrap gap-1.5 px-3 pb-2.5">
             <button type="button" onClick={() => toggle(item, 'done')} className="press inline-flex h-8 items-center gap-1 rounded-full bg-accent px-3 text-[13px] font-semibold text-on-accent hover:bg-accent-soft">
