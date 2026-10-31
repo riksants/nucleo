@@ -249,7 +249,7 @@ export function RulesPage() {
             })}
           </div>
           <p className="mt-2 px-1 text-[13px] leading-relaxed text-faint">
-            O que uma regra faz nunca dispara outra regra. Regras não criam entradas nem saídas: reservar para uma meta não é uma saída. {data.automationRuns.some((r) => r.automation === 'rule') ? '' : 'Tudo o que elas fizerem aparece em “Feito pelo Núcleo”, com Desfazer.'}
+            O que uma regra faz só inicia outras regras quando você liga “Permitir que ações desta regra ativem outras regras” (no máximo 3 em sequência, sem repetir). Regras não criam entradas nem saídas: reservar para uma meta não é uma saída. {data.automationRuns.some((r) => r.automation === 'rule') ? '' : 'Tudo o que elas fizerem aparece em “Feito pelo Núcleo”, com Desfazer.'}
           </p>
         </section>
       </div>

@@ -50,7 +50,7 @@ describe('assinante → cobrança', () => {
     expect(saved.payments).toEqual([{ id: runId, date: '2026-10-05', amount: 5000, currency: 'EUR', note: '', finance: true, chargeRun: runId }])
     const [tx] = puts(p.ops, 'transactions') as Transaction[]
     expect(tx).toMatchObject({ id: `rcv-subscriber-${runId}`, type: 'in', amount: 5000, baseAmount: 5000, category: 'sales', source: { kind: 'subscriber', parentId: 's1', paymentId: runId } })
-    expect(p.runs[0].created).toEqual([{ collection: 'transactions', id: tx.id }])
+    expect(p.runs[0].created).toEqual([{ collection: 'transactions', id: tx.id, fp: expect.any(String) }])
     // the receipt is known, so a missing income (no rate) would be created later by the reconciler
     expect(missingReceipts(allReceipts({ projects: [], sales: [], clients: [], subscribers: [saved], subPlans: [plan] }), [tx])).toEqual([])
   })

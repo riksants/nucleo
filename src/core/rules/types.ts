@@ -5,8 +5,9 @@
  * but never invents facts — no rule creates income or expenses, marks anything as paid or deletes
  * the person's records. Reserving for a goal is not an expense.
  *
- * What a rule does never triggers another rule (nor itself): writes made by rules (and undos) never
- * produce events, so there are no loops or chains.
+ * What a rule does never triggers another rule (nor itself) — except a rule with `chain` on (2.1), whose
+ * own writes may reach other rules under the guards of engine.ts (depth 3, no rule twice, budget per write).
+ * Undos never produce events.
  */
 import type { CollectionName, Cents, Currency, MoneyOrigin, Settings, TaskPriority } from '../../data/types'
 import type { Converter } from '../../lib/rates'

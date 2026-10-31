@@ -9,6 +9,7 @@
 import { receiptTransaction, receiptTxId, subscriberReceipts } from '../../data/receipts'
 import type { AutomationRun, Cents, Subscriber } from '../../data/types'
 import { formatMoney } from '../../lib/money'
+import { fingerprint } from '../rules/actions'
 import { cycleDates, dayOfDate, isDate } from './dates'
 import { type AutomationCtx, type BatchOp, type ItemPlan, knownRuns, makeRun, MAX_RUNS_PER_ITEM, runPut } from './types'
 
@@ -17,6 +18,13 @@ export const subscriberRunId = (subscriberId: string, date: string) => `auto-sub
 type SubPayment = Subscriber['payments'][number]
 
 const byDate = (a: SubPayment, b: SubPayment) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+
+/** The created entry of a payment's income: with its fingerprint when the income is written now (undo keeps it once edited). */
+function incomeEntry(runId: string, ops: BatchOp[]): AutomationRun['created'][number] {
+  const id = receiptTxId('subscriber', runId)
+  const tx = ops.find((o) => o.op === 'put' && o.item.id === id)
+  return tx && tx.op === 'put' ? { collection: 'transactions', id, fp: fingerprint(tx.item) } : { collection: 'transactions', id }
+}
 
 /** The income of a charge payment, or null while there is no rate (created later by the reconciler). */
 function incomeOps(sub: Subscriber, payment: SubPayment, ctx: AutomationCtx): BatchOp[] {
@@ -57,7 +65,7 @@ export function planSubscriberCharges(ctx: AutomationCtx, since: string): ItemPl
           makeRun(
             {
               id, automation: 'subscriberCharge', date, summary: `Pagamento automático de ${s.name}: ${money}`, origin, amount: plan.price, currency: plan.currency,
-              created: [{ collection: 'transactions', id: receiptTxId('subscriber', id) }], changed, status: 'done',
+              created: [incomeEntry(id, income)], changed, status: 'done',
             },
             ctx.now,
           ),
@@ -90,9 +98,10 @@ export function confirmSubscriberCharge(run: AutomationRun, input: { amount: Cen
     amount: input.amount,
     currency,
     summary: `Recebimento confirmado de ${s.name}: ${formatMoney(input.amount, currency)}`,
-    created: [{ collection: 'transactions', id: receiptTxId('subscriber', run.id) }],
   }
-  return [{ op: 'put', collection: 'subscribers', item }, ...incomeOps(item, payment, ctx), runPut(done)]
+  const income = incomeOps(item, payment, ctx)
+  done.created = [incomeEntry(run.id, income)]
+  return [{ op: 'put', collection: 'subscribers', item }, ...income, runPut(done)]
 }
 
 /** "Não vai pagar" / "Não paguei" / "Pular": the run is closed without any money. */

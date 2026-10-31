@@ -10,6 +10,7 @@ import { instantFor } from '../../data/receipts'
 import type { AutomationRun, Cents, Tool, Transaction } from '../../data/types'
 import { formatMoney } from '../../lib/money'
 import { addDaysToDate, zoneOf } from '../period'
+import { fingerprint } from '../rules/actions'
 import { cycleDates, dayOfDate, isDate, shiftMonths } from './dates'
 import { type AutomationCtx, type BatchOp, type ItemPlan, knownRuns, makeRun, MAX_RUNS_PER_ITEM, runPut } from './types'
 
@@ -64,7 +65,7 @@ export function planToolCharges(ctx: AutomationCtx, since: string): ItemPlan[] {
       if (t.autoPaid) {
         const tx = expense(t, id, t.price, t.currency, date, ctx)!
         extra.push({ op: 'put', collection: 'transactions', item: tx })
-        runs.push(makeRun({ id, automation: 'toolCharge', date, summary: `Pagamento automático de ${t.name}: ${money}`, origin, amount: t.price, currency: t.currency, created: [{ collection: 'transactions', id: tx.id }], changed, status: 'done' }, ctx.now))
+        runs.push(makeRun({ id, automation: 'toolCharge', date, summary: `Pagamento automático de ${t.name}: ${money}`, origin, amount: t.price, currency: t.currency, created: [{ collection: 'transactions', id: tx.id, fp: fingerprint(tx) }], changed, status: 'done' }, ctx.now))
       } else {
         runs.push(makeRun({ id, automation: 'toolCharge', date, summary: `${t.name}: a pagar`, origin, amount: t.price, currency: t.currency, created: [], changed, status: 'pending' }, ctx.now))
       }
@@ -93,7 +94,7 @@ export function confirmToolCharge(run: AutomationRun, input: { amount: Cents; da
     amount: input.amount,
     currency,
     summary: `Pagamento confirmado de ${t?.name ?? run.origin.label}: ${formatMoney(input.amount, currency)}`,
-    created: [{ collection: 'transactions', id: tx.id }],
+    created: [{ collection: 'transactions', id: tx.id, fp: fingerprint(tx) }],
   }
   return [{ op: 'put', collection: 'transactions', item: tx }, runPut(done)]
 }

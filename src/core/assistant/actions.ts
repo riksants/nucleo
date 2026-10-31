@@ -27,6 +27,7 @@ import { summarySentences } from '../weekSummary'
 import type { Intent } from './intents'
 import type { RuleSketch } from './ruleSentence'
 import { proposalId, type Proposal } from './proposal'
+import { onlyCurrency } from '../smart/amount'
 
 export interface Reply {
   lines: string[]
@@ -203,13 +204,18 @@ export function runIntent(intent: Intent, ctx: Ctx): Reply {
     }
     case 'createWeeklyGoal': {
       const money = intent.metric === 'finance.saved'
+      // Money goals of the week are measured in the main currency: another currency is never relabelled.
+      if (money && intent.currency && intent.currency !== settings.baseCurrency) return { lines: [`Metas da semana em dinheiro usam a sua moeda principal (${settings.baseCurrency}). Diga o valor em ${settings.baseCurrency}, por exemplo “guardar 100 ${settings.baseCurrency} esta semana”.`] }
+      if (money && !intent.currency && !onlyCurrency(settings)) return { lines: [`Em qual moeda? Metas da semana em dinheiro usam a sua moeda principal (${settings.baseCurrency}): diga, por exemplo, “guardar 100 ${settings.baseCurrency} esta semana”.`] }
       const title = intent.title || (money ? `Guardar ${formatMoney(intent.target, settings.baseCurrency)}` : `Meta: ${intent.target}`)
       const r = { week: weekStart(today), title, kind: money ? 'money' : intent.metric ? 'quantity' : 'manual', metric: intent.metric, target: intent.target, manualValue: 0, status: 'active', repeatKey: newId() }
       const p = create('weeklyGoals', r, `Meta da semana: ${title}`, 'Nova meta da semana', `Vou criar a meta “${title}” para esta semana${intent.metric ? ', medida automaticamente pelos seus registros' : ''}.`)
       return { lines: [p.summary], proposal: p }
     }
     case 'createFinanceGoal': {
-      const cur = settings.baseCurrency
+      // The currency is the one written — never the main one by default when the person uses more than one.
+      const cur = intent.currency ?? onlyCurrency(settings)
+      if (!cur) return { lines: [`Em qual moeda? Diga, por exemplo, “Quero guardar ${formatMoney(intent.target, settings.baseCurrency).replace(/[^\d.,]/g, '')} ${settings.baseCurrency} até ${ddmm(intent.deadline)}”.`] }
       const r = { name: intent.name, target: intent.target, saved: 0, deadline: intent.deadline, currency: cur, note: '', status: 'active', history: startHistory(0, today) }
       const p = create('financeGoals', r, `Meta financeira: ${intent.name} · ${formatMoney(intent.target, cur)} até ${ddmm(intent.deadline)}`, 'Nova meta financeira', `Vou criar a meta “${intent.name}”: ${formatMoney(intent.target, cur)} até ${ddmm(intent.deadline)}. Você atualiza o valor guardado quando quiser.`)
       return { lines: [p.summary], proposal: p }

@@ -4,7 +4,9 @@
  * (off by default) returns the same Intent shape, validated by `parseIntent`.
  */
 import { Intent, parseIntent } from '../../../supabase/functions/_shared/assistant/intent.ts'
+import type { Currency } from '../../data/types'
 import { addDaysToDate, weekdayOfDate } from '../period'
+import { readAmount } from '../smart/amount'
 
 export { Intent, parseIntent }
 
@@ -82,13 +84,15 @@ export function readTime(t: string): { time: string; match: string } | null {
   return { time: `${pad(Number(m[1]))}:${m[2] ?? '00'}`, match: m[0] }
 }
 
-/** "R$5.000", "5000 reais", "5 mil", "R$ 1.234,56" → cents. */
+/** "R$5.000", "5000 reais", "5 mil", "€ 1.234,56", "300 euros" → cents and the currency written (null when not said). */
+export function readMoneyFull(t: string): { cents: number; currency: Currency | null } | null {
+  const a = readAmount(t)
+  return a ? { cents: a.cents, currency: a.currency } : null
+}
+
+/** Cents only (kept for older callers). */
 export function readMoney(t: string): number | null {
-  const m = t.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?\s*(mil)?\s*(?:reais)?/)
-  if (!m || (!t.includes('r$') && !m[3] && !/reais/.test(t))) return null
-  let v = Number(m[1].replace(/\./g, '')) + (m[2] ? Number(m[2].padEnd(2, '0')) / 100 : 0)
-  if (m[3]) v *= 1000
-  return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : null
+  return readMoneyFull(t)?.cents ?? null
 }
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s)
@@ -124,12 +128,14 @@ export function readIntent(text: string, today: string): Intent {
 
   // Finance goal: "quero guardar R$5.000 até dezembro" (with a date) — weekly when "esta semana"
   if (/\b(guardar|juntar|economizar)\b/.test(t)) {
-    const value = readMoney(t)
-    if (value && /\b(esta|nesta|essa) semana\b/.test(t)) return { type: 'createWeeklyGoal', metric: 'finance.saved', target: value, title: '' }
+    const found = readMoneyFull(t)
+    const value = found?.cents ?? null
+    const cur = found?.currency ? { currency: found.currency } : {}
+    if (value && /\b(esta|nesta|essa) semana\b/.test(t)) return { type: 'createWeeklyGoal', metric: 'finance.saved', target: value, title: '', ...cur }
     const d = readDate(t, today)
     if (value && d && d.date > today) {
       const nm = t.match(/\b(?:para|pra) (?:a |o |uma |um )?(?!o fim|o final)([a-z ]{3,40}?)(?: ate| em|$)/)
-      return { type: 'createFinanceGoal', name: nm ? cap(original(src, t, nm[1]).trim()) : `Guardar até ${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`, target: value, deadline: d.date }
+      return { type: 'createFinanceGoal', name: nm ? cap(original(src, t, nm[1]).trim()) : `Guardar até ${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`, target: value, deadline: d.date, ...cur }
     }
   }
 

@@ -83,13 +83,12 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
         confirmLabel: 'Desfazer também',
       }))
     const { partial } = await undo(run, 'undone', alsoLinked)
+    if (run.fromPending && partial) return toast('Não desfeito: você alterou a movimentação depois. Se quiser, apague-a no Financeiro.', 'error')
     toast(
       run.fromPending
         ? 'Confirmação desfeita: a cobrança voltou para a lista'
         : partial
-          ? isRule || alsoLinked
-            ? 'Desfeito. O que você alterou depois foi mantido.'
-            : 'Desfeito. A data da próxima cobrança ficou como você deixou.'
+          ? 'Desfeito. O que você alterou depois (a movimentação, a data da próxima cobrança…) foi mantido.'
           : 'Desfeito',
     )
   }
