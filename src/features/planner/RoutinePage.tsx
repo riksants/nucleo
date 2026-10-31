@@ -1,3 +1,4 @@
+import { useOpenParam } from '../useOpenParam'
 import { AlertTriangle, CalendarClock, Check, MessageCircle, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
@@ -261,6 +262,8 @@ export function RoutinePage() {
   const todayWd = new Date().getDay() as Weekday
   const answers = profile?.routine ?? { ...emptyRoutineAnswers(), wakeWeekday: '00:00', sleepWeekday: '00:00', wakeWeekend: '00:00', sleepWeekend: '00:00' }
   const draftConflicts = routineDraft ? findConflicts(routineDraft.blocks, answers) : []
+  // A notification about an activity opens that activity (?open=<block id>).
+  useOpenParam(routine?.blocks ?? [], (b) => routine && blockSheet.show({ block: b, plan: routine, day: b.day }))
 
   const approve = async () => {
     if (!routineDraft) return

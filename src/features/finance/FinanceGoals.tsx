@@ -1,6 +1,7 @@
+import { clearParams, useRoute } from '../../app/router'
 import { useAlertsDraft } from '../reminders/AlertsField'
 import { Flag, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { calculatedPreview } from '../../core/automation/goalSave'
 import { goalPlan, startHistory, withSaved } from '../../core/financeGoals'
 import { nowIn, zoneOf } from '../../core/period'
@@ -300,6 +301,14 @@ export function FinanceGoalsSection() {
   const { data, settings } = useStore()
   const form = useSheet<FinanceGoal>()
   const detail = useSheet<string>()
+  // A notification about a goal opens that goal (?goal=<id>).
+  const { params } = useRoute()
+  const goalParam = params.get('goal')
+  useEffect(() => {
+    if (!goalParam) return
+    clearParams()
+    if (data.financeGoals.some((g) => g.id === goalParam)) detail.show(goalParam)
+  }, [goalParam])
   const [startOn, setStartOn] = useState<'update' | 'strategies'>('update')
   const openGoal = (g: FinanceGoal, on: 'update' | 'strategies' = 'update') => {
     setStartOn(on)

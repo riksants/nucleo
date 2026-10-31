@@ -924,13 +924,15 @@ function appNotices(data: DataState, now: Date): (Omit<Occurrence, 'title' | 'bo
     if (!recent(r.createdAt) || r.dismissedAt) continue
     const at = new Date(Math.max(Date.parse(r.createdAt) + 60_000, now.getTime() + 60_000))
     const name = r.rule?.name ?? r.origin.label
-    const url = `#/automations?open=${r.id}`
+    // Waiting for the person: Pendências. A failed action: the activity of that rule (the run is listed there).
+    const url = r.rule?.id ? `#/automations?tab=activity&rule=${r.rule.id}` : '#/automations?tab=activity'
+    const pendingUrl = '#/automations?tab=pending'
     if (r.awaiting && r.status === 'pending' && !r.declined && !r.confirmedAt) {
       const text = `A regra ${quote(name)} está aguardando sua confirmação.`
-      out.push({ key: `run:${r.id}:awaiting`, kind: 'app', at, safeTitle: 'Regra aguardando confirmação', detail: text, plain: text, url, source: `automationRuns:${r.id}` })
+      out.push({ key: `run:${r.id}:awaiting`, kind: 'app', at, safeTitle: 'Regra aguardando confirmação', detail: text, plain: text, url: pendingUrl, source: `automationRuns:${r.id}` })
     }
     if (r.notice && !r.notice.seenAt) {
-      out.push({ key: `run:${r.id}:notice`, kind: 'app', at, safeTitle: r.notice.kind === 'review' ? 'Revisão pedida por uma regra' : `Aviso da regra ${name}`, detail: r.notice.text, plain: r.notice.text, url, source: `automationRuns:${r.id}` })
+      out.push({ key: `run:${r.id}:notice`, kind: 'app', at, safeTitle: r.notice.kind === 'review' ? 'Revisão pedida por uma regra' : `Aviso da regra ${name}`, detail: r.notice.text, plain: r.notice.text, url: pendingUrl, source: `automationRuns:${r.id}` })
     }
     const failed = (r.actions ?? []).filter((a) => !a.ok && !a.undone && !(a.attempts ?? []).some((x) => x.ok))
     if (r.automation === 'rule' && failed.length) {

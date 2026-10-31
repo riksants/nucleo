@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { isEnabled } from '../../app/modules'
 import { PageHeader } from '../../app/Shell'
 import { useStore } from '../../data/store'
-import type { ModuleId, ReminderKind, ReminderKindPref, ReminderPrefs, ReminderWhen } from '../../data/types'
+import type { ModuleId, ReminderKind, ReminderKindPref, ReminderPrefs, ReminderPrivacy, ReminderWhen } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
 import { deviceTimeZone, isValidTimeZone } from '../../lib/zoned'
 import { Button } from '../../ui/Button'
@@ -15,8 +15,8 @@ import { Sheet } from '../../ui/Sheet'
 import { useSession } from '../account/session'
 import { Switch } from '../settings/ModulePicker'
 import { NumberInput, ToggleRow } from '../planner/controls'
-import { buildOccurrences, effectivePrefs } from './engine'
-import { currentSubscription, enablePush, forgetPushOnThisDevice, isIOS, pushSupport } from './push'
+import { buildOccurrences, effectivePrefs, lockText } from './engine'
+import { currentSubscription, enablePush, forgetPushOnThisDevice, isIOS, pushSupport, sendTestPush } from './push'
 
 /** Advanced list. `lead`: has times (minutes before) · `days`: has only dates (days before, time of day). */
 const KINDS: {
@@ -72,6 +72,12 @@ const KINDS: {
     modules: ['tools'],
   },
   {
+    kind: 'app',
+    label: 'Avisos do app',
+    hint: 'Regra aguardando sua confirmação, “Me avisar” de uma regra, automação que falhou',
+    modules: [],
+  },
+  {
     kind: 'receivables',
     label: 'A receber',
     hint: 'Parcelas de vendas e cobranças de assinantes',
@@ -112,12 +118,40 @@ const WHEN_HINT: Record<ReminderWhen, string> = {
   both: 'Um aviso com antecedência e outro na hora.',
 }
 
+const PRIVACY: { value: ReminderPrivacy; label: string }[] = [
+  { value: 'noAmounts', label: 'Sem valores' },
+  { value: 'complete', label: 'Completo' },
+  { value: 'discreet', label: 'Discreto' },
+]
+
+const PRIVACY_HINT: Record<ReminderPrivacy, string> = {
+  noAmounts: 'Diz o que é e quando, sem valores em dinheiro nem o cardápio. Recomendado.',
+  complete: 'Mostra tudo, inclusive valores. Qualquer pessoa que veja a tela bloqueada lê.',
+  discreet: 'Só “Núcleo” e o tipo de aviso. Os detalhes ficam dentro do app.',
+}
+
+/** What to do on each platform to get notifications with the app closed. */
+const STEPS: Partial<Record<string, string[]>> = {
+  'ios-needs-install': [
+    'Abra hellonucleo.app no Safari.',
+    'Toque em Compartilhar (o quadrado com a seta) e em “Adicionar à Tela de Início”.',
+    'Abra o Núcleo pelo ícone novo na Tela de Início.',
+    'Volte aqui e toque em “Ativar notificações”. O iPhone vai pedir permissão: toque em Permitir.',
+  ],
+  denied: [
+    'iPhone: Ajustes → Notificações → Núcleo → Permitir Notificações.',
+    'Android: toque e segure o ícone do Núcleo → Informações do app → Notificações.',
+    'Computador: clique no cadeado ao lado do endereço → Notificações → Permitir.',
+    'Depois, volte aqui e toque em “Receber neste aparelho”.',
+  ],
+}
+
 const REASONS: Record<string, string> = {
   'no-api': 'Este navegador não mostra notificações. Os lembretes aparecem dentro do app.',
   'ios-needs-install': 'No iPhone, as notificações chegam com o Núcleo instalado: Safari → Compartilhar → “Adicionar à Tela de Início”, e abra pelo ícone.',
   'ios-too-old': 'Notificações exigem iOS 16.4 ou mais novo. Os lembretes aparecem dentro do app.',
   'not-configured': 'O envio com o app fechado não está disponível nesta versão. Os lembretes aparecem dentro do app.',
-  'no-account': 'Para receber com o app fechado, entre na sua conta.',
+  'no-account': 'Sem conta, os lembretes só aparecem com o Núcleo aberto: avisos com o app fechado precisam de um servidor que envie na hora certa. Entre ou crie uma conta (grátis) para receber com o app fechado.',
   denied: 'As notificações estão bloqueadas para o Núcleo. Libere em Ajustes do aparelho → Notificações → Núcleo.',
 }
 
@@ -137,6 +171,22 @@ export function RemindersPage() {
   const tz = settings.timeZone || deviceTimeZone()
   const on = prefs.on && !prefs.legacy
   const upcoming = on ? buildOccurrences(data, settings, { days: 7 }).slice(0, 3) : []
+  const [testing, setTesting] = useState(false)
+  const device = deviceTimeZone()
+  // Example of the lock screen with the chosen privacy, from a real upcoming reminder (never invented).
+  const sample = upcoming.find((o) => o.detail !== o.plain) ?? upcoming[0]
+  const preview = (p: ReminderPrivacy) => (sample ? lockText(p, sample.kind, sample.title === 'Núcleo' ? sample.plain : sample.title, sample.detail, sample.plain) : null)
+  const test = async () => {
+    setTesting(true)
+    try {
+      await sendTestPush()
+      toast('Teste enviado. Deve chegar em até 1 minuto, também com o app fechado.')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Não foi possível enviar o teste', 'error')
+    } finally {
+      setTesting(false)
+    }
+  }
 
   useEffect(() => {
     currentSubscription().then(
@@ -216,16 +266,61 @@ export function RemindersPage() {
               Receber neste aparelho
             </Button>
           )}
+          {on && support.ok && subscribed && userId && (
+            <Button block variant="secondary" onClick={() => void test()} disabled={testing}>
+              Enviar teste para este aparelho
+            </Button>
+          )}
           {!support.ok && support.reason !== 'not-configured' && (
-            <p className="flex items-start gap-2 rounded-2xl bg-tint/[0.04] p-3 text-[14px] leading-relaxed text-soft">
-              <Smartphone size={18} className="mt-0.5 shrink-0" />
-              {REASONS[support.reason]}
-            </p>
+            <div className="space-y-2 rounded-2xl bg-tint/[0.04] p-3 text-[14px] leading-relaxed text-soft">
+              <p className="flex items-start gap-2">
+                <Smartphone size={18} className="mt-0.5 shrink-0" />
+                {REASONS[support.reason]}
+              </p>
+              {STEPS[support.reason] && (
+                <ol className="list-decimal space-y-1 pl-9">
+                  {STEPS[support.reason]!.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              )}
+              {support.reason === 'no-account' && (
+                <a href="#/account" className="inline-block pl-7 font-medium text-accent">
+                  Entrar ou criar conta
+                </a>
+              )}
+            </div>
           )}
         </section>
 
         {on && (
           <>
+            {tz !== device && (
+              <div className="card space-y-2 p-4 text-[14px] leading-relaxed">
+                <p>
+                  Seus lembretes seguem o horário de <strong>{tz}</strong>. Este aparelho está em <strong>{device}</strong>.
+                </p>
+                <p className="text-faint">Uma tarefa às 9h continua às 9h de {tz} até você mudar. Se você mudou de cidade, use o fuso do aparelho.</p>
+                <Button variant="secondary" onClick={() => updateSettings({ timeZone: device })}>
+                  Usar {device}
+                </Button>
+              </div>
+            )}
+
+            <section>
+              <SectionTitle>Na tela bloqueada</SectionTitle>
+              <div className="card space-y-3 p-4">
+                <Segmented block label="Na tela bloqueada" value={prefs.privacy} onChange={(v) => write({ privacy: v })} options={PRIVACY} />
+                <p className="text-[13px] leading-relaxed text-faint">{PRIVACY_HINT[prefs.privacy]} Senhas e dados do cofre nunca aparecem.</p>
+                {preview(prefs.privacy) && (
+                  <div className="rounded-2xl bg-tint/[0.05] px-3.5 py-2.5 text-[14px] leading-snug" aria-label="Exemplo com um aviso seu">
+                    <span className="block font-semibold">{preview(prefs.privacy)!.title}</span>
+                    <span className="block text-soft">{preview(prefs.privacy)!.body}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
             <section>
               <SectionTitle>Quando avisar</SectionTitle>
               <div className="card space-y-3 p-4">
@@ -303,7 +398,7 @@ export function RemindersPage() {
             <SectionTitle>O que lembrar</SectionTitle>
             <p className="mb-3 px-1 text-[13px] leading-relaxed text-faint">Tudo vem ligado. Mude só o que quiser: o que você ajustar aqui vale mais que a escolha geral.</p>
             <div className="space-y-3">
-              {KINDS.filter((k) => k.modules.some((m) => isEnabled(settings, m))).map(({ kind, label, hint, lead, days }) => {
+              {KINDS.filter((k) => !k.modules.length || k.modules.some((m) => isEnabled(settings, m))).map(({ kind, label, hint, lead, days }) => {
                 const k = prefs.kinds[kind]
                 const own = stored.kinds?.[kind]?.when
                 return (
@@ -365,13 +460,6 @@ export function RemindersPage() {
             <ToggleRow checked={prefs.followUp} onChange={(v) => write({ followUp: v })} hint="Tarefa atrasada, conta ou cobrança pendente: um aviso no dia seguinte. Uma vez só.">
               Avisar de novo se ficar pendente
             </ToggleRow>
-            <ToggleRow
-              checked={prefs.showDetails}
-              onChange={(v) => write({ showDetails: v })}
-              hint="Desligado, a tela bloqueada mostra só “Núcleo — Você tem uma conta a pagar”. Valores e o que você come nunca aparecem."
-            >
-              Mostrar o nome do item na tela bloqueada
-            </ToggleRow>
             <Field label="Horários em">
               <Select value={tz} onChange={(e) => isValidTimeZone(e.target.value) && updateSettings({ timeZone: e.target.value })}>
                 {[
@@ -399,17 +487,9 @@ export function RemindersPage() {
                 ))}
               </Select>
             </Field>
-            {tz !== deviceTimeZone() && (
-              <p className="px-1 text-[13px] leading-relaxed text-warn">
-                Este aparelho está em {deviceTimeZone()}.{' '}
-                <button type="button" className="font-medium underline" onClick={() => updateSettings({ timeZone: deviceTimeZone() })}>
-                  Usar o fuso do aparelho
-                </button>
-              </p>
-            )}
             <p className="px-1 text-[13px] leading-relaxed text-faint">
-              Os avisos dos próximos 14 dias são preparados sempre que você abre o app. Concluir, pagar, remarcar ou excluir um item muda ou apaga o aviso na hora. Nada é marcado como feito ou pago
-              porque o horário passou.
+              Com conta, o servidor continua enviando os lembretes que se repetem (contas, hábitos, rotina, assinaturas) e as datas mais distantes, mesmo se você ficar semanas sem abrir o
+              app. Concluir, pagar, remarcar ou excluir um item muda ou apaga o aviso assim que este aparelho sincroniza. Nada é marcado como feito ou pago porque o horário passou.
             </p>
           </section>
         </div>
