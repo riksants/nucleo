@@ -22,7 +22,7 @@ export interface MigrationMark {
 }
 
 /** localStorage keys (after the `nucleo:` prefix) that belong to whoever was signed in. */
-export const ACCOUNT_PREFS = ['focusTimer', 'shownReminders', 'displayCurrency'] as const
+export const ACCOUNT_PREFS = ['focusTimer', 'shownReminders', 'displayCurrency', 'pushFocusKeys'] as const
 /** The Supabase session; the auth client removes it too, this is only the safety net. */
 const AUTH_KEYS = ['nucleo:auth', 'nucleo:auth-user']
 /** Accounts that opened a cache on this device (backs up the database list where it's missing). */
@@ -156,6 +156,13 @@ export async function removeAccountFromDevice(uid: string, opts: { wholeDevice: 
   const cache = await readCache(uid).catch(() => null)
   await removeAccountCopyFromLocal(uid, cache)
   await deleteCache(uid)
+  try {
+    // That account's notification log and marks on this device (Central de notificações).
+    localStorage.removeItem(`nucleo:noticeLog:${uid}`)
+    localStorage.removeItem(`nucleo:noticeMarks:${uid}`)
+  } catch {
+    // storage unavailable
+  }
   if (opts.wholeDevice) {
     try {
       for (const key of ACCOUNT_PREFS) localStorage.removeItem(`nucleo:${key}`)

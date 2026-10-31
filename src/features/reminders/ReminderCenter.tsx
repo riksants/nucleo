@@ -11,6 +11,7 @@ import { deviceTimeZone } from '../../lib/zoned'
 import { FOCUS_EVENT, FOCUS_KEY } from '../focus/timer'
 import { currentSubscription, refreshPush, syncSchedule } from './push'
 import { EASE_OUT_SOFT } from '../../lib/motion'
+import { logShown, refreshHistory, setFeedOwner, setUpcoming, updateBadge, useFeedVersion } from '../notifications/feed'
 
 const SHOWN_KEY = 'shownReminders'
 
@@ -51,6 +52,7 @@ export function ReminderCenter() {
       if (!due.length) return
       for (const o of due) shown[o.key] = now
       writePref(SHOWN_KEY, shown)
+      logShown(due, now)
       setVisible((v) => [...v, ...due].slice(-3))
       // App open in the background and no push on this device: show it through the service worker.
       if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted' && !(await currentSubscription())) {
@@ -78,11 +80,30 @@ export function ReminderCenter() {
           const reg = await sw.getRegistration()
           for (const n of (await reg?.getNotifications({ tag: msg.key })) ?? []) n.close()
         } else writePref(SHOWN_KEY, { ...shown, [msg.key]: Date.now() })
+        // A push arrived: the server's history now has it (a moment later, after the result is stored).
+        window.setTimeout(() => void refreshHistory(true), 4000)
       }
     }
     sw.addEventListener('message', onMessage)
     return () => sw.removeEventListener('message', onMessage)
   }, [])
+
+  // Central de notificações: what is coming (exact, from the records) and the server's history.
+  const feedVersion = useFeedVersion()
+  useEffect(() => setFeedOwner(userId), [userId])
+  useEffect(() => setUpcoming(occurrences), [occurrences])
+  useEffect(() => updateBadge(), [feedVersion])
+  useEffect(() => {
+    const load = () => void refreshHistory(Boolean(userId))
+    load()
+    const onVisible = () => document.visibilityState === 'visible' && load()
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(load, 5 * 60_000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(timer)
+    }
+  }, [userId])
 
   // Signed in: keep this device's push subscription known to the server (renewed if it expired).
   useEffect(() => {

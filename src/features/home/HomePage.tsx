@@ -1,3 +1,4 @@
+import { NotificationsBell } from '../notifications/NotificationsBell'
 import { AnimatePresence } from 'framer-motion'
 import { ArrowDownLeft, ArrowUpRight, CalendarCheck, Check, ChevronRight, MessageCircle, Minus, Plus, Search, Settings, Sparkles } from 'lucide-react'
 import { lazy, Suspense, useMemo, type ReactNode } from 'react'
@@ -235,6 +236,7 @@ export function HomePage() {
             <LogoTile className="size-8" />
             <Wordmark className="text-[14px] max-[359px]:hidden" />
           </span>
+          <NotificationsBell className="text-coal hover:bg-coal/[0.08]" />
           <IconButton label="Assistente" className="text-coal hover:bg-coal/[0.08]" onClick={() => navigate('/assistant')}>
             <MessageCircle size={24} />
           </IconButton>

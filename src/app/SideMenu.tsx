@@ -1,7 +1,8 @@
+import { useUnreadNotifications } from '../features/notifications/NotificationsBell'
 import { pendingCount } from '../core/automation/activity'
 import { todayIn, zoneOf } from '../core/period'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
-import { ChevronRight, FileClock, FileInput, Search, SlidersHorizontal, Sparkles, UserRound, Wand2, X, type LucideIcon } from 'lucide-react'
+import { Bell, ChevronRight, FileClock, FileInput, Search, SlidersHorizontal, Sparkles, UserRound, Wand2, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../data/store'
@@ -134,6 +135,7 @@ export function SideMenu() {
       }),
   }))
   const pending = pendingCount(data, todayIn(zoneOf(settings)))
+  const unread = useUnreadNotifications()
   groups.push({
     title: 'Automações',
     entries: [
@@ -154,6 +156,7 @@ export function SideMenu() {
         icon: UserRound,
         onClick: signIn ? (e) => (e.preventDefault(), openAuth('signin')) : undefined,
       },
+      { href: '#/notifications', path: '/notifications' as RoutePath, label: 'Notificações', icon: Bell, count: unread || undefined },
       { href: `#${ASSISTANT.path}`, path: ASSISTANT.path, label: ASSISTANT.label, icon: ASSISTANT.icon },
       { href: `#${SETTINGS.path}`, path: SETTINGS.path, label: SETTINGS.label, icon: SETTINGS.icon },
       { href: '#/settings?painel=secoes', path: '/settings?painel=secoes' as RoutePath, label: 'Personalizar seções', icon: SlidersHorizontal },

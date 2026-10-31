@@ -22,6 +22,7 @@ export type RoutePath =
   | '/planner'
   | '/account'
   | '/reminders'
+  | '/notifications'
   | '/inbox'
   | '/habits'
   | '/recurring'

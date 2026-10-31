@@ -49,6 +49,7 @@ const ImportPage = lazyPage(() => import('./features/import/ImportPage').then((m
 const IntakePage = lazyPage(() => import('./features/intake/IntakePage').then((m) => m.IntakePage))
 const ImportsPage = lazyPage(() => import('./features/import/ImportsPage').then((m) => m.ImportsPage))
 const MealsPage = lazyPage(() => import('./features/meals/MealsHome').then((m) => m.MealsPage))
+const NotificationsPage = lazyPage(() => import('./features/notifications/NotificationsPage').then((m) => m.NotificationsPage))
 const LifePage = lazyPage(() => import('./features/life/LifePage').then((m) => m.LifePage))
 const WeekPage = lazyPage(() => import('./features/week/WeekPage').then((m) => m.WeekPage))
 const FocusPage = lazyPage(() => import('./features/focus/FocusPage').then((m) => m.FocusPage))
@@ -78,6 +79,7 @@ const PAGES: Record<RoutePath, ComponentType | LazyExoticComponent<ComponentType
   '/planner': PlannerPage,
   '/account': AccountPage,
   '/reminders': RemindersPage,
+  '/notifications': NotificationsPage,
   '/inbox': InboxPage,
   '/habits': HabitsPage,
   '/recurring': RecurringPage,
