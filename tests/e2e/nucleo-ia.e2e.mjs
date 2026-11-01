@@ -81,22 +81,28 @@ try {
   const res = await fetch(MOCK + '/rest/v1/records', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(seed) })
   r.check('registros de teste gravados no servidor', res.status === 201)
 
-  // Turn the AI on (old switch in Settings), then the Assistant asks for the NEW consent.
-  await B.goto(BASE + '#/settings')
-  await B.sleep(1500)
-  await B.click('Entender frases livres com IA')
-  await B.click('Concordo, ligar')
-  await B.sleep(800)
+  // AI off: nothing goes to the AI.
   await B.goto(BASE + '?r=1#/assistant')
   await B.sleep(2500)
-  r.check('Assistente pede o consentimento novo (dados vão à IA durante a pergunta)', await B.eval(`!!document.querySelector('[data-ia-consent]')`))
-  r.check('texto do consentimento explica o envio e o que nunca vai', /trechos necessários.*Anthropic[\s\S]*Senhas e cofre nunca/.test(await B.eval(`document.querySelector('[data-ia-consent]').innerText`)))
   const before = (await ia()).requests.length
   await ask(B, 'quanto gastei com mercado este mês?')
-  r.check('sem o consentimento novo, nada vai para a IA', (await ia()).requests.length === before)
-  await B.click('Concordo, usar a IA')
-  await B.sleep(500)
-  r.check('consentimento aceito: cartão some', !(await B.eval(`!!document.querySelector('[data-ia-consent]')`)))
+  await B.sleep(1200)
+  r.check('IA desligada: nada vai para a IA', (await ia()).requests.length === before)
+
+  // Turn it on in Settings: the switch text IS the consent and says what is sent.
+  await B.goto(BASE + '#/settings')
+  await B.sleep(1500)
+  await B.click('Assistente com IA')
+  await B.sleep(400)
+  const dialog = await B.eval(`document.querySelector('[role=dialog]')?.innerText ?? ''`)
+  r.check('Configurações explicam o envio de dados à Anthropic', /Anthropic/.test(dialog) && /dados necessários/.test(dialog) && /Senhas, cofre e acessos nunca/.test(dialog), dialog.slice(0, 120))
+  r.check('o texto antigo ("Nenhum registro seu") não aparece', !/Nenhum registro seu/.test(dialog))
+  await B.click('Concordo, ligar')
+  await B.sleep(800)
+  r.check('ligado: legenda avisa que trechos dos dados vão para a Anthropic', /trechos dos seus dados vão para a Anthropic/.test(await B.text()))
+  await B.goto(BASE + '?r=2#/assistant')
+  await B.sleep(2500)
+  r.check('consentimento já dado nas Configurações: o Assistente não pede de novo', !(await B.eval(`!!document.querySelector('[data-ia-consent]')`)))
 
   // 1) A lookup with a fact, an invented number blocked, a suggestion.
   await ask(B, 'quanto gastei com mercado este mês?')

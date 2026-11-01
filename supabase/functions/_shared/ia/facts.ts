@@ -63,7 +63,9 @@ export function renderAnswer(text: string, facts: ReadonlyMap<string, Fact>): { 
   const blocked: string[] = []
   const missing: string[] = []
   const used: string[] = []
-  const pushText = (s: string) => {
+  const pushText = (raw: string) => {
+    // stray braces left around a reference never show
+    const s = raw.replace(/[{}]/g, '')
     if (!s) return
     let last = 0
     for (const m of s.matchAll(GUARDED)) {
@@ -76,16 +78,21 @@ export function renderAnswer(text: string, facts: ReadonlyMap<string, Fact>): { 
     if (last < s.length) segments.push({ t: 'text', s: s.slice(last) })
   }
   let last = 0
-  for (const m of text.matchAll(/\{(f\d{1,4})\}/g)) {
+  // {f3} = a fact. Any other {…} (an internal name like {dias_restantes}) never reaches the person.
+  for (const m of text.matchAll(/\{([^{}\n]{1,80})\}/g)) {
     const at = m.index ?? 0
     pushText(text.slice(last, at))
-    const fact = facts.get(m[1])
+    const id = m[1].trim()
+    const fact = /^f\d{1,4}$/.test(id) ? facts.get(id) : undefined
     if (fact) {
       segments.push({ t: 'fact', fact })
-      used.push(m[1])
+      used.push(id)
+    } else if (/^f\d{1,4}$/.test(id)) {
+      segments.push({ t: 'missing', id })
+      missing.push(id)
     } else {
-      segments.push({ t: 'missing', id: m[1] })
-      missing.push(m[1])
+      segments.push({ t: 'blocked', s: m[0] })
+      blocked.push(m[0])
     }
     last = at + m[0].length
   }
@@ -114,4 +121,9 @@ export class FactBook {
     this.all.set(fact.id, fact)
     return fact
   }
+}
+
+/** Light markdown the models sometimes write (**bold**, "- item") shown as plain text: no stray symbols. */
+export function plainLine(s: string): string {
+  return s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*\*/g, '').replace(/^(\s*)[-*]\s+/, '$1• ').replace(/^#{1,6}\s+/, '')
 }

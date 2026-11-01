@@ -1,6 +1,6 @@
 import { Check, ChevronRight, Clock3, Sparkles } from 'lucide-react'
 import { navigate } from '../../app/router'
-import type { Fact, Segment } from '../../../supabase/functions/_shared/ia/facts.ts'
+import { plainLine, type Fact, type Segment } from '../../../supabase/functions/_shared/ia/facts.ts'
 
 export interface IaShown {
   segments: Segment[]
@@ -46,7 +46,9 @@ function paragraphs(segments: Segment[]): Segment[][] {
     const parts = s.s.split(/\n+/)
     parts.forEach((p, i) => {
       if (i > 0) out.push([])
-      if (p) out[out.length - 1].push({ t: 'text', s: p })
+      // a new line starts a paragraph: only the start of a line can be a list marker or heading
+      const text = i > 0 || out[out.length - 1].length === 0 ? plainLine(p) : p.replace(/\*\*/g, '')
+      if (text) out[out.length - 1].push({ t: 'text', s: text })
     })
   }
   return out.filter((p) => p.some((s) => s.t !== 'text' || s.s.trim()))

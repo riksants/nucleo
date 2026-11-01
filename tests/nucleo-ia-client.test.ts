@@ -93,13 +93,18 @@ describe('consultas no aparelho', () => {
     expect([...book.all.values()].find((f) => f.label === 'Saídas em agosto de 2026')).toMatchObject({ seal: 'ausente' })
   })
 
-  it('agenda: compromisso como fato; dia vazio como ausente; intervalo limitado', () => {
+  it('agenda: dia e compromisso como fatos (sem data solta, sem título repetido); dia vazio como ausente; intervalo limitado', () => {
     const book = new FactBook()
     const p = parse(runLookup('consultar_agenda', { de: '2026-11-02', ate: '2026-11-03' }, ctx(book)))
-    expect(p.dias[0].itens[0]).toMatchObject({ titulo: 'Reunião Vânia', horario: '10:00–11:00', situacao: 'pendente' })
-    const f = book.all.get(p.dias[0].itens[0].fato)!
-    expect(f).toMatchObject({ kind: 'compromisso', display: 'seg, 02/11 · 10:00–11:00 · Reunião Vânia', seal: 'confirmado' })
+    expect(p.dias[0].dia).toMatchObject({ valor: 'seg, 02/11', selo: 'confirmado' })
+    expect(p.dias[0].itens[0]).toMatchObject({ titulo: 'Reunião Vânia', situacao: 'pendente' })
+    expect(p.dias[0].itens[0]).not.toHaveProperty('horario')
+    const f = book.all.get(p.dias[0].itens[0].fato.id)!
+    expect(f).toMatchObject({ kind: 'compromisso', display: '10:00–11:00 · Reunião Vânia', seal: 'confirmado' })
     expect(p.dias[1].total.selo).toBe('ausente')
+    // outside facts, nothing in the result looks like a date or a time
+    const loose = JSON.stringify({ ...p, dias: p.dias.map((d: { itens: { titulo: string; tipo: string; situacao: string }[] }) => d.itens.map((i) => [i.titulo, i.tipo, i.situacao])) })
+    expect(loose).not.toMatch(/\d{1,2}\/\d{1,2}|\d{1,2}:\d{2}/)
     expect(runLookup('consultar_agenda', { de: '2026-11-01', ate: '2026-12-01' }, ctx()).isError).toBe(true)
     expect(runLookup('consultar_agenda', { de: 'amanhã', ate: '2026-12-01' }, ctx()).isError).toBe(true)
   })
@@ -109,6 +114,8 @@ describe('consultas no aparelho', () => {
     const p = parse(runLookup('metas_financeiras', { nome: null }, ctx(book)))
     expect(p.metas).toHaveLength(1)
     expect(p.metas[0].nome).toBe('Viagem Lisboa')
+    expect(p.metas[0].dias_restantes).toMatchObject({ selo: 'confirmado' })
+    expect(p.metas[0].dias_restantes.valor).toMatch(/^\d+ dias?$/)
     const f = [...book.all.values()]
     expect(f.find((x) => x.label === 'Falta para a meta “Viagem Lisboa”')).toMatchObject({ display: 'R$ 2.150,00', seal: 'confirmado' })
     expect(f.find((x) => x.label.startsWith('Quanto guardar por mês'))).toMatchObject({ seal: 'previsto' })
@@ -147,6 +154,12 @@ describe('trava contra valores inventados', () => {
     const r = renderAnswer('São 3 compromissos em 2026. Veja {f9}.', facts)
     expect(r.blocked).toEqual([])
     expect(r.missing).toEqual(['f9'])
+  })
+  it('nenhuma variável interna aparece: {dias_restantes}, { f1 }, {saldo} viram ‹valor não confirmado›', () => {
+    const r = renderAnswer('Faltam {dias_restantes} dias, saldo {saldo}, meta { f1 } e {{f1}}.', facts)
+    expect(r.blocked).toEqual(['{dias_restantes}', '{saldo}'])
+    expect(r.used).toEqual(['f1', 'f1'])
+    expect(plainAnswer(r.segments)).toBe('Faltam ‹valor não confirmado› dias, saldo ‹valor não confirmado›, meta R$ 612,40 e R$ 612,40.')
   })
 })
 
@@ -229,5 +242,14 @@ describe('comandos locais com a IA ligada', () => {
     expect(local('quanto gastei com mercado este mês?')).toBe(false)
     expect(local('e em setembro?')).toBe(false)
     expect(local('por que meus gastos subiram tanto em outubro?')).toBe(false)
+  })
+})
+
+describe('exibição da resposta', () => {
+  it('negrito e listas em markdown aparecem como texto limpo', async () => {
+    const { plainLine } = await import('../supabase/functions/_shared/ia/facts')
+    expect(plainLine('- **Todo mês:** separar o valor')).toBe('• Todo mês: separar o valor')
+    expect(plainLine('## Resumo')).toBe('Resumo')
+    expect(plainLine('Texto com **ênfase** e 3 itens')).toBe('Texto com ênfase e 3 itens')
   })
 })

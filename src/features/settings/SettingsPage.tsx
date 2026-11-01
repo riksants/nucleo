@@ -33,6 +33,9 @@ import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
 import { ModulePicker, Switch } from './ModulePicker'
 import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
+import { IA_SWITCH_TEXT, LEGACY_SWITCH_TEXT } from '../assistant/iaTexts'
+import { NUCLEO_IA } from '../assistant/iaApi'
+import { CONSENT_VERSION } from '../../../supabase/functions/_shared/ia/protocol.ts'
 
 
 /**
@@ -401,19 +404,17 @@ export function SettingsPage() {
             aria-checked={Boolean(settings.assistantAi?.enabled)}
             onClick={async () => {
               if (settings.assistantAi?.enabled) return updateSettings({ assistantAi: { enabled: false, consentAt: null } })
-              const ok = await confirm({
-                title: 'Usar IA para frases livres?',
-                message: 'Quando os comandos do Assistente não entenderem uma frase, só essa frase e a data de hoje serão enviadas ao servidor do NÚCLEO, que pede à IA da Anthropic para transformá-la em um comando. Nenhum registro seu (tarefas, finanças, alimentação, anotações, senhas) é enviado. Nada é executado sem a sua confirmação. Precisa de conexão e tem limite diário. Você pode desligar quando quiser.',
-                confirmLabel: 'Concordo, ligar',
-              })
-              if (ok) await updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString() } })
+              const text = NUCLEO_IA ? IA_SWITCH_TEXT : LEGACY_SWITCH_TEXT
+              const ok = await confirm({ title: text.title, message: text.message, confirmLabel: 'Concordo, ligar' })
+              // NÚCLEO IA: accepting here IS the consent for sending data (version 2) — the Assistant does not ask again.
+              if (ok) await updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString(), ...(NUCLEO_IA ? { consentVersion: CONSENT_VERSION } : {}) } })
             }}
             className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-tint/[0.03] tap"
           >
             <Tile><MessageCircle size={18} /></Tile>
             <span className="min-w-0 flex-1">
-              <span className="block text-[15px]">Entender frases livres com IA</span>
-              <span className="block text-[13px] text-faint">Opcional · desligado: nada é enviado</span>
+              <span className="block text-[15px]">{NUCLEO_IA ? IA_SWITCH_TEXT.label : LEGACY_SWITCH_TEXT.label}</span>
+              <span className="block text-[13px] text-faint">{(NUCLEO_IA ? IA_SWITCH_TEXT : LEGACY_SWITCH_TEXT)[settings.assistantAi?.enabled ? 'on' : 'off']}</span>
             </span>
             <Switch checked={Boolean(settings.assistantAi?.enabled)} />
           </button>

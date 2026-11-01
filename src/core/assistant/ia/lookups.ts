@@ -98,27 +98,33 @@ function agenda(input: Record<string, unknown>, ctx: LookupCtx): LookupResult {
   const days = Math.round((Date.parse(ate) - Date.parse(de)) / 86_400_000) + 1
   if (days > 14) return err('Intervalo grande demais: no máximo 14 dias por consulta.')
   const items = buildAgenda(ctx.data, ctx.settings, de, ate, ctx.now)
-  const byDay: { dia: string; total: unknown; itens: unknown[] }[] = []
+  const byDay: { dia: unknown; total: unknown; itens: unknown[] }[] = []
   for (let d = de; d <= ate; d = addDaysToDate(d, 1)) {
     const list = items.filter((i) => i.date === d)
-    const total = ctx.book.add({ kind: 'contagem', label: `Compromissos em ${dayLabel(d)}`, display: String(list.length), seal: list.length ? 'confirmado' : 'ausente', open: { path: '/agenda' } })
+    // Dates only inside facts (labels say "do dia"), so the answer cites the day instead of writing it.
+    const day = ctx.book.add({ kind: 'data', label: 'Dia', display: dayLabel(d), seal: 'confirmado', open: { path: '/agenda' } })
+    const total = ctx.book.add({ kind: 'contagem', label: 'Total de compromissos do dia', display: String(list.length), seal: list.length ? 'confirmado' : 'ausente', open: { path: '/agenda' } })
     byDay.push({
-      dia: dayLabel(d),
+      dia: factForModel(day),
       total: factForModel(total),
       itens: list.slice(0, 25).map((i) => {
         const when = i.start ? `${i.start}${i.end ? `–${i.end}` : ''}` : 'sem horário'
+        // The fact shows time + title: the answer cites it once, without repeating either.
         const f = ctx.book.add({
           kind: 'compromisso',
-          label: `${KIND_LABEL[i.kind]}: ${i.title}`,
-          display: `${dayLabel(d)} · ${i.start ? when + ' · ' : ''}${i.title}`,
+          label: `${KIND_LABEL[i.kind]} do dia`,
+          display: i.start ? `${when} · ${i.title}` : i.title,
           seal: 'confirmado',
           open: { path: '/agenda' },
         })
-        return { fato: f.id, tipo: KIND_LABEL[i.kind], titulo: i.title, horario: when, situacao: STATUS[i.status] }
+        return { fato: factForModel(f), tipo: KIND_LABEL[i.kind], titulo: i.title, situacao: STATUS[i.status] }
       }),
     })
   }
-  return out({ periodo: `${dayLabel(de)} a ${dayLabel(ate)}`, dias: byDay, observacao: 'Para citar um compromisso, use o fato dele.' })
+  return out({
+    dias: byDay,
+    observacao: 'Para citar um dia, use o fato do dia; para citar um compromisso, use o fato dele, que já mostra horário e título — não repita o título nem o horário ao lado.',
+  })
 }
 
 /* ------------------------------------------------------------------ finance */
@@ -307,7 +313,7 @@ function goals(input: Record<string, unknown>, ctx: LookupCtx): LookupResult {
         falta: m(p.missing, `Falta para a meta “${g.name}”`),
         progresso: factForModel(ctx.book.add({ kind: 'porcentagem', label: `Progresso da meta “${g.name}”`, display: `${p.percent}%`, seal: 'confirmado' })),
         prazo: factForModel(ctx.book.add({ kind: 'data', label: `Prazo da meta “${g.name}”`, display: dayLabel(g.deadline) + `/${g.deadline.slice(0, 4)}`, seal: 'confirmado' })),
-        dias_restantes: p.daysLeft,
+        dias_restantes: factForModel(ctx.book.add({ kind: 'contagem', label: `Dias até o prazo da meta “${g.name}”`, display: p.daysLeft === 1 ? '1 dia' : `${p.daysLeft} dias`, seal: 'confirmado' })),
         guardar_por_mes: p.perMonth != null ? m(p.perMonth, `Quanto guardar por mês para “${g.name}” chegar no prazo`, 'previsto', 'o que falta dividido pelos meses até o prazo') : null,
         guardar_por_semana: p.perWeek != null ? m(p.perWeek, `Quanto guardar por semana para “${g.name}” chegar no prazo`, 'previsto', 'o que falta dividido pelas semanas até o prazo') : null,
         no_ritmo: p.reached ? 'meta atingida' : p.due ? 'prazo encerrado' : p.onPace == null ? 'cedo demais para dizer' : p.onPace ? 'sim' : 'não',
