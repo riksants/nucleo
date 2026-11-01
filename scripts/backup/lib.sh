@@ -56,6 +56,8 @@ restore_and_compare() {
   prepare_restore_db "$url"
   run restore psql_to "$url" -v dir="$(native "$dir")" -f "$(native "$HERE/restore.sql")"
   run checksums-restored psql_to "$url" -f "$(native "$HERE/checksums.sql")"
+  # psql on Windows writes CRLF: compare the content, not the line endings.
+  sed -i 's/\r$//' "$WORK/checksums-restored.out"
   if ! diff -q "$dir/checksums.txt" "$WORK/checksums-restored.out" > /dev/null; then
     log "FALHOU: a restauração não ficou igual à origem"
     diff <(cut -f1,2 "$dir/checksums.txt") <(cut -f1,2 "$WORK/checksums-restored.out") || true
