@@ -265,16 +265,19 @@
   }
 }
 
-/* Início only: in the dark theme the band's type is white (greeting, date, balance, figures); in the light theme it
-   stays coal. Every color inside points at these tokens (coal included), so nothing is styled one by one. */
-:root:not([data-theme='light']) .band-home {
+/* Dark theme: white type and icons on EVERY vermilion band (headers of all screens, the compact bar, the rich
+   header with its figures, the menu's top) — the same look Início had first. The light theme keeps coal. Every
+   color inside points at these tokens (coal included), so nothing is styled one by one and new screens follow. */
+:root:not([data-theme='light']) .band {
   color: #ffffff;
   --color-coal: #ffffff;
   /* The pill of the chosen currency turns white, so its text goes coal. */
   --color-paper: #0a0a0b;
   --color-ink: #ffffff;
-  --color-soft: rgb(255 255 255 / 0.9);
-  --color-faint: rgb(255 255 255 / 0.86);
+  /* Solid white for secondary text too: white on this vermilion is 3.1:1 at best, translucent white drops below
+     2.8:1. Hierarchy comes from size and weight; lines and fills stay translucent. */
+  --color-soft: #ffffff;
+  --color-faint: #ffffff;
   --color-line: rgb(255 255 255 / 0.2);
   --color-line-strong: rgb(255 255 255 / 0.4);
   --color-tint: #ffffff;
@@ -290,6 +293,19 @@
   --color-expense: #ffffff;
   --color-warn: #ffffff;
   --color-goal: #ffffff;
+}
+
+/* Secondary type written as coal with opacity (subtitles, eyebrows, figure labels): solid white in the dark band,
+   for the same reason. Only text — borders, dividers and hover fills keep their translucency. */
+:root:not([data-theme='light']) .band :is(.text-coal\/70, .text-coal\/75, .text-coal\/80) {
+  color: #ffffff;
+}
+
+/* Resting fills behind white type (the figures panel, a selector's track): coal-tinted they would turn into a white
+   veil in the dark band and lighten the vermilion under the text. A faint dark veil keeps the panel visible and the
+   white readable. Dividers, rings and borders stay white and discreet; hover fills are untouched. */
+:root:not([data-theme='light']) .band :is(.bg-coal\/\[0\.06\], .bg-coal\/\[0\.08\]) {
+  background-color: rgb(10 10 11 / 0.1);
 }
 
 /* Depth on the band without a gradient look: a soft light from the top corner and a faint shade at the bottom
