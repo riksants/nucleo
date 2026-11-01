@@ -18,16 +18,30 @@ import { IconButton } from '../../ui/Button'
 import { SectionTitle } from '../../ui/Display'
 import { InsightCard, useInsights, useMarkInsight } from './Insights'
 import { ProposalCard } from './ProposalCard'
+import { readIntent } from '../../core/assistant/intents'
+import { askIa } from '../../core/assistant/ia/client'
+import { newConversation, remember, type Conversation } from '../../core/assistant/ia/conversation'
+import { areasOffFor } from '../../core/assistant/ia/lookups'
+import { localAnswers } from '../../core/assistant/ia/localFirst'
+import { CONSENT_VERSION } from '../../../supabase/functions/_shared/ia/protocol.ts'
+import { useSession } from '../account/session'
+import { currentUid, iaTransport, NUCLEO_IA } from './iaApi'
+import { IaAnswerView, IaConsentCard, type IaShown } from './IaAnswerView'
 
 interface Message {
   id: number
   from: 'me' | 'nucleo'
   text?: string
   reply?: Reply
+  /** NÚCLEO IA answer. */
+  ia?: IaShown
 }
 
 /** Conversation of this session only (memory, last 20 messages) — never saved or synced. */
 let session: Message[] = []
+/** NÚCLEO IA context of this session (one account; dropped when the account changes). */
+let iaConversation: Conversation | null = null
+let iaLater = false
 let seq = 0
 const MAX = 20
 
@@ -106,12 +120,18 @@ function ReplyView({ reply, onFollow, onChoose }: { reply: Reply; onFollow(text:
  * confirm. Nothing is sent anywhere.
  */
 export function AssistantPage() {
-  const { data, settings } = useStore()
+  const { data, settings, updateSettings } = useStore()
+  const { userId } = useSession()
   const { params } = useRoute()
   const { all } = useInsights()
   const mark = useMarkInsight()
   const [messages, setMessages] = useState<Message[]>(session)
   const [text, setText] = useState('')
+  const [iaStatus, setIaStatus] = useState<string | null>(null)
+  const [later, setLater] = useState(iaLater)
+  // NÚCLEO IA: build flag + switch on + the new consent + an account. Otherwise exactly the old Assistant.
+  const iaReady = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion === CONSENT_VERSION
+  const askConsent = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion !== CONSENT_VERSION && !later
   const endRef = useRef<HTMLDivElement>(null)
   const latest = useRef({ data, settings })
   latest.current = { data, settings }
@@ -127,9 +147,9 @@ export function AssistantPage() {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages.length])
 
-  const ask = async (q: string) => {
+  const ask = async (q: string, opts: { deep?: boolean } = {}) => {
     const question = q.trim()
-    if (!question) return
+    if (!question || iaStatus) return
     setText('')
     const { settings: s0 } = latest.current
     // A rule sentence ("Sempre que…, guarda 20% para…"): preview first, never written without confirming.
@@ -140,6 +160,50 @@ export function AssistantPage() {
       return
     }
     const today = nowIn(zoneOf(s0)).date
+    // NÚCLEO IA: local commands still answer first (free, offline); everything else goes to the IA.
+    if (iaReady && userId) {
+      // The conversation belongs to one account: another login starts a new one.
+      const conv = iaConversation?.uid === userId ? iaConversation : newConversation(userId)
+      const local = opts.deep ? null : readIntent(question, today)
+      if (local && localAnswers(local, question)) {
+        const { data: d, settings: s } = latest.current
+        const reply = runIntent(local, { data: d, settings: s, now: new Date() })
+        iaConversation = remember(conv, question, [...reply.lines, ...(reply.list ?? []).slice(0, 8).map((x) => `${x.title}${x.meta ? ` (${x.meta})` : ''}`)].join(' · '))
+        push([{ from: 'me', text: question }, { from: 'nucleo', reply }])
+        return
+      }
+      if (!navigator.onLine) {
+        const { data: d, settings: s } = latest.current
+        const reply = runIntent(local ?? { type: 'unknown' }, { data: d, settings: s, now: new Date() })
+        reply.lines = ['A IA precisa de conexão. Os comandos do Assistente continuam funcionando sem internet.', ...reply.lines]
+        push([{ from: 'me', text: opts.deep ? `Analisar a fundo: ${question}` : question }, { from: 'nucleo', reply }])
+        return
+      }
+      push([{ from: 'me', text: opts.deep ? `Analisar a fundo: ${question}` : question }])
+      setIaStatus('Pensando…')
+      try {
+        const r = await askIa(question, conv, {
+          transport: iaTransport,
+          snapshot: () => latest.current,
+          now: () => new Date(),
+          currentUid,
+          today,
+          timeZone: zoneOf(s0),
+          areasOff: areasOffFor(s0),
+          onStatus: setIaStatus,
+        }, opts)
+        if (r.kind === 'answer') {
+          iaConversation = r.conversation
+          push([{ from: 'nucleo', ia: { segments: r.segments, route: r.route, costMicros: r.costMicros, question } }])
+        } else {
+          iaConversation = r.conversation
+          push([{ from: 'nucleo', reply: { lines: [r.message] } }])
+        }
+      } finally {
+        setIaStatus(null)
+      }
+      return
+    }
     // Local commands first; the optional AI only when on, consented, online — never otherwise.
     const r = await resolveIntent(question, today, { ai: s0.assistantAi, online: navigator.onLine, available: aiAvailable(), call: interpretWithAi })
     const { data: d, settings: s } = latest.current
@@ -176,7 +240,7 @@ export function AssistantPage() {
   const shown = all.slice(0, ASSISTANT_LIMIT)
   return (
     <>
-      <PageHeader title="Assistente" subtitle={aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'} />
+      <PageHeader title="Assistente" subtitle={iaReady ? 'Usa o que está no seu NÚCLEO. Perguntas que os comandos não respondem vão para a IA, com só os trechos necessários.' : aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'} />
       <div className="mx-auto max-w-2xl pb-36">
         {shown.length > 0 && (
           <section className="mb-6">
@@ -198,6 +262,15 @@ export function AssistantPage() {
         </div>
 
         <div className="space-y-4" aria-live="polite">
+          {askConsent && (
+            <IaConsentCard
+              onAccept={() => updateSettings({ assistantAi: { enabled: true, consentAt: new Date().toISOString(), consentVersion: CONSENT_VERSION } })}
+              onLater={() => {
+                iaLater = true
+                setLater(true)
+              }}
+            />
+          )}
           {messages.length === 0 && (
             <div className="card flex gap-3 p-4 text-[15px] leading-relaxed text-soft">
               <MessageCircle size={18} className="mt-0.5 shrink-0 text-accent-hi" />
@@ -209,11 +282,21 @@ export function AssistantPage() {
               <p key={m.id} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-[15px] break-words text-bg">
                 {m.text}
               </p>
+            ) : m.ia ? (
+              <div key={m.id} className="max-w-full">
+                <IaAnswerView shown={m.ia} onDeep={(q) => ask(q, { deep: true })} />
+              </div>
             ) : (
               <div key={m.id} className="max-w-full">
-                <ReplyView reply={m.reply!} onFollow={ask} onChoose={choose} />
+                <ReplyView reply={m.reply!} onFollow={(t) => ask(t)} onChoose={choose} />
               </div>
             ),
+          )}
+          {iaStatus && (
+            <p className="flex items-center gap-2 text-[14px] text-soft" data-ia-status role="status">
+              <span className="size-2 animate-pulse rounded-full bg-accent-hi motion-reduce:animate-none" />
+              {iaStatus}
+            </p>
           )}
           <div ref={endRef} />
         </div>

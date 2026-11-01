@@ -1,5 +1,18 @@
 # Pendências
 
+## NÚCLEO IA — Etapa 1 (fundação) — LOCAL, branch feat/nucleo-ia, nada publicado
+
+- Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md.
+- NÃO aplicado/publicado: migração 20261103000000_nucleo_ia.sql; função `nucleo-ia` (secrets
+  ANTHROPIC_API_KEY + IA_TURN_SECRET ≥ 32 caracteres); build com VITE_NUCLEO_IA=on.
+- Ordem de ativação (quando autorizado): migração → níveis das contas existentes (dono = owner) →
+  secrets → publicar `nucleo-ia` → limite de gasto no painel da Anthropic → app com VITE_NUCLEO_IA=on.
+- Medição real de custo/qualidade: tests/nucleo-ia-real.test.ts (precisa de ANTHROPIC_API_KEY; ~US$ 0,10–0,40).
+- Texto do interruptor "Entender frases livres com IA" em Configurações ainda descreve o interpretador antigo
+  (fora do Assistente — mudar só com autorização). O Assistente pede o consentimento novo (versão 2).
+- Remover o interpretador antigo (função `assistant`, features/assistant/ai.ts) na Etapa 5.
+- e2e assistant: "Organizar minha semana" falha aos domingos também na main (pré-existente).
+
 ## Etapa 5: notificações confiáveis — ATIVADA em produção em 2026-11-01
 
 - App: main 1a6bccc (Pages deploy 41273257459). Migração 20261101000000 aplicada numa transação (81 avisos e

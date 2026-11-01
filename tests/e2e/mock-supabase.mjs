@@ -259,6 +259,15 @@ const server = createServer(async (req, res) => {
     revokeAll(uid)
     return send(200, null)
   }
+  if (url.pathname === '/functions/v1/nucleo-ia') {
+    const { handleNucleoIa } = await import('./mock-nucleo-ia.mjs')
+    const out = await handleNucleoIa(json, sub(req))
+    return send(out.status, out.body)
+  }
+  if (url.pathname === '/__ia') {
+    const { iaLog } = await import('./mock-nucleo-ia.mjs')
+    return send(200, iaLog)
+  }
   if (url.pathname === '/functions/v1/planner') {
     // Deliberately bad answer: one overlapping block + one allergen, to check the app's own validation.
     return send(200, {
