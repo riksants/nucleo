@@ -1,6 +1,19 @@
 # Pendências
 
-## Etapa 5: notificações confiáveis (2026-10-31, branch `feat/etapa5`) — NADA aplicado em produção
+## Etapa 5: notificações confiáveis — ATIVADA em produção em 2026-11-01
+
+- App: main 1a6bccc (Pages deploy 41273257459). Migração 20261101000000 aplicada numa transação (81 avisos e
+  162 registros preservados). push-dispatch v3 publicada. Cron: nucleo-push-dispatch (1 min), nucleo-push-renew
+  (hora em hora, :07), nucleo-push-cleanup (domingo, 35 dias).
+- Antes: backup do GitHub Actions 41272900711 restaurado localmente e idêntico (somas de verificação);
+  instantâneo da fila/inscrições/funções/permissões em Documents/Nucleo-backup-PRIVADO/etapa5-antes-da-migracao-2026-11-01.json.
+- Reversão, se precisar: supabase/rollback-etapa5.sql (testado) + voltar o app para e783fc2 + publicar a
+  push-dispatch de e783fc2.
+- Produção conferida com contas descartáveis (apagadas): sincronização com revisão, aparelho desatualizado e
+  versão antiga recusados sem alterar nada, séries, renovação com as mesmas chaves e sem duplicar, agrupamento,
+  histórico "enviado", teste, marcas. Entrega no iPhone do dono: a conferir com ele.
+
+### Planejamento original (referência)
 
 O app funciona com ou sem a migração: sem ela, grava lembretes pelo caminho antigo (sem revisão, sem
 séries, sem histórico de envio) e a central usa o registro local.
