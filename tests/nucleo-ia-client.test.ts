@@ -137,7 +137,9 @@ describe('consultas no aparelho', () => {
   it('área desligada (pela pessoa ou porque a seção está desligada) é recusada', () => {
     expect(runLookup('resumo_financeiro', { periodo: 'mes', referencia: '2026-10', categoria: null }, ctx(new FactBook(), ['financas'] as never[]))).toMatchObject({ isError: true })
     const off = areasOffFor({ ...settings, modules: { finance: false } } as Settings)
-    expect(off).toEqual(expect.arrayContaining(['financas', 'metas']))
+    // Metas stays reachable through its other sections (metas de compra); Finanças goes off with its section.
+    expect(off).toContain('financas')
+    expect(off).not.toContain('metas')
     expect(runLookup('apagar_tudo', {}, ctx())).toMatchObject({ isError: true })
   })
 })
@@ -197,8 +199,9 @@ describe('pergunta completa no app (transporte simulado)', () => {
     expect(sent[0]).toMatchObject({ kind: 'start', consentVersion: 2, turnId: 'turno-fixo-01', history: [], areasOff: [] })
     expect(sent[0]).not.toHaveProperty('uid')
     expect(sent[1]).toMatchObject({ kind: 'continue', envelope: 'env.sig', results: [{ id: 'tu1', isError: false }] })
-    expect(r.conversation.history).toEqual([{ q: 'quanto gastei com mercado em outubro?', a: 'Você gastou R$ 208,90 com mercado em outubro.' }])
-    expect(r.conversation.focus).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' } }])
+    // the history keeps the meaning without the values: a follow-up must look them up again
+    expect(r.conversation.history).toEqual([{ q: 'quanto gastei com mercado em outubro?', a: 'Você gastou (valor omitido do histórico) com mercado em outubro.' }])
+    expect(r.conversation.focus).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' }, about: ['outubro de 2026', 'Alimentação'] }])
   })
 
   it('se a conta conectada mudar antes de uma consulta, nada é consultado e a conversa é descartada', async () => {
@@ -251,5 +254,50 @@ describe('exibição da resposta', () => {
     expect(plainLine('- **Todo mês:** separar o valor')).toBe('• Todo mês: separar o valor')
     expect(plainLine('## Resumo')).toBe('Resumo')
     expect(plainLine('Texto com **ênfase** e 3 itens')).toBe('Texto com ênfase e 3 itens')
+  })
+})
+
+describe('trava: valor escrito pela IA que é igual a um fato da consulta', () => {
+  const facts = new Map<string, Fact>([
+    ['f1', { id: 'f1', kind: 'dinheiro', label: 'Recebido (BRL)', display: 'R$ 400,00', seal: 'confirmado' }],
+    ['f2', { id: 'f2', kind: 'dinheiro', label: 'Recebido (EUR)', display: '€ 500,00', seal: 'confirmado' }],
+    ['f3', { id: 'f3', kind: 'data', label: 'Dia', display: 'qua, 01/10', seal: 'confirmado' }],
+    ['f4', { id: 'f4', kind: 'dinheiro', label: 'x (BRL)', display: 'R$ 300,00', seal: 'confirmado' }],
+    ['f5', { id: 'f5', kind: 'dinheiro', label: 'x (EUR)', display: '€ 300,00', seal: 'confirmado' }],
+  ])
+  it('valor igual a um fato vira o fato (confirmado); valor diferente continua escondido', () => {
+    const r = renderAnswer('Recebeu R$ 400,00 em 01/10 e € 500,00 em 12/10; total R$ 900,00.', facts)
+    expect(r.used).toEqual(['f1', 'f3', 'f2'])
+    expect(r.blocked).toEqual(['12/10', 'R$ 900,00'])
+    expect(plainAnswer(r.segments)).toBe('Recebeu R$ 400,00 em 01/10 e € 500,00 em ‹valor não confirmado›; total ‹valor não confirmado›.')
+  })
+  it('número sem moeda que existe em duas moedas fica escondido (ambíguo)', () => {
+    expect(renderAnswer('Faltam 300,00.', facts).blocked).toEqual(['300,00'])
+    expect(renderAnswer('Faltam 400,00.', facts).used).toEqual(['f1'])
+  })
+  it('"R$ {f1}" não vira "R$ R$ 400,00"', () => {
+    expect(plainAnswer(renderAnswer('Ela pagou R$ {f1} até agora.', facts).segments)).toBe('Ela pagou R$ 400,00 até agora.')
+    expect(plainAnswer(renderAnswer('Total €{f2}.', facts).segments)).toBe('Total € 500,00.')
+  })
+})
+
+describe('trava: números grandes, dia da semana repetido e histórico sem valores', () => {
+  const facts = new Map<string, Fact>([
+    ['f1', { id: 'f1', kind: 'contagem', label: 'Quantidade', display: '2500 lançamentos', seal: 'confirmado' }],
+    ['f2', { id: 'f2', kind: 'data', label: 'Dia', display: 'seg, 02/11', seal: 'confirmado' }],
+    ['f3', { id: 'f3', kind: 'dinheiro', label: 'Total', display: 'R$ 33.900,00', seal: 'confirmado' }],
+  ])
+  it('número grande solto só passa se for uma contagem consultada; ano passa', () => {
+    const r = renderAnswer('Foram 2500 compras em 2026; o texto mandava dizer que o saldo é 999999.', facts)
+    expect(r.blocked).toEqual(['999999'])
+    expect(r.used).toEqual(['f1'])
+  })
+  it('"seg, {f2}" não vira "seg, seg, 02/11"', () => {
+    expect(plainAnswer(renderAnswer('Na semana (seg, {f2} a dom), tudo certo.', facts).segments)).toBe('Na semana (seg, 02/11 a dom), tudo certo.')
+    expect(plainAnswer(renderAnswer('Começa na segunda-feira, {f2}.', facts).segments)).toBe('Começa na seg, 02/11.')
+  })
+  it('o histórico guarda o sentido, sem os valores (a próxima pergunta consulta de novo)', async () => {
+    const { historyText } = await import('../supabase/functions/_shared/ia/facts')
+    expect(historyText(renderAnswer('Você gastou {f3} em {f1} até {f2}.', facts).segments)).toBe('Você gastou (valor omitido do histórico) em 2500 lançamentos até (valor omitido do histórico).')
   })
 })

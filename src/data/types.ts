@@ -596,7 +596,13 @@ export interface Settings {
    * NÚCLEO IA: `consentVersion: 2` = the person accepted that parts of their data go to the AI during a
    * question (the old consent covered only the sentence). Missing = not accepted.
    */
-  assistantAi?: { enabled: boolean; consentAt: string | null; consentVersion?: number }
+  assistantAi?: {
+    enabled: boolean
+    consentAt: string | null
+    consentVersion?: number
+    /** NÚCLEO IA: areas the AI may not read (core/assistant/ia/areas/shared.ts). Missing = all allowed. */
+    areasOff?: string[]
+  }
   /** Meal types in the person's order (on/off, renamed, personal). Missing = defaults. */
   mealTypes?: MealType[]
   /** Personal finance categories and hidden default ones. Missing = defaults only. */

@@ -24,7 +24,7 @@ export const StartRequest = z.object({
   /** One line with older topics. */
   topics: z.string().max(400),
   /** Recent lookups (tool + arguments) — what is "in focus". */
-  focus: z.array(z.object({ tool: z.string().max(40), args: z.record(z.string(), z.unknown()) })).max(8),
+  focus: z.array(z.object({ tool: z.string().max(40), args: z.record(z.string(), z.unknown()), about: z.array(z.string().max(80)).max(5).optional() })).max(8),
   /** Areas the person turned off for the AI (or whose section is off). */
   areasOff: z.array(z.string().max(20)).max(20),
 })

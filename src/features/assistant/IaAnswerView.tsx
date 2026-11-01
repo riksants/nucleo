@@ -12,7 +12,7 @@ export interface IaShown {
 
 const ROUTE_LABEL: Record<string, string> = { rapida: 'Resposta rápida', atenta: 'Análise', profunda: 'Análise profunda' }
 
-function FactChip({ fact }: { fact: Fact }) {
+function FactChip({ fact, shown }: { fact: Fact; shown?: string }) {
   const seal =
     fact.seal === 'previsto' ? (
       <Clock3 size={14} strokeWidth={2.4} aria-label="previsão" />
@@ -23,7 +23,7 @@ function FactChip({ fact }: { fact: Fact }) {
   const title = `${fact.label}${fact.seal === 'previsto' ? ' — previsão' : fact.seal === 'ausente' ? ' — não encontrado' : ' — confirmado'}${fact.base ? ` (${fact.base})` : ''}`
   const body = (
     <>
-      {fact.display}
+      {shown ?? fact.display}
       {seal && <span className="ml-0.5 inline-flex translate-y-[1px] text-accent-hi">{seal}</span>}
     </>
   )
@@ -56,6 +56,8 @@ function paragraphs(segments: Segment[]): Segment[][] {
 
 export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(question: string): void }) {
   const paras = paragraphs(shown.segments)
+  // the legend only explains the seals this answer really uses
+  const seals = new Set(shown.segments.flatMap((s) => (s.t === 'fact' ? [s.fact.seal] : [])))
   return (
     <div className="min-w-0" data-ia-answer data-route={shown.route}>
       {paras.map((p, i) => {
@@ -68,7 +70,7 @@ export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(questi
               s.t === 'text' ? (
                 <span key={j}>{s.s}</span>
               ) : s.t === 'fact' ? (
-                <FactChip key={j} fact={s.fact} />
+                <FactChip key={j} fact={s.fact} shown={s.shown} />
               ) : (
                 <span key={j} className="text-faint" data-blocked>
                   ‹valor não confirmado›
@@ -80,7 +82,19 @@ export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(questi
       })}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-faint">
         <span>
-          {ROUTE_LABEL[shown.route] ?? 'IA'} · <Check size={14} className="inline -translate-y-[1px]" /> confirmado · <Clock3 size={14} className="inline -translate-y-[1px]" /> previsão
+          {ROUTE_LABEL[shown.route] ?? 'IA'}
+          {seals.has('confirmado') && (
+            <>
+              {' · '}
+              <Check size={14} className="inline -translate-y-[1px]" /> confirmado
+            </>
+          )}
+          {seals.has('previsto') && (
+            <>
+              {' · '}
+              <Clock3 size={14} className="inline -translate-y-[1px]" /> previsão
+            </>
+          )}
         </span>
         {onDeep && shown.route !== 'profunda' && (
           <button type="button" onClick={() => onDeep(shown.question)} className="flex items-center gap-0.5 font-medium text-accent-hi hover:text-ink">

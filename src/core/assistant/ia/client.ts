@@ -9,7 +9,7 @@
  * - lookups read the freshest data of the store at that moment;
  * - nothing is written: lookups only read.
  */
-import { FactBook, plainAnswer, renderAnswer, type Fact, type Segment } from '../../../../supabase/functions/_shared/ia/facts.ts'
+import { FactBook, historyText, renderAnswer, type Fact, type Segment } from '../../../../supabase/functions/_shared/ia/facts.ts'
 import { CONSENT_VERSION, type ErrorCode, type StopReason, type TurnError, type TurnRequest, type TurnResponse } from '../../../../supabase/functions/_shared/ia/protocol.ts'
 import { TOOL_AREA, type Area, type ToolName } from '../../../../supabase/functions/_shared/ia/tools.ts'
 import type { DataState, Settings } from '../../../data/types'
@@ -47,7 +47,18 @@ export type IaAnswer =
     }
   | { kind: 'error'; code: ErrorCode | 'session'; message: string; conversation: Conversation | null }
 
-export const STATUS_TEXT: Record<Area, string> = { agenda: 'Consultando a Agenda…', financas: 'Consultando Finanças…', metas: 'Consultando Metas…', busca: 'Procurando nos seus registros…' }
+export const STATUS_TEXT: Record<Area, string> = {
+  agenda: 'Consultando a Agenda…',
+  tarefas: 'Consultando Tarefas…',
+  habitos: 'Consultando Hábitos…',
+  financas: 'Consultando Finanças…',
+  metas: 'Consultando Metas…',
+  vendas: 'Consultando Vendas…',
+  clientes: 'Consultando Clientes e projetos…',
+  alimentacao: 'Consultando Alimentação…',
+  anotacoes: 'Lendo suas anotações…',
+  busca: 'Procurando nos seus registros…',
+}
 
 export function turnId(): string {
   const bytes = new Uint8Array(12)
@@ -62,7 +73,7 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   if (!(await sessionOk())) return { kind: 'error', code: 'session', message: 'A conta conectada mudou. A conversa foi encerrada.', conversation: null }
 
   const book = new FactBook()
-  const lookups: { tool: string; args: Record<string, unknown> }[] = []
+  const lookups: { tool: string; args: Record<string, unknown>; about?: string[] }[] = []
   let res = await deps.transport({
     kind: 'start',
     turnId: (deps.newTurnId ?? turnId)(),
@@ -82,7 +93,7 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     const body = res.data
     if (body.kind === 'answer') {
       const r = renderAnswer(body.text, book.all)
-      const next = remember(conversation, text, plainAnswer(r.segments), lookups)
+      const next = remember(conversation, text, historyText(r.segments), lookups)
       return { kind: 'answer', segments: r.segments, facts: [...book.all.values()], blocked: r.blocked, route: body.route, model: body.model, costMicros: body.costMicros, stop: body.stop, conversation: next }
     }
     // Lookups requested: same account still signed in, then run them over the freshest data.
@@ -91,8 +102,8 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     const results = body.calls.map((call) => {
       const area = TOOL_AREA[call.name as ToolName]
       if (area) deps.onStatus?.(STATUS_TEXT[area])
-      lookups.push({ tool: call.name, args: call.input })
       const r = runLookup(call.name, call.input, { data, settings, now: deps.now(), book, areasOff: deps.areasOff })
+      lookups.push({ tool: call.name, args: call.input, ...(r.about?.length ? { about: r.about.map((a) => a.slice(0, 80)) } : {}) })
       return { id: call.id, content: r.content, isError: r.isError }
     })
     res = await deps.transport({ kind: 'continue', envelope: body.envelope, results })

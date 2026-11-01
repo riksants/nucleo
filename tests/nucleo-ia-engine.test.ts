@@ -10,6 +10,7 @@ import { affordableMaxTokens, costMicros, maxCallMicros, MODELS } from '../supab
 import { TurnRequest, type StartRequest, type TurnResponse } from '../supabase/functions/_shared/ia/protocol'
 import { routeFor } from '../supabase/functions/_shared/ia/router'
 import { SYSTEM_PROMPT } from '../supabase/functions/_shared/ia/prompt'
+import { APP_TOOLS } from '../supabase/functions/_shared/ia/tools'
 
 const SECRET = 'segredo-de-teste-com-mais-de-32-caracteres!'
 const A = '11111111-1111-4111-8111-111111111111'
@@ -117,7 +118,7 @@ describe('turno: resposta direta e consultas', () => {
     expect(out.body).toMatchObject({ kind: 'answer', route: 'rapida', model: 'claude-haiku-5-5', stop: 'end', steps: 1, text: 'Você não tem compromissos hoje.' })
     const p = h.calls[0]
     expect(p).toMatchObject({ model: 'claude-haiku-5-5', thinking: { type: 'adaptive' }, output_config: { effort: 'low' }, cache_control: { type: 'ephemeral' }, tool_choice: { type: 'auto' } })
-    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual(['consultar_agenda', 'resumo_financeiro', 'metas_financeiras', 'buscar', 'pedir_analise_profunda'])
+    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual([...APP_TOOLS, 'pedir_analise_profunda'])
     expect((p.tools as { strict: boolean }[]).every((t) => t.strict)).toBe(true)
     expect(h.settles).toEqual([{ ok: true, costMicros: costMicros('haiku', USAGE), tools: [], model: 'haiku' }])
     expect((out.body as { costMicros: number }).costMicros).toBe(costMicros('haiku', USAGE))
@@ -302,5 +303,18 @@ describe('escalada e orçamento', () => {
     expect(out.body).toMatchObject({ kind: 'answer', text: 'Não posso fazer isso.' })
     const last = (h.calls[1].messages as { content: unknown }[]).at(-1)
     expect(last).toEqual({ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_9', content: 'Consulta indisponível.', is_error: true }] })
+  })
+
+  it('mais de 6 consultas de uma vez: as 6 primeiras vão para o app, as outras recebem aviso — o turno continua', async () => {
+    const many: CallResult = { content: Array.from({ length: 8 }, (_, i) => ({ type: 'tool_use', id: `toolu_${i}`, name: 'lancamentos', input: { de: '2026-01-01', ate: '2026-01-31', tipo: 'saida', categoria: null, texto: null, pagina: i + 1 } }) as Block), stop_reason: 'tool_use', usage: USAGE, model: 'x' }
+    const h = harness([many, text('Pronto.')])
+    const first = await startTurn(start('liste tudo'), h.deps)
+    const body = first.body as Extract<TurnResponse, { kind: 'tools' }>
+    expect(body.calls.map((c) => c.id)).toEqual(['toolu_0', 'toolu_1', 'toolu_2', 'toolu_3', 'toolu_4', 'toolu_5'])
+    const out = await continueTurn({ kind: 'continue', envelope: body.envelope, results: body.calls.map((c) => ({ id: c.id, content: '{}', isError: false })) }, h.deps)
+    expect(out.body).toMatchObject({ kind: 'answer', text: 'Pronto.' })
+    const results = (h.calls[1].messages as { content: { tool_use_id: string; is_error?: boolean }[] }[]).at(-1)!.content
+    expect(results.map((r) => r.tool_use_id).sort()).toEqual(['toolu_0', 'toolu_1', 'toolu_2', 'toolu_3', 'toolu_4', 'toolu_5', 'toolu_6', 'toolu_7'])
+    expect(results.filter((r) => r.is_error).map((r) => r.tool_use_id).sort()).toEqual(['toolu_6', 'toolu_7'])
   })
 })

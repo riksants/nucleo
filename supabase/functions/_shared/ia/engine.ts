@@ -10,7 +10,7 @@ import { affordableMaxTokens, estimateTokens, MAX_INPUT_TOKENS, maxCallMicros, M
 import { SYSTEM_PROMPT } from './prompt.ts'
 import type { ContinueRequest, ErrorCode, StartRequest, StopReason, TurnError, TurnResponse } from './protocol.ts'
 import { escalated, ROUTES, routeFor, type Route } from './router.ts'
-import { ESCALATE_TOOL, isAppTool, toolsFor } from './tools.ts'
+import { ESCALATE_TOOL, isAppTool, MAX_RESULTS_PER_STEP, toolsFor } from './tools.ts'
 
 /** Model calls in one question, at most. */
 export const MAX_STEPS = 6
@@ -254,9 +254,11 @@ async function advance(state: TurnState, deps: Deps): Promise<Outcome> {
       state = { ...state, messages: [...state.messages, { role: 'user', content: pre }] }
       continue
     }
-    if (calls.length > 6) return answer(state, 'Essa pergunta pediu consultas demais de uma vez. Tente algo mais específico.', 'steps')
-    const sealed: TurnState = { ...state, pending: calls.map((c) => ({ id: c.id, name: c.name })), pre, exp: deps.now() + TURN_TTL_MS }
-    return { status: 200, body: { kind: 'tools', calls, envelope: await sealTurn(sealed, deps.secret), route: state.route, model: MODELS[state.model].id } }
+    // At most MAX_RESULTS_PER_STEP lookups go to the app at once; the rest get an answer asking to repeat them later.
+    const now = calls.slice(0, MAX_RESULTS_PER_STEP)
+    for (const c of calls.slice(MAX_RESULTS_PER_STEP)) pre.push({ type: 'tool_result', tool_use_id: c.id, content: `Limite de ${MAX_RESULTS_PER_STEP} consultas por vez: esta não foi feita. Use as que voltaram ou peça esta de novo depois.`, is_error: true })
+    const sealed: TurnState = { ...state, pending: now.map((c) => ({ id: c.id, name: c.name })), pre, exp: deps.now() + TURN_TTL_MS }
+    return { status: 200, body: { kind: 'tools', calls: now, envelope: await sealTurn(sealed, deps.secret), route: state.route, model: MODELS[state.model].id } }
   }
   return answer(state, 'Não consegui concluir essa análise.', 'steps')
 }

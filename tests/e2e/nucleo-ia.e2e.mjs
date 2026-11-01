@@ -113,7 +113,7 @@ try {
   r.check('sugestão marcada como sugestão', a[0]?.suggestion === true)
   r.check('rota rápida (Haiku) e botão "Analisar a fundo"', a[0]?.route === 'rapida' && /Analisar a fundo/.test(a[0]?.text))
   let log = await ia()
-  r.check('servidor: Haiku 5.5, esforço baixo, 5 ferramentas', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 5)
+  r.check('servidor: Haiku 5.5, esforço baixo, 14 consultas + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 15)
   r.check('o app enviou só a pergunta, histórico e foco — nenhum registro no início', !JSON.stringify(log.requests.at(-2) ?? {}).includes('Continente'))
 
   // 2) Follow-up without repeating the subject.
@@ -147,6 +147,30 @@ try {
   r.check('turno de uma conta não continua com o login de outra (409)', start.kind === 'tools' && cont.status === 409)
   const anon = await fetch(MOCK + '/functions/v1/nucleo-ia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'start' }) })
   r.check('sem login: 401', anon.status === 401)
+
+  // 6) Privacy per area: turn Finanças off in the Assistant; the AI can no longer read it.
+  await B.click('Privacidade da IA')
+  await B.sleep(500)
+  const panel = await B.eval(`[...document.querySelectorAll('[data-ia-privacy] [data-area]')].map(x => x.dataset.area + ':' + x.getAttribute('aria-checked'))`)
+  r.check('painel de privacidade lista as áreas, todas ligadas', panel.includes('financas:true') && panel.includes('anotacoes:true') && panel.every((x) => x.endsWith(':true')), panel.join(','))
+  r.check('painel não oferece Senhas', !panel.some((x) => /senha|account/i.test(x)))
+  await B.eval(`document.querySelector('[data-ia-privacy] [data-area="financas"]').click()`)
+  await B.sleep(400)
+  r.check('Finanças desligada no painel', (await B.eval(`document.querySelector('[data-ia-privacy] [data-area="financas"]').getAttribute('aria-checked')`)) === 'false')
+  await B.click('Fechar')
+  await B.sleep(500)
+  const before6 = (await answers(B)).length
+  await ask(B, 'quanto gastei com mercado em outubro?')
+  a = await waitAnswers(B, before6 + 1)
+  r.check('com Finanças desligada, a IA diz que a área está desligada (sem valores)', /desligada/.test(a.at(-1)?.text ?? '') && !/R\$|€/.test(a.at(-1)?.text ?? ''), a.at(-1)?.text)
+  await B.sleep(900)
+  const fit = await B.eval(`(() => { const as = document.querySelectorAll('[data-ia-answer]'); const last = as[as.length - 1].getBoundingClientRect(); const bar = document.querySelector('input[aria-label="Pergunte ao NÚCLEO"]').closest('form').getBoundingClientRect(); return { bottom: Math.round(last.bottom), barTop: Math.round(bar.top) } })()`)
+  r.check('a resposta mais nova fica inteira acima da barra de pergunta', fit.bottom <= fit.barTop, JSON.stringify(fit))
+  const startP = (await ia()).requests.filter((x) => x.kind === 'start').at(-1)
+  r.check('o pedido ao servidor leva a área desligada', startP?.areasOff?.includes('financas'), JSON.stringify(startP?.areasOff))
+  await B.sleep(1500)
+  const synced = (await (await fetch(MOCK + '/__state')).json()).settings.find(([u]) => u === uid)?.[1]?.data?.assistantAi?.areasOff ?? []
+  r.check('escolha de privacidade salva na conta (vale nos outros aparelhos)', synced.includes('financas'), JSON.stringify(synced))
 
   const st = await (await fetch(MOCK + '/__state')).json()
   r.check('o interpretador antigo não foi chamado', !st.requests.some((x) => x.includes('/functions/v1/assistant')))

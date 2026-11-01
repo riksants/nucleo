@@ -54,7 +54,7 @@ export async function handleNucleoIa(json, uid) {
   if (!uid) return { status: 401, body: { error: 'auth', message: 'Entre na sua conta para usar a IA.' } }
   const parsed = TurnRequest.safeParse(json)
   if (!parsed.success) return { status: 400, body: { error: 'input', message: 'Pedido inválido.' } }
-  iaLog.requests.push({ uid, kind: parsed.data.kind, ...(parsed.data.kind === 'start' ? { text: parsed.data.text, history: parsed.data.history, focus: parsed.data.focus } : { results: parsed.data.results.length }) })
+  iaLog.requests.push({ uid, kind: parsed.data.kind, ...(parsed.data.kind === 'start' ? { text: parsed.data.text, history: parsed.data.history, focus: parsed.data.focus, areasOff: parsed.data.areasOff } : { results: parsed.data.results.length }) })
   let n = 0
   const deps = {
     uid,

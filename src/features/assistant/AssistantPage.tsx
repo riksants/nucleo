@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronRight, MessageCircle } from 'lucide-react'
+import { ArrowUp, ChevronRight, MessageCircle, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -27,6 +27,7 @@ import { CONSENT_VERSION } from '../../../supabase/functions/_shared/ia/protocol
 import { useSession } from '../account/session'
 import { currentUid, iaTransport, NUCLEO_IA } from './iaApi'
 import { IaAnswerView, IaConsentCard, type IaShown } from './IaAnswerView'
+import { IaPrivacySheet } from './IaPrivacySheet'
 
 interface Message {
   id: number
@@ -129,6 +130,7 @@ export function AssistantPage() {
   const [text, setText] = useState('')
   const [iaStatus, setIaStatus] = useState<string | null>(null)
   const [later, setLater] = useState(iaLater)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   // NÚCLEO IA: build flag + switch on + the new consent + an account. Otherwise exactly the old Assistant.
   const iaReady = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion === CONSENT_VERSION
   const askConsent = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion !== CONSENT_VERSION && !later
@@ -259,6 +261,11 @@ export function AssistantPage() {
               {q}
             </button>
           ))}
+          {iaReady && (
+            <button type="button" onClick={() => setPrivacyOpen(true)} className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink">
+              <ShieldCheck size={16} /> Privacidade da IA
+            </button>
+          )}
         </div>
 
         <div className="space-y-4" aria-live="polite">
@@ -298,10 +305,11 @@ export function AssistantPage() {
               {iaStatus}
             </p>
           )}
-          <div ref={endRef} />
+          <div ref={endRef} className="scroll-mb-44 lg:scroll-mb-24" />
         </div>
       </div>
 
+      {iaReady && <IaPrivacySheet open={privacyOpen} onClose={() => setPrivacyOpen(false)} />}
       <form
         onSubmit={(e) => {
           e.preventDefault()
