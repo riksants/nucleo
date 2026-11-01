@@ -237,10 +237,21 @@ export interface FocusRun {
   runningSince: number | null
 }
 
-/** Lock-screen texts for a privacy choice. */
-export function lockText(privacy: ReminderPrivacy, kind: ReminderKind, title: string, full: string, plain: string, late = false) {
+/**
+ * Lock-screen texts for a privacy choice. The title is always the app ("Núcleo"); the body is the
+ * whole, specific message (what, when, who, how much — as the privacy choice allows), so nothing
+ * is said twice and nothing depends on the title. `title` (the item's short name) stays for the app.
+ */
+export function lockText(privacy: ReminderPrivacy, kind: ReminderKind, _title: string, full: string, plain: string, late = false) {
   if (privacy === 'discreet') return { title: 'Núcleo', body: (late && GENERIC_LATE[kind]) || GENERIC[kind] }
-  return { title, body: privacy === 'complete' ? full : plain }
+  return { title: 'Núcleo', body: privacy === 'complete' ? full : plain }
+}
+
+/** Task / appointment: "Entregar o site às 15:00", "… hoje às 15:00", "… amanhã", "… ficou pendente". */
+function whenText(name: string, p: Phase, time?: string): string {
+  if ('late' in p) return `${name} ficou pendente`
+  if ('at' in p) return time ? `${name} às ${time}` : `${name} hoje`
+  return `${name} ${rel(p, time)}`
 }
 
 /** Inside the quiet hours, the moment moves to their end (same reminder, same key: never lost, never twice). */
@@ -505,7 +516,7 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
         kind: 'tasks',
         prefix: `task:${t.id}`,
         title: t.title,
-        text: (p) => ('late' in p ? `Ficou pendente: ${t.title}` : 'at' in p && time ? `Agora: ${t.title}` : `${t.title} — ${rel(p, time)}`),
+        text: (p) => whenText(t.title, p, time),
         url: `#/tasks?open=${t.id}`,
         source: `tasks:${t.id}`,
         changedAt: t.updatedAt,
@@ -527,7 +538,7 @@ export function buildOccurrences(data: DataState, settings: Settings, opts: { no
         kind: 'events',
         prefix: `event:${e.id}`,
         title: e.title,
-        text: (p) => ('at' in p && time ? `Agora: ${e.title}` : `${e.title} — ${rel(p, time)}`),
+        text: (p) => whenText(e.title, p, time),
         url: `#/agenda?open=${e.id}`,
         source: `events:${e.id}`,
         changedAt: e.updatedAt,
@@ -703,7 +714,7 @@ function routineItem(b: Block): Item {
     kind: 'routine',
     prefix: `routine:${b.id}`,
     title: label,
-    text: (p) => ('at' in p ? `Agora: ${label}` : `${b.title} começa ${rel(p, b.start)}`),
+    text: (p) => (b.kind === 'commute' ? `${b.title}: hora de sair ${'at' in p ? `(${b.start})` : rel(p, b.start)}` : `${b.title} começa ${'at' in p ? `às ${b.start}` : rel(p, b.start)}`),
     url: `#/routine?open=${b.id}`,
   }
 }
@@ -716,7 +727,7 @@ function mealEntryItem(settings: Settings, m: DataState['meals'][number]): Item 
     prefix: `mealEntry:${m.id}`,
     title,
     // The menu is personal (health): only in the full text.
-    text: (p, mm) => `${title} ${'at' in p ? `agora, às ${m.time}` : `planejado para ${rel(p, m.time)}`}${mm(menu ? `: ${menu}` : '')}`,
+    text: (p, mm) => `${title} ${'at' in p ? `às ${m.time}` : `planejado para ${rel(p, m.time)}`}${mm(menu ? `: ${menu}` : '')}`,
     url: `#/meals?open=${m.id}`,
     source: `meals:${m.id}`,
   }
@@ -728,7 +739,7 @@ function planMealItem(m: MealPlan['meals'][number]): Item {
     kind: 'meals',
     prefix: `meal:${m.id}`,
     title: m.label,
-    text: (p, mm) => `${m.label} ${'at' in p ? `agora, às ${m.time}` : `planejado para ${rel(p, m.time)}`}${mm(menu ? `: ${menu}` : '')}`,
+    text: (p, mm) => `${m.label} ${'at' in p ? `às ${m.time}` : `planejado para ${rel(p, m.time)}`}${mm(menu ? `: ${menu}` : '')}`,
     url: '#/meals',
   }
 }
@@ -753,9 +764,11 @@ function recurringItem(r: DataState['recurring'][number]): Item {
     prefix: `recurring:${r.id}`,
     title: r.bill ? `Conta: ${r.title}` : r.title,
     text: (p) => {
-      if ('late' in p) return `Ficou pendente: ${r.title}`
-      if ('at' in p) return `Agora: ${r.title}`
-      return r.bill ? `Pagar ${r.title} ${rel(p)}` : `${r.title} ${rel(p, 'min' in p ? r.time : undefined)}`
+      // A bill reads as an action, without repeating the verb ("Pagar aluguel" stays "Pagar aluguel").
+      const what = r.bill && !/^pagar\s/i.test(r.title) ? `Pagar ${r.title}` : r.title
+      if ('late' in p) return `${what} ${r.bill ? 'ainda está pendente' : 'ficou pendente'}`
+      if ('at' in p) return `${what} ${isTime(r.time) ? `às ${r.time}` : 'hoje'}`
+      return r.bill ? `${what} ${rel(p)}` : `${r.title} ${rel(p, 'min' in p ? r.time : undefined)}`
     },
     url: `#/recurring?open=${r.id}`,
     source: `recurring:${r.id}`,
@@ -834,7 +847,7 @@ function saleItems(ctx: Pick<Ctx, 'money'>, data: DataState, today: string): { i
           prefix: `sale:${s.id}`,
           title: `Receber: ${s.product}`,
           text: (p, m) => {
-            if ('late' in p) return who ? `Cobrança atrasada: ${who} ainda não pagou ${what(m)}` : `Cobrança atrasada: ${what(m)}`
+            if ('late' in p) return who ? `${who} ainda não pagou ${what(m)} (venceu)` : `Venceu: ${what(m)} ainda não recebido`
             return who ? `${who} precisa pagar ${what(m)} ${rel(p)}` : `Receber ${what(m)} ${rel(p)}`
           },
           url: `#/sales?open=${s.id}`,
@@ -949,7 +962,7 @@ function appNotices(data: DataState, now: Date): (Omit<Occurrence, 'title' | 'bo
       out.push({ key: `run:${r.id}:awaiting`, kind: 'app', at, safeTitle: 'Regra aguardando confirmação', detail: text, plain: text, url: pendingUrl, source: `automationRuns:${r.id}` })
     }
     if (r.notice && !r.notice.seenAt) {
-      out.push({ key: `run:${r.id}:notice`, kind: 'app', at, safeTitle: r.notice.kind === 'review' ? 'Revisão pedida por uma regra' : `Aviso da regra ${name}`, detail: r.notice.text, plain: r.notice.text, url: pendingUrl, source: `automationRuns:${r.id}` })
+      out.push({ key: `run:${r.id}:notice`, kind: 'app', at, safeTitle: r.notice.kind === 'review' ? 'Revisão pedida por uma regra' : `Aviso da regra ${name}`, detail: `Regra ${quote(name)}: ${r.notice.text}`, plain: `Regra ${quote(name)}: ${r.notice.text}`, url: pendingUrl, source: `automationRuns:${r.id}` })
     }
     const failed = (r.actions ?? []).filter((a) => !a.ok && !a.undone && !(a.attempts ?? []).some((x) => x.ok))
     if (r.automation === 'rule' && failed.length) {
@@ -1041,7 +1054,7 @@ export function buildSeries(data: DataState, settings: Settings, opts: { now?: D
     for (const t of data.tasks) {
       if (t.status === 'done' || !t.dueDate) continue
       const time = t.dueTime && isTime(t.dueTime) ? t.dueTime : undefined
-      const it: Item = { kind: 'tasks', prefix: `task:${t.id}`, title: t.title, text: (p) => ('at' in p && time ? `Agora: ${t.title}` : `${t.title} — ${rel(p, time)}`), url: `#/tasks?open=${t.id}`, alerts: t.alerts, off: t.alertsOff }
+      const it: Item = { kind: 'tasks', prefix: `task:${t.id}`, title: t.title, text: (p) => whenText(t.title, p, time), url: `#/tasks?open=${t.id}`, alerts: t.alerts, off: t.alertsOff }
       single(it, t.dueDate, time ? timedSpecs(prefs.kinds.tasks, time, validAlerts(t.alerts)) : datedSpecs(prefs.kinds.tasks, validAlerts(t.alerts)))
     }
   }
@@ -1049,7 +1062,7 @@ export function buildSeries(data: DataState, settings: Settings, opts: { now?: D
     for (const e of data.events ?? []) {
       if (!e.date || e.date < today) continue
       const time = isTime(e.start) ? e.start : undefined
-      const it: Item = { kind: 'events', prefix: `event:${e.id}`, title: e.title, text: (p) => ('at' in p && time ? `Agora: ${e.title}` : `${e.title} — ${rel(p, time)}`), url: `#/agenda?open=${e.id}`, alerts: e.alerts, off: e.alertsOff }
+      const it: Item = { kind: 'events', prefix: `event:${e.id}`, title: e.title, text: (p) => whenText(e.title, p, time), url: `#/agenda?open=${e.id}`, alerts: e.alerts, off: e.alertsOff }
       single(it, e.date, time ? timedSpecs(prefs.kinds.events, time, validAlerts(e.alerts)) : datedSpecs(prefs.kinds.events, validAlerts(e.alerts)))
     }
   }

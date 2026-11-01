@@ -27,7 +27,8 @@ describe('lembretes da etapa 8', () => {
       ['recurring:r1:2026-11-05:2:09:00', '2026-11-03T09:00:00.000Z'],
       ['recurring:r1:2026-11-05:0:09:00', '2026-11-05T09:00:00.000Z'],
     ])
-    expect(occ[0].title).toBe('Conta: Pagar aluguel')
+    // Título = o app; a mensagem diz o quê e quando.
+    expect([occ[0].title, occ[0].body]).toEqual(['Núcleo', 'Pagar aluguel em 2 dias'])
   })
 
   it('hábito com horário lembra antes; já feito no dia não lembra', () => {

@@ -282,10 +282,10 @@ describe('dinheiro: a pagar e a receber', () => {
     const occ = buildOccurrences(data, on(), { now: NOW })
     const pay = occ.find((o) => o.kind === 'payments')!
     const rec = occ.find((o) => o.kind === 'receivables')!
-    expect(pay.title).toBe('Pagar: Figma')
+    expect([pay.title, rec.title]).toEqual(['Núcleo', 'Núcleo'])
     expect(pay.detail).toBe('A assinatura Figma de US$ 15,00 vence em 2 dias')
     expect(pay.plain).toBe('A assinatura Figma vence em 2 dias')
-    expect(rec).toMatchObject({ title: 'Receber: Bolo', plain: 'Maria precisa pagar o restante de Bolo amanhã' })
+    expect(rec).toMatchObject({ title: 'Núcleo', plain: 'Maria precisa pagar o restante de Bolo amanhã' })
     expect(rec.detail).toBe('Maria precisa pagar os R$ 300,00 restantes de Bolo amanhã')
     // Padrão (Sem valores): específico na tela bloqueada, sem dinheiro.
     expect([pay.body, rec.body]).toEqual([pay.plain, rec.plain])

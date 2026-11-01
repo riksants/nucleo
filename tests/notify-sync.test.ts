@@ -279,5 +279,7 @@ describe('envio, histórico e marcas', () => {
       await new Promise((r) => setTimeout(r, 1100))
     }
     await expect(as(A, 'select send_test_notification()')).rejects.toThrow(/quota_exceeded:notifications.test/)
+    const t = (await db.query<{ title: string; body: string }>(`select title, body from scheduled_notifications where origin = 'test' limit 1`)).rows[0]
+    expect(t).toEqual({ title: 'Núcleo', body: 'Teste' })
   }, 30_000)
 })

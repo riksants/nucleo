@@ -66,7 +66,7 @@ try {
   }
   await b.mobile()
 
-  await row('Agora: Ligar para o contador')
+  await row('Ligar para o contador às')
   let d = await dialog()
   r.check('detalhe: quando, origem, situação e explicação', d.includes('Quando') && d.includes('Origem') && d.includes('Situação') && d.includes('Apareceu dentro do Núcleo'))
   r.check('detalhe oferece abrir, ajustar, marcar, dispensar e silenciar', ['Abrir', 'Ajustar lembrete', 'Marcar como lida', 'Dispensar', 'Silenciar'].every((x) => d.includes(x)))
@@ -75,7 +75,7 @@ try {
   text = await b.text()
   r.check('marcar como lida zera as não lidas', text.includes('Tudo lido') && text.includes('Anteriores'))
 
-  await row('Agora: Ligar para o contador')
+  await row('Ligar para o contador às')
   await clickIn('Dispensar')
   await b.sleep(600)
   text = await b.text()

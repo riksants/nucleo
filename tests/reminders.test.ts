@@ -33,8 +33,11 @@ describe('lembretes', () => {
 
   it('na tela bloqueada: específico por padrão; discreto só quando escolhido', () => {
     const [o] = buildOccurrences({ ...empty(), tasks: [task({})] }, on(['tasks']), { now: NOW })
-    expect(o.title).toBe('Dentista')
-    expect(o.body).toContain('Dentista')
+    // iPhone: "Núcleo" como título e a mensagem específica (nome e horário), sem "Agora:" nem repetição.
+    expect(o.title).toBe('Núcleo')
+    expect(o.body).toBe('Dentista hoje às 15:00')
+    const [now] = buildOccurrences({ ...empty(), tasks: [task({})] }, { ...on(['tasks']), reminders: { ...on(['tasks']).reminders!, on: true, when: 'at' } }, { now: NOW })
+    expect([now.title, now.body]).toEqual(['Núcleo', 'Dentista às 15:00'])
     const s = on(['tasks'])
     const [d] = buildOccurrences({ ...empty(), tasks: [task({})] }, { ...s, reminders: { ...s.reminders!, privacy: 'discreet' } }, { now: NOW })
     expect(d.title).toBe('Núcleo')
@@ -105,16 +108,25 @@ describe('envio de push', () => {
     ])
     const group = msgs.find((m) => m.rows.length > 1)!
     expect(group.rows.map((r) => r.key)).toEqual(['a', 'b'])
-    expect(group.payload.title).toBe('Núcleo · 2 lembretes')
-    expect(group.payload.body).toBe('T a: B a\nT b: B b')
+    expect(group.payload.title).toBe('Núcleo')
+    expect(group.payload.body).toBe('2 lembretes\n• T a: B a\n• T b: B b')
     expect(group.payload.url).toBe('#/notifications?at=2026-11-10T08%3A00%3A00.000Z')
     expect(msgs.filter((m) => m.rows.length === 1).map((m) => m.rows[0].key).sort()).toEqual(['mine', 'notice', 'other-minute', 'other-user'])
     // Linhas antigas (servidor sem as colunas novas): tudo sozinho, como antes.
     expect(compose([{ user_id: 'u1', key: 'x', title: 't', body: 'b', url: '' }, { user_id: 'u1', key: 'y', title: 't', body: 'b', url: '' }])).toHaveLength(2)
     // Muitos: 4 linhas e o resto indicado na central.
     const many = compose(['1', '2', '3', '4', '5', '6'].map((k) => row(k)))
-    expect(many[0].payload.body.split('\n')).toHaveLength(5)
+    expect(many[0].payload.body.split('\n')).toHaveLength(6)
     expect(many[0].payload.body).toContain('+ 2 na central')
+  })
+
+  it('aviso antigo ainda na fila (título específico) sai com "Núcleo" sem perder o nome do item', () => {
+    const [legacy] = compose([row('x', { custom: true, title: 'Pagar: Spotify', body: 'Cobrança de Spotify hoje' })])
+    expect(legacy.payload).toMatchObject({ title: 'Núcleo', body: 'Pagar: Spotify: Cobrança de Spotify hoje' })
+    const [already] = compose([row('y', { custom: true, title: 'teste', body: 'Agora: teste' })])
+    expect(already.payload).toMatchObject({ title: 'Núcleo', body: 'Agora: teste' })
+    const [fresh] = compose([row('z', { custom: true, title: 'Núcleo', body: 'Teste' })])
+    expect(fresh.payload).toMatchObject({ title: 'Núcleo', body: 'Teste' })
   })
 
   it('guarda o resultado de cada lembrete (enviado ao serviço, falhou, sem aparelho)', async () => {

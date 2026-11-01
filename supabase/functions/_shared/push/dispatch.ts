@@ -60,6 +60,15 @@ export interface Message {
 
 const MAX_LINES = 4
 
+/**
+ * One reminder: the app as the title, the message as the body. Rows written by an older app version
+ * still carry the item as the title ("Pagar: Spotify"): it moves into the body unless the body already says it.
+ */
+function single(row: DueRow): { title: string; body: string } {
+  if (!row.title || row.title === 'Núcleo') return { title: 'Núcleo', body: row.body }
+  return { title: 'Núcleo', body: row.body.includes(row.title) ? row.body : `${row.title}: ${row.body}` }
+}
+
 /** Groups what can be grouped; the rest goes alone, in the order it was claimed. */
 export function compose(due: DueRow[]): Message[] {
   const out: Message[] = []
@@ -67,7 +76,7 @@ export function compose(due: DueRow[]): Message[] {
   for (const row of due) {
     const groupable = row.custom === false && row.kind !== 'app' && !!row.fire_at
     if (!groupable) {
-      out.push({ user_id: row.user_id, rows: [row], payload: { title: row.title, body: row.body, url: row.url, key: row.key } })
+      out.push({ user_id: row.user_id, rows: [row], payload: { ...single(row), url: row.url, key: row.key } })
       continue
     }
     const minute = new Date(row.fire_at!).toISOString().slice(0, 16)
@@ -78,19 +87,20 @@ export function compose(due: DueRow[]): Message[] {
     const [user_id, minute] = id.split('|')
     if (rows.length === 1) {
       const [row] = rows
-      out.push({ user_id, rows, payload: { title: row.title, body: row.body, url: row.url, key: row.key } })
+      out.push({ user_id, rows, payload: { ...single(row), url: row.url, key: row.key } })
       continue
     }
-    // Each line is that reminder's own lock-screen text (already following the privacy choice).
-    const lines = rows.map((r) => (r.title && r.title !== 'Núcleo' ? `${r.title}: ${r.body}` : r.body))
-    const shown = lines.slice(0, MAX_LINES)
+    // Title: the app. Body: how many, then each reminder's own message (already following the privacy
+    // choice). Rows written by older app versions may still carry a specific title: shown once.
+    const lines = rows.map((r) => (r.title && r.title !== 'Núcleo' && !r.body.includes(r.title) ? `${r.title}: ${r.body}` : r.body))
+    const shown = lines.slice(0, MAX_LINES).map((l) => `• ${l}`)
     if (lines.length > MAX_LINES) shown.push(`+ ${lines.length - MAX_LINES} na central`)
     out.push({
       user_id,
       rows,
       payload: {
-        title: `Núcleo · ${rows.length} lembretes`,
-        body: shown.join('\n'),
+        title: 'Núcleo',
+        body: [`${rows.length} lembretes`, ...shown].join('\n'),
         url: `#/notifications?at=${encodeURIComponent(`${minute}:00.000Z`)}`,
         key: `group:${minute}`,
       },
