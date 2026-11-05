@@ -14,6 +14,9 @@ import { CONSENT_VERSION, type ErrorCode, type StopReason, type TurnError, type 
 import { TOOL_AREA, type Area, type ToolName } from '../../../../supabase/functions/_shared/ia/tools.ts'
 import type { DataState, Settings } from '../../../data/types'
 import { remember, topicsOf, type Conversation } from './conversation'
+import { runActionsTool } from './actions/tool'
+import type { Plan } from './actions/plan'
+import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.ts'
 import { runLookup } from './lookups'
 
 export type Transport = (body: TurnRequest) => Promise<{ ok: true; data: TurnResponse } | { ok: false; status: number; error: TurnError }>
@@ -44,6 +47,10 @@ export type IaAnswer =
       costMicros: number
       stop: StopReason
       conversation: Conversation
+      /** The last plan the model proposed in this turn (shown as an editable preview). */
+      plan: Plan | null
+      /** The answer says a preview/change was prepared, but no plan was built: the screen says so (nothing will be written). */
+      claimedPlanWithoutOne: boolean
     }
   | { kind: 'error'; code: ErrorCode | 'session'; message: string; conversation: Conversation | null }
 
@@ -73,10 +80,13 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   if (!(await sessionOk())) return { kind: 'error', code: 'session', message: 'A conta conectada mudou. A conversa foi encerrada.', conversation: null }
 
   const book = new FactBook()
+  const id = (deps.newTurnId ?? turnId)()
+  // a holder: the plan is set inside the lookups callback
+  const proposed: { plan: Plan | null; count: number } = { plan: null, count: 0 }
   const lookups: { tool: string; args: Record<string, unknown>; about?: string[] }[] = []
   let res = await deps.transport({
     kind: 'start',
-    turnId: (deps.newTurnId ?? turnId)(),
+    turnId: id,
     text,
     today: deps.today,
     timeZone: deps.timeZone,
@@ -94,12 +104,21 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     if (body.kind === 'answer') {
       const r = renderAnswer(body.text, book.all)
       const next = remember(conversation, text, historyText(r.segments), lookups)
-      return { kind: 'answer', segments: r.segments, facts: [...book.all.values()], blocked: r.blocked, route: body.route, model: body.model, costMicros: body.costMicros, stop: body.stop, conversation: next }
+      const plan = proposed.plan
+      // the history says a preview is waiting, so "confirma" / "muda a data" are understood next
+      const conv = plan ? remember(next, '(prévia de alterações mostrada)', `Prévia com ${plan.items.length} ${plan.items.length === 1 ? 'item' : 'itens'}, aguardando a pessoa confirmar ou editar na tela. Nada foi gravado ainda.`) : next
+      return { kind: 'answer', segments: r.segments, facts: [...book.all.values()], blocked: r.blocked, route: body.route, model: body.model, costMicros: body.costMicros, stop: body.stop, conversation: conv, plan, claimedPlanWithoutOne: !plan && claimsPlan(body.text) }
     }
     // Lookups requested: same account still signed in, then run them over the freshest data.
     if (!(await sessionOk())) return { kind: 'error', code: 'session', message: 'A conta conectada mudou. A conversa foi encerrada.', conversation: null }
     const { data, settings } = deps.snapshot()
     const results = body.calls.map((call) => {
+      if (call.name === ACTION_TOOL) {
+        deps.onStatus?.('Preparando a prévia…')
+        const r = runActionsTool(call.input, { data, settings, now: deps.now(), areasOff: deps.areasOff, uid: conversation.uid, planId: `${id}${++proposed.count}`, book })
+        if (r.plan) proposed.plan = r.plan
+        return { id: call.id, content: r.content, isError: r.isError }
+      }
       const area = TOOL_AREA[call.name as ToolName]
       if (area) deps.onStatus?.(STATUS_TEXT[area])
       const r = runLookup(call.name, call.input, { data, settings, now: deps.now(), book, areasOff: deps.areasOff })
@@ -109,4 +128,9 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     res = await deps.transport({ kind: 'continue', envelope: body.envelope, results })
   }
   return { kind: 'error', code: 'upstream', message: 'A IA não concluiu a resposta.', conversation }
+}
+
+/** "Preparei a prévia…", "Preparei a reserva…" — an answer that speaks of a prepared change. */
+export function claimsPlan(text: string): boolean {
+  return /\b(preparei|montei)\b|\bprévia\b|confirm(e|ar) na tela/i.test(text)
 }

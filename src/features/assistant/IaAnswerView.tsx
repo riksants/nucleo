@@ -14,13 +14,13 @@ const ROUTE_LABEL: Record<string, string> = { rapida: 'Resposta rápida', atenta
 
 function FactChip({ fact, shown }: { fact: Fact; shown?: string }) {
   const seal =
-    fact.seal === 'previsto' ? (
+    fact.seal === 'proposto' ? null : fact.seal === 'previsto' ? (
       <Clock3 size={14} strokeWidth={2.4} aria-label="previsão" />
     ) : fact.seal === 'ausente' ? null : (
       <Check size={14} strokeWidth={2.6} aria-label="confirmado" />
     )
-  const tone = fact.seal === 'previsto' ? 'text-soft italic' : fact.seal === 'ausente' ? 'text-faint' : 'text-ink font-medium'
-  const title = `${fact.label}${fact.seal === 'previsto' ? ' — previsão' : fact.seal === 'ausente' ? ' — não encontrado' : ' — confirmado'}${fact.base ? ` (${fact.base})` : ''}`
+  const tone = fact.seal === 'proposto' ? 'text-ink' : fact.seal === 'previsto' ? 'text-soft italic' : fact.seal === 'ausente' ? 'text-faint' : 'text-ink font-medium'
+  const title = `${fact.label}${fact.seal === 'proposto' ? ' — na prévia, ainda não gravado' : fact.seal === 'previsto' ? ' — previsão' : fact.seal === 'ausente' ? ' — não encontrado' : ' — confirmado'}${fact.base ? ` (${fact.base})` : ''}`
   const body = (
     <>
       {shown ?? fact.display}

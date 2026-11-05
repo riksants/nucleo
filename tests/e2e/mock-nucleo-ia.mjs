@@ -4,6 +4,7 @@
 import { continueTurn, startTurn } from '../../supabase/functions/_shared/ia/engine.ts'
 import { costMicros } from '../../supabase/functions/_shared/ia/models.ts'
 import { TurnRequest } from '../../supabase/functions/_shared/ia/protocol.ts'
+import { blankAction } from '../../supabase/functions/_shared/ia/actions.ts'
 
 const SECRET = 'segredo-do-mock-com-mais-de-32-caracteres!!'
 export const iaLog = { requests: [], calls: [], spentMicros: 0 }
@@ -35,6 +36,7 @@ function fakeModel(params) {
       return say(items.length ? `Amanhã você tem: ${items.map((i) => `{${i.fato}}`).join(', ')}.` : 'Amanhã você não tem compromissos.')
     }
     if (r.metas) return say(`Para a meta ${r.metas[0].nome} faltam {${r.metas[0].falta.id}}.`)
+    if (r.previa_mostrada_na_tela) return say(`Preparei a prévia com ${r.itens.length} itens: confira, ajuste se quiser e confirme.`)
     return say('Pronto.')
   }
   const text = typeof last.content === 'string' ? last.content : ''
@@ -45,6 +47,22 @@ function fakeModel(params) {
     const f = ctx.consultas_recentes.find((c) => c.tool === 'resumo_financeiro')
     if (!f) return say('Do que você está falando?')
     return use('resumo_financeiro', { ...f.args, referencia: prevMonth(ctx.hoje) })
+  }
+  // like the real run: the model SAYS it prepared a change without calling the tool
+  if (q.startsWith('guarda')) return say('Preparei a reserva para a meta. Confira na tela e confirme.')
+  if (q.startsWith('fechei')) {
+    const d = (n) => new Date(Date.parse(ctx.hoje) + n * 86400000).toISOString().slice(0, 10)
+    return use('propor_acoes', {
+      resumo: 'Venda do site da Clínica Nova com projeto e tarefas',
+      acoes: [
+        blankAction('a1', 'criar_cliente', { pessoa: 'Clínica Nova' }),
+        blankAction('a2', 'criar_projeto', { titulo: 'Site Clínica Nova', pessoa: 'Clínica Nova', depende_de: ['a1'] }),
+        blankAction('a3', 'criar_venda', { titulo: 'Site', pessoa: 'Clínica Nova', valor: 2400, data: ctx.hoje, entrada_recebida: 1200, ja_recebido_ou_pago: true, depende_de: ['a1'] }),
+        blankAction('a4', 'criar_tarefa', { titulo: 'Briefing', data: d(5), depende_de: ['a2'] }),
+        blankAction('a5', 'criar_tarefa', { titulo: 'Entrega', data: d(9), depende_de: ['a2'] }),
+        blankAction('a6', 'criar_tarefa', { titulo: 'Cobrar a segunda parte', data: d(30), lembrete_minutos: 0 }),
+      ],
+    })
   }
   if (q.includes('meta')) return use('metas_financeiras', { nome: null })
   return say('Posso consultar sua agenda, finanças e metas.')

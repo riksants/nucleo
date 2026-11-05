@@ -1,19 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import { projectClientPlan } from '../core/automation/projectClient'
 import type { BatchOp } from './repository'
-import {
-  allReceipts,
-  belongsToProject,
-  belongsToSale,
-  buyerNameOf,
-  missingReceipts,
-  projectReceipts,
-  receiptOps,
-  receiptTransaction,
-  receiptTxId,
-  saleReceipts,
-  unlinkOps,
-} from './receipts'
+import { allReceipts, belongsToProject, belongsToSale, missingReceipts, receiptTransaction, unlinkOps } from './receipts'
+import { projectSaveOps, saleSaveOps } from './saveOps'
 import { useStore } from './store'
 import type { Project, ReceiptSource, Sale } from './types'
 
@@ -30,13 +18,7 @@ export function useReceipts() {
    */
   const saveProject = useCallback(
     async (next: Project) => {
-      const before = data.projects.find((p) => p.id === next.id)
-      const ops: BatchOp[] = [
-        { op: 'put', collection: 'projects', item: next },
-        ...receiptOps(before ? projectReceipts(before) : [], projectReceipts(next), data.transactions, { settings, convert }),
-        ...(projectClientPlan(before, next, data, settings, new Date())?.ops ?? []),
-      ]
-      await commit(ops)
+      await commit(projectSaveOps(next, data, settings, { settings, convert }))
       return next
     },
     [data, settings, convert, commit],
@@ -46,20 +28,9 @@ export function useReceipts() {
   const saveSales = useCallback(
     async (changed: Sale[]) => {
       if (!changed.length) return
-      const ids = new Set(changed.map((s) => s.id))
-      const current = data.sales
-      const merged = [...current.filter((s) => !ids.has(s.id)), ...changed]
-      // Only the incomes of payments in these sales (a general payment counts all its pieces).
-      const touched = new Set<string>()
-      for (const s of [...changed, ...current.filter((x) => ids.has(x.id))]) {
-        for (const p of s.payments) if (p.finance) touched.add(p.generalId ? receiptTxId('general', p.generalId) : receiptTxId('sale', p.id))
-      }
-      const nameOf = buyerNameOf(data.clients)
-      const before = saleReceipts(current, nameOf).filter((r) => touched.has(r.txId))
-      const after = saleReceipts(merged, nameOf).filter((r) => touched.has(r.txId))
-      await commit([...changed.map((s): BatchOp => ({ op: 'put', collection: 'sales', item: s })), ...receiptOps(before, after, data.transactions, { settings, convert })])
+      await commit(saleSaveOps(changed, data, { settings, convert }))
     },
-    [data.sales, data.clients, data.transactions, settings, convert, commit],
+    [data, settings, convert, commit],
   )
 
   /** Incomes in Financeiro linked to a project/sale (shown before deleting it). */

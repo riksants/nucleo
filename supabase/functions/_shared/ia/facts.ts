@@ -7,7 +7,11 @@
  * failure (quality tests require zero).
  */
 
-export type Seal = 'confirmado' | 'previsto' | 'ausente'
+/** proposto: a value of a preview (Etapa 3) — what WILL be written if the person confirms. */
+export type Seal = 'confirmado' | 'previsto' | 'ausente' | 'proposto'
+/** What stands for a value in the history (the model is told it is a deliberate omission, not an error). */
+export const HISTORY_VALUE = '(valor omitido do histórico)'
+
 export type FactKind = 'dinheiro' | 'data' | 'horario' | 'compromisso' | 'contagem' | 'porcentagem' | 'texto'
 
 export interface Fact {
@@ -105,7 +109,8 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   if (dm) {
     return all.find((f) => (f.kind === 'data' || f.kind === 'compromisso') && f.display.includes(dm!) && (!year || !/\/\d{4}/.test(f.display) || f.display.includes(`${dm}/${year}`))) ?? null
   }
-  if (/^\d{1,2}:\d{2}$/.test(lit)) return all.find((f) => f.kind === 'compromisso' && f.display.includes(lit.padStart(5, '0'))) ?? null
+  if (/^\d{1,2}:\d{2}$/.test(lit)) return all.find((f) => (f.kind === 'compromisso' || f.kind === 'horario') && f.display.includes(lit.padStart(5, '0'))) ?? null
+  if (/^\d{1,2}\s?horas?$/i.test(lit)) return all.find((f) => (f.kind === 'contagem' || f.kind === 'texto') && squash(f.display) === q) ?? null
   if (/^\d{4,}$/.test(lit)) return all.find((f) => f.kind === 'contagem' && new RegExp(`(^|\\D)${lit}(\\D|$)`).test(f.display.replace(/\./g, ''))) ?? null
   return null
 }
@@ -117,8 +122,10 @@ export function renderAnswer(text: string, facts: ReadonlyMap<string, Fact>): { 
   const missing: string[] = []
   const used: string[] = []
   const pushText = (raw: string) => {
-    // stray braces left around a reference never show
-    const s = raw.replace(/[{}]/g, '')
+    // stray braces left around a reference never show; nor the history marker, if the model copies it
+    const s0 = raw.replace(/[{}]/g, '')
+    if (s0.includes(HISTORY_VALUE)) blocked.push(HISTORY_VALUE)
+    const s = s0.split(HISTORY_VALUE).join('')
     if (!s) return
     let last = 0
     for (const m of s.matchAll(GUARDED)) {
@@ -196,9 +203,6 @@ export function plainLine(s: string): string {
  * The answer as kept in the conversation history: money, dates, times and percentages become HISTORY_VALUE.
  * Old numbers may have changed and must never be reused — a follow-up looks them up again.
  */
-/** What stands for a value in the history (the model is told it is a deliberate omission, not an error). */
-export const HISTORY_VALUE = '(valor omitido do histórico)'
-
 export function historyText(segments: Segment[]): string {
   return segments
     .map((s) => (s.t === 'text' ? s.s : s.t === 'fact' ? (s.fact.kind === 'texto' || s.fact.kind === 'contagem' || s.fact.kind === 'compromisso' ? (s.shown ?? s.fact.display) : HISTORY_VALUE) : HISTORY_VALUE))

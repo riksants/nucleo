@@ -113,7 +113,7 @@ try {
   r.check('sugestão marcada como sugestão', a[0]?.suggestion === true)
   r.check('rota rápida (Haiku) e botão "Analisar a fundo"', a[0]?.route === 'rapida' && /Analisar a fundo/.test(a[0]?.text))
   let log = await ia()
-  r.check('servidor: Haiku 5.5, esforço baixo, 14 consultas + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 15)
+  r.check('servidor: Haiku 5.5, esforço baixo, 14 consultas + ações + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 16)
   r.check('o app enviou só a pergunta, histórico e foco — nenhum registro no início', !JSON.stringify(log.requests.at(-2) ?? {}).includes('Continente'))
 
   // 2) Follow-up without repeating the subject.
@@ -147,6 +147,86 @@ try {
   r.check('turno de uma conta não continua com o login de outra (409)', start.kind === 'tools' && cont.status === 409)
   const anon = await fetch(MOCK + '/functions/v1/nucleo-ia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'start' }) })
   r.check('sem login: 401', anon.status === 401)
+
+  // 6) Actions (Etapa 3): a multi-area plan, preview, dependencies, edit, double confirm, server state, undo, repeat.
+  const plans = () => B.eval(`[...document.querySelectorAll('[data-ia-plan]')].map(p => ({ state: p.dataset.planState, items: [...p.querySelectorAll('[data-plan-item]')].map(i => ({ ref: i.dataset.planItem, state: i.dataset.itemState, on: i.querySelector('[role=checkbox]')?.getAttribute('aria-checked') ?? 'existente' })) }))`)
+  const clickIn = (ref, sel) => B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); const el = ps[ps.length - 1].querySelector('[data-plan-item="${ref}"] ${sel}'); if (!el) return false; el.click(); return true })()`)
+  // The sections this plan touches must be visible (an action in a hidden section is refused, by design):
+  // turn them on the way a person would, through the account settings (synced), then reload.
+  {
+    const cur = (await (await fetch(MOCK + '/__state')).json()).settings.find(([u]) => u === uid)?.[1]?.data
+    const modules = { ...(cur?.modules ?? {}), clients: true, projects: true, sales: true, tasks: true, finance: true }
+    await fetch(MOCK + '/rest/v1/user_settings', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ user_id: uid, data: { ...cur, modules }, client_updated_at: new Date(Date.now() + 60_000).toISOString() }]) })
+    await B.goto(BASE + '?r=6#/assistant')
+    await B.sleep(3000)
+  }
+  const nBefore = (await answers(B)).length
+  const recordsBefore = (await (await fetch(MOCK + '/__state')).json()).records.filter((x) => x.user_id === uid && !x.deleted)
+  await ask(B, 'fechei o site da Clínica Nova por 2400, metade já recebi, cria o projeto, as tarefas e me lembra de cobrar')
+  await waitAnswers(B, nBefore + 1)
+  await B.eval(`document.querySelectorAll('[data-ia-plan]')[document.querySelectorAll('[data-ia-plan]').length - 1].scrollIntoView({ block: 'start' })`)
+  await B.shot('nucleo-ia-plano')
+  let pl = (await plans()).at(-1)
+  r.check('prévia com 6 itens, todos prontos e marcados', pl?.items.length === 6 && pl.items.every((i) => i.state === 'pronto' && i.on === 'true'), JSON.stringify(pl) + ' ' + (await B.eval(`[...document.querySelectorAll('[data-ia-plan]')].at(-1)?.innerText ?? ''`)).slice(0, 400))
+  const recordsPreview = (await (await fetch(MOCK + '/__state')).json()).records.filter((x) => x.user_id === uid && !x.deleted)
+  r.check('a prévia não grava nada', recordsPreview.length === recordsBefore.length)
+  await clickIn('a1', '[role=checkbox]')
+  await B.sleep(300)
+  pl = (await plans()).at(-1)
+  r.check('desmarcar o cliente desmarca projeto, venda e tarefas dependentes', ['a1', 'a2', 'a3', 'a4', 'a5'].every((x) => pl.items.find((i) => i.ref === x).on === 'false') && pl.items.find((i) => i.ref === 'a6').on === 'true')
+  await clickIn('a4', '[role=checkbox]')
+  await B.sleep(300)
+  pl = (await plans()).at(-1)
+  r.check('marcar uma tarefa marca o projeto e o cliente de que ela precisa', ['a1', 'a2', 'a4'].every((x) => pl.items.find((i) => i.ref === x).on === 'true'))
+  // a3 (venda) and a5 (Entrega) stay unticked from the step above
+  r.check('venda e Entrega continuam desmarcadas', ['a3', 'a5'].every((x) => pl.items.find((i) => i.ref === x).on === 'false'))
+  // edit: Briefing gets a new title
+  await clickIn('a4', 'button:not([role=checkbox])')
+  await B.sleep(200)
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); const el = ps[ps.length - 1].querySelector('[data-plan-item="a4"] input[type=text]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el, 'Briefing com a Clínica'); el.dispatchEvent(new Event('input',{bubbles:true})) })()`)
+  await B.sleep(300)
+  r.check('edição na prévia atualiza o item', /Briefing com a Clínica/.test(await B.eval(`[...document.querySelectorAll('[data-plan-item="a4"]')].at(-1).innerText`)))
+  // two taps on Confirmar
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); const b = [...ps[ps.length - 1].querySelectorAll('button')].find(x => /^Confirmar/.test(x.textContent)); b.click(); b.click() })()`)
+  await B.sleep(1500)
+  pl = (await plans()).at(-1)
+  r.check('confirmado: estado aplicado', pl?.state === 'applied', JSON.stringify(pl))
+  await B.sleep(3500)
+  const st6 = await (await fetch(MOCK + '/__state')).json()
+  const mine = st6.records.filter((x) => x.user_id === uid && !x.deleted)
+  const fromPlan = mine.filter((x) => String(x.id).startsWith('ia-') || (x.collection === 'transactions' && String(x.id).includes('ia-')))
+  const count6 = (c) => fromPlan.filter((x) => x.collection === c).length
+  r.check('no servidor: 1 cliente, 1 projeto, 2 tarefas (venda e Entrega desmarcadas) — nada duplicado pelo duplo toque', count6('clients') === 1 && count6('projects') === 1 && count6('tasks') === 2 && count6('sales') === 0, JSON.stringify(fromPlan.map((x) => x.collection)))
+  r.check('tarefa editada gravada com o título novo e ligada ao projeto', mine.some((x) => x.collection === 'tasks' && x.data.title === 'Briefing com a Clínica' && String(x.data.projectId).startsWith('ia-')))
+  r.check('registros marcados "Alterado pelo Assistente"', fromPlan.every((x) => x.data.changedBy === 'assistant'))
+  // undo everything
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); const b = [...ps[ps.length - 1].querySelectorAll('button')].find(x => /Desfazer tudo/.test(x.textContent)); b.click() })()`)
+  await B.sleep(4000)
+  const st7 = await (await fetch(MOCK + '/__state')).json()
+  r.check('desfazer remove tudo o que o plano criou (também no servidor)', st7.records.filter((x) => x.user_id === uid && !x.deleted && String(x.id).startsWith('ia-')).length === 0)
+  // the full plan this time, with the sale and its down payment
+  const n8 = (await answers(B)).length
+  await ask(B, 'fechei o site da Clínica Nova por 2400, metade já recebi, cria o projeto, as tarefas e me lembra de cobrar')
+  await waitAnswers(B, n8 + 1)
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); [...ps[ps.length - 1].querySelectorAll('button')].find(x => /^Confirmar/.test(x.textContent)).click() })()`)
+  await B.sleep(5000)
+  const st8 = await (await fetch(MOCK + '/__state')).json()
+  const sale8 = st8.records.filter((x) => x.user_id === uid && !x.deleted && x.collection === 'sales' && String(x.id).startsWith('ia-'))
+  const inc8 = st8.records.filter((x) => x.user_id === uid && !x.deleted && x.collection === 'transactions' && x.data.source?.kind === 'sale' && String(x.data.source.parentId).startsWith('ia-'))
+  r.check('venda com entrada recebida: 1 venda, 1 pagamento e exatamente 1 entrada no Financeiro', sale8.length === 1 && sale8[0].data.payments.length === 1 && inc8.length === 1 && inc8[0].data.amount === 120000, JSON.stringify({ s: sale8.length, i: inc8.length }))
+  // the same request again: the client is reused, the rest comes unticked as a likely duplicate
+  const n9 = (await answers(B)).length
+  await ask(B, 'fechei o site da Clínica Nova por 2400, metade já recebi, cria o projeto, as tarefas e me lembra de cobrar')
+  await waitAnswers(B, n9 + 1)
+  pl = (await plans()).at(-1)
+  r.check('pedido repetido: cliente reaproveitado, venda/projeto/tarefas desmarcados como prováveis duplicados', pl.items.find((i) => i.ref === 'a1').state === 'existente' && ['a2', 'a3', 'a4', 'a5'].every((x) => pl.items.find((i) => i.ref === x).on === 'false'), JSON.stringify(pl.items))
+
+  // An answer that claims a preview without one: the screen says nothing will be written.
+  const n10 = (await answers(B)).length
+  await ask(B, 'guarda 300 na meta da viagem')
+  await waitAnswers(B, n10 + 1)
+  await B.sleep(300)
+  r.check('resposta que fala em prévia sem plano: aviso "nada será gravado" e nenhuma prévia', (await B.eval(`!!document.querySelector('[data-no-plan]')`)) && (await plans()).length === (await B.eval(`document.querySelectorAll('[data-ia-plan]').length`)))
 
   // 6) Privacy per area: turn Finanças off in the Assistant; the AI can no longer read it.
   await B.click('Privacidade da IA')

@@ -28,6 +28,8 @@ import { useSession } from '../account/session'
 import { currentUid, iaTransport, NUCLEO_IA } from './iaApi'
 import { IaAnswerView, IaConsentCard, type IaShown } from './IaAnswerView'
 import { IaPrivacySheet } from './IaPrivacySheet'
+import { IaPlanCard } from './IaPlanCard'
+import type { Plan } from '../../core/assistant/ia/actions/plan'
 
 interface Message {
   id: number
@@ -36,6 +38,10 @@ interface Message {
   reply?: Reply
   /** NÚCLEO IA answer. */
   ia?: IaShown
+  /** NÚCLEO IA: the plan proposed in that answer (editable preview, applied only on confirm). */
+  plan?: Plan | null
+  /** The answer spoke of a prepared change, but no preview was built. */
+  noPlan?: boolean
 }
 
 /** Conversation of this session only (memory, last 20 messages) — never saved or synced. */
@@ -196,7 +202,7 @@ export function AssistantPage() {
         }, opts)
         if (r.kind === 'answer') {
           iaConversation = r.conversation
-          push([{ from: 'nucleo', ia: { segments: r.segments, route: r.route, costMicros: r.costMicros, question } }])
+          push([{ from: 'nucleo', ia: { segments: r.segments, route: r.route, costMicros: r.costMicros, question }, plan: r.plan, noPlan: r.claimedPlanWithoutOne }])
         } else {
           iaConversation = r.conversation
           push([{ from: 'nucleo', reply: { lines: [r.message] } }])
@@ -292,6 +298,12 @@ export function AssistantPage() {
             ) : m.ia ? (
               <div key={m.id} className="max-w-full">
                 <IaAnswerView shown={m.ia} onDeep={(q) => ask(q, { deep: true })} />
+                {m.plan && <IaPlanCard plan={m.plan} />}
+                {m.noPlan && (
+                  <p className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-soft" role="alert" data-no-plan>
+                    Nenhuma prévia foi montada nesta resposta, então nada será gravado. Se quiser fazer essa alteração, peça de novo.
+                  </p>
+                )}
               </div>
             ) : (
               <div key={m.id} className="max-w-full">

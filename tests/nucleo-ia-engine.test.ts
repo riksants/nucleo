@@ -10,7 +10,7 @@ import { affordableMaxTokens, costMicros, maxCallMicros, MODELS } from '../supab
 import { TurnRequest, type StartRequest, type TurnResponse } from '../supabase/functions/_shared/ia/protocol'
 import { routeFor } from '../supabase/functions/_shared/ia/router'
 import { SYSTEM_PROMPT } from '../supabase/functions/_shared/ia/prompt'
-import { APP_TOOLS } from '../supabase/functions/_shared/ia/tools'
+import { APP_TOOLS, toolsFor } from '../supabase/functions/_shared/ia/tools'
 
 const SECRET = 'segredo-de-teste-com-mais-de-32-caracteres!'
 const A = '11111111-1111-4111-8111-111111111111'
@@ -118,8 +118,9 @@ describe('turno: resposta direta e consultas', () => {
     expect(out.body).toMatchObject({ kind: 'answer', route: 'rapida', model: 'claude-haiku-5-5', stop: 'end', steps: 1, text: 'Você não tem compromissos hoje.' })
     const p = h.calls[0]
     expect(p).toMatchObject({ model: 'claude-haiku-5-5', thinking: { type: 'adaptive' }, output_config: { effort: 'low' }, cache_control: { type: 'ephemeral' }, tool_choice: { type: 'auto' } })
-    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual([...APP_TOOLS, 'pedir_analise_profunda'])
-    expect((p.tools as { strict: boolean }[]).every((t) => t.strict)).toBe(true)
+    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual([...APP_TOOLS, 'propor_acoes', 'pedir_analise_profunda'])
+    // every lookup is strict; propor_acoes is not (API union limit) and is validated by the app
+    expect((p.tools as { name: string; strict: boolean }[]).filter((t) => !t.strict).map((t) => t.name)).toEqual(['propor_acoes'])
     expect(h.settles).toEqual([{ ok: true, costMicros: costMicros('haiku', USAGE), tools: [], model: 'haiku' }])
     expect((out.body as { costMicros: number }).costMicros).toBe(costMicros('haiku', USAGE))
   })
@@ -316,5 +317,24 @@ describe('escalada e orçamento', () => {
     const results = (h.calls[1].messages as { content: { tool_use_id: string; is_error?: boolean }[] }[]).at(-1)!.content
     expect(results.map((r) => r.tool_use_id).sort()).toEqual(['toolu_0', 'toolu_1', 'toolu_2', 'toolu_3', 'toolu_4', 'toolu_5', 'toolu_6', 'toolu_7'])
     expect(results.filter((r) => r.is_error).map((r) => r.tool_use_id).sort()).toEqual(['toolu_6', 'toolu_7'])
+  })
+
+  it('esquemas aceitos pela API: no máximo 16 campos opcionais nas ferramentas estritas e nenhum enum dentro de lista de tipos', () => {
+    for (const model of ['haiku', 'sonnet'] as const) {
+      const tools = toolsFor(model) as { strict: boolean; input_schema: unknown }[]
+      let unions = 0
+      const walk = (node: unknown, strict: boolean) => {
+        if (!node || typeof node !== 'object') return
+        const n = node as Record<string, unknown>
+        if (strict && (Array.isArray(n.type) || Array.isArray(n.anyOf))) unions++
+        expect(Array.isArray(n.type) && Array.isArray(n.enum), JSON.stringify(n)).toBe(false)
+        for (const v of Object.values(n)) {
+          if (Array.isArray(v)) v.forEach((x) => walk(x, strict))
+          else walk(v, strict)
+        }
+      }
+      for (const t of tools) walk(t.input_schema, t.strict)
+      expect(unions).toBeLessThanOrEqual(16)
+    }
   })
 })

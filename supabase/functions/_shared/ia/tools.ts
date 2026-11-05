@@ -7,6 +7,8 @@
  * They only read. Strict schemas: the model's arguments always match exactly.
  */
 
+import { ACTION_TOOL, ACTION_TOOL_DEF } from './actions.ts'
+
 export type ToolName =
   | 'consultar_agenda'
   | 'resumo_financeiro'
@@ -126,10 +128,11 @@ export const ESCALATE_DEF: ToolDef = def(
   { motivo: { type: 'string' } },
 )
 
-/** Tool list per model (fixed per model → cached). */
-export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, ESCALATE_DEF] : TOOL_DEFS)
+/** Tool list per model (fixed per model → cached). Lookups, then the action planner. */
+export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, ACTION_TOOL_DEF, ESCALATE_DEF] : [...TOOL_DEFS, ACTION_TOOL_DEF])
 
-export const isAppTool = (name: string): name is ToolName => (APP_TOOLS as string[]).includes(name)
+/** Run by the app: every lookup and the action planner (which only builds a preview). */
+export const isAppTool = (name: string): boolean => (APP_TOOLS as string[]).includes(name) || name === ACTION_TOOL
 
 /** Limits for what the app sends back for one lookup. */
 export const MAX_RESULT_CHARS = 12_000
