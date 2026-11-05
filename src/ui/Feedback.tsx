@@ -69,7 +69,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                 // Leaves faster than it came (the system answering, not the person deciding), the same way down.
                 exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(10px) scale(0.98)', transition: { duration: 0.15, ease: EASE_OUT_SOFT } }}
                 transition={{ duration: 0.22, ease: EASE_OUT_SOFT }}
-                className={`flex items-center gap-2.5 rounded-full border border-line-strong bg-elevated/95 py-2.5 pl-3 text-[15px] font-medium shadow-xl shadow-shade/50 backdrop-blur-md reduce-transparency:bg-elevated reduce-transparency:backdrop-blur-none ${toast.action ? 'pointer-events-auto pr-2.5' : 'pr-5'}`}
+                style={{ '--glass-base': 'var(--color-elevated)' } as React.CSSProperties}
+                className={`glass-smoke glass-panel flex items-center gap-2.5 rounded-full border border-line-strong py-2.5 pl-3 text-[15px] font-medium ${toast.action ? 'pointer-events-auto pr-2.5' : 'pr-5'}`}
               >
                 <span className={`grid size-6 place-items-center rounded-full ${toast.tone === 'success' ? 'bg-accent text-on-accent' : 'bg-expense/20 text-expense'}`}>
                   {toast.tone === 'success' ? <Check size={14} strokeWidth={2.6} /> : <AlertCircle size={16} />}

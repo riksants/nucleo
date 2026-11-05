@@ -43,7 +43,7 @@ function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
   const primary = primarySections(settings)
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-nav/85 backdrop-blur-xl backdrop-saturate-150 reduce-transparency:bg-nav reduce-transparency:backdrop-filter-none lg:hidden" aria-label="Navegação principal">
+    <nav className="glass-smoke fixed! inset-x-0 bottom-0 z-40 border-t border-line lg:hidden" aria-label="Navegação principal">
       <div className="mx-auto grid max-w-lg px-2" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length}, minmax(0, 1fr))` }}>
         {primary.map((s) => {
           const active = s.path === path

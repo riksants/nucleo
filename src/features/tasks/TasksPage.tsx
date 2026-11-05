@@ -292,7 +292,7 @@ export function TasksPage() {
 
       {selecting && picked.size > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+84px)] z-[60] flex justify-center px-4 lg:bottom-8 lg:pl-64">
-          <div className="flex items-center gap-1.5 rounded-full border border-line-strong bg-elevated/95 p-1.5 shadow-xl shadow-shade/50 backdrop-blur-md">
+          <div className="glass-smoke glass-panel flex items-center gap-1.5 rounded-full border border-line-strong p-1.5" style={{ '--glass-base': 'var(--color-elevated)' } as React.CSSProperties}>
             <span className="px-2.5 text-[14px] font-semibold">{picked.size}</span>
             <Button className="h-10! px-4!" onClick={() => bulk('done')}>
               Concluir

@@ -477,7 +477,8 @@ export function AssistantPage() {
           e.preventDefault()
           ask(text)
         }}
-        className="fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+66px)] z-30 border-t border-line bg-bg/92 px-4 py-2.5 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:bottom-0 lg:left-64 lg:pb-[max(10px,env(safe-area-inset-bottom))]"
+        className="glass-smoke fixed! inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+66px)] z-30 border-t border-line px-4 py-2.5 lg:bottom-0 lg:left-64 lg:pb-[max(10px,env(safe-area-inset-bottom))]"
+        style={{ '--glass-base': 'var(--color-bg)' } as React.CSSProperties}
       >
         <div className="mx-auto flex max-w-2xl items-center gap-2">
           <input aria-label="Pergunte ao NÚCLEO" placeholder={speech.listening ? 'Ouvindo… fale a sua pergunta' : 'Pergunte ao NÚCLEO…'} value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none" />
@@ -486,16 +487,16 @@ export function AssistantPage() {
               <IconButton label="Cancelar voz" type="button" className="size-12! shrink-0" onClick={() => (speech.cancel(), setText(''))}>
                 <X size={20} />
               </IconButton>
-              <IconButton label="Parar e enviar" tone="accent" type="button" className="size-12! shrink-0" onClick={speech.stop}>
+              <IconButton label="Parar e enviar" tone="glass" type="button" className="size-12! shrink-0" onClick={speech.stop}>
                 <Square size={18} />
               </IconButton>
             </>
           ) : speech.supported && !text.trim() && !iaStatus ? (
-            <IconButton label="Falar" tone="accent" type="button" className="size-12! shrink-0" onClick={speech.start}>
+            <IconButton label="Falar" tone="glass" type="button" className="size-12! shrink-0" onClick={speech.start}>
               <Mic size={20} />
             </IconButton>
           ) : (
-            <IconButton label="Enviar" tone="accent" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
+            <IconButton label="Enviar" tone="glass" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
               <ArrowUp size={20} />
             </IconButton>
           )}

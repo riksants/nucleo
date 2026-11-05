@@ -38,7 +38,7 @@ export function Button({ variant = 'primary', size = 'md', icon, block, classNam
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string
-  tone?: 'plain' | 'raised' | 'accent'
+  tone?: 'plain' | 'raised' | 'accent' | 'glass'
   size?: 'sm' | 'md'
 }
 
@@ -46,6 +46,8 @@ const ICON_TONES = {
   plain: 'text-soft hover:text-ink hover:bg-tint/[0.06]',
   raised: 'bg-raised border border-line text-ink hover:bg-elevated',
   accent: 'bg-accent text-on-accent hover:bg-accent-soft',
+  /** Orange liquid glass: for round buttons that float over content. */
+  glass: 'glass-tint rounded-full',
 }
 
 export function IconButton({ label, tone = 'plain', size = 'md', className = '', children, ...rest }: IconButtonProps) {
