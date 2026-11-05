@@ -8,9 +8,10 @@
 import { fold } from './areas/shared'
 import { SYNONYMS, categoryIdFor } from './areas/finance'
 import type { LookupCtx } from './areas/shared'
+import { APP_TOOLS, type ToolName } from '../../../../supabase/functions/_shared/ia/tools.ts'
 
 export interface Prefetch {
-  tool: 'resumo_financeiro' | 'previsao_do_mes' | 'tendencia_financeira'
+  tool: ToolName
   args: Record<string, unknown>
 }
 
@@ -80,4 +81,85 @@ export function prefetchFor(question: string, today: string, ctx: Pick<LookupCtx
     return [first, { tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`, categoria: cat } }]
   }
   return [first]
+}
+
+/* ------------------------------------------------------------------ follow-ups */
+
+/**
+ * A follow-up ("e em setembro?", "e a diferença?", "por quê?", "qual categoria pesou mais?") reads the
+ * subject of the conversation: the lookups in focus are RUN AGAIN here, on the current data of this
+ * device (never a stored copy: values change and history never keeps them), with the month moved when
+ * the question names another one. The model then answers in one call. The conversation belongs to one
+ * account (checked by askIa) and lookups of areas turned off are refused before running.
+ */
+const FOLLOW = /^(e|e ai|entao|mas|por que|porque|por qual motivo|qual a diferenca|qual foi a diferenca|quanto da|compara|comparando|isso|esse|essa|esses|essas|dele|dela|disso|detalha|explica|qual categoria|quais categorias|e quanto|e o|e a|e os|e as|e no|e na|e em|e do|e da|e de|no total|e no total)( |\?|$)/
+const MAX_FOLLOW_WORDS = 10
+
+export function isFollowUp(question: string): boolean {
+  const q = fold(question).replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ').trim()
+  return q.split(' ').length <= MAX_FOLLOW_WORDS && FOLLOW.test(q)
+}
+
+const MONTH_RE = new RegExp(`(?<![a-z])(${MONTHS.join('|')})(?:\\s+de\\s+(\\d{4}))?(?![a-z])`)
+const lastDay = (ym: string) => new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate()
+
+/** The month a follow-up moves to ("e em setembro?", "e no mês passado?"), or null to keep the subject's. */
+function movedMonth(q: string, today: string, from: string | null): string | null {
+  const y = Number(today.slice(0, 4))
+  const m = Number(today.slice(5, 7))
+  const named = q.match(MONTH_RE)
+  if (named) {
+    const mm = MONTHS.indexOf(named[1]) + 1
+    return `${named[2] ? Number(named[2]) : mm > m ? y - 1 : y}-${pad(mm)}`
+  }
+  if (/\b(mes passado|mes anterior)\b/.test(q)) {
+    const base = from ?? `${y}-${pad(m)}`
+    const by = Number(base.slice(0, 4))
+    const bm = Number(base.slice(5, 7))
+    return bm === 1 ? `${by - 1}-12` : `${by}-${pad(bm - 1)}`
+  }
+  return null
+}
+
+export function followUpPrefetch(question: string, today: string, focus: readonly { tool: string; args: Record<string, unknown> }[]): Prefetch[] {
+  if (!isFollowUp(question) || !focus.length) return []
+  const q = fold(question)
+  const tools = new Set<string>(APP_TOOLS)
+  const out: Prefetch[] = []
+  const seen = new Set<string>()
+  const add = (tool: string, args: Record<string, unknown>) => {
+    const key = `${tool}:${JSON.stringify(args)}`
+    if (seen.has(key) || out.length >= 2) return
+    seen.add(key)
+    out.push({ tool: tool as ToolName, args })
+  }
+  // "no total" / "qual categoria": the same month, without the category filter
+  const wide = /\b(no total|total|qual categoria|quais categorias|categorias)\b/.test(q)
+  // The month moves ("e em setembro?", "e no mês passado?"): the MOST RECENT subject, in the new month,
+  // plus the subject as it was — so a next "e a diferença?" / "por que mudou?" has both months.
+  const recent = focus.find((f) => tools.has(f.tool))
+  if (recent) {
+    const args = { ...recent.args }
+    if (recent.tool === 'resumo_financeiro' && typeof args.referencia === 'string' && args.periodo === 'mes') {
+      const to = movedMonth(q, today, args.referencia)
+      if (to && to <= today.slice(0, 7) && to !== args.referencia) {
+        add(recent.tool, { ...args, referencia: to, ...(wide ? { categoria: null } : {}) })
+        add(recent.tool, { ...args, ...(wide ? { categoria: null } : {}) })
+        return out
+      }
+    } else if (recent.tool === 'lancamentos' && typeof args.de === 'string' && typeof args.ate === 'string') {
+      const to = movedMonth(q, today, args.de.slice(0, 7))
+      if (to && to <= today.slice(0, 7)) {
+        add(recent.tool, { ...args, de: `${to}-01`, ate: `${to}-${pad(lastDay(to))}`, pagina: 1 })
+        add(recent.tool, args)
+        return out
+      }
+    }
+  }
+  // Same subject ("e a diferença?", "por quê?", "qual categoria pesou mais?"): the two most recent lookups.
+  for (const f of focus.slice(0, 4)) {
+    if (!tools.has(f.tool)) continue
+    add(f.tool, wide && f.tool === 'resumo_financeiro' ? { ...f.args, categoria: null } : { ...f.args })
+  }
+  return out
 }

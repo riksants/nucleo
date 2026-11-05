@@ -18,7 +18,7 @@ import { runActionsTool } from './actions/tool'
 import type { Plan } from './actions/plan'
 import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.ts'
 import { runLookup } from './lookups'
-import { prefetchFor } from './prefetch'
+import { followUpPrefetch, prefetchFor } from './prefetch'
 import { stablePrefix, type StreamEvent } from '../../../../supabase/functions/_shared/ia/stream.ts'
 import { CALC_TOOL } from '../../../../supabase/functions/_shared/ia/calc.ts'
 import { questionDates, questionFacts, runCalc } from './calc'
@@ -104,7 +104,9 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   // Lookups the app already knows this question needs: run here (same functions, areas and facts) and
   // sent with the question, so the model answers in one call. The session was checked just above.
   const snap = deps.snapshot()
-  const prefetch = prefetchFor(text, deps.today, { settings: snap.settings }).flatMap((p) => {
+  const planned = prefetchFor(text, deps.today, { settings: snap.settings })
+  // a follow-up ("e em setembro?", "e a diferença?") re-runs the conversation's subject on current data
+  const prefetch = (planned.length ? planned : followUpPrefetch(text, deps.today, conversation.focus)).flatMap((p) => {
     if (deps.areasOff.includes(TOOL_AREA[p.tool])) return []
     const r = runLookup(p.tool, p.args, { data: snap.data, settings: snap.settings, now: deps.now(), book, areasOff: deps.areasOff })
     if (r.isError) return []

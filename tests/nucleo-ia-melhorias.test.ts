@@ -148,3 +148,64 @@ describe('consultas prontas: anos explícitos', () => {
     expect(prefetchFor('Quanto gastei em outubro de 2025 comparado com setembro de 2025?', '2026-11-20', { settings }).map((x) => x.args.referencia)).toEqual(['2025-10', '2025-09'])
   })
 })
+
+describe('continuações: o assunto em foco é refeito no aparelho, com dados atuais', () => {
+  const focusOct = [{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' } }]
+  it('reconhece continuações curtas e move o mês quando pedido', async () => {
+    const { followUpPrefetch, isFollowUp } = await import('../src/core/assistant/ia/prefetch')
+    for (const q of ['E em setembro?', 'E a diferença?', 'Por quê?', 'Qual categoria pesou mais?', 'E no total, quanto saiu em outubro?', 'e no mês passado?']) expect(isFollowUp(q), q).toBe(true)
+    for (const q of ['Quanto gastei com mercado em outubro?', 'Tenho tarefas atrasadas amanhã de manhã ou só na semana que vem também?']) expect(isFollowUp(q), q).toBe(false)
+    const f = (q: string) => followUpPrefetch(q, '2026-11-20', focusOct)
+    expect(f('E em setembro?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-09', categoria: 'mercado' } }, focusOct[0]])
+    // "este mês" → "e no mês passado?" → both months (for a next "por que mudou?")
+    const nov = [{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-11', categoria: null } }, { tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: null } }]
+    expect(followUpPrefetch('E no mês passado?', '2026-11-20', nov).map((x) => x.args.referencia)).toEqual(['2026-10', '2026-11'])
+    expect(f('E no mês passado?')[0].args.referencia).toBe('2026-09')
+    expect(f('E a diferença?')).toEqual(focusOct)
+    expect(f('Qual categoria pesou mais?')[0].args).toMatchObject({ referencia: '2026-10', categoria: null })
+    expect(f('E no total, quanto saiu em outubro?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: null } }])
+    expect(f('E em dezembro?')[0].args.referencia).toBe('2025-12')
+    expect(followUpPrefetch('E em setembro?', '2026-11-20', [])).toEqual([])
+    expect(followUpPrefetch('E em setembro?', '2026-11-20', [{ tool: 'apagar_tudo', args: {} }])).toEqual([])
+  })
+  it('no app: refaz com os dados de AGORA, respeita área desligada e nunca usa conversa de outra conta', async () => {
+    const { askIa } = await import('../src/core/assistant/ia/client')
+    const { newConversation } = await import('../src/core/assistant/ia/conversation')
+    const A = '11111111-1111-4111-8111-111111111111'
+    const B = '22222222-2222-4222-8222-222222222222'
+    const conv = { ...newConversation(A), focus: focusOct }
+    const sent: StartRequest[] = []
+    let data = historyAccount()
+    const deps = (areasOff: never[] | ['financas'], uid = A) => ({
+      transport: async (b: unknown) => (sent.push(b as StartRequest), { ok: true as const, data: { kind: 'answer' as const, text: 'Ok.', route: 'rapida', model: 'm', costMicros: 1, steps: 1, stop: 'end' as const } }),
+      snapshot: () => ({ data, settings }), now: () => new Date('2026-11-20T15:00:00Z'), currentUid: async () => uid, today: '2026-11-20', timeZone: 'America/Sao_Paulo', areasOff,
+    })
+    await askIa('E em setembro?', conv, deps([]))
+    const before = JSON.parse(sent[0].prefetch![0].content)
+    expect(sent[0].prefetch!.map((p) => p.args.referencia)).toEqual(['2026-09', '2026-10'])
+    // a new expense in September: the next follow-up sees it (re-run, never a stored copy)
+    data = historyAccount()
+    data.transactions.push({ id: 'novo', createdAt: '2026-09-25T15:00:00Z', updatedAt: '2026-11-20T15:00:00Z', type: 'out', amount: 5000, currency: 'BRL', baseAmount: -5000, reason: 'Mercado extra', category: 'food' } as never)
+    await askIa('E em setembro?', conv, deps([]))
+    expect(JSON.stringify(JSON.parse(sent[1].prefetch![0].content).fatos)).not.toBe(JSON.stringify(before.fatos))
+    await askIa('E em setembro?', conv, deps(['financas']))
+    expect(sent[2].prefetch).toBeUndefined()
+    const other = await askIa('E em setembro?', conv, deps([], B))
+    expect(other).toMatchObject({ kind: 'error', code: 'session' })
+    expect(sent).toHaveLength(3)
+  })
+})
+
+describe('foco da conversa guarda os dois meses comparados', () => {
+  it('"outubro" e depois "setembro": "e a diferença?" refaz os dois', async () => {
+    const { remember, newConversation } = await import('../src/core/assistant/ia/conversation')
+    const { followUpPrefetch } = await import('../src/core/assistant/ia/prefetch')
+    const oct = { tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' } }
+    const sep = { tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-09', categoria: 'mercado' } }
+    const c2 = remember(remember(newConversation('u'), 'q1', 'a1', [oct]), 'q2', 'a2', [sep])
+    expect(c2.focus).toEqual([sep, oct])
+    expect(followUpPrefetch('E a diferença?', '2026-11-20', c2.focus).map((p) => p.args.referencia)).toEqual(['2026-09', '2026-10'])
+    // the same lookup again does not duplicate
+    expect(remember(c2, 'q3', 'a3', [oct]).focus).toEqual([oct, sep])
+  })
+})

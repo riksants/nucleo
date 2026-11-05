@@ -55,7 +55,8 @@ function fakeModel(params) {
   }
   const text = typeof last.content === 'string' ? last.content : ''
   const ctx = JSON.parse(text.match(/<contexto>\n(.*)\n<\/contexto>/s)[1])
-  const q = text.split('</contexto>')[1].trim().toLowerCase()
+  // the question itself: after the context and the lookups the app already ran (if any)
+  const q = text.split('</contexto>')[1].split('</consultas_ja_feitas>').at(-1).trim().toLowerCase()
   if (q.includes('mercado')) return callTool('resumo_financeiro', { periodo: 'mes', referencia: ctx.hoje.slice(0, 7), categoria: 'mercado' })
   if (q.startsWith('e no mês anterior')) {
     const f = ctx.consultas_recentes.find((c) => c.tool === 'resumo_financeiro')

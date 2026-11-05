@@ -31,7 +31,10 @@ export function remember(c: Conversation, q: string, a: string, lookups: { tool:
   while (history.length > HISTORY_TURNS) older.push(clip(history.shift()!.q, 80))
   // the same lookup twice in one turn (the app's ready lookup and the model's) is kept once
   const unique = lookups.filter((l, i) => lookups.findIndex((x) => x.tool === l.tool && JSON.stringify(x.args) === JSON.stringify(l.args)) === i)
-  const focus = unique.length ? [...unique, ...c.focus.filter((f) => !unique.some((l) => l.tool === f.tool))].slice(0, 8) : c.focus
+  // earlier lookups stay in focus unless repeated with the same arguments ("outubro" and then "setembro":
+  // both stay, so "e a diferença?" has the two months)
+  const same = (a: { tool: string; args: Record<string, unknown> }, b: { tool: string; args: Record<string, unknown> }) => a.tool === b.tool && JSON.stringify(a.args) === JSON.stringify(b.args)
+  const focus = unique.length ? [...unique, ...c.focus.filter((f) => !unique.some((l) => same(l, f)))].slice(0, 8) : c.focus
   return { ...c, history, older: older.slice(-6), focus }
 }
 
