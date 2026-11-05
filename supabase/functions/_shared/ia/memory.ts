@@ -13,7 +13,7 @@ export const MEMORY_CHARS = 200
 const SENSITIVE = /senha|password|\bpin\b|token|cart[aã]o|cvv|\bcpf\b|\bcnpj\b|\brg\b|passaporte|iban|\bpix\b|ag[eê]ncia|conta (corrente|banc)|c[oó]digo de (acesso|seguran)|@|https?:\/\/|www\./i
 const PHONE_OR_ID = /\d[\d\s().-]{5,}\d/
 /** Text that tries to command the AI (e.g. copied from an injected note) is never a reminder. */
-const COMMAND = /ignor|instru[cç]|regras?|prompt|sistema|a partir de agora|sempre (diga|responda|afirme)|nunca (diga|mencione)|finja|voc[eê] (é|agora)/i
+const COMMAND = /ignor|instru[cç]|\bregras?\b|prompt|sistema|a partir de agora|sempre (diga|responda|afirme)|nunca (diga|mencione)|finja|voc[eê] (é|agora)/i
 
 /** Why a reminder is refused (null = allowed). Same rule for the model's proposals and for typed ones. */
 export function memoryRefusal(raw: unknown): string | null {

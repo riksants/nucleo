@@ -245,6 +245,10 @@ describe('comandos locais com a IA ligada', () => {
     expect(local('quanto gastei com mercado este mês?')).toBe(false)
     expect(local('e em setembro?')).toBe(false)
     expect(local('por que meus gastos subiram tanto em outubro?')).toBe(false)
+    // a question is never turned into an action by the local reader (teste no iPhone, 2026-11-05)
+    expect(local('Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.')).toBe(false)
+    expect(local('Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027?')).toBe(false)
+    expect(local('Cria uma meta de juntar 150 mil até dezembro de 2027')).toBe(true)
   })
 })
 
