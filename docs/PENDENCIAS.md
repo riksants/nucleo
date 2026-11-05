@@ -1,6 +1,15 @@
 # Pendências
 
-## NÚCLEO IA — Etapas 1–5 prontas na branch feat/nucleo-ia — NADA publicado
+## NÚCLEO IA — PUBLICADO para todos em 2026-11-05 (grátis)
+
+- Feito: ensaio com o backup real de 01/11 (restauração idêntica; migração/reversão/reaplicação ok); snapshot
+  em Documents/Nucleo-backup-PRIVADO/nucleo-ia-antes-da-migracao-2026-11-05.json; migração 20261103000000 aplicada
+  numa transação (dono = owner); secrets ANTHROPIC_API_KEY + IA_TURN_SECRET; função `nucleo-ia` publicada;
+  verificação em produção 12/12 (contas descartáveis apagadas); app com a IA ligada por padrão (deploy.yml).
+- Trocar a chave da Anthropic usada (a de desenvolvimento) por uma chave própria de produção com limite mensal
+  no painel da Anthropic: `supabase secrets set ANTHROPIC_API_KEY=...` (sem novo deploy).
+
+### Histórico do planejamento
 
 - Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md (Etapa 5 no fim).
 - NÃO aplicado/publicado: migração 20261103000000_nucleo_ia.sql; função `nucleo-ia` (secrets
