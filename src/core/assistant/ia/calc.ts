@@ -102,7 +102,7 @@ export function runCalc(input: Record<string, unknown>, book: FactBook, settings
       resultado: factForModel(fact),
       ...(informed ? { valor_informado: factForModel(informed) } : {}),
       ...(seal === 'previsto' ? { aviso: 'Resultado baseado em previsão: apresente como previsão, nunca como dinheiro recebido ou disponível.' } : {}),
-      ...(seal === 'informado' ? { aviso: 'Resultado usa um valor que a pessoa informou (não registrado no app): deixe isso claro.' } : {}),
+      ...(seal === 'informado' ? { aviso: 'Resultado usa um valor que a pessoa informou: o app já mostra isso no valor; não precisa explicar no texto.' } : {}),
     }),
     isError: false,
   }
@@ -129,4 +129,40 @@ export function questionFacts(text: string, book: FactBook, settings: Pick<Setti
     seen.add(`${cents}${currency}`)
     book.add({ kind: 'dinheiro', label: 'Valor que você informou', display: formatMoney(cents, currency), seal: 'informado', amount: { cents, currency } })
   }
+}
+
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+const MONTH_KEY: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 }
+const monthNumber = (w: string) => MONTH_KEY[w.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().slice(0, 3)] ?? 0
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * Dates the PERSON wrote in the question become `informado` facts too: a full date ("15/12/2027",
+ * "15 de dezembro de 2027") as that day; a month ("dezembro de 2027", "12/2027", "dez/2027") as that
+ * month — the answer may then name a day inside it (the guard accepts only that month).
+ */
+export function questionDates(text: string, book: FactBook, today: string): void {
+  const seen = new Set<string>()
+  const thisYear = Number(today.slice(0, 4))
+  const addDay = (d: number, m: number, y: number | null) => {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return
+    const key = `${y ?? ''}-${m}-${d}`
+    if (seen.has(key)) return
+    seen.add(key)
+    book.add({ kind: 'data', label: 'Data que você informou', display: y ? `${pad(d)}/${pad(m)}/${y}` : `${pad(d)}/${pad(m)}`, seal: 'informado' })
+  }
+  const addMonth = (m: number, y: number) => {
+    if (m < 1 || m > 12 || y < thisYear - 50 || y > thisYear + 50) return
+    const key = `${y}-${pad(m)}`
+    if (seen.has(key)) return
+    seen.add(key)
+    book.add({ kind: 'data', label: 'Mês que você informou', display: `${MONTH_NAMES[m - 1]} de ${y}`, seal: 'informado', month: key })
+  }
+  const t = text.toLowerCase()
+  for (const m of t.matchAll(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g)) addDay(Number(m[1]), Number(m[2]), m[3] ? Number(m[3].length === 2 ? `20${m[3]}` : m[3]) : null)
+  for (const m of t.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) addDay(Number(m[3]), Number(m[2]), Number(m[1]))
+  for (const m of t.matchAll(/\b(\d{1,2})º?\s+de\s+([a-zç]+)(?:\s+de\s+(\d{4}))?/g)) if (monthNumber(m[2])) addDay(Number(m[1]), monthNumber(m[2]), m[3] ? Number(m[3]) : null)
+  // a month without a day: "dezembro de 2027", "dez/2027", "12/2027", "dezembro 2027"
+  for (const m of t.matchAll(/(?<!\d\s?(?:º\s+)?de\s)\b([a-zç]{3,9})\.?(?:\s+de\s+|\s*\/\s*|\s+)(\d{4})\b/g)) if (monthNumber(m[1]) && /^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/.test(m[1])) addMonth(monthNumber(m[1]), Number(m[2]))
+  for (const m of t.matchAll(/(?<![\d/])\b(\d{1,2})\/(\d{4})\b/g)) addMonth(Number(m[1]), Number(m[2]))
 }

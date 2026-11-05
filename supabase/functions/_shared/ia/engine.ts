@@ -49,6 +49,7 @@ const MESSAGES: Partial<Record<ReserveOutcome | ErrorCode, string>> = {
   duplicate: 'Essa pergunta já foi enviada.',
   'limit-day': 'Você chegou ao limite gratuito de uso da IA de hoje. Ele renova sozinho à meia-noite (horário de Brasília), sem custo. Os comandos do Assistente continuam funcionando.',
   'limit-month': 'Você chegou ao limite gratuito de uso da IA deste mês. Ele renova sozinho no dia 1º, sem custo. Os comandos do Assistente continuam funcionando.',
+  'limit-sonnet': 'Você chegou ao limite gratuito de análises a fundo deste mês. Ele renova sozinho no dia 1º, sem custo. Pergunte de novo para receber uma resposta simplificada.',
   'limit-request': 'Essa pergunta ficou grande demais para o limite por pergunta. Tente dividir em partes menores.',
   global: 'A IA está pausada por alguns minutos. Os comandos do Assistente continuam funcionando.',
   paused: 'A IA está pausada por alguns minutos. Os comandos do Assistente continuam funcionando.',

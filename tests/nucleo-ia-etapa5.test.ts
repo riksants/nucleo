@@ -4,6 +4,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import { askIa, type Transport } from '../src/core/assistant/ia/client'
+import { questionDates, questionFacts } from '../src/core/assistant/ia/calc'
 import { CONTINUITY_MS, clearAllContinuity, clearContinuity, loadContinuity, saveContinuity } from '../src/core/assistant/ia/continuity'
 import { newConversation, remember } from '../src/core/assistant/ia/conversation'
 import { spokenText } from '../src/core/assistant/ia/spoken'
@@ -209,5 +210,29 @@ describe('painel de uso e voz', () => {
     const p = book.add({ kind: 'dinheiro', label: 'Saldo previsto', display: 'R$ 15.995,10', seal: 'previsto' })
     const r = renderAnswer(`Deve fechar em {${p.id}}. Isso dá R$ 999 a mais.`, book.all)
     expect(spokenText(r.segments)).toBe('Deve fechar em R$ 15.995,10 (previsão). Isso dá valor não confirmado a mais.')
+  })
+})
+
+describe('datas e valores que a pessoa escreveu (correção do teste no iPhone)', () => {
+  const book = () => {
+    const b = new FactBook()
+    questionFacts('Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.', b, { baseCurrency: 'BRL' })
+    questionDates('Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.', b, '2026-11-05')
+    return b
+  }
+  it('o prazo que a pessoa disse nunca vira ‹valor não confirmado›, escrito de qualquer jeito dentro daquele mês', () => {
+    const b = book()
+    for (const t of ['até dezembro de 2027', 'até 31/12/2027', 'até 31 de dezembro de 2027', 'até 31/12', 'até 12/2027', 'para juntar R$ 150 mil', 'para juntar R$ 150.000,00']) expect(renderAnswer(t, b.all).blocked, t).toEqual([])
+    expect([...b.all.values()].find((f) => f.month)?.display).toBe('dezembro de 2027')
+  })
+  it('outro mês, outro ano ou outro valor continuam bloqueados', () => {
+    const b = book()
+    expect(renderAnswer('até 30/11/2027, até 31/12/2028, R$ 160 mil, R$ 150 milhões', b.all).blocked).toEqual(['30/11/2027', '31/12/2028', 'R$ 160 mil', 'R$ 150 milhões'])
+  })
+  it('datas completas e meses em outros formatos', () => {
+    const b = new FactBook()
+    questionDates('Pago em 15/03/2027, depois em 2 de abril de 2027, e quero terminar em dez/2028 ou 06/2029', b, '2026-11-05')
+    expect([...b.all.values()].map((f) => f.display)).toEqual(['15/03/2027', '02/04/2027', 'dezembro de 2028', 'junho de 2029'])
+    expect(renderAnswer('Entre 15/03/2027 e 2 de abril, até 30/06/2029.', b.all).blocked).toEqual([])
   })
 })

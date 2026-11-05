@@ -29,6 +29,8 @@ export interface Fact {
   base?: string
   /** Screen of the app that shows it. */
   open?: { path: string; params?: Record<string, string> }
+  /** A month the PERSON named ("dezembro de 2027" → "2027-12"): a date the model writes inside it is that fact. */
+  month?: string
   /** Exact amount behind a money fact (integer cents), for `calcular`. Never sent to the model. */
   amount?: { cents: number; currency: string }
 }
@@ -49,7 +51,7 @@ const GUARDED = new RegExp(
   [
     // money with a symbol or code, before or after: R$ 10, 10 reais, € 3,50, US$ 4, 120 EUR
     // (a number never ends in . or , — the sentence's own punctuation stays out)
-    String.raw`(?:R\$|US\$|€|\$|£|AED|BRL|EUR|USD|GBP)\s?-?\d(?:[\d.,]*\d)?`,
+    String.raw`(?:R\$|US\$|€|\$|£|AED|BRL|EUR|USD|GBP)\s?-?\d(?:[\d.,]*\d)?(?:\s?(?:mil|milh(?:ão|ões|oes))\b)?`,
     String.raw`-?\d(?:[\d.,]*\d)?\s?(?:reais|real|euros?|d[oó]lares?|R\$|€|AED|BRL|EUR|USD|GBP)\b`,
     // decimals that look like amounts: 612,40  1.234,56  1,234.56
     String.raw`\b\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?\b`,
@@ -87,6 +89,13 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   const q = squash(lit)
   // "30 de novembro" is a date (handled below), not money
   const textDate = /^\d{1,2}\s+de\s+[a-zç]+$/i.test(lit)
+  // "R$ 150 mil", "€ 2 milhões": the whole value, equal to a money fact with an exact amount
+  const big = lit.match(/^(R\$|US\$|€|\$|£)\s?(\d+(?:[.,]\d+)?)\s?(mil|milh(?:ão|ões|oes))$/i)
+  if (big) {
+    const cur = { 'R$': 'BRL', 'US$': 'USD', '€': 'EUR', $: 'USD', '£': 'GBP' }[big[1]] ?? ''
+    const cents = Math.round(Number(big[2].replace(',', '.')) * (/^mil$/i.test(big[3]) ? 1_000 : 1_000_000) * 100)
+    return all.find((f) => f.kind === 'dinheiro' && f.amount?.currency === cur && f.amount.cents === cents) ?? null
+  }
   // money with its currency: must equal a money fact exactly. Written without cents ("R$ 500") it must
   // equal a fact with ",00" ("R$ 500,00") — the same value, never a rounded one.
   if (!textDate && /[a-z$€£]/i.test(lit) && /\d/.test(lit) && !/%/.test(lit) && !/:|\/|h\b|hora/i.test(lit)) {
@@ -116,7 +125,12 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   m = lit.toLowerCase().match(/^(\d{1,2})\s+de\s+([a-zç]+)$/)
   if (m && MONTH_NUM[m[2]]) dm = `${pad2(m[1])}/${MONTH_NUM[m[2]]}`
   if (dm) {
-    return all.find((f) => (f.kind === 'data' || f.kind === 'compromisso') && f.display.includes(dm!) && (!year || !/\/\d{4}/.test(f.display) || f.display.includes(`${dm}/${year}`))) ?? null
+    const exact = all.find((f) => (f.kind === 'data' || f.kind === 'compromisso') && f.display.includes(dm!) && (!year || !/\/\d{4}/.test(f.display) || f.display.includes(`${dm}/${year}`)))
+    if (exact) return exact
+    // a day inside a month the person named ("até dezembro de 2027" → "31/12/2027"): that month, never another
+    const mm = dm.slice(3, 5)
+    const months = all.filter((f) => f.kind === 'data' && f.seal === 'informado' && f.month && f.month.slice(5, 7) === mm && (!year || f.month.slice(0, 4) === year))
+    return months.length === 1 ? months[0] : null
   }
   if (/^\d{1,2}:\d{2}$/.test(lit)) return all.find((f) => (f.kind === 'compromisso' || f.kind === 'horario') && f.display.includes(lit.padStart(5, '0'))) ?? null
   if (/^\d{1,2}\s?horas?$/i.test(lit)) return all.find((f) => (f.kind === 'contagem' || f.kind === 'texto') && squash(f.display) === q) ?? null

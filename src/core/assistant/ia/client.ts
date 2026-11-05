@@ -20,7 +20,7 @@ import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.t
 import { runLookup } from './lookups'
 import { stablePrefix, type StreamEvent } from '../../../../supabase/functions/_shared/ia/stream.ts'
 import { CALC_TOOL } from '../../../../supabase/functions/_shared/ia/calc.ts'
-import { questionFacts, runCalc } from './calc'
+import { questionDates, questionFacts, runCalc } from './calc'
 import { MEMORY_TOOL, memoryForModel, memoryRefusal, cleanMemory } from '../../../../supabase/functions/_shared/ia/memory.ts'
 
 export type Transport = (body: TurnRequest, onEvent?: (e: StreamEvent) => void) => Promise<{ ok: true; data: TurnResponse } | { ok: false; status: number; error: TurnError }>
@@ -93,6 +93,7 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   const book = new FactBook()
   // the person's own amounts (shown as "você informou" when the answer repeats them)
   questionFacts(text, book, deps.snapshot().settings)
+  questionDates(text, book, deps.today)
   const id = (deps.newTurnId ?? turnId)()
   // a holder: the plan is set inside the lookups callback
   const proposed: { plan: Plan | null; count: number; memory: string | null } = { plan: null, count: 0, memory: null }

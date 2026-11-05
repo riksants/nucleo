@@ -132,7 +132,7 @@ export const CORPUS: Item[] = [
   { id: 'l03', cat: 'planejamento', q: 'Monta um plano para eu economizar no mercado.', route: 'profunda', tools: T(['tendencia_financeira', 'resumo_financeiro']), real: true },
   { id: 'l04', cat: 'planejamento', q: 'Como faço para cobrar quem está me devendo sem perder o cliente?', route: 'profunda', tools: T(['vendas']) },
   { id: 'l05', cat: 'planejamento', q: 'Me ajude a reorganizar minha semana, estou atrasado nas tarefas.', route: 'profunda', tools: T(['tarefas', 'consultar_agenda']) },
-  { id: 'l06', cat: 'planejamento', q: 'Quanto preciso guardar por semana para a viagem?', route: 'profunda', tools: T(['metas_financeiras']), real: true },
+  { id: 'l06', cat: 'analise', q: 'Quanto preciso guardar por semana para a viagem?', route: 'atenta', tools: T(['metas_financeiras']), real: true },
   { id: 'l07', cat: 'planejamento', q: 'Qual estratégia para aumentar minha receita de assinantes?', route: 'profunda', tools: T(['assinantes']) },
   { id: 'l08', cat: 'planejamento', q: 'Priorize minhas tarefas abertas para esta semana.', route: 'profunda', tools: T(['tarefas']) },
 
@@ -150,4 +150,7 @@ export const CORPUS: Item[] = [
   { id: 'k04', cat: 'acao', q: 'Marca a tarefa enviar layout como concluída', route: 'rapida' },
   { id: 'k05', cat: 'acao', q: 'Agenda uma reunião com o John na sexta às 15h e cria uma tarefa para preparar a proposta', route: 'profunda' },
   { id: 'k06', cat: 'acao', q: 'Guarda 300 reais na meta da viagem', route: 'rapida' },
+  // correção do teste no iPhone: cálculo é análise (rápido e exato com calcular); pedido de plano continua profundo
+  { id: 'x19', cat: 'analise', q: 'Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.', route: 'atenta' },
+  { id: 'l09', cat: 'planejamento', q: 'Me ajuda a montar um plano para juntar 10 mil até junho de 2027.', route: 'profunda' },
 ]

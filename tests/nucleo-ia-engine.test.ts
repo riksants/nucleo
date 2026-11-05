@@ -260,6 +260,7 @@ describe('escalada e orçamento', () => {
   it.each([
     ['limit-day', 429, 'limit', /limite gratuito de uso da IA de hoje. Ele renova sozinho à meia-noite .*sem custo/],
     ['limit-month', 429, 'limit', /deste mês. Ele renova sozinho no dia 1º, sem custo/],
+    ['limit-sonnet', 429, 'limit', /análises a fundo deste mês. Ele renova sozinho no dia 1º, sem custo/],
     ['no-plan', 403, 'no-plan', /não está disponível para esta conta/],
     ['global', 503, 'global-limit', /pausada/],
     ['paused', 503, 'paused', /pausada/],

@@ -23,7 +23,7 @@ import { stablePrefix } from '../supabase/functions/_shared/ia/stream'
 import { newConversation, remember, topicsOf, type Conversation } from '../src/core/assistant/ia/conversation'
 import { loadContinuity, saveContinuity } from '../src/core/assistant/ia/continuity'
 import { runLookup } from '../src/core/assistant/ia/lookups'
-import { questionFacts, runCalc } from '../src/core/assistant/ia/calc'
+import { questionDates, questionFacts, runCalc } from '../src/core/assistant/ia/calc'
 import { historyAccount, settings } from './ia-fixtures'
 
 function readKey(): string | undefined {
@@ -63,6 +63,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
     async function ask(id: string, q: string, conv: Conversation, memory: string[], memoryOn: boolean) {
       const book = new FactBook()
       questionFacts(q, book, settings)
+      questionDates(q, book, TODAY)
       const tools: string[] = []
       let usd = 0
       let proposal: string | null = null
@@ -138,11 +139,11 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
     const claimsSaved = (a: string) => /\b(guardei|salvei|anotei|registrei|já (está|ficou) (guardad|salv)|vou lembrar|lembrarei)/i.test(a)
     const sentences = (a: string) => a.split(/(?<=[.!?])\s+/).filter((s) => s.trim()).length
 
+    let r: Awaited<ReturnType<typeof ask>>
     const only = process.env.IA_ONLY?.split(',').map((x) => x.trim())
     const want = (id: string) => !only || only.includes(id)
     const SHORT = ['Prefere respostas curtas e diretas, em no máximo duas frases']
     // 1) reminder personalizes (short answers)
-    let r: Awaited<ReturnType<typeof ask>>
     if (want('m1')) {
       r = await ask('m1', 'Como estão minhas finanças este mês?', newConversation(A), SHORT, true)
       check(r.row, [['consultou finanças', r.row.tools.some((t) => /financ|previsao|tendencia/.test(t))], ['curta, como o lembrete pede (≤ 3 frases)', sentences(r.row.answer) <= 3]])
@@ -189,6 +190,25 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
     if (want('l1')) {
       r = await ask('l1', 'Me ajuda a planejar como quitar o que falta da meta da viagem.', newConversation(A), SHORT, true)
       check(r.row, [['análise profunda', r.row.route === 'profunda'], ['respeita o lembrete (curta: ≤ 5 frases e ≤ 600 caracteres)', sentences(r.row.answer) <= 5 && r.row.answer.length <= 600]])
+    }
+
+    // Correção do teste no iPhone (2026-11-05): data informada, respostas diretas, sem ofertas não pedidas
+    const offers = (a: string) => /quer que eu|posso (criar|montar|registrar|preparar|cadastrar)|deseja que eu|se quiser,? (eu )?(crio|monto|preparo|registro)|criar uma meta|montar uma meta/i.test(a)
+    if (want('d1')) {
+      r = await ask('d1', 'Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.', newConversation(A), [], false)
+      check(r.row, [['usou calcular', r.row.tools.includes('calcular')], ['sem oferta de ação (só uma pergunta)', !offers(r.row.answer)], ['direta (≤ 3 frases)', sentences(r.row.answer) <= 3]])
+    }
+    if (want('d2')) {
+      r = await ask('d2', 'Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027?', newConversation(A), [], false)
+      check(r.row, [['sem oferta de ação numa pergunta de cálculo', !offers(r.row.answer)], ['direta (≤ 3 frases)', sentences(r.row.answer) <= 3]])
+    }
+    if (want('d3')) {
+      r = await ask('d3', 'Quanto gastei com mercado em outubro, comparado com setembro?', newConversation(A), [], false)
+      check(r.row, [['sem oferta de ação numa consulta', !offers(r.row.answer)], ['direta (≤ 3 frases)', sentences(r.row.answer) <= 3]])
+    }
+    if (want('d4')) {
+      r = await ask('d4', 'Me ajuda a montar um plano para juntar 10 mil até junho de 2027.', newConversation(A), [], false)
+      check(r.row, [['pedido de plano continua atendido (com passos ou oferta)', r.row.answer.length > 80]])
     }
 
     const total = rows.reduce((s, x) => s + x.usd, 0)
