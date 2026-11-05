@@ -19,7 +19,7 @@ export function IaPlanCard({ plan: proposed }: { plan: Plan }) {
   const [ruleEffects, setRuleEffects] = useState<string[]>([])
   const [remaining, setRemaining] = useState<string[]>([])
   const [applied, setApplied] = useState<AppliedPlan | null>(null)
-  const [state, setState] = useState<'preview' | 'applying' | 'applied' | 'undone'>('preview')
+  const [state, setState] = useState<'preview' | 'applying' | 'applied' | 'undone' | 'cancelled'>('preview')
   const [editing, setEditing] = useState<string | null>(null)
   const busy = useRef(false)
   const areasOff = areasOffFor(settings)
@@ -72,6 +72,13 @@ export function IaPlanCard({ plan: proposed }: { plan: Plan }) {
     setState('undone')
   }
 
+  // Cancelled before confirming: nothing was ever written, the card just closes.
+  if (state === 'cancelled')
+    return (
+      <p className="mt-2 text-[14px] text-soft" data-ia-plan={proposed.id} data-plan-state="cancelled">
+        Cancelado. Nada foi gravado.
+      </p>
+    )
   if (state === 'applied' || state === 'undone') {
     return (
       <div className="card mt-2 space-y-2 p-4" data-ia-plan={proposed.id} data-plan-state={state}>
@@ -126,9 +133,14 @@ export function IaPlanCard({ plan: proposed }: { plan: Plan }) {
           <AlertTriangle size={14} className="mt-0.5 shrink-0 text-accent-hi" /> {p}
         </p>
       ))}
-      <button type="button" disabled={!count || state === 'applying'} onClick={confirm} className="press w-full rounded-full bg-accent px-4 py-2.5 text-[15px] font-medium text-on-accent disabled:opacity-40">
-        {state === 'applying' ? 'Gravando…' : count ? `Confirmar ${count} ${count === 1 ? 'item' : 'itens'}` : 'Nada marcado'}
-      </button>
+      <div className="flex gap-2">
+        <button type="button" disabled={state === 'applying'} onClick={() => setState('cancelled')} className="press h-11 shrink-0 rounded-full border border-line px-4 text-[15px] text-soft hover:text-ink disabled:opacity-40" data-plan-cancel>
+          Cancelar
+        </button>
+        <button type="button" disabled={!count || state === 'applying'} onClick={confirm} className="press h-11 min-w-0 flex-1 rounded-full bg-accent px-4 text-[15px] font-medium text-on-accent disabled:opacity-40">
+          {state === 'applying' ? 'Gravando…' : count ? `Confirmar ${count} ${count === 1 ? 'item' : 'itens'}` : 'Nada marcado'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -162,7 +174,7 @@ function PlanRow({ item, on, editing, onToggle, onEditToggle, onEdit }: { item: 
           </p>
         ))}
         {item.editable.length > 0 && (
-          <button type="button" onClick={onEditToggle} className="mt-1 flex items-center gap-1 text-[13px] font-medium text-accent-hi hover:text-ink">
+          <button type="button" onClick={onEditToggle} className="flex min-h-11 items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink" data-plan-edit>
             <Pencil size={14} /> {editing ? 'Fechar edição' : 'Editar'}
           </button>
         )}

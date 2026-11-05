@@ -24,6 +24,7 @@ import { newConversation, remember, type Conversation } from '../../core/assista
 import { areasOffFor } from '../../core/assistant/ia/lookups'
 import { localAnswers } from '../../core/assistant/ia/localFirst'
 import { quickSavings } from '../../core/assistant/ia/quickCalc'
+import { goalCommand } from '../../core/assistant/ia/goalCommand'
 import { CONSENT_VERSION } from '../../../supabase/functions/_shared/ia/protocol.ts'
 import { useSession } from '../account/session'
 import { currentUid, iaTransport, NUCLEO_IA } from './iaApi'
@@ -272,6 +273,18 @@ export function AssistantPage() {
       return
     }
     const today = nowIn(zoneOf(s0)).date
+    // "Cria uma meta…": recognized by the app (no AI). Money goal → the editable preview (nothing saved
+    // before confirming); sales or weekly goal → says what the app supports, never creates something else.
+    const goal = opts.deep || !userId ? null : goalCommand(question, { ...latest.current, now: new Date(), today, areasOff: areasOffFor(s0), uid: userId, planId: `local${Date.now().toString(36)}` })
+    if (goal) {
+      const reply = goal.kind === 'unsupported' ? { lines: goal.lines, link: goal.link } : { lines: goal.lines }
+      if (iaReady && userId) {
+        const conv = iaConversation?.uid === userId ? iaConversation : newConversation(userId)
+        iaConversation = remember(conv, question, goal.kind === 'finance' ? 'Prévia de meta mostrada, aguardando a pessoa confirmar ou editar na tela. Nada foi gravado ainda.' : goal.lines.join(' '))
+      }
+      push([{ from: 'me', text: question }, { from: 'nucleo', reply, ...(goal.kind === 'finance' ? { plan: goal.plan } : {}) }])
+      return
+    }
     // Simple savings math ("quanto preciso guardar por mês para juntar X até Y?"): the app answers at once,
     // exactly and without the AI (also when the AI is off). Kept in the AI conversation for follow-ups.
     const quick = opts.deep ? null : quickSavings(question, today)
@@ -442,6 +455,7 @@ export function AssistantPage() {
             ) : (
               <div key={m.id} className="max-w-full">
                 <ReplyView reply={m.reply!} onFollow={(t) => ask(t)} onChoose={choose} />
+                {m.plan && <IaPlanCard plan={m.plan} />}
               </div>
             ),
           )}

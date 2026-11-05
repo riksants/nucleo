@@ -19,6 +19,8 @@ import { costMicros, type ModelKey } from '../supabase/functions/_shared/ia/mode
 import type { StartRequest, TurnResponse } from '../supabase/functions/_shared/ia/protocol'
 import { CALC_TOOL } from '../supabase/functions/_shared/ia/calc'
 import { MEMORY_TOOL, memoryRefusal } from '../supabase/functions/_shared/ia/memory'
+import { ACTION_TOOL } from '../supabase/functions/_shared/ia/actions'
+import { runActionsTool } from '../src/core/assistant/ia/actions/tool'
 import { stablePrefix } from '../supabase/functions/_shared/ia/stream'
 import { newConversation, remember, topicsOf, type Conversation } from '../src/core/assistant/ia/conversation'
 import { loadContinuity, saveContinuity } from '../src/core/assistant/ia/continuity'
@@ -37,7 +39,7 @@ const TODAY = '2026-11-20'
 const NOW = new Date('2026-11-20T15:00:00Z')
 const SECRET = 'segredo-local-de-medicao-com-mais-de-32-caracteres'
 
-interface Row { id: string; q: string; route: string; model: string; tools: string[]; usd: number; ms: number; firstMs: number | null; blocked: string[]; partialLeak: boolean; answer: string; proposal: string | null; checks: { name: string; ok: boolean }[] }
+interface Row { planTypes?: string[]; notes?: number; id: string; q: string; route: string; model: string; tools: string[]; usd: number; ms: number; firstMs: number | null; blocked: string[]; partialLeak: boolean; answer: string; proposal: string | null; checks: { name: string; ok: boolean }[] }
 
 describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)', () => {
   it('lembretes, continuidade e resposta progressiva', async () => {
@@ -60,7 +62,8 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
     const data = historyAccount()
     const rows: Row[] = []
 
-    async function ask(id: string, q: string, conv: Conversation, memory: string[], memoryOn: boolean) {
+    async function ask(id: string, q: string, conv: Conversation, memory: string[], memoryOn: boolean, deep = false) {
+      const planTypes: string[] = []
       const book = new FactBook()
       questionFacts(q, book, settings)
       questionDates(q, book, TODAY)
@@ -102,7 +105,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
           return { content: msg.content as unknown as Block[], stop_reason: msg.stop_reason, usage: msg.usage, model: msg.model }
         },
       }
-      const req: StartRequest = { kind: 'start', turnId: `e5-${id}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, text: q, today: TODAY, timeZone: 'America/Sao_Paulo', deep: false, consentVersion: 2, history: conv.history, topics: topicsOf(conv), focus: conv.focus, areasOff: [], ...(memory.length ? { memory } : {}) }
+      const req: StartRequest = { kind: 'start', turnId: `e5-${id}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, text: q, today: TODAY, timeZone: 'America/Sao_Paulo', deep, consentVersion: 2, history: conv.history, topics: topicsOf(conv), focus: conv.focus, areasOff: [], ...(memory.length ? { memory } : {}) }
       let out = await startTurn(req, deps)
       while (out.status === 200 && (out.body as TurnResponse).kind === 'tools') {
         firstMs = null // a preamble before lookups is discarded on screen
@@ -113,6 +116,11 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
             const why = memoryOn ? memoryRefusal(c.input?.texto) : 'Os lembretes de longo prazo estão desligados.'
             if (!why) proposal = String(c.input.texto)
             return { id: c.id, content: JSON.stringify(why ? { erro: why } : { mostrado_na_tela: true, aviso: 'Nada foi salvo: o lembrete só é guardado se a pessoa tocar em "Lembrar". Não diga que já lembrou.' }), isError: Boolean(why) }
+          }
+          if (c.name === ACTION_TOOL) {
+            const pr = runActionsTool(c.input, { data, settings, now: NOW, areasOff: [], uid: A, planId: `real${tools.length}`, book })
+            for (const it of pr.plan?.items ?? []) planTypes.push(it.action.tipo)
+            return { id: c.id, content: pr.content, isError: pr.isError }
           }
           const r = c.name === CALC_TOOL ? runCalc(c.input, book, settings) : runLookup(c.name, c.input, { data, settings, now: NOW, book, areasOff: [] })
           if (c.name !== CALC_TOOL) lookups.push({ tool: c.name, args: c.input, ...('about' in r && r.about?.length ? { about: r.about } : {}) })
@@ -129,7 +137,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
       const rendered = renderAnswer(body.text, book.all)
       // nothing shown while streaming may carry a value the final guard hides
       const partialLeak = shownPartials.some((p) => rendered.blocked.some((b) => p.includes(b)))
-      const row: Row = { id, q, route: body.route, model: body.model, tools, usd: usd / 1e6, ms: Date.now() - t0, firstMs, blocked: [...rendered.blocked, ...rendered.missing], partialLeak, answer: plainAnswer(rendered.segments), proposal, checks: [] }
+      const row: Row = { planTypes, notes: body.text.split(/\n+/).filter((l) => /^\s*(aten[cç][aã]o|limita[cç][aã]o|aviso)\s*:/i.test(l)).length, id, q, route: body.route, model: body.model, tools, usd: usd / 1e6, ms: Date.now() - t0, firstMs, blocked: [...rendered.blocked, ...rendered.missing], partialLeak, answer: plainAnswer(rendered.segments), proposal, checks: [] }
       return { row, conv: remember(conv, q, historyText(rendered.segments), lookups) }
     }
     const check = (row: Row, list: [string, boolean][]) => {
@@ -209,6 +217,32 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 5 com os modelos reais (gasta dinheiro)'
     if (want('d4')) {
       r = await ask('d4', 'Me ajuda a montar um plano para juntar 10 mil até junho de 2027.', newConversation(A), [], false)
       check(r.row, [['pedido de plano continua atendido (com passos ou oferta)', r.row.answer.length > 80]])
+    }
+
+    // Melhorias pós-celular: curta/completa, metas (vendas não suportada), contas provadas, avisos separados
+    if (want('g1')) {
+      r = await ask('g1', 'Como estão minhas finanças este mês?', newConversation(A), [], false)
+      check(r.row, [['curta (≤ 3 frases fora do aviso)', sentences(r.row.answer.split(/\n+/).filter((l) => !/^\s*(aten|limita|aviso)/i.test(l)).join(' ')) <= 3]])
+    }
+    if (want('g2')) {
+      r = await ask('g2', 'Como estão minhas finanças este mês?', newConversation(A), [], false, true)
+      check(r.row, [['análise a fundo mais completa (≥ 3 frases)', sentences(r.row.answer) >= 3], ['rota profunda', r.row.route === 'profunda']])
+    }
+    if (want('g3')) {
+      r = await ask('g3', 'Bora bater 50 mil em vendas até o fim do ano, monta isso pra mim', newConversation(A), [], false)
+      check(r.row, [['não cria meta de dinheiro nem outra coisa para vendas', !(r.row.planTypes ?? []).length], ['diz que não há meta de vendas', /n[aã]o (tem|existe|h[aá]|oferece)[^.]*meta de vendas|meta de vendas[^.]*n[aã]o/i.test(r.row.answer)]])
+    }
+    if (want('g4')) {
+      r = await ask('g4', 'Quero começar a juntar 80 mil para um carro até dezembro de 2028, cria isso pra mim', newConversation(A), [], false)
+      check(r.row, [['prepara a meta de dinheiro (prévia, nada gravado)', (r.row.planTypes ?? []).includes('criar_meta_financeira')], ['não diz que já criou', !/\b(criei|está criada|foi criada|já criei)\b/i.test(r.row.answer)]])
+    }
+    if (want('g5')) {
+      r = await ask('g5', 'Quanto gastei em outubro comparado com setembro, em porcentagem?', newConversation(A), [], false)
+      check(r.row, [['porcentagem aparece (sem bloqueio)', /%/.test(r.row.answer) && r.row.blocked.length === 0]])
+    }
+    if (want('g6')) {
+      r = await ask('g6', 'Vou fechar o mês no azul?', newConversation(A), [], false)
+      check(r.row, [['aviso separado numa linha "Atenção:"', (r.row.notes ?? 0) >= 1], ['curta (≤ 3 frases fora do aviso)', sentences(r.row.answer.split(/\n+/).filter((l) => !/^\s*(aten|limita|aviso)/i.test(l)).join(' ')) <= 3]])
     }
 
     const total = rows.reduce((s, x) => s + x.usd, 0)

@@ -54,8 +54,9 @@ const GUARDED = new RegExp(
     String.raw`(?:R\$|US\$|€|\$|£|AED|BRL|EUR|USD|GBP)\s?-?\d(?:[\d.,]*\d)?(?:\s?(?:mil|milh(?:ão|ões|oes))\b)?`,
     String.raw`-?\d(?:[\d.,]*\d)?\s?(?:reais|real|euros?|d[oó]lares?|R\$|€|AED|BRL|EUR|USD|GBP)\b`,
     // decimals that look like amounts: 612,40  1.234,56  1,234.56
-    String.raw`\b\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?\b`,
-    String.raw`\b\d+,\d{1,2}\b`,
+    // (a number followed by % is a percentage, read whole by the pattern below)
+    String.raw`\b\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?\b(?!\s?%)`,
+    String.raw`\b\d+,\d{1,2}\b(?!\s?%)`,
     // percentages
     String.raw`-?\d+(?:[.,]\d+)?\s?%`,
     // clock times: 10:00, 9h, 18h30, 9 horas
@@ -83,7 +84,7 @@ const pad2 = (n: string) => n.padStart(2, '0')
  * this turn (same money with currency, same date, same time, same percentage). Then it is shown as
  * that fact. Anything else stays blocked. Ambiguous numbers (same digits in two currencies) stay blocked.
  */
-function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact | null {
+function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>, near: Fact[] = []): Fact | null {
   const all = [...facts.values()]
   const lit = literal.trim()
   const q = squash(lit)
@@ -100,7 +101,7 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   // equal a fact with ",00" ("R$ 500,00") — the same value, never a rounded one.
   if (!textDate && /[a-z$€£]/i.test(lit) && /\d/.test(lit) && !/%/.test(lit) && !/:|\/|h\b|hora/i.test(lit)) {
     const whole = /,\d/.test(lit) ? null : q.replace(/(\d)(?=\D*$)/, '$1,00')
-    return all.find((f) => f.kind === 'dinheiro' && (squash(f.display) === q || squash(f.display) === whole)) ?? null
+    return all.find((f) => f.kind === 'dinheiro' && (squash(f.display) === q || squash(f.display) === whole)) ?? derivedMoney(lit, near)
   }
   // bare amount "1.500,00": only when one currency has it
   if (/^\d{1,3}(?:\.\d{3})*,\d{2}$|^\d+,\d{2}$/.test(lit)) {
@@ -108,7 +109,7 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
     const currencies = new Set(hits.map((f) => f.display.replace(/[\d.,\s−-]/g, '')))
     return hits.length && currencies.size === 1 ? hits[0] : null
   }
-  if (/%$/.test(lit)) return all.find((f) => f.kind === 'porcentagem' && squash(f.display).replace(/^\+/, '') === q.replace(/^\+/, '')) ?? null
+  if (/%$/.test(lit)) return all.find((f) => f.kind === 'porcentagem' && squash(f.display).replace(/^\+/, '') === q.replace(/^\+/, '')) ?? derivedPercent(lit, near)
   // dates → "dd/mm" (year, when written, must match the fact if the fact shows one)
   let dm: string | null = null
   let year: string | null = null
@@ -138,12 +139,89 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   return null
 }
 
+/* ---------------------------------------------------------------- values the APP can prove */
+
+const SYMBOL_CUR: Record<string, string> = { 'R$': 'BRL', 'US$': 'USD', '€': 'EUR', $: 'USD', '£': 'GBP', BRL: 'BRL', EUR: 'EUR', USD: 'USD', GBP: 'GBP', AED: 'AED' }
+const WORD_CUR: [RegExp, string][] = [[/^(reais|real)$/i, 'BRL'], [/^euros?$/i, 'EUR'], [/^d[oó]lares?$/i, 'USD']]
+
+/** "R$ 1.234,56", "1.234 reais", "€ 3,5" → integer cents + currency (null when unsure). */
+export function parseMoneyLiteral(lit: string): { cents: number; currency: string } | null {
+  const t = lit.trim()
+  let m = t.match(/^(R\$|US\$|€|\$|£|AED|BRL|EUR|USD|GBP)\s?(-?[\d.,]+)$/)
+  let cur: string | undefined
+  let num: string
+  if (m) {
+    cur = SYMBOL_CUR[m[1]]
+    num = m[2]
+  } else {
+    m = t.match(/^(-?[\d.,]+)\s?([A-Za-zé$€]+)$/)
+    if (!m) return null
+    cur = SYMBOL_CUR[m[2]] ?? WORD_CUR.find(([re]) => re.test(m![2]))?.[1]
+    num = m[1]
+  }
+  if (!cur) return null
+  // pt-BR: "." thousands, "," decimals; a lone "." with 1–2 digits after is a decimal point
+  const clean = /,\d{1,2}$/.test(num) ? num.replace(/\./g, '').replace(',', '.') : /\.\d{1,2}$/.test(num) && !/\.\d{3}/.test(num) ? num.replace(/,/g, '') : num.replace(/[.,]/g, '')
+  const v = Number(clean)
+  return Number.isFinite(v) ? { cents: Math.round(v * 100), currency: cur } : null
+}
+
+const sealOf = (xs: Fact[]): Seal => (xs.some((x) => x.seal === 'previsto') ? 'previsto' : xs.some((x) => x.seal === 'informado') ? 'informado' : 'confirmado')
+let derivedSeq = 0
+const derivedFact = (kind: FactKind, display: string, from: Fact[], expr: string): Fact => ({ id: `c${++derivedSeq}`, kind, label: 'Calculado pelo app', display, seal: sealOf(from), base: `cálculo do app: ${expr}` })
+
+/**
+ * A money value the model wrote is accepted only when the app proves it from the facts CITED in this
+ * answer: a sum or difference of two of them, or one of them × 12 / ÷ 12 or × / ÷ a count cited too
+ * (months, weeks). Same currency only; division within 1 cent (rounding). Anything else stays blocked.
+ */
+function derivedMoney(lit: string, near: Fact[]): Fact | null {
+  const x = parseMoneyLiteral(lit)
+  if (!x) return null
+  const target = Math.abs(x.cents)
+  const money = near.filter((f) => f.kind === 'dinheiro' && f.amount && f.amount.currency === x.currency && f.seal !== 'ausente' && f.seal !== 'proposto')
+  const counts = [12, ...near.filter((f) => f.kind === 'contagem').map((f) => Number((f.display.match(/\d+/) ?? ['0'])[0])).filter((n) => n >= 2 && n <= 600)]
+  for (let i = 0; i < money.length; i++) {
+    const a = money[i].amount!.cents
+    for (const k of counts) {
+      if (Math.abs(a * k) === target) return derivedFact('dinheiro', lit, [money[i]], `${money[i].label} × ${k}`)
+      if (Math.abs(Math.abs(a) / k - target) <= 1) return derivedFact('dinheiro', lit, [money[i]], `${money[i].label} ÷ ${k}`)
+    }
+    for (let j = i + 1; j < money.length; j++) {
+      const b = money[j].amount!.cents
+      if (Math.abs(a + b) === target) return derivedFact('dinheiro', lit, [money[i], money[j]], `${money[i].label} + ${money[j].label}`)
+      if (Math.abs(a - b) === target) return derivedFact('dinheiro', lit, [money[i], money[j]], `diferença entre ${money[i].label} e ${money[j].label}`)
+    }
+  }
+  return null
+}
+
+/** A percentage the model wrote: a share or a change between two money facts cited in this answer. */
+function derivedPercent(lit: string, near: Fact[]): Fact | null {
+  const p = Number(lit.replace(/[%\s+]/g, '').replace('−', '-').replace(',', '.'))
+  if (!Number.isFinite(p)) return null
+  const decimals = /[.,]\d/.test(lit) ? 1 : 0
+  const same = (v: number) => Math.abs(Number(v.toFixed(decimals)) - Math.abs(p)) < 1e-9
+  const money = near.filter((f) => f.kind === 'dinheiro' && f.amount && f.seal !== 'ausente' && f.seal !== 'proposto')
+  for (const a of money)
+    for (const b of money) {
+      if (a === b || a.amount!.currency !== b.amount!.currency || b.amount!.cents === 0) continue
+      const share = (a.amount!.cents / b.amount!.cents) * 100
+      const change = ((a.amount!.cents - b.amount!.cents) / Math.abs(b.amount!.cents)) * 100
+      if (same(Math.abs(share))) return derivedFact('porcentagem', lit, [a, b], `${a.label} como % de ${b.label}`)
+      if (same(Math.abs(change))) return derivedFact('porcentagem', lit, [a, b], `variação de ${a.label} sobre ${b.label}`)
+    }
+  return null
+}
+
 /** Splits an answer into text, facts and blocked (unconfirmed) values. */
 export function renderAnswer(text: string, facts: ReadonlyMap<string, Fact>): { segments: Segment[]; blocked: string[]; missing: string[]; used: string[] } {
   const segments: Segment[] = []
   const blocked: string[] = []
   const missing: string[] = []
   const used: string[] = []
+  const cited = new Set([...text.matchAll(/\{(f\d{1,4})\}/g)].map((m) => m[1]))
+  const near = [...facts.values()].filter((f) => cited.has(f.id) || f.seal === 'informado')
   const pushText = (raw: string) => {
     // stray braces left around a reference never show; nor the history marker, if the model copies it
     const s0 = raw.replace(/[{}]/g, '')
@@ -154,7 +232,7 @@ export function renderAnswer(text: string, facts: ReadonlyMap<string, Fact>): { 
     for (const m of s.matchAll(GUARDED)) {
       const at = m.index ?? 0
       if (at > last) segments.push({ t: 'text', s: s.slice(last, at) })
-      const fact = factForLiteral(m[0], facts)
+      const fact = factForLiteral(m[0], facts, near)
       if (fact) {
         segments.push({ t: 'fact', fact, shown: m[0] })
         used.push(fact.id)

@@ -26,7 +26,10 @@ import { todayIn, weekStart, zoneOf } from '../../../period'
 import { buildInstallments } from '../../../salesSmart'
 import { busyOf } from '../../../timeline'
 import { categoryIdFor } from '../areas/finance'
-import { dayLabel, fold } from '../areas/shared'
+import { dayLabel as dayLabelShort, dayLabelYear, fold } from '../areas/shared'
+
+/** A day in the preview: with the year when it is not this year ("dom, 31/12/2028", never an ambiguous "31/12"). */
+const dayLabel = (d: string) => (d.slice(0, 4) !== String(new Date().getFullYear()) ? dayLabelYear(d) : dayLabelShort(d))
 import type { Action, ActionType } from '../../../../../supabase/functions/_shared/ia/actions.ts'
 import type { Area } from '../../../../../supabase/functions/_shared/ia/tools.ts'
 

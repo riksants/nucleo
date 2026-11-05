@@ -1,7 +1,8 @@
-import { Check, ChevronRight, Clock3, Sparkles, Square, Volume2 } from 'lucide-react'
+import { ChevronRight, Info, Sparkles, Square, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { speak, stopSpeaking, ttsSupported } from '../../lib/speech'
 import { spokenText } from '../../core/assistant/ia/spoken'
+import { naturalDate, NOTE_START } from '../../core/assistant/ia/present'
 import { navigate } from '../../app/router'
 import { plainLine, type Fact, type Segment } from '../../../supabase/functions/_shared/ia/facts.ts'
 
@@ -15,21 +16,12 @@ export interface IaShown {
 
 const ROUTE_LABEL: Record<string, string> = { rapida: 'Resposta rápida', atenta: 'Análise', profunda: 'Análise profunda' }
 
+/** A value of the answer. No icons inside the text: a forecast reads in italics (explained once below the answer). */
 function FactChip({ fact, shown }: { fact: Fact; shown?: string }) {
-  const seal =
-    fact.seal === 'proposto' || fact.seal === 'informado' ? null : fact.seal === 'previsto' ? (
-      <Clock3 size={14} strokeWidth={2.4} aria-label="previsão" />
-    ) : fact.seal === 'ausente' ? null : (
-      <Check size={14} strokeWidth={2.6} aria-label="confirmado" />
-    )
   const tone = fact.seal === 'proposto' || fact.seal === 'informado' ? 'text-ink' : fact.seal === 'previsto' ? 'text-soft italic' : fact.seal === 'ausente' ? 'text-faint' : 'text-ink font-medium'
   const title = `${fact.label}${fact.seal === 'proposto' ? ' — na prévia, ainda não gravado' : fact.seal === 'informado' ? ' — a partir de um valor que você informou' : fact.seal === 'previsto' ? ' — previsão' : fact.seal === 'ausente' ? ' — não encontrado' : ' — confirmado'}${fact.base ? ` (${fact.base})` : ''}`
-  const body = (
-    <>
-      {shown ?? fact.display}
-      {seal && <span className="ml-0.5 inline-flex translate-y-[1px] text-accent-hi">{seal}</span>}
-    </>
-  )
+  const text = shown ?? fact.display
+  const body = <>{fact.kind === 'data' || fact.kind === 'compromisso' ? naturalDate(text) : text}</>
   if (!fact.open) return <span className={tone} title={title} data-fact={fact.id} data-seal={fact.seal}>{body}</span>
   return (
     <button type="button" title={title} data-fact={fact.id} data-seal={fact.seal} onClick={() => navigate(fact.open!.path as never, fact.open!.params)} className={`${tone} underline decoration-line decoration-dotted underline-offset-4 hover:decoration-accent-hi`}>
@@ -82,9 +74,22 @@ function Listen({ segments }: { segments: Segment[] }) {
 }
 
 export function IaAnswerView({ shown, onDeep, partial }: { shown: IaShown; onDeep?(question: string): void; partial?: boolean }) {
-  const paras = paragraphs(shown.segments)
-  // the legend only explains the seals this answer really uses
-  const seals = new Set(shown.segments.flatMap((s) => (s.t === 'fact' ? [s.fact.seal] : [])))
+  const all = paragraphs(shown.segments)
+  // warnings ("Atenção: …", "Limitação: …") are shown apart from the main answer
+  const isNote = (p: Segment[]) => p[0]?.t === 'text' && NOTE_START.test(p[0].s)
+  const paras = all.filter((p) => !isNote(p))
+  const notes = all.filter(isNote)
+  const forecast = shown.segments.some((s) => s.t === 'fact' && s.fact.seal === 'previsto')
+  const seg = (s: Segment, j: number) =>
+    s.t === 'text' ? (
+      <span key={j}>{s.s}</span>
+    ) : s.t === 'fact' ? (
+      <FactChip key={j} fact={s.fact} shown={s.shown} />
+    ) : (
+      <span key={j} className="text-faint" data-blocked title="A IA citou um número que o app não conseguiu confirmar com os seus dados">
+        (valor não confirmado)
+      </span>
+    )
   return (
     <div className="min-w-0" {...(partial ? { 'data-ia-partial': true, 'aria-busy': true } : { 'data-ia-answer': true, 'data-route': shown.route })}>
       {paras.map((p, i) => {
@@ -93,35 +98,24 @@ export function IaAnswerView({ shown, onDeep, partial }: { shown: IaShown; onDee
         return (
           <p key={i} className={`text-[15px] leading-relaxed ${suggestion ? 'mt-1.5 rounded-xl border border-line bg-surface px-3 py-2' : ''}`}>
             {suggestion && <Sparkles size={14} className="mr-1 inline -translate-y-[1px] text-accent-hi" aria-label="sugestão" />}
-            {p.map((s, j) =>
-              s.t === 'text' ? (
-                <span key={j}>{s.s}</span>
-              ) : s.t === 'fact' ? (
-                <FactChip key={j} fact={s.fact} shown={s.shown} />
-              ) : (
-                <span key={j} className="text-faint" data-blocked>
-                  ‹valor não confirmado›
-                </span>
-              ),
-            )}
+            {p.map(seg)}
           </p>
         )
       })}
+      {notes.length > 0 && (
+        <div className="mt-2 flex gap-2 rounded-xl bg-tint/[0.05] px-3 py-2 text-[14px] leading-snug text-soft" data-ia-note>
+          <Info size={16} className="mt-0.5 shrink-0 text-faint" aria-hidden />
+          <div className="space-y-1">
+            {notes.map((p, i) => (
+              <p key={i}>{p.map((s, j) => (j === 0 && s.t === 'text' ? <span key={j}>{s.s.replace(NOTE_START, '').trimStart()}</span> : seg(s, j)))}</p>
+            ))}
+          </div>
+        </div>
+      )}
       {!partial && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-faint">
         <span>
           {ROUTE_LABEL[shown.route] ?? 'IA'}
-          {seals.has('confirmado') && (
-            <>
-              {' · '}
-              <Check size={14} className="inline -translate-y-[1px]" /> confirmado
-            </>
-          )}
-          {seals.has('previsto') && (
-            <>
-              {' · '}
-              <Clock3 size={14} className="inline -translate-y-[1px]" /> previsão
-            </>
-          )}
+          {forecast && ' · em itálico: previsão'}
         </span>
         {onDeep && shown.route !== 'profunda' && (
           <button type="button" onClick={() => onDeep(shown.question)} className="flex items-center gap-0.5 font-medium text-accent-hi hover:text-ink">

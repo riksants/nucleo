@@ -270,7 +270,7 @@ export function forecastLookup(_input: Record<string, unknown>, ctx: LookupCtx):
       ...(fixedPrev !== null ? { mes_passado: moneyFact(book, fixedPrev, base, `Gastos fixos lançados em ${monthLong(prevMonth)}`, fixedPrev ? 'confirmado' : 'ausente') } : {}),
       ja_lancados_neste_mes: fixedThis.map(([id, v]) => fixedLine(id, v, `lançado em ${label}`)),
       ...(prevT ? { do_mes_passado_ainda_nao_lancados_neste_mes: fixedMissing.map(([id, v]) => fixedLine(id, v, `lançado em ${monthLong(prevMonth)}, ainda não neste mês`)) } : {}),
-      observacao: 'A previsão não projeta gastos fixos (aluguel, contas): se algum ainda não foi lançado neste mês, o saldo real tende a ficar menor que o previsto.',
+      observacao: 'A previsão não projeta gastos fixos. Os que já foram lançados neste mês estão em "ja_lancados_neste_mes"; os que apareceram no mês passado e ainda faltam estão em "do_mes_passado_ainda_nao_lancados_neste_mes" — cite só esses, pelo nome; nunca diga que falta um gasto que já foi lançado.',
     },
   }
 
@@ -295,6 +295,13 @@ export function forecastLookup(_input: Record<string, unknown>, ctx: LookupCtx):
     payload.cenarios_fim_do_mes = absent(book, `Previsão de saldo no fim de ${label}`, 'ainda sem dados suficientes')
     limitacoes.push(`Sem previsão de saldo: o app precisa de pelo menos ${FORECAST_MIN.days} dias, ${FORECAST_MIN.expenses} saídas e ${FORECAST_MIN.expenseDays} dias com gasto neste mês (hoje: ${f.daysElapsed} dias, ${f.expenses} saídas).`)
   }
+  // inconsistencies the APP detects (deterministic): shown to the person as a separate "Atenção" line
+  const alertas: string[] = []
+  if (balance < 0) alertas.push('O saldo de hoje está negativo.')
+  if (f.ready && f.estimate < 0) alertas.push('Pela previsão, o saldo fica negativo no fim do mês (sem contar recebimentos).')
+  if (late.length) alertas.push('Há valores vencidos que outras pessoas devem a você e ainda não foram pagos.')
+  if (fixedMissing.length) alertas.push(`Gastos fixos do mês passado ainda não lançados neste mês: ${fixedMissing.map(([id]) => categoryLabel(settings, id || undefined)).join(', ')}.`)
+  if (alertas.length) payload.alertas = alertas
   payload.dias_ate_o_fim_do_mes = countFact(book, Math.round((Date.parse(to) - Date.parse(today)) / 86_400_000), 'Dias até o fim do mês', ['dia', 'dias'])
   payload.limitacoes = limitacoes
   return out(payload, [label])

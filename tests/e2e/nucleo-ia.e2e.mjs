@@ -365,6 +365,33 @@ try {
   await B.sleep(400)
   r.check('"Apagar a conversa deste aparelho" limpa a tela e o aparelho', (await answers(B)).length === 0 && !(await B.eval(`localStorage.getItem('nucleo:iaConv:${uid}')`)))
 
+  // M1 Goals: a money goal becomes the editable preview WITHOUT the AI; a sales goal is not supported.
+  const iaBefore = (await ia()).requests.length
+  const nM = await B.eval(`document.querySelectorAll('[data-ia-plan]').length`)
+  await ask(B, 'Cria uma meta de juntar 5 mil até dezembro de 2027')
+  await B.sleep(900)
+  const goalPlan = await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); const p = ps[ps.length - 1]; return p ? { n: ps.length, state: p.dataset.planState, text: p.innerText, cancel: !!p.querySelector('[data-plan-cancel]'), edit: !!p.querySelector('[data-plan-edit]') } : null })()`)
+  r.check('criar meta de dinheiro: prévia editável (Confirmar, Editar, Cancelar) sem chamar a IA', goalPlan?.n === nM + 1 && /Confirmar/.test(goalPlan.text) && goalPlan.cancel && goalPlan.edit && (await ia()).requests.length === iaBefore, JSON.stringify(goalPlan))
+  r.check('prévia mostra o valor e o prazo pedidos', /5\.000,00/.test(goalPlan?.text ?? '') && /2027/.test(goalPlan?.text ?? ''), (goalPlan?.text ?? '').replace(/\n/g, ' ').slice(0, 160))
+  await B.sleep(1200)
+  const goalsBefore = (await (await fetch(MOCK + '/__state')).json()).records.filter((x) => x.user_id === uid && x.collection === 'financeGoals' && !x.deleted).length
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); [...ps[ps.length - 1].querySelectorAll('button')].find(b => /Confirmar/.test(b.innerText)).click() })()`)
+  await B.sleep(2500)
+  const goalsAfter = (await (await fetch(MOCK + '/__state')).json()).records.filter((x) => x.user_id === uid && x.collection === 'financeGoals' && !x.deleted)
+  r.check('nada gravado antes de confirmar; depois de confirmar, a meta existe', goalsAfter.length === goalsBefore + 1 && goalsAfter.some((g) => g.data.target === 500000 && g.data.deadline === '2027-12-31'), `${goalsBefore} → ${goalsAfter.length}`)
+  await ask(B, 'Cria uma meta de juntar 3 mil até junho de 2027')
+  await B.sleep(900)
+  await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); ps[ps.length - 1].querySelector('[data-plan-cancel]').click() })()`)
+  await B.sleep(1500)
+  const cancelled = await B.eval(`(() => { const ps = document.querySelectorAll('[data-ia-plan]'); return ps[ps.length - 1].dataset.planState })()`)
+  const goalsCancel = (await (await fetch(MOCK + '/__state')).json()).records.filter((x) => x.user_id === uid && x.collection === 'financeGoals' && !x.deleted).length
+  r.check('Cancelar fecha a prévia e não grava nada', cancelled === 'cancelled' && goalsCancel === goalsAfter.length)
+  await ask(B, 'Cria uma meta de vendas de 10 mil este mês')
+  await B.sleep(900)
+  const salesText = await B.eval(`document.querySelector('[aria-live=polite]').innerText`)
+  r.check('meta de vendas: explica que o app não tem, oferece Vendas e não cria nada nem chama a IA', /não tem meta de vendas/.test(salesText) && /Abrir Vendas/.test(salesText) && (await ia()).requests.length === iaBefore, salesText.slice(-200))
+  r.check('nenhum ícone dentro do texto das respostas (✓/relógio)', (await B.eval(`document.querySelectorAll('[data-ia-answer] [data-fact] svg').length`)) === 0)
+
   // E5.7 Phone widths (iPhone SE/mini → Pro Max): no sideways scroll, new controls ≥ 44 px, sheets fit.
   const nW = (await answers(B)).length
   await ask(B, 'lembra que prefiro respostas curtas')
