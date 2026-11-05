@@ -160,6 +160,8 @@ export async function removeAccountFromDevice(uid: string, opts: { wholeDevice: 
     // That account's notification log and marks on this device (Central de notificações).
     localStorage.removeItem(`nucleo:noticeLog:${uid}`)
     localStorage.removeItem(`nucleo:noticeMarks:${uid}`)
+    // NÚCLEO IA: that account's conversation kept on this device (continuity, 12 h)
+    localStorage.removeItem(`nucleo:iaConv:${uid}`)
   } catch {
     // storage unavailable
   }

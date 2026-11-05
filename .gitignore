@@ -36,3 +36,4 @@ dist-e2e-captcha
 .agents/
 .claude/skills/
 skills-lock.json
+dist-e2e-ia

@@ -7,7 +7,7 @@ import type { RuleDraft } from '../../core/rules/templates'
 import { newId, useStore } from '../../data/store'
 import { Button } from '../../ui/Button'
 import { TextInput } from '../../ui/Field'
-import { useSpeech } from '../daily/SmartCapture'
+import { useSpeech } from '../../lib/speech'
 
 type Draft = RuleDraft & { name: string }
 

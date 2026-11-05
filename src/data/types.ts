@@ -591,8 +591,24 @@ export interface Settings {
   insightState?: Record<string, InsightMark>
   /** Etapa 6: hours used to suggest times ("HH:MM"). Missing = routine wake/sleep, else 07:00–22:00. */
   activeHours?: { start: string; end: string }
-  /** Etapa 6: optional AI interpreter for free sentences. Off by default; needs consent. */
-  assistantAi?: { enabled: boolean; consentAt: string | null }
+  /**
+   * Etapa 6: optional AI interpreter for free sentences. Off by default; needs consent.
+   * NÚCLEO IA: `consentVersion: 2` = the person accepted that parts of their data go to the AI during a
+   * question (the old consent covered only the sentence). Missing = not accepted.
+   */
+  assistantAi?: {
+    enabled: boolean
+    consentAt: string | null
+    consentVersion?: number
+    /** NÚCLEO IA: areas the AI may not read (core/assistant/ia/areas/shared.ts). Missing = all allowed. */
+    areasOff?: string[]
+    /** NÚCLEO IA (Etapa 5): keep the conversation on THIS device for 12 h (never synced). Missing = on. */
+    continuity?: boolean
+    /** NÚCLEO IA (Etapa 5): long-term reminders on. Missing = off. */
+    memoryOn?: boolean
+    /** Up to 20 reminders the person confirmed (≤ 200 chars, no values or sensitive data). */
+    memory?: { id: string; text: string; at: string }[]
+  }
   /** Meal types in the person's order (on/off, renamed, personal). Missing = defaults. */
   mealTypes?: MealType[]
   /** Personal finance categories and hidden default ones. Missing = defaults only. */

@@ -1,5 +1,59 @@
 # Pendências
 
+## NÚCLEO IA — PUBLICADO para todos em 2026-11-05 (grátis)
+
+- Feito: ensaio com o backup real de 01/11 (restauração idêntica; migração/reversão/reaplicação ok); snapshot
+  em Documents/Nucleo-backup-PRIVADO/nucleo-ia-antes-da-migracao-2026-11-05.json; migração 20261103000000 aplicada
+  numa transação (dono = owner); secrets ANTHROPIC_API_KEY + IA_TURN_SECRET; função `nucleo-ia` publicada;
+  verificação em produção 12/12 (contas descartáveis apagadas); app com a IA ligada por padrão (deploy.yml).
+- Trocar a chave da Anthropic usada (a de desenvolvimento) por uma chave própria de produção com limite mensal
+  no painel da Anthropic: `supabase secrets set ANTHROPIC_API_KEY=...` (sem novo deploy).
+
+### Histórico do planejamento
+
+- Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md (Etapa 5 no fim).
+- NÃO aplicado/publicado: migração 20261103000000_nucleo_ia.sql; função `nucleo-ia` (secrets
+  ANTHROPIC_API_KEY + IA_TURN_SECRET ≥ 32 caracteres); build com VITE_NUCLEO_IA=on; página privacidade.html nova.
+- Decisão do usuário (2026-11-05): SEM liberação gradual. Concluir todos os testes e verificações; depois
+  publicar para todos os elegíveis de uma vez, com autorização final.
+- DECISÃO (2026-11-05): o NÚCLEO IA é GRATUITO para todos os usuários cadastrados, por tempo indeterminado,
+  mediante consentimento. Sem teste grátis, sem prazo, sem assinatura. Nível padrão `free` (criado no 1º uso):
+  até US$ 0,05/dia (~20 perguntas simples) e US$ 0,50/mês (~200), Sonnet até US$ 0,15/mês. Limites renovam
+  sozinhos e sem cobrança: o do dia à meia-noite e o do mês no dia 1º (horário de Brasília); a mensagem e o
+  painel de uso dizem quando volta. `owner` = dono; `none` = bloqueio manual (abuso). Teto global: piso US$ 1 +
+  2 × (US$ 0,50/30 por conta ativa), limitado a US$ 10/dia (`ia.global_hard_daily_micros`, valor de lançamento).
+- A) Verificações antes da autorização final (nada muda em produção):
+  1. Leitura em produção (só select): schema_version, colunas de ai_usage, quota_limits, nº de contas,
+     ia_reserve ainda inexistente.
+  2. Ensaio da migração numa restauração LOCAL do último backup (restore-local.sh) + rollback no mesmo banco.
+  3. iPhone real: só é possível com a função publicada (o microfone exige HTTPS) — fica para o passo B9.
+- B) Ativação (uma sessão, com autorização final; tempo estimado ~30 min):
+  1. Backup verificado (restauração local idêntica) + cópia de ai_usage/quota_limits.
+  2. Migração 20261103000000 numa transação; conferir schema_version. Reversão: supabase/rollback-nucleo-ia.sql.
+  3. Conta do dono: `insert into ai_entitlements (user_id, tier) values ('<uid>', 'owner')`.
+  4. Conferir o teto global de lançamento: `ia.global_hard_daily_micros` = 10000000 (US$ 10/dia, já é o
+     padrão da migração; subir depois, conforme o uso).
+  5. Secrets: chave NOVA de produção da Anthropic (não a dev) num workspace com limite mensal (sugestão US$ 20);
+     IA_TURN_SECRET aleatório de 48 caracteres.
+  6. Publicar `nucleo-ia`; conferir 401 sem login e CORS só hellonucleo.app.
+  7. Merge feat/nucleo-ia → main (sozinho NÃO liga a IA) e então a variável do repositório VITE_NUCLEO_IA=on
+     + novo deploy. Desligar no app = apagar a variável e refazer o deploy.
+  8. Verificação em produção com 2 contas descartáveis (consentimento, pergunta, streaming, uso, isolamento
+     entre contas, limite do dia atingido → mensagem "volta à meia-noite, sem custo") e apagar as contas;
+     custo < US$ 0,05.
+  9. iPhone real com o usuário (microfone, Ouvir, app instalado).
+- C) Primeiras 48 h: custo diário em ai_usage, erros da função, disjuntor; desligar em segundos se preciso.
+- Desligar sem reverter (segundos): `update quota_limits set max_value = 0 where key = 'ia.global_hard_daily_micros'`.
+- O interpretador antigo (função `assistant`, features/assistant/ai.ts) não é mais chamado quando VITE_NUCLEO_IA=on;
+  remover a função publicada e o código depois que a IA nova estiver estável em produção.
+- Validar no iPhone real (com o usuário): microfone (no app instalado na tela inicial o reconhecimento pode
+  não existir — então o botão some e o teclado/ditado continua), "Ouvir", streaming e painéis. Até agora só
+  emulação Chromium (360/390/430 px).
+- Velocidade: 1ª frase do Haiku ~3–5 s (meta da spec < 2 s não atingida: a frase só pode aparecer depois das
+  consultas no aparelho); Sonnet com várias consultas chegou a 26 s (retestes 4–5 s). Ideias: pedir as consultas
+  em paralelo num passo só, pré-carregar consultas óbvias, revisar o esforço do Sonnet.
+- e2e assistant: "Organizar minha semana" falha aos domingos também na main (pré-existente).
+
 ## Etapa 5: notificações confiáveis — ATIVADA em produção em 2026-11-01
 
 - App: main 1a6bccc (Pages deploy 41273257459). Migração 20261101000000 aplicada numa transação (81 avisos e

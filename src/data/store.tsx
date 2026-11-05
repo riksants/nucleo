@@ -44,16 +44,28 @@ export interface CommitOptions {
   by?: WriteActor
   /** Parte 3 (import of a statement): how the rules treat this write (more runs allowed, rules left out). */
   rules?: Pick<ExecuteOptions, 'maxRuns' | 'skip'>
+  /** NÚCLEO IA: the records of this write show "Alterado pelo Assistente" (like save with { by: 'assistant' }). */
+  mark?: 'assistant'
 }
 
-/** Same stamping as save(): a normal change clears the Assistant mark. */
-function stampOps(ops: BatchOp[], now: string): BatchOp[] {
+/** Same stamping as save(): a normal change clears the Assistant mark (an Assistant write sets it). */
+function stampOps(ops: BatchOp[], now: string, mark?: 'assistant'): BatchOp[] {
   return ops.map((o) => {
     if (o.op !== 'put') return o
     const { changedBy: _mark, ...rest } = o.item
     void _mark
-    return { ...o, item: { ...rest, createdAt: rest.createdAt || now, updatedAt: now } }
+    return { ...o, item: { ...rest, ...(mark ? { changedBy: mark } : {}), createdAt: rest.createdAt || now, updatedAt: now } }
   })
+}
+
+/**
+ * The movement addTransaction saves (pure): amount in its currency, signed base amount by the rate of
+ * now, and the optional details. Shared with the Assistant so both write the very same record.
+ */
+export function transactionDraft(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras, toBase: (amount: Cents, currency: Currency) => Cents): Draft<Transaction> {
+  const { type, amount, currency, reason, ...extras } = input
+  const base = toBase(amount, currency)
+  return withExtras({ type, amount, currency, reason, baseAmount: type === 'in' ? base : -base }, type, extras) as Draft<Transaction>
 }
 
 const applyToState = applyOps
@@ -154,7 +166,8 @@ interface Store {
    * Several saves/removals applied together (on screen and on the device), e.g. a payment and its income.
    * The actions of the person's rules that answer this write are added to the same write.
    */
-  commit(ops: BatchOp[], opts?: CommitOptions): Promise<void>
+  /** Returns everything written: these ops plus what the person's rules added to the same write. */
+  commit(ops: BatchOp[], opts?: CommitOptions): Promise<BatchOp[]>
   addTransaction(input: { type: Exclude<TransactionType, 'adjust'>; amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   updateTransaction(tx: Transaction, patch: { amount: Cents; currency: Currency; reason: string } & TransactionExtras): Promise<Transaction>
   adjustBalance(target: Cents): Promise<Transaction | null>
@@ -317,15 +330,16 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
 
   const commit = useCallback(
     async (ops: BatchOp[], opts: CommitOptions = {}) => {
-      if (!ops.length) return
+      if (!ops.length) return []
       const now = new Date().toISOString()
-      const stamped = stampOps(ops, now)
+      const stamped = stampOps(ops, now, opts.mark)
       const all = [...stamped, ...stampOps(rulesFor(stamped, opts.by ?? 'person', opts.rules), now)]
       // The next write (even before React renders) must already see this one as "before".
       dataRef.current = applyToState(dataRef.current, all)
       setData((prev) => applyToState(prev, all))
       if (repo.batch) await repo.batch(all)
       else for (const o of all) await (o.op === 'put' ? repo.put(o.collection, o.item as never) : repo.remove(o.collection, o.id))
+      return all
     },
     [repo, rulesFor],
   )
@@ -340,10 +354,7 @@ export function StoreProvider({ children, repository }: { children: ReactNode; r
   )
 
   const addTransaction = useCallback<Store['addTransaction']>(
-    async ({ type, amount, currency, reason, ...extras }) => {
-      const base = toBase(amount, currency)
-      return save('transactions', withExtras({ type, amount, currency, reason, baseAmount: type === 'in' ? base : -base }, type, extras))
-    },
+    async (input) => save('transactions', transactionDraft(input, toBase)),
     [save, toBase],
   )
 
