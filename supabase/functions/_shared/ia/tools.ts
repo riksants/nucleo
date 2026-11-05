@@ -9,6 +9,7 @@
 
 import { ACTION_TOOL, ACTION_TOOL_DEF } from './actions.ts'
 import { CALC_TOOL, CALC_TOOL_DEF } from './calc.ts'
+import { MEMORY_TOOL, MEMORY_TOOL_DEF } from './memory.ts'
 
 export type ToolName =
   | 'consultar_agenda'
@@ -144,10 +145,10 @@ export const ESCALATE_DEF: ToolDef = def(
 )
 
 /** Tool list per model (fixed per model → cached). Lookups, then the action planner. */
-export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, CALC_TOOL_DEF, ACTION_TOOL_DEF, ESCALATE_DEF] : [...TOOL_DEFS, CALC_TOOL_DEF, ACTION_TOOL_DEF])
+export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, CALC_TOOL_DEF, MEMORY_TOOL_DEF, ACTION_TOOL_DEF, ESCALATE_DEF] : [...TOOL_DEFS, CALC_TOOL_DEF, MEMORY_TOOL_DEF, ACTION_TOOL_DEF])
 
 /** Run by the app: every lookup, `calcular` (over this turn's facts) and the action planner (which only builds a preview). */
-export const isAppTool = (name: string): boolean => (APP_TOOLS as string[]).includes(name) || name === ACTION_TOOL || name === CALC_TOOL
+export const isAppTool = (name: string): boolean => (APP_TOOLS as string[]).includes(name) || name === ACTION_TOOL || name === CALC_TOOL || name === MEMORY_TOOL
 
 /** Limits for what the app sends back for one lookup. */
 export const MAX_RESULT_CHARS = 12_000

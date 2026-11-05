@@ -18,10 +18,12 @@ import { runActionsTool } from './actions/tool'
 import type { Plan } from './actions/plan'
 import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.ts'
 import { runLookup } from './lookups'
+import { stablePrefix, type StreamEvent } from '../../../../supabase/functions/_shared/ia/stream.ts'
 import { CALC_TOOL } from '../../../../supabase/functions/_shared/ia/calc.ts'
 import { questionFacts, runCalc } from './calc'
+import { MEMORY_TOOL, memoryForModel, memoryRefusal, cleanMemory } from '../../../../supabase/functions/_shared/ia/memory.ts'
 
-export type Transport = (body: TurnRequest) => Promise<{ ok: true; data: TurnResponse } | { ok: false; status: number; error: TurnError }>
+export type Transport = (body: TurnRequest, onEvent?: (e: StreamEvent) => void) => Promise<{ ok: true; data: TurnResponse } | { ok: false; status: number; error: TurnError }>
 
 export interface TurnDeps {
   transport: Transport
@@ -34,6 +36,11 @@ export interface TurnDeps {
   timeZone: string
   areasOff: Area[]
   onStatus?(text: string): void
+  /**
+   * Progressive answer: complete sentences of the text being written, ALREADY through the guard
+   * (values that are not facts hidden). null = drop what was shown (a new model call or lookups).
+   */
+  onPartial?(segments: Segment[] | null): void
   newTurnId?(): string
 }
 
@@ -53,6 +60,8 @@ export type IaAnswer =
       plan: Plan | null
       /** The answer says a preview/change was prepared, but no plan was built: the screen says so (nothing will be written). */
       claimedPlanWithoutOne: boolean
+      /** A reminder the model proposed: shown as "Lembrar disso?", saved only on a tap. */
+      memoryProposal: string | null
     }
   | { kind: 'error'; code: ErrorCode | 'session'; message: string; conversation: Conversation | null }
 
@@ -86,8 +95,30 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   questionFacts(text, book, deps.snapshot().settings)
   const id = (deps.newTurnId ?? turnId)()
   // a holder: the plan is set inside the lookups callback
-  const proposed: { plan: Plan | null; count: number } = { plan: null, count: 0 }
+  const proposed: { plan: Plan | null; count: number; memory: string | null } = { plan: null, count: 0, memory: null }
+  const ai0 = deps.snapshot().settings.assistantAi
+  const memory = ai0?.memoryOn ? memoryForModel(ai0.memory) : []
   const lookups: { tool: string; args: Record<string, unknown>; about?: string[] }[] = []
+  let raw = ''
+  let shown = ''
+  const onEvent = deps.onPartial
+    ? (e: StreamEvent) => {
+        if (e.t === 'r') {
+          raw = ''
+          shown = ''
+          deps.onPartial!(null)
+          return
+        }
+        if (e.t !== 'd') return
+        raw += e.s
+        const safe = stablePrefix(raw)
+        if (safe.length > shown.length) {
+          shown = safe
+          // the same guard as the final answer, with this turn's facts: nothing unverified is shown
+          deps.onPartial!(renderAnswer(safe, book.all).segments)
+        }
+      }
+    : undefined
   let res = await deps.transport({
     kind: 'start',
     turnId: id,
@@ -100,7 +131,8 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     topics: topicsOf(conversation),
     focus: conversation.focus,
     areasOff: deps.areasOff,
-  })
+    ...(memory.length ? { memory } : {}),
+  }, onEvent)
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     if (!res.ok) return { kind: 'error', code: res.error.error, message: res.error.message, conversation }
@@ -111,7 +143,7 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
       const plan = proposed.plan
       // the history says a preview is waiting, so "confirma" / "muda a data" are understood next
       const conv = plan ? remember(next, '(prévia de alterações mostrada)', `Prévia com ${plan.items.length} ${plan.items.length === 1 ? 'item' : 'itens'}, aguardando a pessoa confirmar ou editar na tela. Nada foi gravado ainda.`) : next
-      return { kind: 'answer', segments: r.segments, facts: [...book.all.values()], blocked: r.blocked, route: body.route, model: body.model, costMicros: body.costMicros, stop: body.stop, conversation: conv, plan, claimedPlanWithoutOne: !plan && claimsPlan(body.text) }
+      return { kind: 'answer', segments: r.segments, facts: [...book.all.values()], blocked: r.blocked, route: body.route, model: body.model, costMicros: body.costMicros, stop: body.stop, conversation: conv, plan, claimedPlanWithoutOne: !plan && !proposed.memory && claimsPlan(body.text), memoryProposal: proposed.memory }
     }
     // Lookups requested: same account still signed in, then run them over the freshest data.
     if (!(await sessionOk())) return { kind: 'error', code: 'session', message: 'A conta conectada mudou. A conversa foi encerrada.', conversation: null }
@@ -123,6 +155,15 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
         if (r.plan) proposed.plan = r.plan
         return { id: call.id, content: r.content, isError: r.isError }
       }
+      if (call.name === MEMORY_TOOL) {
+        const ai = settings.assistantAi
+        if (!ai?.memoryOn) return { id: call.id, content: JSON.stringify({ erro: 'Os lembretes de longo prazo estão desligados. A pessoa pode ligá-los em "Privacidade da IA", no Assistente.' }), isError: true }
+        if ((ai.memory?.length ?? 0) >= 20) return { id: call.id, content: JSON.stringify({ erro: 'Já há 20 lembretes. A pessoa precisa apagar um em "Privacidade da IA" antes.' }), isError: true }
+        const why = memoryRefusal(call.input?.texto)
+        if (why) return { id: call.id, content: JSON.stringify({ erro: why }), isError: true }
+        proposed.memory = cleanMemory(call.input.texto)
+        return { id: call.id, content: JSON.stringify({ mostrado_na_tela: true, aviso: 'Nada foi salvo: o lembrete só é guardado se a pessoa tocar em "Lembrar". Não diga que já lembrou.' }), isError: false }
+      }
       if (call.name === CALC_TOOL) {
         deps.onStatus?.('Calculando…')
         return { id: call.id, ...runCalc(call.input, book, settings) }
@@ -133,7 +174,8 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
       lookups.push({ tool: call.name, args: call.input, ...(r.about?.length ? { about: r.about.map((a) => a.slice(0, 80)) } : {}) })
       return { id: call.id, content: r.content, isError: r.isError }
     })
-    res = await deps.transport({ kind: 'continue', envelope: body.envelope, results })
+    deps.onPartial?.(null)
+    res = await deps.transport({ kind: 'continue', envelope: body.envelope, results }, onEvent)
   }
   return { kind: 'error', code: 'upstream', message: 'A IA não concluiu a resposta.', conversation }
 }

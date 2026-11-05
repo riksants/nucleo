@@ -217,3 +217,11 @@ export function historyText(segments: Segment[]): string {
     .map((s) => (s.t === 'text' ? s.s : s.t === 'fact' ? (s.fact.kind === 'texto' || s.fact.kind === 'contagem' || s.fact.kind === 'compromisso' ? (s.shown ?? s.fact.display) : HISTORY_VALUE) : HISTORY_VALUE))
     .join('')
 }
+
+/** True when a text carries a value the guard protects (money, date, time, percentage, big number). */
+export function hasGuardedValue(s: string): boolean {
+  GUARDED.lastIndex = 0
+  const hit = GUARDED.test(s)
+  GUARDED.lastIndex = 0
+  return hit
+}

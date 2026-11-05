@@ -29,6 +29,7 @@ import { Segmented } from '../../ui/Segmented'
 import { Sheet } from '../../ui/Sheet'
 import { COLLECTION_LABELS } from '../account/MigrationOffer'
 import { useSession } from '../account/session'
+import { clearContinuity } from '../../core/assistant/ia/continuity'
 import { AUTO_LOCK_OPTIONS, useVault } from '../accounts/vault'
 import { ModulePicker, Switch } from './ModulePicker'
 import { parseMoney } from '../../lib/calc'
@@ -403,7 +404,12 @@ export function SettingsPage() {
             role="switch"
             aria-checked={Boolean(settings.assistantAi?.enabled)}
             onClick={async () => {
-              if (settings.assistantAi?.enabled) return updateSettings({ assistantAi: { enabled: false, consentAt: null } })
+              if (settings.assistantAi?.enabled) {
+                // NÚCLEO IA: the conversation kept on this device goes; the person's own choices (areas, reminders) stay theirs
+                if (userId) clearContinuity(userId)
+                const { areasOff, memory, memoryOn, continuity } = settings.assistantAi
+                return updateSettings({ assistantAi: { enabled: false, consentAt: null, ...(NUCLEO_IA ? { areasOff, memory, memoryOn, continuity } : {}) } })
+              }
               const text = NUCLEO_IA ? IA_SWITCH_TEXT : LEGACY_SWITCH_TEXT
               const ok = await confirm({ title: text.title, message: text.message, confirmLabel: 'Concordo, ligar' })
               // NÚCLEO IA: accepting here IS the consent for sending data (version 2) — the Assistant does not ask again.

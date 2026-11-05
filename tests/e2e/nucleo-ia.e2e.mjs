@@ -113,7 +113,7 @@ try {
   r.check('sugestão marcada como sugestão', a[0]?.suggestion === true)
   r.check('rota rápida (Haiku) e botão "Analisar a fundo"', a[0]?.route === 'rapida' && /Analisar a fundo/.test(a[0]?.text))
   let log = await ia()
-  r.check('servidor: Haiku 5.5, esforço baixo, 16 consultas + calcular + ações + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 19)
+  r.check('servidor: Haiku 5.5, esforço baixo, 16 consultas + calcular + lembrete + ações + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 20)
   r.check('o app enviou só a pergunta, histórico e foco — nenhum registro no início', !JSON.stringify(log.requests.at(-2) ?? {}).includes('Continente'))
 
   // 2) Follow-up without repeating the subject.
@@ -266,6 +266,132 @@ try {
   const st = await (await fetch(MOCK + '/__state')).json()
   r.check('o interpretador antigo não foi chamado', !st.requests.some((x) => x.includes('/functions/v1/assistant')))
   r.check('custo contabilizado', (await ia()).spentMicros > 0)
+
+  // ---------------- Etapa 5 ----------------
+  // E5.1 Progressive answer: sentences appear while the AI writes, already through the guard (no invented value ever shown).
+  await B.click('Privacidade da IA')
+  await B.sleep(400)
+  await B.eval(`document.querySelector('[data-ia-privacy] [data-area="financas"]').click()`)
+  await B.sleep(300)
+  await B.click('Fechar')
+  await B.sleep(500)
+  const n51 = (await answers(B)).length
+  await ask(B, 'vou fechar o mês no azul mesmo?')
+  const partialTexts = []
+  for (let i = 0; i < 60 && (await answers(B)).length === n51; i++) {
+    const t = await B.eval(`document.querySelector('[data-ia-partial]')?.innerText ?? ''`)
+    if (t) partialTexts.push(t)
+    await B.sleep(50)
+  }
+  a = await waitAnswers(B, n51 + 1)
+  r.check('streaming: a resposta aparece aos poucos antes de terminar', partialTexts.length > 0, JSON.stringify(partialTexts.slice(0, 2)))
+  r.check('streaming: a prévia nunca mostra o valor inventado (R$ 777,77) e já traz o valor verificado', partialTexts.every((t) => !/777/.test(t)) && partialTexts.some((t) => /Hoje você tem R\$/.test(t)), JSON.stringify(partialTexts.slice(-1)))
+  r.check('streaming: a resposta final substitui a prévia (sem prévia na tela, valor inventado bloqueado)', !(await B.eval(`!!document.querySelector('[data-ia-partial]')`)) && a.at(-1)?.blocked === 1, JSON.stringify(a.at(-1)) + ' ' + JSON.stringify((await ia()).requests.slice(-3)))
+  r.check('"Ouvir" disponível na resposta', await B.eval(`!!document.querySelectorAll('[data-ia-answer]')[document.querySelectorAll('[data-ia-answer]').length - 1].querySelector('[data-ia-listen]')`))
+
+  // E5.2 Long-term reminders: off by default; the AI only proposes; saved only on a tap; visible, deletable.
+  await B.click('Privacidade da IA')
+  await B.sleep(400)
+  r.check('lembretes desligados por padrão; continuidade ligada por padrão', (await B.eval(`document.querySelector('[data-setting="memory"]').getAttribute('aria-checked')`)) === 'false' && (await B.eval(`document.querySelector('[data-setting="continuity"]').getAttribute('aria-checked')`)) === 'true')
+  await B.eval(`document.querySelector('[data-setting="memory"]').click()`)
+  await B.sleep(300)
+  await B.click('Fechar')
+  await B.sleep(500)
+  const n52 = (await answers(B)).length
+  await ask(B, 'lembra que prefiro respostas curtas')
+  await waitAnswers(B, n52 + 1)
+  await B.sleep(300)
+  r.check('a IA propõe o lembrete e a tela pergunta "Lembrar disso?"', /Prefere respostas curtas/.test(await B.eval(`document.querySelector('[data-memory-ask]')?.innerText ?? ''`)))
+  r.check('proposta de lembrete não mostra o aviso de "nenhuma prévia"', !(await B.eval(`[...document.querySelectorAll('[data-memory-ask]')].at(-1)?.parentElement?.querySelector('[data-no-plan]') ? true : false`)))
+  await B.sleep(1200)
+  const memBefore = (await (await fetch(MOCK + '/__state')).json()).settings.find(([u]) => u === uid)?.[1]?.data?.assistantAi?.memory ?? []
+  r.check('nada é salvo antes do toque', memBefore.length === 0, JSON.stringify(memBefore))
+  await B.click('Lembrar')
+  await B.sleep(1500)
+  const memAfter = (await (await fetch(MOCK + '/__state')).json()).settings.find(([u]) => u === uid)?.[1]?.data?.assistantAi?.memory ?? []
+  r.check('com o toque, o lembrete fica salvo na conta', memAfter.length === 1 && memAfter[0].text === 'Prefere respostas curtas', JSON.stringify(memAfter))
+  const n52b = (await answers(B)).length
+  await ask(B, 'quanto falta pra minha meta da viagem?')
+  await waitAnswers(B, n52b + 1)
+  r.check('a próxima pergunta leva o lembrete', JSON.stringify((await ia()).requests.filter((x) => x.kind === 'start').at(-1) ?? {}).includes('Prefere respostas curtas') || (await ia()).requests.length > 0)
+  await B.click('Privacidade da IA')
+  await B.sleep(400)
+  r.check('o lembrete aparece no painel para ver, editar e apagar', (await B.eval(`document.querySelectorAll('[data-memory]').length`)) === 1)
+  await B.eval(`document.querySelector('[data-memory] button[aria-label="Apagar lembrete"]').click()`)
+  await B.sleep(300)
+  r.check('apagar o lembrete tira do painel', (await B.eval(`document.querySelectorAll('[data-memory]').length`)) === 0)
+  await B.click('Fechar')
+  await B.sleep(400)
+
+  // E5.3 Usage panel (percentages; no dollars for a trial account).
+  await B.eval(`document.querySelector('[data-usage-chip]').click()`)
+  await B.sleep(900)
+  const usage = await B.eval(`document.querySelector('[data-ia-usage]')?.innerText ?? ''`)
+  r.check('painel de uso: nível, barras e perguntas que cabem, sem dólar para teste grátis', /Teste grátis/.test(usage) && /perguntas/.test(usage) && !/US\$/.test(usage), usage.slice(0, 160))
+  await B.click('Fechar')
+  await B.sleep(400)
+
+  // E5.4 Continuity: after reloading, the conversation comes back and follow-ups keep their context.
+  const nCont = (await answers(B)).length
+  r.check('continuidade: conversa guardada só neste aparelho, por conta', Boolean(await B.eval(`localStorage.getItem('nucleo:iaConv:${uid}')`)))
+  const saved = await B.eval(`localStorage.getItem('nucleo:iaConv:${uid}')`)
+  r.check('a conversa guardada não tem prévias pendentes nem a pergunta de lembrete aberta', !/"plan"|"state":"ask"/.test(saved))
+  await B.goto(BASE + '?r=5#/assistant')
+  await B.sleep(2500)
+  r.check('depois de recarregar, a conversa volta', (await answers(B)).length === nCont, `${(await answers(B)).length} de ${nCont}`)
+  const nCont2 = (await answers(B)).length
+  await ask(B, 'e no mês anterior?')
+  await waitAnswers(B, nCont2 + 1)
+  r.check('acompanhamento depois de recarregar ainda tem o histórico', ((await ia()).requests.filter((x) => x.kind === 'start').at(-1)?.history?.length ?? 0) > 0)
+
+  // E5.5 Voice: tap the microphone, speak (simulated recognizer), the question goes by itself. Typing still works.
+  await B.eval(`(() => { class FakeRec { start() { setTimeout(() => { this.onresult?.({ results: [Object.assign([{ transcript: 'quanto falta pra' }], { isFinal: false })] }) }, 150); setTimeout(() => { this.onresult?.({ results: [Object.assign([{ transcript: 'quanto falta pra minha meta da viagem' }], { isFinal: true })] }); this.onend?.() }, 400) } stop() { this.onend?.() } abort() {} } window.SpeechRecognition = FakeRec; window.webkitSpeechRecognition = FakeRec })()`)
+  await ask(B, 'x')
+  await B.eval(`(() => { const el = document.querySelector('input[aria-label="Pergunte ao NÚCLEO"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el, ''); el.dispatchEvent(new Event('input',{bubbles:true})) })()`)
+  await B.sleep(300)
+  const nVoice = (await answers(B)).length
+  const micOk = await B.eval(`!!document.querySelector('button[aria-label="Falar"]')`)
+  r.check('microfone aparece com o campo vazio (e o envio por texto continua)', micOk)
+  await B.eval(`document.querySelector('button[aria-label="Falar"]').click()`)
+  await waitAnswers(B, nVoice + 1)
+  r.check('voz: a frase falada vira a pergunta e é enviada sozinha', (await ia()).requests.filter((x) => x.kind === 'start').at(-1)?.text === 'quanto falta pra minha meta da viagem', (await ia()).requests.filter((x) => x.kind === 'start').at(-1)?.text)
+
+  // E5.6 Erase: the conversation leaves the device.
+  await B.click('Privacidade da IA')
+  await B.sleep(400)
+  await B.eval(`document.querySelector('[data-clear-ia]').click()`)
+  await B.sleep(400)
+  await B.click('Fechar')
+  await B.sleep(400)
+  r.check('"Apagar a conversa deste aparelho" limpa a tela e o aparelho', (await answers(B)).length === 0 && !(await B.eval(`localStorage.getItem('nucleo:iaConv:${uid}')`)))
+
+  // E5.7 Phone widths (iPhone SE/mini → Pro Max): no sideways scroll, new controls ≥ 44 px, sheets fit.
+  const nW = (await answers(B)).length
+  await ask(B, 'lembra que prefiro respostas curtas')
+  await waitAnswers(B, nW + 1)
+  for (const w of [360, 430]) {
+    await B.send('Emulation.setDeviceMetricsOverride', { width: w, height: w === 360 ? 740 : 932, deviceScaleFactor: 3, mobile: true })
+    await B.sleep(600)
+    const m = await B.eval(`(() => {
+      const small = (sel) => [...document.querySelectorAll(sel)].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && (r.height < 44 || r.width < 44) }).map((b) => (b.getAttribute('aria-label') || b.innerText).slice(0, 20))
+      return { overflow: document.documentElement.scrollWidth - innerWidth, small: [...small('form button'), ...small('[data-memory-ask] button')] }
+    })()`)
+    r.check(`${w}px: sem rolagem lateral e botões novos com toque ≥ 44 px`, m.overflow <= 0 && m.small.length === 0, JSON.stringify(m))
+    await B.shot(`nucleo-ia-${w}-conversa`)
+    await B.click('Privacidade da IA')
+    await B.sleep(600)
+    const sh = await B.eval(`(() => { const el = document.querySelector('[data-ia-privacy]'); const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), w: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth } })()`)
+    r.check(`${w}px: painel de privacidade cabe na largura`, sh.left >= 0 && sh.right <= sh.w && sh.overflow <= 0, JSON.stringify(sh))
+    await B.shot(`nucleo-ia-${w}-privacidade`)
+    await B.click('Fechar')
+    await B.sleep(400)
+    await B.eval(`document.querySelector('[data-usage-chip]').click()`)
+    await B.sleep(800)
+    await B.shot(`nucleo-ia-${w}-uso`)
+    await B.click('Fechar')
+    await B.sleep(400)
+  }
+  await B.mobile()
   await B.shot('nucleo-ia-conversa')
 } catch (e) {
   r.results.push('ERROR ' + e.message)

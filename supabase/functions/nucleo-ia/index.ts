@@ -15,6 +15,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { continueTurn, startTurn, type Block, type Deps, type Reservation } from '../_shared/ia/engine.ts'
 import { TurnRequest } from '../_shared/ia/protocol.ts'
+import { encodeEvent, STREAM_TYPE, type StreamEvent } from '../_shared/ia/stream.ts'
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? 'https://hellonucleo.app,http://localhost:5173').split(',')
 
@@ -59,6 +60,9 @@ Deno.serve(async (req) => {
   const admin = createClient(url, service, { auth: { persistSession: false } })
   // One model call per HTTP request at most, and a short timeout: a retry would be charged twice.
   const client = new Anthropic({ apiKey, maxRetries: 0, timeout: 60_000 })
+  // Progressive answer (Etapa 5): raw text pieces go to the app, which shows only guarded, complete sentences.
+  const wantsStream = (req.headers.get('accept') ?? '').includes(STREAM_TYPE)
+  let emit: (e: StreamEvent) => void = () => {}
 
   const deps: Deps = {
     uid: userData.user.id,
@@ -86,16 +90,40 @@ Deno.serve(async (req) => {
     },
     async callModel(params) {
       // Streaming keeps long answers clear of HTTP timeouts; the final message is what we use.
+      emit({ t: 'r' })
       const stream = client.messages.stream(params as unknown as Anthropic.MessageStreamParams)
+      if (wantsStream) stream.on('text', (s: string) => emit({ t: 'd', s }))
       const msg = await stream.finalMessage()
       return { content: msg.content as unknown as Block[], stop_reason: msg.stop_reason, usage: msg.usage, model: msg.model }
     },
   }
 
-  try {
-    const out = body.kind === 'start' ? await startTurn(body, deps) : await continueTurn(body, deps)
-    return json(req, out.status, out.body)
-  } catch {
-    return json(req, 502, { error: 'upstream', message: 'A IA não respondeu agora. Os comandos do Assistente continuam funcionando.' })
+  const run = async () => {
+    try {
+      return body.kind === 'start' ? await startTurn(body, deps) : await continueTurn(body, deps)
+    } catch {
+      return { status: 502, body: { error: 'upstream', message: 'A IA não respondeu agora. Os comandos do Assistente continuam funcionando.' } }
+    }
   }
+  if (!wantsStream) {
+    const out = await run()
+    return json(req, out.status, out.body)
+  }
+  const enc = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(ctrl) {
+      emit = (e) => {
+        try {
+          ctrl.enqueue(enc.encode(encodeEvent(e)))
+        } catch {
+          // the app went away: the turn still finishes and is settled
+        }
+      }
+      const out = await run()
+      emit({ t: 'end', status: out.status, body: out.body })
+      emit = () => {}
+      ctrl.close()
+    },
+  })
+  return new Response(stream, { status: 200, headers: { ...cors(req), 'Content-Type': STREAM_TYPE, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
 })

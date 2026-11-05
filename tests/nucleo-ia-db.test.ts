@@ -276,3 +276,21 @@ describe('permissões e isolamento entre contas', () => {
     expect((await db.query(`select count(*)::int as n from ai_entitlements where user_id = '44444444-4444-4444-8444-444444444444'`)).rows[0]).toEqual({ n: 0 })
   })
 })
+
+describe('desligar e reverter (roteiro de publicação)', () => {
+  it('teto global zero pausa a IA; a reversão tira tudo da IA e o reservador antigo continua', async () => {
+    const fresh = new PGlite()
+    await fresh.exec(SUPABASE_STUB)
+    await fresh.query('insert into auth.users (id) values ($1)', [A])
+    for (const f of readdirSync('supabase/migrations').sort()) await fresh.exec(readFileSync(`supabase/migrations/${f}`, 'utf8'))
+    await fresh.exec(`update public.quota_limits set max_value = 0 where key = 'ia.global_hard_daily_micros'`)
+    const paused = (await fresh.query<{ outcome: string }>(`select outcome from ia_reserve($1, 'turno-pausa-01', 1, 'haiku', 'rapida', 1000, 100)`, [A])).rows[0]
+    expect(paused.outcome).toBe('global')
+    await fresh.exec(readFileSync('supabase/rollback-nucleo-ia.sql', 'utf8'))
+    const left = (await fresh.query<{ n: number }>(`select count(*)::int as n from pg_proc where proname like 'ia\_%'`)).rows[0].n
+    expect(left).toBe(0)
+    expect((await fresh.query(`select 1 from information_schema.tables where table_name in ('ai_tiers', 'ai_entitlements')`)).rows).toEqual([])
+    const r = (await fresh.query<{ outcome: string }>(`select outcome from ai_reserve($1, 'assistant', 'old-after-rollback', 30, 60)`, [A])).rows[0]
+    expect(r.outcome).toBe('ok')
+  })
+})

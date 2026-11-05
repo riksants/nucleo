@@ -5,63 +5,14 @@
  * keyboard's dictation or typing does the same.
  */
 import { ChevronDown, Mic, Sparkles, Square } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { answerCapture, captureQuestions, parseCapture, type CaptureDraft } from '../../core/capture'
 import { addDaysToDate, useToday, zoneOf } from '../../core/period'
 import { useStore } from '../../data/store'
 import type { Weekday } from '../../data/types'
 import { Button } from '../../ui/Button'
+import { useSpeech } from '../../lib/speech'
 import { TextInput } from '../../ui/Field'
-
-/* ------------------------------------------------------------------ voz */
-
-interface Recognition {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  start(): void
-  stop(): void
-  abort(): void
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null
-  onend: (() => void) | null
-  onerror: ((e: { error: string }) => void) | null
-}
-
-function recognitionClass(): (new () => Recognition) | null {
-  if (typeof window === 'undefined') return null
-  const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
-}
-
-/** Speech to text with the device's recognizer (pt-BR). `supported` is false where the browser has none. */
-export function useSpeech(onText: (text: string) => void) {
-  const [listening, setListening] = useState(false)
-  const [error, setError] = useState('')
-  const rec = useRef<Recognition | null>(null)
-  const supported = recognitionClass() !== null
-  useEffect(() => () => rec.current?.abort(), [])
-  const start = () => {
-    const Rec = recognitionClass()
-    if (!Rec) return
-    setError('')
-    const r = new Rec()
-    r.lang = 'pt-BR'
-    r.interimResults = true
-    r.continuous = false
-    r.onresult = (e) => onText(Array.from(e.results, (x) => x[0]?.transcript ?? '').join(' ').trim())
-    r.onerror = (e) => setError(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'Permita o uso do microfone para falar.' : e.error === 'no-speech' ? 'Não ouvi nada. Tente de novo.' : 'Não deu para ouvir agora. Você pode digitar.')
-    r.onend = () => setListening(false)
-    rec.current = r
-    try {
-      r.start()
-      setListening(true)
-    } catch {
-      setListening(false)
-    }
-  }
-  const stop = () => rec.current?.stop()
-  return { supported, listening, error, start, stop }
-}
 
 /* ------------------------------------------------------------------ the sentence field */
 

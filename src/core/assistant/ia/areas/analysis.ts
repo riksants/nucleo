@@ -263,7 +263,7 @@ export function forecastLookup(_input: Record<string, unknown>, ctx: LookupCtx):
     moeda_principal: base,
     saldo_hoje: moneyFact(book, balance, base, 'Saldo hoje (dinheiro registrado no app)', 'confirmado'),
     entra_ate_o_fim_do_mes,
-    vencido_e_nao_pago: late.length ? { total_por_moeda: byCurrency(book, late, 'Vencido e não pago (pode não entrar)', 'confirmado', '/sales'), observacao: 'Já venceu e não foi pago: fica FORA dos cenários, porque não há como saber se vai entrar.' } : 'nada vencido',
+    vencido_e_nao_pago: late.length ? { total_por_moeda: byCurrency(book, late, 'Vencido e não pago A VOCÊ (dinheiro a receber que pode não entrar)', 'confirmado', '/sales'), observacao: 'É dinheiro que outras pessoas devem a você: já venceu e não foi pago, então fica FORA dos cenários. Se for pago, o saldo AUMENTA (nunca diminui).' } : 'nada vencido',
     a_receber_sem_data: noDate.length ? { total_por_moeda: byCurrency(book, noDate, 'A receber de projetos, sem data de pagamento', 'confirmado', '/projects'), observacao: 'Sem data: fica FORA dos cenários deste mês.' } : 'nada',
     gastos_fixos: {
       neste_mes_ate_hoje: moneyFact(book, fixedNow, base, `Gastos fixos lançados em ${label} até hoje`, fixedNow ? 'confirmado' : 'ausente'),

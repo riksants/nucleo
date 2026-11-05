@@ -1,16 +1,29 @@
 # Pendências
 
-## NÚCLEO IA — Etapa 1 (fundação) — LOCAL, branch feat/nucleo-ia, nada publicado
+## NÚCLEO IA — Etapas 1–5 prontas na branch feat/nucleo-ia — NADA publicado
 
-- Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md.
+- Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md (Etapa 5 no fim).
 - NÃO aplicado/publicado: migração 20261103000000_nucleo_ia.sql; função `nucleo-ia` (secrets
-  ANTHROPIC_API_KEY + IA_TURN_SECRET ≥ 32 caracteres); build com VITE_NUCLEO_IA=on.
-- Ordem de ativação (quando autorizado): migração → níveis das contas existentes (dono = owner) →
-  secrets → publicar `nucleo-ia` → limite de gasto no painel da Anthropic → app com VITE_NUCLEO_IA=on.
-- Medição real de custo/qualidade: tests/nucleo-ia-real.test.ts (precisa de ANTHROPIC_API_KEY; ~US$ 0,10–0,40).
-- Texto do interruptor "Entender frases livres com IA" em Configurações ainda descreve o interpretador antigo
-  (fora do Assistente — mudar só com autorização). O Assistente pede o consentimento novo (versão 2).
-- Remover o interpretador antigo (função `assistant`, features/assistant/ai.ts) na Etapa 5.
+  ANTHROPIC_API_KEY + IA_TURN_SECRET ≥ 32 caracteres); build com VITE_NUCLEO_IA=on; página privacidade.html nova.
+- Roteiro de ativação (cada passo só com autorização; mesma ordem da Etapa 5 das notificações):
+  1. Backup verificado (restore local idêntico) + snapshot de ai_usage/quota_limits.
+  2. Migração 20261103000000 numa transação. Reversão testada: supabase/rollback-nucleo-ia.sql.
+  3. Nível da conta do dono: `insert into ai_entitlements (user_id, tier) values ('<uid>', 'owner')`.
+  4. Liberação gradual: enquanto só o dono testa, `update ai_tiers set period_micros = 0, daily_micros = 0 where tier = 'trial'`
+     (as outras contas recebem a mensagem de limite; comandos continuam). Depois, voltar aos valores da migração.
+  5. Secrets ANTHROPIC_API_KEY (chave de produção, não a dev) e IA_TURN_SECRET; publicar `nucleo-ia`.
+  6. Limite mensal de gasto no painel da Anthropic (camada extra além do orçamento do banco).
+  7. Merge na main com VITE_NUCLEO_IA=on no build do Pages.
+  8. Verificação em produção com contas descartáveis (consulta, streaming, isolamento, limite) e apagar as contas.
+- Desligar sem reverter (segundos): `update quota_limits set max_value = 0 where key = 'ia.global_hard_daily_micros'`.
+- O interpretador antigo (função `assistant`, features/assistant/ai.ts) não é mais chamado quando VITE_NUCLEO_IA=on;
+  remover a função publicada e o código depois que a IA nova estiver estável em produção.
+- Validar no iPhone real (com o usuário): microfone (no app instalado na tela inicial o reconhecimento pode
+  não existir — então o botão some e o teclado/ditado continua), "Ouvir", streaming e painéis. Até agora só
+  emulação Chromium (360/390/430 px).
+- Velocidade: 1ª frase do Haiku ~3–5 s (meta da spec < 2 s não atingida: a frase só pode aparecer depois das
+  consultas no aparelho); Sonnet com várias consultas chegou a 26 s (retestes 4–5 s). Ideias: pedir as consultas
+  em paralelo num passo só, pré-carregar consultas óbvias, revisar o esforço do Sonnet.
 - e2e assistant: "Organizar minha semana" falha aos domingos também na main (pré-existente).
 
 ## Etapa 5: notificações confiáveis — ATIVADA em produção em 2026-11-01

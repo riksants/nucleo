@@ -602,6 +602,12 @@ export interface Settings {
     consentVersion?: number
     /** NÚCLEO IA: areas the AI may not read (core/assistant/ia/areas/shared.ts). Missing = all allowed. */
     areasOff?: string[]
+    /** NÚCLEO IA (Etapa 5): keep the conversation on THIS device for 12 h (never synced). Missing = on. */
+    continuity?: boolean
+    /** NÚCLEO IA (Etapa 5): long-term reminders on. Missing = off. */
+    memoryOn?: boolean
+    /** Up to 20 reminders the person confirmed (≤ 200 chars, no values or sensitive data). */
+    memory?: { id: string; text: string; at: string }[]
   }
   /** Meal types in the person's order (on/off, renamed, personal). Missing = defaults. */
   mealTypes?: MealType[]

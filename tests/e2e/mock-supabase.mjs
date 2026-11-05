@@ -261,8 +261,21 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === '/functions/v1/nucleo-ia') {
     const { handleNucleoIa } = await import('./mock-nucleo-ia.mjs')
+    // Etapa 5: progressive answer like the real function (NDJSON), when the app asks for it
+    if ((req.headers.accept ?? '').includes('application/x-ndjson') && sub(req)) {
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson' })
+      const NL = String.fromCharCode(10)
+      const out = await handleNucleoIa(json, sub(req), (e) => res.write(JSON.stringify(e) + NL))
+      res.write(JSON.stringify({ t: 'end', status: out.status, body: out.body }) + NL)
+      return res.end()
+    }
     const out = await handleNucleoIa(json, sub(req))
     return send(out.status, out.body)
+  }
+  if (url.pathname === '/rest/v1/rpc/ia_my_usage') {
+    if (!sub(req)) return send(401, { message: 'jwt' })
+    const { iaLog } = await import('./mock-nucleo-ia.mjs')
+    return send(200, { tier: 'trial', valid_until: new Date(Date.now() + 5 * 86400000).toISOString(), period_start: new Date().toISOString(), spent_day: iaLog.spentMicros, daily: 80000, spent_period: iaLog.spentMicros, period: 250000, spent_sonnet: 0, sonnet_period: 120000 })
   }
   if (url.pathname === '/__ia') {
     const { iaLog } = await import('./mock-nucleo-ia.mjs')

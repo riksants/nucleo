@@ -67,3 +67,29 @@ export function account(): DataState {
   return d
 }
 
+
+/** The sample account + history (Aug–Nov), so trends and the forecast have real data. */
+export function historyAccount(): DataState {
+  const d = account()
+  for (const m of ['08', '09', '10']) {
+    d.transactions.push(
+      tx('in', 500000, `2026-${m}-05`, 'Salário', { category: 'salary' }),
+      tx('out', 20000, `2026-${m}-02`, 'Mercado', { category: 'food' }),
+      tx('out', 22000, `2026-${m}-12`, 'Mercado', { category: 'food' }),
+      tx('out', 18000, `2026-${m}-22`, 'Mercado', { category: 'food' }),
+      tx('out', 12000, `2026-${m}-09`, 'Uber', { category: 'transport' }),
+    )
+    if (m !== '10') d.transactions.push(tx('out', 95000, `2026-${m}-05`, 'Aluguel', { category: 'housing' }))
+  }
+  d.transactions.push(
+    tx('in', 500000, '2026-11-05', 'Salário', { category: 'salary' }),
+    tx('out', 95000, '2026-11-05', 'Aluguel', { category: 'housing' }),
+    tx('out', 35000, '2026-11-03', 'Mercado', { category: 'food' }),
+    tx('out', 38000, '2026-11-10', 'Mercado', { category: 'food' }),
+    tx('out', 31000, '2026-11-17', 'Mercado', { category: 'food' }),
+    tx('out', 25000, '2026-11-08', 'Uber', { category: 'transport' }),
+    tx('out', 18000, '2026-11-15', 'Restaurante', { category: 'food' }),
+  )
+  return d
+}
+

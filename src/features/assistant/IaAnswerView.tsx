@@ -1,4 +1,7 @@
-import { Check, ChevronRight, Clock3, Sparkles } from 'lucide-react'
+import { Check, ChevronRight, Clock3, Sparkles, Square, Volume2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { speak, stopSpeaking, ttsSupported } from '../../lib/speech'
+import { spokenText } from '../../core/assistant/ia/spoken'
 import { navigate } from '../../app/router'
 import { plainLine, type Fact, type Segment } from '../../../supabase/functions/_shared/ia/facts.ts'
 
@@ -54,12 +57,36 @@ function paragraphs(segments: Segment[]): Segment[][] {
   return out.filter((p) => p.some((s) => s.t !== 'text' || s.s.trim()))
 }
 
-export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(question: string): void }) {
+function Listen({ segments }: { segments: Segment[] }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => () => stopSpeaking(), [])
+  if (!ttsSupported()) return null
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      data-ia-listen
+      onClick={() => {
+        if (on) {
+          stopSpeaking()
+          return setOn(false)
+        }
+        setOn(true)
+        speak(spokenText(segments), () => setOn(false))
+      }}
+      className="-my-2 flex min-h-11 items-center gap-1 font-medium text-accent-hi hover:text-ink"
+    >
+      {on ? <Square size={14} /> : <Volume2 size={16} />} {on ? 'Parar' : 'Ouvir'}
+    </button>
+  )
+}
+
+export function IaAnswerView({ shown, onDeep, partial }: { shown: IaShown; onDeep?(question: string): void; partial?: boolean }) {
   const paras = paragraphs(shown.segments)
   // the legend only explains the seals this answer really uses
   const seals = new Set(shown.segments.flatMap((s) => (s.t === 'fact' ? [s.fact.seal] : [])))
   return (
-    <div className="min-w-0" data-ia-answer data-route={shown.route}>
+    <div className="min-w-0" {...(partial ? { 'data-ia-partial': true, 'aria-busy': true } : { 'data-ia-answer': true, 'data-route': shown.route })}>
       {paras.map((p, i) => {
         const first = p[0]
         const suggestion = first?.t === 'text' && /^\s*(?:[-•]\s*)?Sugest[aã]o:/i.test(first.s)
@@ -80,7 +107,7 @@ export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(questi
           </p>
         )
       })}
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-faint">
+      {!partial && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-faint">
         <span>
           {ROUTE_LABEL[shown.route] ?? 'IA'}
           {seals.has('confirmado') && (
@@ -101,7 +128,8 @@ export function IaAnswerView({ shown, onDeep }: { shown: IaShown; onDeep?(questi
             Analisar a fundo <ChevronRight size={14} />
           </button>
         )}
-      </div>
+        <Listen segments={shown.segments} />
+      </div>}
     </div>
   )
 }

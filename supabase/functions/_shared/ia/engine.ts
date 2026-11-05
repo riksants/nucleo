@@ -96,6 +96,7 @@ export function baseMessages(req: StartRequest): unknown[] {
     areas_desligadas: req.areasOff,
     consultas_recentes: req.focus,
     temas_anteriores: req.topics || null,
+    ...(req.memory?.length ? { lembretes_da_pessoa: req.memory } : {}),
   }
   out.push({ role: 'user', content: `<contexto>\n${JSON.stringify(ctx)}\n</contexto>\n\n${req.text}` })
   return out

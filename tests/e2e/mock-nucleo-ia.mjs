@@ -36,10 +36,15 @@ function fakeModel(params) {
       return say(items.length ? `Amanhã você tem: ${items.map((i) => `{${i.fato}}`).join(', ')}.` : 'Amanhã você não tem compromissos.')
     }
     // Etapa 4: forecast with its limitation; a plan over a value the person typed (calcular + "informado")
+    if (r.mostrado_na_tela) return say('Posso lembrar disso. Confirme na tela.')
+    if (r.erro && /lembrete/i.test(r.erro)) return say(r.erro)
     if (r.saldo_hoje) {
       const cen = r.cenarios_fim_do_mes
       const end = cen.selo === 'ausente' ? `Ainda não dá para prever o fim do mês ({${cen.id}}).` : `Previsão sem contar recebimentos: {${cen.sem_contar_recebimentos.id}}.`
-      return say(`Hoje você tem {${r.saldo_hoje.id}}. ${end} Limitação: ${r.limitacoes[0]}`)
+      const q0 = typeof params.messages.at(-3)?.content === 'string' ? params.messages.at(-3).content : ''
+      // "… mesmo?": the model invents a value in the middle (must stay hidden, also while streaming)
+      const extra = /mesmo\?/.test(q0) ? ' Sobra R$ 777,77 para gastar.' : ''
+      return say(`Hoje você tem {${r.saldo_hoje.id}}.${extra} ${end} Limitação: ${r.limitacoes[0]}`)
     }
     const asked = typeof params.messages.at(-3)?.content === 'string' ? params.messages.at(-3).content : JSON.stringify(params.messages.slice(-4, -2))
     if (r.metas && /quero juntar/i.test(asked)) return use('calcular', { operacao: 'diferenca', fatos: ['informado', r.metas[0].guardado.id], numero: null, valor_informado: 8000, moeda_informada: 'EUR', rotulo: 'Quanto falta para juntar' })
@@ -74,12 +79,13 @@ function fakeModel(params) {
     })
   }
   if (q.includes('no azul')) return use('previsao_do_mes', {})
+  if (q.startsWith('lembra que')) return use('propor_lembrete', { texto: 'Prefere respostas curtas' })
   if (q.startsWith('quero juntar')) return use('metas_financeiras', { nome: null })
   if (q.includes('meta')) return use('metas_financeiras', { nome: null })
   return say('Posso consultar sua agenda, finanças e metas.')
 }
 
-export async function handleNucleoIa(json, uid) {
+export async function handleNucleoIa(json, uid, emit) {
   if (!uid) return { status: 401, body: { error: 'auth', message: 'Entre na sua conta para usar a IA.' } }
   const parsed = TurnRequest.safeParse(json)
   if (!parsed.success) return { status: 400, body: { error: 'input', message: 'Pedido inválido.' } }
@@ -93,7 +99,19 @@ export async function handleNucleoIa(json, uid) {
     settle: async (_id, a) => {
       iaLog.spentMicros += a.costMicros
     },
-    callModel: async (p) => fakeModel(p),
+    callModel: async (p) => {
+      const out = fakeModel(p)
+      if (emit) {
+        // like the real stream: a reset per call, then the text in small pieces, slowly enough to be seen
+        emit({ t: 'r' })
+        const text = out.content.filter((b) => b.type === 'text').map((b) => b.text).join('')
+        for (let i = 0; i < text.length; i += 12) {
+          emit({ t: 'd', s: text.slice(i, i + 12) })
+          await new Promise((r) => setTimeout(r, 60))
+        }
+      }
+      return out
+    },
   }
   const out = parsed.data.kind === 'start' ? await startTurn(parsed.data, deps) : await continueTurn(parsed.data, deps)
   return out

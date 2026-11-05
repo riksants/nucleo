@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronRight, MessageCircle, ShieldCheck } from 'lucide-react'
+import { ArrowUp, ChevronRight, Gauge, MessageCircle, Mic, ShieldCheck, Square, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -30,6 +30,13 @@ import { IaAnswerView, IaConsentCard, type IaShown } from './IaAnswerView'
 import { IaPrivacySheet } from './IaPrivacySheet'
 import { IaPlanCard } from './IaPlanCard'
 import type { Plan } from '../../core/assistant/ia/actions/plan'
+import type { Segment } from '../../../supabase/functions/_shared/ia/facts.ts'
+import { cleanMemory, MEMORY_MAX, memoryRefusal } from '../../../supabase/functions/_shared/ia/memory.ts'
+import { clearContinuity, loadContinuity, saveContinuity } from '../../core/assistant/ia/continuity'
+import { usageView } from '../../core/assistant/ia/usage'
+import { useSpeech } from '../../lib/speech'
+import { iaUsage } from './iaApi'
+import { IaUsageSheet } from './IaUsageSheet'
 
 interface Message {
   id: number
@@ -42,6 +49,43 @@ interface Message {
   plan?: Plan | null
   /** The answer spoke of a prepared change, but no preview was built. */
   noPlan?: boolean
+  /** A reminder the AI proposed: saved only if the person taps "Lembrar". */
+  memory?: { text: string; state: 'ask' | 'saved' | 'no' }
+}
+
+/** What continuity keeps of a message: no previews (they would be stale) and no pending questions. */
+function storable(m: Message): Omit<Message, 'id'> {
+  return {
+    from: m.from,
+    ...(m.text ? { text: m.text } : {}),
+    ...(m.ia ? { ia: m.ia } : {}),
+    ...(m.reply ? { reply: { lines: m.reply.lines, ...(m.reply.list ? { list: m.reply.list } : {}), ...(m.reply.link ? { link: m.reply.link } : {}) } } : {}),
+    ...(m.memory && m.memory.state !== 'ask' ? { memory: m.memory } : {}),
+  }
+}
+
+/** "Lembrar disso?" — the person decides; nothing is saved without the tap. */
+function MemoryAsk({ memory, onDecide }: { memory: NonNullable<Message['memory']>; onDecide(state: 'saved' | 'no'): void }) {
+  if (memory.state !== 'ask')
+    return (
+      <p className="mt-2 text-[13px] text-faint" data-memory-state={memory.state}>
+        {memory.state === 'saved' ? 'Lembrete guardado. Você pode mudar em Privacidade da IA.' : 'Não guardado.'}
+      </p>
+    )
+  return (
+    <div className="card mt-2 space-y-2.5 p-3.5" data-memory-ask>
+      <p className="text-[13px] text-faint">Lembrar disso nas próximas conversas?</p>
+      <p className="text-[15px] leading-snug break-words">“{memory.text}”</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onDecide('saved')} className="press h-11 rounded-full bg-accent px-4 text-[15px] font-medium text-on-accent">
+          Lembrar
+        </button>
+        <button type="button" onClick={() => onDecide('no')} className="press h-11 rounded-full border border-line px-4 text-[15px] text-soft hover:text-ink">
+          Agora não
+        </button>
+      </div>
+    </div>
+  )
 }
 
 /** Conversation of this session only (memory, last 20 messages) — never saved or synced. */
@@ -137,6 +181,11 @@ export function AssistantPage() {
   const [iaStatus, setIaStatus] = useState<string | null>(null)
   const [later, setLater] = useState(iaLater)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [usageOpen, setUsageOpen] = useState(false)
+  const [usageWarn, setUsageWarn] = useState(false)
+  /** Progressive answer: complete sentences already through the guard (never raw text). */
+  const [partial, setPartial] = useState<Segment[] | null>(null)
+  const continuityOn = settings.assistantAi?.continuity !== false
   // NÚCLEO IA: build flag + switch on + the new consent + an account. Otherwise exactly the old Assistant.
   const iaReady = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion === CONSENT_VERSION
   const askConsent = NUCLEO_IA && Boolean(userId) && aiActive(settings.assistantAi) && settings.assistantAi?.consentVersion !== CONSENT_VERSION && !later
@@ -144,16 +193,70 @@ export function AssistantPage() {
   const latest = useRef({ data, settings })
   latest.current = { data, settings }
 
+  const keep = (next: Message[]) => {
+    session = next
+    // continuity: only this account's conversation, only on this device, only while it is on
+    if (iaReady && userId && continuityOn && iaConversation?.uid === userId) saveContinuity(userId, iaConversation, next.map(storable))
+  }
   const push = (m: Omit<Message, 'id'>[]) => {
     setMessages((prev) => {
       const next = [...prev, ...m.map((x) => ({ ...x, id: ++seq }))].slice(-MAX)
-      session = next
+      keep(next)
       return next
     })
   }
+  const update = (id: number, patch: Partial<Message>) => {
+    setMessages((prev) => {
+      const next = prev.map((x) => (x.id === id ? { ...x, ...patch } : x))
+      keep(next)
+      return next
+    })
+  }
+  const clearDevice = () => {
+    if (userId) clearContinuity(userId)
+    iaConversation = userId ? newConversation(userId) : null
+    session = []
+    setMessages([])
+  }
+  // Another account on this device never sees the previous one's conversation; this account's
+  // conversation comes back from continuity (12 h) when the session in memory is empty.
+  useEffect(() => {
+    if (!userId) return
+    if (iaConversation && iaConversation.uid !== userId) {
+      iaConversation = null
+      session = []
+      setMessages([])
+    }
+    if (!iaReady || !continuityOn || session.length) return
+    const saved = loadContinuity<Omit<Message, 'id'>>(userId)
+    if (!saved) return
+    iaConversation = saved.conversation
+    session = saved.messages.map((x) => ({ ...x, id: ++seq }))
+    setMessages(session)
+  }, [userId, iaReady, continuityOn])
+  useEffect(() => {
+    if (!iaReady) return
+    let alive = true
+    iaUsage().then((u) => alive && u && setUsageWarn(usageView(u).warn))
+    return () => {
+      alive = false
+    }
+  }, [iaReady])
+  const decideMemory = (m: Message, state: 'saved' | 'no') => {
+    const ai = latest.current.settings.assistantAi
+    if (state === 'saved' && m.memory && ai) {
+      const list = ai.memory ?? []
+      const why = memoryRefusal(m.memory.text) ?? (list.length >= MEMORY_MAX ? 'Já há 20 lembretes.' : null) ?? (ai.memoryOn ? null : 'Os lembretes estão desligados.')
+      if (why) return update(m.id, { memory: { ...m.memory, state: 'no' } })
+      updateSettings({ assistantAi: { ...ai, memory: [...list, { id: crypto.randomUUID(), text: cleanMemory(m.memory.text), at: new Date().toISOString() }] } })
+    }
+    if (m.memory) update(m.id, { memory: { ...m.memory, state } })
+  }
+  // follow the newest content: new messages, the progressive answer growing, and when it is replaced
+  const partialSize = partial?.length ?? 0
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
-  }, [messages.length])
+  }, [messages.length, partialSize])
 
   const ask = async (q: string, opts: { deep?: boolean } = {}) => {
     const question = q.trim()
@@ -199,27 +302,35 @@ export function AssistantPage() {
           timeZone: zoneOf(s0),
           areasOff: areasOffFor(s0),
           onStatus: setIaStatus,
+          onPartial: setPartial,
         }, opts)
         if (r.kind === 'answer') {
           iaConversation = r.conversation
-          push([{ from: 'nucleo', ia: { segments: r.segments, route: r.route, costMicros: r.costMicros, question }, plan: r.plan, noPlan: r.claimedPlanWithoutOne }])
+          push([{ from: 'nucleo', ia: { segments: r.segments, route: r.route, costMicros: r.costMicros, question }, plan: r.plan, noPlan: r.claimedPlanWithoutOne, ...(r.memoryProposal ? { memory: { text: r.memoryProposal, state: 'ask' as const } } : {}) }])
+          iaUsage().then((u) => u && setUsageWarn(usageView(u).warn))
         } else {
           iaConversation = r.conversation
           push([{ from: 'nucleo', reply: { lines: [r.message] } }])
         }
       } finally {
         setIaStatus(null)
+        setPartial(null)
       }
       return
     }
     // Local commands first; the optional AI only when on, consented, online — never otherwise.
-    const r = await resolveIntent(question, today, { ai: s0.assistantAi, online: navigator.onLine, available: aiAvailable(), call: interpretWithAi })
+    // With NÚCLEO IA in the build, the old sentence interpreter is never called (the new consent rules).
+    const r = await resolveIntent(question, today, { ai: NUCLEO_IA ? undefined : s0.assistantAi, online: navigator.onLine, available: aiAvailable(), call: interpretWithAi })
     const { data: d, settings: s } = latest.current
     const reply = runIntent(r.intent, { data: d, settings: s, now: new Date() })
     if (r.via === 'ai') reply.lines = [...reply.lines, '(interpretado com IA)']
     if (r.note) reply.lines = [r.note, ...reply.lines]
     push([{ from: 'me', text: question }, { from: 'nucleo', reply }])
   }
+  const speech = useSpeech((t, final) => {
+    setText(t)
+    if (final) ask(t)
+  })
   /** A tapped option of a question (which goal, which currency): the same rule continues. */
   const choose = (label: string, sketch: RuleSketch) => {
     const { data: d, settings: s } = latest.current
@@ -248,7 +359,7 @@ export function AssistantPage() {
   const shown = all.slice(0, ASSISTANT_LIMIT)
   return (
     <>
-      <PageHeader title="Assistente" subtitle={iaReady ? 'Usa o que está no seu NÚCLEO. Perguntas que os comandos não respondem vão para a IA, com só os trechos necessários.' : aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'} />
+      <PageHeader title="Assistente" subtitle={iaReady ? 'Usa o que está no seu NÚCLEO. Perguntas que os comandos não respondem vão para a IA, com só os trechos necessários.' : !NUCLEO_IA && aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'} />
       <div className="mx-auto max-w-2xl pb-36">
         {shown.length > 0 && (
           <section className="mb-6">
@@ -272,6 +383,11 @@ export function AssistantPage() {
               <ShieldCheck size={16} /> Privacidade da IA
             </button>
           )}
+          {iaReady && (
+            <button type="button" onClick={() => setUsageOpen(true)} className="press flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-[14px] font-medium text-soft hover:text-ink" data-usage-chip>
+              <Gauge size={16} /> Uso da IA
+            </button>
+          )}
         </div>
 
         <div className="space-y-4" aria-live="polite">
@@ -283,6 +399,11 @@ export function AssistantPage() {
                 setLater(true)
               }}
             />
+          )}
+          {iaReady && usageWarn && (
+            <button type="button" onClick={() => setUsageOpen(true)} className="card w-full p-3.5 text-left text-[14px] leading-relaxed text-soft" data-usage-warn>
+              Você já usou mais de 80% do limite da IA. <span className="font-medium text-accent-hi">Ver uso</span>
+            </button>
           )}
           {messages.length === 0 && (
             <div className="card flex gap-3 p-4 text-[15px] leading-relaxed text-soft">
@@ -299,6 +420,7 @@ export function AssistantPage() {
               <div key={m.id} className="max-w-full">
                 <IaAnswerView shown={m.ia} onDeep={(q) => ask(q, { deep: true })} />
                 {m.plan && <IaPlanCard plan={m.plan} />}
+                {m.memory && <MemoryAsk memory={m.memory} onDecide={(st) => decideMemory(m, st)} />}
                 {m.noPlan && (
                   <p className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-soft" role="alert" data-no-plan>
                     Nenhuma prévia foi montada nesta resposta, então nada será gravado. Se quiser fazer essa alteração, peça de novo.
@@ -311,7 +433,8 @@ export function AssistantPage() {
               </div>
             ),
           )}
-          {iaStatus && (
+          {partial && partial.length > 0 && <IaAnswerView shown={{ segments: partial, route: '', costMicros: 0, question: '' }} partial />}
+          {iaStatus && (!partial || partial.length === 0) && (
             <p className="flex items-center gap-2 text-[14px] text-soft" data-ia-status role="status">
               <span className="size-2 animate-pulse rounded-full bg-accent-hi motion-reduce:animate-none" />
               {iaStatus}
@@ -321,7 +444,8 @@ export function AssistantPage() {
         </div>
       </div>
 
-      {iaReady && <IaPrivacySheet open={privacyOpen} onClose={() => setPrivacyOpen(false)} />}
+      {iaReady && <IaPrivacySheet open={privacyOpen} onClose={() => setPrivacyOpen(false)} onClearDevice={clearDevice} />}
+      {iaReady && <IaUsageSheet open={usageOpen} onClose={() => setUsageOpen(false)} />}
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -330,11 +454,31 @@ export function AssistantPage() {
         className="fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+66px)] z-30 border-t border-line bg-bg/92 px-4 py-2.5 backdrop-blur-xl reduce-transparency:bg-bg reduce-transparency:backdrop-blur-none lg:bottom-0 lg:left-64 lg:pb-[max(10px,env(safe-area-inset-bottom))]"
       >
         <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <input aria-label="Pergunte ao NÚCLEO" placeholder="Pergunte ao NÚCLEO…" value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none" />
-          <IconButton label="Enviar" tone="accent" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
-            <ArrowUp size={20} />
-          </IconButton>
+          <input aria-label="Pergunte ao NÚCLEO" placeholder={speech.listening ? 'Ouvindo… fale a sua pergunta' : 'Pergunte ao NÚCLEO…'} value={text} maxLength={300} enterKeyHint="send" autoComplete="off" onChange={(e) => setText(e.target.value)} className="h-12 min-w-0 flex-1 rounded-[var(--radius-field)] border border-line bg-raised px-4 text-[16px] text-ink placeholder:text-faint focus:border-accent-hi/70 focus:outline-none" />
+          {speech.listening ? (
+            <>
+              <IconButton label="Cancelar voz" type="button" className="size-12! shrink-0" onClick={() => (speech.cancel(), setText(''))}>
+                <X size={20} />
+              </IconButton>
+              <IconButton label="Parar e enviar" tone="accent" type="button" className="size-12! shrink-0" onClick={speech.stop}>
+                <Square size={18} />
+              </IconButton>
+            </>
+          ) : speech.supported && !text.trim() && !iaStatus ? (
+            <IconButton label="Falar" tone="accent" type="button" className="size-12! shrink-0" onClick={speech.start}>
+              <Mic size={20} />
+            </IconButton>
+          ) : (
+            <IconButton label="Enviar" tone="accent" type="submit" className="size-12! shrink-0" disabled={!text.trim()}>
+              <ArrowUp size={20} />
+            </IconButton>
+          )}
         </div>
+        {speech.error && (
+          <p className="mx-auto mt-1.5 max-w-2xl text-[13px] text-soft" role="alert" data-voice-error>
+            {speech.error}
+          </p>
+        )}
       </form>
     </>
   )

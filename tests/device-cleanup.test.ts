@@ -105,9 +105,12 @@ describe('A2: ao fim da sessão, nada da conta fica no aparelho', () => {
   it('apaga o banco da conta, as preferências da conta e a sessão; mantém tema e filtros do aparelho', async () => {
     await seed(cacheDbName('user-a'), { notes: [note('a-1', T0, 'Nota privada da A')] }, { settings: settings() }, ['notes:a-2'])
     rememberAccountOnDevice('user-a')
-    for (const [k, v] of Object.entries({ 'nucleo:auth': '{"token":"x"}', 'nucleo:auth-user': '{}', 'nucleo:focusTimer': '{"taskId":"t1"}', 'nucleo:shownReminders': '{}', 'nucleo:displayCurrency': '"BRL"', 'nucleo:theme': '"dark"', 'nucleo:tasks.tab': '"todo"' })) localStorage.setItem(k, v)
+    for (const [k, v] of Object.entries({ 'nucleo:auth': '{"token":"x"}', 'nucleo:auth-user': '{}', 'nucleo:focusTimer': '{"taskId":"t1"}', 'nucleo:shownReminders': '{}', 'nucleo:displayCurrency': '"BRL"', 'nucleo:theme': '"dark"', 'nucleo:tasks.tab': '"todo"', 'nucleo:iaConv:user-a': '{"v":1}', 'nucleo:iaConv:user-b': '{"v":1}' })) localStorage.setItem(k, v)
 
     const { pendingLost } = await removeAccountFromDevice('user-a', { wholeDevice: true })
+    // NÚCLEO IA: the conversation kept on the device goes with the account (another account's stays)
+    expect(localStorage.getItem('nucleo:iaConv:user-a')).toBeNull()
+    expect(localStorage.getItem('nucleo:iaConv:user-b')).not.toBeNull()
 
     expect(pendingLost).toBe(1)
     expect(await exists(cacheDbName('user-a'))).toBe(false)

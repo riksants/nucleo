@@ -118,7 +118,7 @@ describe('turno: resposta direta e consultas', () => {
     expect(out.body).toMatchObject({ kind: 'answer', route: 'rapida', model: 'claude-haiku-5-5', stop: 'end', steps: 1, text: 'Você não tem compromissos hoje.' })
     const p = h.calls[0]
     expect(p).toMatchObject({ model: 'claude-haiku-5-5', thinking: { type: 'adaptive' }, output_config: { effort: 'low' }, cache_control: { type: 'ephemeral' }, tool_choice: { type: 'auto' } })
-    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual([...APP_TOOLS, 'calcular', 'propor_acoes', 'pedir_analise_profunda'])
+    expect((p.tools as { name: string; strict: boolean }[]).map((t) => t.name)).toEqual([...APP_TOOLS, 'calcular', 'propor_lembrete', 'propor_acoes', 'pedir_analise_profunda'])
     // every lookup is strict; propor_acoes is not (API union limit) and is validated by the app
     expect((p.tools as { name: string; strict: boolean }[]).filter((t) => !t.strict).map((t) => t.name)).toEqual(['propor_acoes'])
     expect(h.settles).toEqual([{ ok: true, costMicros: costMicros('haiku', USAGE), tools: [], model: 'haiku' }])

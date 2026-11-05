@@ -27,6 +27,8 @@ export const StartRequest = z.object({
   focus: z.array(z.object({ tool: z.string().max(40), args: z.record(z.string(), z.unknown()), about: z.array(z.string().max(80)).max(5).optional() })).max(8),
   /** Areas the person turned off for the AI (or whose section is off). */
   areasOff: z.array(z.string().max(20)).max(20),
+  /** Etapa 5: long-term reminders the person confirmed (only when on). Optional for older apps. */
+  memory: z.array(z.string().max(200)).max(20).optional(),
 })
 export type StartRequest = z.infer<typeof StartRequest>
 
