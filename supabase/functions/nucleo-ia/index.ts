@@ -42,9 +42,14 @@ Deno.serve(async (req) => {
   const secret = Deno.env.get('IA_TURN_SECRET') ?? ''
   if (!apiKey || secret.length < 32) return json(req, 503, { error: 'not-configured', message: 'A IA ainda não foi configurada no servidor.' })
 
-  const userClient = createClient(url, anon, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } }, auth: { persistSession: false } })
-  const { data: userData, error: userError } = await userClient.auth.getUser()
-  if (userError || !userData.user) return json(req, 401, { error: 'auth', message: 'Entre na sua conta para usar a IA.' })
+  // Login: the token's signature and expiry are verified first (getClaims: signing keys, cached — no
+  // network round trip). A NEW question is also confirmed with Auth (getUser: session not revoked);
+  // a continuation is already bound to that user by the signed turn (10 min), so it skips that trip.
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
+  const userClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } })
+  const { data: claimData, error: claimError } = token ? await userClient.auth.getClaims(token) : { data: null, error: new Error('no token') }
+  const claimedUid = typeof claimData?.claims?.sub === 'string' ? claimData.claims.sub : null
+  if (claimError || !claimedUid || claimData?.claims?.role !== 'authenticated') return json(req, 401, { error: 'auth', message: 'Entre na sua conta para usar a IA.' })
 
   let body: TurnRequest
   try {
@@ -56,6 +61,12 @@ Deno.serve(async (req) => {
   } catch {
     return json(req, 400, { error: 'input', message: 'Pedido inválido.' })
   }
+
+  if (body.kind === 'start') {
+    const { data: userData, error: userError } = await userClient.auth.getUser(token)
+    if (userError || userData.user?.id !== claimedUid) return json(req, 401, { error: 'auth', message: 'Entre na sua conta para usar a IA.' })
+  }
+  const userData = { user: { id: claimedUid } }
 
   const admin = createClient(url, service, { auth: { persistSession: false } })
   // One model call per HTTP request at most, and a short timeout: a retry would be charged twice.

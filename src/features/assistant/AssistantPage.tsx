@@ -23,6 +23,7 @@ import { askIa } from '../../core/assistant/ia/client'
 import { newConversation, remember, type Conversation } from '../../core/assistant/ia/conversation'
 import { areasOffFor } from '../../core/assistant/ia/lookups'
 import { localAnswers } from '../../core/assistant/ia/localFirst'
+import { quickSavings } from '../../core/assistant/ia/quickCalc'
 import { CONSENT_VERSION } from '../../../supabase/functions/_shared/ia/protocol.ts'
 import { useSession } from '../account/session'
 import { currentUid, iaTransport, NUCLEO_IA } from './iaApi'
@@ -271,6 +272,17 @@ export function AssistantPage() {
       return
     }
     const today = nowIn(zoneOf(s0)).date
+    // Simple savings math ("quanto preciso guardar por mês para juntar X até Y?"): the app answers at once,
+    // exactly and without the AI (also when the AI is off). Kept in the AI conversation for follow-ups.
+    const quick = opts.deep ? null : quickSavings(question, today)
+    if (quick) {
+      if (iaReady && userId) {
+        const conv = iaConversation?.uid === userId ? iaConversation : newConversation(userId)
+        iaConversation = remember(conv, question, quick.lines.join(' '))
+      }
+      push([{ from: 'me', text: question }, { from: 'nucleo', reply: { lines: quick.lines } }])
+      return
+    }
     // NÚCLEO IA: local commands still answer first (free, offline); everything else goes to the IA.
     if (iaReady && userId) {
       // The conversation belongs to one account: another login starts a new one.

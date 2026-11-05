@@ -236,3 +236,17 @@ describe('datas e valores que a pessoa escreveu (correção do teste no iPhone)'
     expect(renderAnswer('Entre 15/03/2027 e 2 de abril, até 30/06/2029.', b.all).blocked).toEqual([])
   })
 })
+
+describe('conta de poupança feita pelo app, sem IA (velocidade)', () => {
+  it('a pergunta do iPhone: resposta exata e imediata, com a base da conta', async () => {
+    const { quickSavings } = await import('../src/core/assistant/ia/quickCalc')
+    const r = quickSavings('Quanto preciso guardar por mês para juntar R$ 150 mil até dezembro de 2027? É só uma pergunta.', '2026-11-05')
+    // novembro/2026 → dezembro/2027 = 14 meses; 15.000.000 ÷ 14 = 1.071.428,57… → para cima
+    expect(r?.lines).toEqual(['Para juntar R$ 150.000,00 até dezembro de 2027, guarde R$ 10.714,29 por mês.', 'São 14 meses, contando este (novembro de 2026) até dezembro de 2027, partindo do zero e sem rendimentos.'])
+    expect(quickSavings('quanto eu preciso juntar por semana pra ter 5.000 reais até 20/12/2026?', '2026-11-05')?.lines[0]).toBe('Para juntar R$ 5.000,00 até 20/12/2026, guarde R$ 714,29 por semana (7 semanas).')
+  })
+  it('o que precisa de dados ou suposições continua com a IA', async () => {
+    const { quickSavings } = await import('../src/core/assistant/ia/quickCalc')
+    for (const q of ['Quanto preciso guardar por mês para a meta da viagem?', 'Quanto preciso guardar para juntar 10 mil até junho, já tenho 2 mil guardados?', 'Quanto preciso guardar por mês para juntar 10 mil até junho de 2027 com rendimento de 1%?', 'Quanto preciso guardar para juntar 10 mil?', 'Quanto gastei em dezembro de 2025?', 'Quanto preciso guardar por mês para juntar 10 mil até janeiro de 2020?', 'Quanto preciso guardar para juntar 10 mil ou 20 mil até junho de 2027?']) expect(quickSavings(q, '2026-11-05'), q).toBeNull()
+  })
+})
