@@ -5,9 +5,10 @@
 -- O que muda:
 --   1. ai_usage: aceita kind 'ia' e ganha colunas de custo (micro-dólares) e de tokens de cache.
 --      Nenhuma linha existente muda. Nunca guarda texto.
---   2. ai_tiers: limites por nível (trial, subscriber, owner, none) — alteráveis sem publicar código.
---   3. ai_entitlements: o nível de cada conta (manual agora; o sistema de assinatura grava depois).
---      Conta sem linha começa 'trial' no primeiro uso.
+--   2. ai_tiers: limites por nível (free, owner, none) — alteráveis sem publicar código.
+--   3. ai_entitlements: o nível de cada conta. A IA é GRATUITA para todos, sem prazo (decisão do dono,
+--      2026-11-05): conta sem linha vira 'free' no primeiro uso. Limites renovam sozinhos, sem cobrança:
+--      o do dia à meia-noite e o do mês no dia 1º (horário de Brasília). 'none' = bloqueio manual (abuso).
 --   4. quota_limits: teto global dinâmico (cresce com os níveis ativos), teto de segurança e disjuntor.
 --   5. Funções: ia_reserve / ia_settle (só service_role, chamadas pela função nucleo-ia) e
 --      ia_my_usage (a própria pessoa vê seu uso).
@@ -43,28 +44,26 @@ create index if not exists ai_usage_ia_turn on public.ai_usage (user_id, turn_id
 -- ---------------------------------------------------------------- 2. níveis
 create table if not exists public.ai_tiers (
   tier text primary key check (tier ~ '^[a-z_]{2,20}$'),
-  -- Orçamento do período: mês do calendário (UTC) ou, com trial_days, o período de teste inteiro.
+  -- Orçamento do mês do calendário (horário de Brasília); o do dia vai da meia-noite à meia-noite.
   period_micros bigint not null check (period_micros >= 0),
   daily_micros bigint not null check (daily_micros >= 0),
   sonnet_period_micros bigint not null check (sonnet_period_micros >= 0),
   request_haiku_micros bigint not null check (request_haiku_micros >= 0),
   request_sonnet_micros bigint not null check (request_sonnet_micros >= 0),
-  trial_days int check (trial_days is null or trial_days between 1 and 90),
   note text not null default ''
 );
 
--- Assinatura R$ 19,90 → ~US$ 3,08 líquidos (15% loja, R$ 5,50/US$). IA ≤ ~30% disso.
+-- Grátis para todos: ~US$ 0,002 por pergunta simples → ~20 perguntas/dia, ~200/mês por conta.
 insert into public.ai_tiers values
-  ('trial',      250000,  80000, 120000, 10000, 100000, 7,    'Teste grátis: US$ 0,25 no período de 7 dias'),
-  ('subscriber', 900000, 120000, 500000, 10000, 100000, null, 'Assinante: US$ 0,90/mês, até US$ 0,50 em análise profunda'),
-  ('owner',     5000000, 600000, 3000000, 10000, 150000, null, 'Dono do app'),
-  ('none',            0,      0,      0,     0,      0, null, 'Sem IA (só comandos locais)')
+  ('free',     500000,  50000,  150000, 10000, 100000, 'Grátis para todos: até US$ 0,05/dia e US$ 0,50/mês (US$ 0,15 em análise profunda); renova sozinho'),
+  ('owner',   5000000, 600000, 3000000, 10000, 150000, 'Dono do app'),
+  ('none',          0,      0,       0,     0,      0, 'Sem IA (bloqueio manual; só comandos locais)')
 on conflict (tier) do nothing;
 
 create table if not exists public.ai_entitlements (
   user_id uuid primary key references auth.users (id) on delete cascade,
   tier text not null references public.ai_tiers (tier),
-  -- null = sem prazo (ex.: owner). Vencido = nível 'none'.
+  -- null = sem prazo (o normal). Preenchido e vencido = nível 'none' (bloqueio temporário manual).
   valid_until timestamptz,
   started_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -90,7 +89,7 @@ end $$;
 insert into public.quota_limits (key, max_value, note) values
   ('ia.global_floor_daily_micros', 1000000, 'IA: piso do teto global diário (US$ 1)'),
   ('ia.global_burst_pct', 200, 'IA: fator de pico sobre a soma diária dos níveis ativos (200 = 2x)'),
-  ('ia.global_hard_daily_micros', 50000000, 'IA: teto de segurança absoluto por dia (US$ 50) — subir com a receita'),
+  ('ia.global_hard_daily_micros', 10000000, 'IA: teto de segurança absoluto por dia (US$ 10 no lançamento) — subir conforme o uso'),
   ('ia.anomaly_floor_hour_micros', 500000, 'IA: gasto na última hora acima disso (e do fator) bloqueia análise profunda'),
   ('ia.anomaly_pct', 400, 'IA: fator sobre a média horária de 7 dias que bloqueia análise profunda (400 = 4x)'),
   ('ia.pause_floor_hour_micros', 2000000, 'IA: gasto na última hora acima disso (e do fator) pausa a IA'),
@@ -105,7 +104,7 @@ language sql stable security definer set search_path = '' as $$
     coalesce(public.quota_limit('ia.global_hard_daily_micros'), 50000000),
     coalesce(public.quota_limit('ia.global_floor_daily_micros'), 1000000)
       + coalesce((
-          select sum(case when t.trial_days is not null then t.period_micros / t.trial_days else t.period_micros / 30 end)
+          select sum(t.period_micros / 30)
             from public.ai_entitlements e join public.ai_tiers t on t.tier = e.tier
            where e.valid_until is null or e.valid_until > now()
         ), 0) * coalesce(public.quota_limit('ia.global_burst_pct'), 200) / 100
@@ -125,6 +124,7 @@ declare
   ent public.ai_entitlements;
   t public.ai_tiers;
   period_start timestamptz;
+  day_start timestamptz;
   spent_day bigint; spent_period bigint; spent_sonnet bigint; spent_turn bigint;
   rem_request bigint; rem_day bigint; rem_period bigint; rem_sonnet bigint; rem_global bigint;
   hour_spent bigint; hour_avg numeric;
@@ -151,8 +151,7 @@ begin
 
   select * into ent from public.ai_entitlements where user_id = p_user;
   if not found then
-    insert into public.ai_entitlements (user_id, tier, valid_until)
-      select p_user, 'trial', now() + make_interval(days => trial_days) from public.ai_tiers where tier = 'trial'
+    insert into public.ai_entitlements (user_id, tier, valid_until) values (p_user, 'free', null)
       returning * into ent;
   end if;
   if ent.user_id is null or (ent.valid_until is not null and ent.valid_until <= now()) then
@@ -169,13 +168,14 @@ begin
     return;
   end if;
 
-  period_start := case when t.trial_days is not null then ent.started_at else date_trunc('month', now() at time zone 'utc') at time zone 'utc' end;
-  select coalesce(sum(coalesce(cost_micros, reserved_micros)) filter (where created_at > now() - interval '24 hours'), 0),
+  period_start := (date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo');
+  day_start := (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo');
+  select coalesce(sum(coalesce(cost_micros, reserved_micros)) filter (where created_at >= day_start), 0),
          coalesce(sum(coalesce(cost_micros, reserved_micros)) filter (where created_at >= period_start), 0),
          coalesce(sum(coalesce(cost_micros, reserved_micros)) filter (where created_at >= period_start and model = 'sonnet'), 0),
          coalesce(sum(coalesce(cost_micros, reserved_micros)) filter (where turn_id = p_turn), 0)
     into spent_day, spent_period, spent_sonnet, spent_turn
-    from public.ai_usage where user_id = p_user and kind = 'ia' and created_at >= least(period_start, now() - interval '24 hours') - interval '1 hour';
+    from public.ai_usage where user_id = p_user and kind = 'ia' and created_at >= least(period_start, day_start) - interval '1 hour';
   -- (um turno não dura mais que alguns minutos; a janela acima cobre as linhas dele)
 
   rem_request := (case when p_model = 'sonnet' or spent_turn > 0 and exists (
@@ -234,31 +234,31 @@ end $$;
 
 -- A própria pessoa vê seu nível e quanto usou (para o painel do Assistente).
 create or replace function public.ia_my_usage()
-returns table (tier text, valid_until timestamptz, period_start timestamptz, spent_day bigint, daily bigint, spent_period bigint, period bigint, spent_sonnet bigint, sonnet_period bigint)
+returns table (tier text, valid_until timestamptz, period_start timestamptz, spent_day bigint, daily bigint, spent_period bigint, period bigint, spent_sonnet bigint, sonnet_period bigint, day_resets timestamptz, period_resets timestamptz)
 language plpgsql stable security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
   ent public.ai_entitlements;
   t public.ai_tiers;
-  ps timestamptz;
+  ps timestamptz := (date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo');
+  ds timestamptz := (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo');
 begin
   if uid is null then
     raise exception using errcode = '42501', message = 'não autenticado';
   end if;
   select * into ent from public.ai_entitlements e where e.user_id = uid;
   if not found then
-    select * into t from public.ai_tiers x where x.tier = 'trial';
-    return query select 'trial'::text, null::timestamptz, now(), 0::bigint, t.daily_micros, 0::bigint, t.period_micros, 0::bigint, t.sonnet_period_micros;
+    select * into t from public.ai_tiers x where x.tier = 'free';
+    return query select 'free'::text, null::timestamptz, ps, 0::bigint, t.daily_micros, 0::bigint, t.period_micros, 0::bigint, t.sonnet_period_micros, ds + interval '1 day', ps + interval '1 month';
     return;
   end if;
   select * into t from public.ai_tiers x where x.tier = case when ent.valid_until is not null and ent.valid_until <= now() then 'none' else ent.tier end;
-  ps := case when t.trial_days is not null then ent.started_at else date_trunc('month', now() at time zone 'utc') at time zone 'utc' end;
   return query
     select t.tier, ent.valid_until, ps,
-           coalesce(sum(coalesce(u.cost_micros, u.reserved_micros)) filter (where u.created_at > now() - interval '24 hours'), 0)::bigint, t.daily_micros,
+           coalesce(sum(coalesce(u.cost_micros, u.reserved_micros)) filter (where u.created_at >= ds), 0)::bigint, t.daily_micros,
            coalesce(sum(coalesce(u.cost_micros, u.reserved_micros)) filter (where u.created_at >= ps), 0)::bigint, t.period_micros,
-           coalesce(sum(coalesce(u.cost_micros, u.reserved_micros)) filter (where u.created_at >= ps and u.model = 'sonnet'), 0)::bigint, t.sonnet_period_micros
-      from public.ai_usage u where u.user_id = uid and u.kind = 'ia' and u.created_at >= least(ps, now() - interval '24 hours');
+           coalesce(sum(coalesce(u.cost_micros, u.reserved_micros)) filter (where u.created_at >= ps and u.model = 'sonnet'), 0)::bigint, t.sonnet_period_micros, ds + interval '1 day', ps + interval '1 month'
+      from public.ai_usage u where u.user_id = uid and u.kind = 'ia' and u.created_at >= least(ps, ds);
 end $$;
 
 revoke all on function public.ia_reserve(uuid, text, int, text, text, bigint, bigint), public.ia_settle(bigint, boolean, bigint, int, int, int, int, text[], text),

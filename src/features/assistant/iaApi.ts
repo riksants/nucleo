@@ -81,7 +81,7 @@ import type { UsageRow as IaUsage } from '../../core/assistant/ia/usage'
 /** The person's own level and use (ia_my_usage: only their own rows, from the verified login). */
 export async function iaUsage(): Promise<IaUsage | null> {
   if (!supabase) return null
-  const { data, error } = await supabase.rpc('ia_my_usage').maybeSingle<{ tier: string; valid_until: string | null; spent_day: number; daily: number; spent_period: number; period: number; spent_sonnet: number; sonnet_period: number }>()
+  const { data, error } = await supabase.rpc('ia_my_usage').maybeSingle<{ tier: string; valid_until: string | null; spent_day: number; daily: number; spent_period: number; period: number; spent_sonnet: number; sonnet_period: number; day_resets: string | null; period_resets: string | null }>()
   if (error || !data) return null
-  return { tier: data.tier, validUntil: data.valid_until, spentDay: Number(data.spent_day), daily: Number(data.daily), spentPeriod: Number(data.spent_period), period: Number(data.period), spentSonnet: Number(data.spent_sonnet), sonnetPeriod: Number(data.sonnet_period) }
+  return { tier: data.tier, validUntil: data.valid_until, spentDay: Number(data.spent_day), daily: Number(data.daily), spentPeriod: Number(data.spent_period), period: Number(data.period), spentSonnet: Number(data.spent_sonnet), sonnetPeriod: Number(data.sonnet_period), dayResets: data.day_resets ?? null, periodResets: data.period_resets ?? null }
 }

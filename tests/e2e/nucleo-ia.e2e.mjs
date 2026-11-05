@@ -323,11 +323,11 @@ try {
   await B.click('Fechar')
   await B.sleep(400)
 
-  // E5.3 Usage panel (percentages; no dollars for a trial account).
+  // E5.3 Usage panel: free for everyone (percentages, renewal, no dollars, no charge).
   await B.eval(`document.querySelector('[data-usage-chip]').click()`)
   await B.sleep(900)
   const usage = await B.eval(`document.querySelector('[data-ia-usage]')?.innerText ?? ''`)
-  r.check('painel de uso: nível, barras e perguntas que cabem, sem dólar para teste grátis', /Teste grátis/.test(usage) && /perguntas/.test(usage) && !/US\$/.test(usage), usage.slice(0, 160))
+  r.check('painel de uso: grátis, quando renova, perguntas que cabem, sem dólar nem cobrança', /Grátis/.test(usage) && /Renova à meia-noite/.test(usage) && /Renova em 1º de dezembro/.test(usage) && /perguntas/.test(usage) && /sem cobrança/.test(usage) && !/US\$|teste|assinatura/i.test(usage), usage.slice(0, 200))
   await B.click('Fechar')
   await B.sleep(400)
 

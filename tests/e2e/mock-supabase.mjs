@@ -275,7 +275,7 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/rest/v1/rpc/ia_my_usage') {
     if (!sub(req)) return send(401, { message: 'jwt' })
     const { iaLog } = await import('./mock-nucleo-ia.mjs')
-    return send(200, { tier: 'trial', valid_until: new Date(Date.now() + 5 * 86400000).toISOString(), period_start: new Date().toISOString(), spent_day: iaLog.spentMicros, daily: 80000, spent_period: iaLog.spentMicros, period: 250000, spent_sonnet: 0, sonnet_period: 120000 })
+    return send(200, { tier: 'free', valid_until: null, period_start: new Date().toISOString(), day_resets: new Date(Date.now() + 6 * 3600000).toISOString(), period_resets: '2026-12-01T03:00:00Z', spent_day: iaLog.spentMicros, daily: 80000, spent_period: iaLog.spentMicros, period: 250000, spent_sonnet: 0, sonnet_period: 120000 })
   }
   if (url.pathname === '/__ia') {
     const { iaLog } = await import('./mock-nucleo-ia.mjs')

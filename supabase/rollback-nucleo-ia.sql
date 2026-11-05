@@ -3,7 +3,7 @@
 -- Antes de reverter, desligue a IA sem apagar nada (reversível em segundos): teto global zero →
 -- toda pergunta recebe "A IA está pausada" e os comandos do Assistente continuam.
 --   update public.quota_limits set max_value = 0 where key = 'ia.global_hard_daily_micros';
--- (para religar: max_value = 50000000)
+-- (para religar: max_value = 10000000, o valor de lançamento)
 -- Reversão completa (apaga o registro de custo da IA; registros, settings e sync não mudam):
 begin;
 delete from public.ai_usage where kind = 'ia';

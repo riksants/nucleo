@@ -258,9 +258,9 @@ describe('escalada e orçamento', () => {
   })
 
   it.each([
-    ['limit-day', 429, 'limit', /limite de uso da IA de hoje/],
-    ['limit-month', 429, 'limit', /deste mês/],
-    ['no-plan', 403, 'no-plan', /não está incluída no seu plano/],
+    ['limit-day', 429, 'limit', /limite gratuito de uso da IA de hoje. Ele renova sozinho à meia-noite .*sem custo/],
+    ['limit-month', 429, 'limit', /deste mês. Ele renova sozinho no dia 1º, sem custo/],
+    ['no-plan', 403, 'no-plan', /não está disponível para esta conta/],
     ['global', 503, 'global-limit', /pausada/],
     ['paused', 503, 'paused', /pausada/],
     ['busy', 429, 'busy', /Aguarde/],

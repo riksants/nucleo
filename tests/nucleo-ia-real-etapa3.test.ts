@@ -64,7 +64,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 3 com os modelos reais (gasta dinheiro)'
     await db.query('insert into auth.users (id) values ($1)', [A])
     for (const f of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync(`supabase/migrations/${f}`, 'utf8'))
     const maxUsd = Number(process.env.IA_MAX_USD ?? '0.15')
-    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = least($1::bigint, 120000) where tier = 'trial'`, [Math.floor(maxUsd * 1e6)])
+    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = least($1::bigint, 120000) where tier = 'free'`, [Math.floor(maxUsd * 1e6)])
 
     const deps = (calls: Call[]): Deps => ({
       uid: A,

@@ -67,7 +67,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 2 com os modelos reais (gasta dinheiro)'
     // Ceiling of THIS run, enforced by the real budget: shared by the 3 accounts.
     const maxUsd = Number(process.env.IA_MAX_USD ?? '0.20')
     const capEach = Math.floor((maxUsd / 3) * 1e6)
-    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = least($1::bigint, 100000) where tier = 'trial'`, [capEach])
+    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = least($1::bigint, 100000) where tier = 'free'`, [capEach])
     let modelCalls = 0
 
     const depsFor = (uid: string, calls: Call[]): Deps => ({

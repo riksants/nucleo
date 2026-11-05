@@ -5,16 +5,35 @@
 - Especificação: docs/superpowers/specs/2026-11-01-nucleo-ia.md (Etapa 5 no fim).
 - NÃO aplicado/publicado: migração 20261103000000_nucleo_ia.sql; função `nucleo-ia` (secrets
   ANTHROPIC_API_KEY + IA_TURN_SECRET ≥ 32 caracteres); build com VITE_NUCLEO_IA=on; página privacidade.html nova.
-- Roteiro de ativação (cada passo só com autorização; mesma ordem da Etapa 5 das notificações):
-  1. Backup verificado (restore local idêntico) + snapshot de ai_usage/quota_limits.
-  2. Migração 20261103000000 numa transação. Reversão testada: supabase/rollback-nucleo-ia.sql.
-  3. Nível da conta do dono: `insert into ai_entitlements (user_id, tier) values ('<uid>', 'owner')`.
-  4. Liberação gradual: enquanto só o dono testa, `update ai_tiers set period_micros = 0, daily_micros = 0 where tier = 'trial'`
-     (as outras contas recebem a mensagem de limite; comandos continuam). Depois, voltar aos valores da migração.
-  5. Secrets ANTHROPIC_API_KEY (chave de produção, não a dev) e IA_TURN_SECRET; publicar `nucleo-ia`.
-  6. Limite mensal de gasto no painel da Anthropic (camada extra além do orçamento do banco).
-  7. Merge na main com VITE_NUCLEO_IA=on no build do Pages.
-  8. Verificação em produção com contas descartáveis (consulta, streaming, isolamento, limite) e apagar as contas.
+- Decisão do usuário (2026-11-05): SEM liberação gradual. Concluir todos os testes e verificações; depois
+  publicar para todos os elegíveis de uma vez, com autorização final.
+- DECISÃO (2026-11-05): o NÚCLEO IA é GRATUITO para todos os usuários cadastrados, por tempo indeterminado,
+  mediante consentimento. Sem teste grátis, sem prazo, sem assinatura. Nível padrão `free` (criado no 1º uso):
+  até US$ 0,05/dia (~20 perguntas simples) e US$ 0,50/mês (~200), Sonnet até US$ 0,15/mês. Limites renovam
+  sozinhos e sem cobrança: o do dia à meia-noite e o do mês no dia 1º (horário de Brasília); a mensagem e o
+  painel de uso dizem quando volta. `owner` = dono; `none` = bloqueio manual (abuso). Teto global: piso US$ 1 +
+  2 × (US$ 0,50/30 por conta ativa), limitado a US$ 10/dia (`ia.global_hard_daily_micros`, valor de lançamento).
+- A) Verificações antes da autorização final (nada muda em produção):
+  1. Leitura em produção (só select): schema_version, colunas de ai_usage, quota_limits, nº de contas,
+     ia_reserve ainda inexistente.
+  2. Ensaio da migração numa restauração LOCAL do último backup (restore-local.sh) + rollback no mesmo banco.
+  3. iPhone real: só é possível com a função publicada (o microfone exige HTTPS) — fica para o passo B9.
+- B) Ativação (uma sessão, com autorização final; tempo estimado ~30 min):
+  1. Backup verificado (restauração local idêntica) + cópia de ai_usage/quota_limits.
+  2. Migração 20261103000000 numa transação; conferir schema_version. Reversão: supabase/rollback-nucleo-ia.sql.
+  3. Conta do dono: `insert into ai_entitlements (user_id, tier) values ('<uid>', 'owner')`.
+  4. Conferir o teto global de lançamento: `ia.global_hard_daily_micros` = 10000000 (US$ 10/dia, já é o
+     padrão da migração; subir depois, conforme o uso).
+  5. Secrets: chave NOVA de produção da Anthropic (não a dev) num workspace com limite mensal (sugestão US$ 20);
+     IA_TURN_SECRET aleatório de 48 caracteres.
+  6. Publicar `nucleo-ia`; conferir 401 sem login e CORS só hellonucleo.app.
+  7. Merge feat/nucleo-ia → main (sozinho NÃO liga a IA) e então a variável do repositório VITE_NUCLEO_IA=on
+     + novo deploy. Desligar no app = apagar a variável e refazer o deploy.
+  8. Verificação em produção com 2 contas descartáveis (consentimento, pergunta, streaming, uso, isolamento
+     entre contas, limite do dia atingido → mensagem "volta à meia-noite, sem custo") e apagar as contas;
+     custo < US$ 0,05.
+  9. iPhone real com o usuário (microfone, Ouvir, app instalado).
+- C) Primeiras 48 h: custo diário em ai_usage, erros da função, disjuntor; desligar em segundos se preciso.
 - Desligar sem reverter (segundos): `update quota_limits set max_value = 0 where key = 'ia.global_hard_daily_micros'`.
 - O interpretador antigo (função `assistant`, features/assistant/ai.ts) não é mais chamado quando VITE_NUCLEO_IA=on;
   remover a função publicada e o código depois que a IA nova estiver estável em produção.

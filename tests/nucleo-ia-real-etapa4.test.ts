@@ -81,7 +81,7 @@ describe.skipIf(!KEY)('NÚCLEO IA etapa 4 com os modelos reais (gasta dinheiro)'
     const maxUsd = Number(process.env.IA_MAX_USD ?? '0.60')
     const cap = Math.floor(maxUsd * 1e6)
     // the whole run's ceiling, enforced by the real budget (Sonnet included)
-    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = $1::bigint where tier = 'trial'`, [cap])
+    await db.query(`update ai_tiers set period_micros = $1::bigint, daily_micros = $1::bigint, sonnet_period_micros = $1::bigint where tier = 'free'`, [cap])
 
     const depsFor = (calls: Call[]): Deps => ({
       uid: A,

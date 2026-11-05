@@ -79,23 +79,24 @@ describe('migração', () => {
     await db.query(`delete from ai_usage where request_id = 'old-request-2'`)
   })
 
-  it('níveis padrão: teste, assinante, dono, nenhum', async () => {
-    const rows = (await db.query(`select tier, period_micros::int, daily_micros::int, sonnet_period_micros::int, request_haiku_micros::int, request_sonnet_micros::int, trial_days from ai_tiers order by tier`)).rows
+  it('níveis padrão: grátis para todos, dono, nenhum (sem teste grátis nem assinatura)', async () => {
+    const rows = (await db.query(`select tier, period_micros::int, daily_micros::int, sonnet_period_micros::int, request_haiku_micros::int, request_sonnet_micros::int from ai_tiers order by tier`)).rows
     expect(rows).toEqual([
-      { tier: 'none', period_micros: 0, daily_micros: 0, sonnet_period_micros: 0, request_haiku_micros: 0, request_sonnet_micros: 0, trial_days: null },
-      { tier: 'owner', period_micros: 5_000_000, daily_micros: 600_000, sonnet_period_micros: 3_000_000, request_haiku_micros: 10_000, request_sonnet_micros: 150_000, trial_days: null },
-      { tier: 'subscriber', period_micros: 900_000, daily_micros: 120_000, sonnet_period_micros: 500_000, request_haiku_micros: 10_000, request_sonnet_micros: 100_000, trial_days: null },
-      { tier: 'trial', period_micros: 250_000, daily_micros: 80_000, sonnet_period_micros: 120_000, request_haiku_micros: 10_000, request_sonnet_micros: 100_000, trial_days: 7 },
+      { tier: 'free', period_micros: 500_000, daily_micros: 50_000, sonnet_period_micros: 150_000, request_haiku_micros: 10_000, request_sonnet_micros: 100_000 },
+      { tier: 'none', period_micros: 0, daily_micros: 0, sonnet_period_micros: 0, request_haiku_micros: 0, request_sonnet_micros: 0 },
+      { tier: 'owner', period_micros: 5_000_000, daily_micros: 600_000, sonnet_period_micros: 3_000_000, request_haiku_micros: 10_000, request_sonnet_micros: 150_000 },
     ])
+    expect((await db.query(`select column_name from information_schema.columns where table_name = 'ai_tiers' and column_name = 'trial_days'`)).rows).toEqual([])
+    expect((await db.query(`select max_value::int as v from quota_limits where key = 'ia.global_hard_daily_micros'`)).rows[0]).toEqual({ v: 10_000_000 })
   })
 })
 
 describe('reserva e acerto', () => {
-  it('primeiro uso cria o teste grátis de 7 dias; reserva, acerta o custo real e libera a próxima etapa', async () => {
+  it('primeiro uso: conta vira "grátis" sem prazo; reserva, acerta o custo real e libera a próxima etapa', async () => {
     const r = await reserve(A, 'turnoAAAA01', 1)
     expect(r).toMatchObject({ outcome: 'ok', granted: 5000 })
-    const ent = (await db.query(`select tier, round(extract(epoch from valid_until - started_at) / 86400)::int as days from ai_entitlements where user_id = $1`, [A])).rows[0]
-    expect(ent).toEqual({ tier: 'trial', days: 7 })
+    const ent = (await db.query(`select tier, valid_until from ai_entitlements where user_id = $1`, [A])).rows[0]
+    expect(ent).toEqual({ tier: 'free', valid_until: null })
     // enquanto pendente, outra pergunta da mesma conta espera
     expect((await reserve(A, 'turnoAAAA02', 1)).outcome).toBe('busy')
     await settle(r.usage_id!, 1234)
@@ -135,51 +136,53 @@ describe('limites da conta', () => {
   })
 
   it('por pergunta: análise profunda tem teto maior (US$ 0,10) e vale para o turno inteiro depois de escalar', async () => {
-    await setTier(A, 'subscriber')
+    await setTier(A, 'owner')
     await spent(A, 9000, { turn: 'turnoSON001' })
     const r = await reserve(A, 'turnoSON001', 2, 'sonnet', 60000, 5000, 'profunda')
     expect(r).toMatchObject({ outcome: 'ok', granted: 60000 })
   })
 
-  it('por dia: teste grátis até US$ 0,08 em 24 h', async () => {
-    await spent(A, 79500, { ago: '3 hours' })
+  it('por dia: grátis até US$ 0,05; volta sozinho à meia-noite (Brasília), sem custo', async () => {
+    await spent(A, 49_500, { ago: '1 second' })
     expect((await reserve(A, 'turnoDAY001', 1, 'haiku', 5000, 1000)).outcome).toBe('limit-day')
-    await db.exec(`update ai_usage set created_at = now() - interval '25 hours' where kind = 'ia'`)
+    // the same spending, one minute before today's midnight in Brasília: today's limit is whole again
+    await db.exec(`update ai_usage set created_at = (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo') - interval '1 minute' where kind = 'ia'`)
     expect((await reserve(A, 'turnoDAY002', 1)).outcome).toBe('ok')
   })
 
-  it('no período: assinante US$ 0,90 no mês do calendário; o mês anterior não conta', async () => {
-    await setTier(A, 'subscriber')
+  it('no mês: grátis até US$ 0,50 no mês do calendário; o mês anterior não conta e o limite volta no dia 1º', async () => {
+    await setTier(A, 'free')
     await spent(A, 2_000_000, { ago: '40 days' })
     expect((await reserve(A, 'turnoMES001', 1)).outcome).toBe('ok')
     await db.exec(`delete from ai_usage where kind = 'ia' and status = 'pending'`)
-    // 0,90 gastos neste mês (limite diário folgado só neste teste, para isolar o limite do mês)
-    await db.query(`update ai_tiers set daily_micros = 5000000 where tier = 'subscriber'`)
+    // 0,50 gastos neste mês (limite diário folgado só neste teste, para isolar o limite do mês)
+    await db.query(`update ai_tiers set daily_micros = 5000000 where tier = 'free'`)
     try {
-      await spent(A, 899_500, { ago: '1 second' })
+      await spent(A, 499_500, { ago: '1 second' })
       expect((await reserve(A, 'turnoMES002', 1, 'haiku', 5000, 1000)).outcome).toBe('limit-month')
+      await db.exec(`update ai_usage set created_at = (date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo') - interval '1 minute' where kind = 'ia'`)
+      expect((await reserve(A, 'turnoMES003', 1)).outcome).toBe('ok')
     } finally {
-      await db.query(`update ai_tiers set daily_micros = 120000 where tier = 'subscriber'`)
+      await db.query(`update ai_tiers set daily_micros = 50000 where tier = 'free'`)
     }
   })
 
-  it('teste grátis: o período é o teste inteiro (US$ 0,25), e vencido vira "sem plano"', async () => {
-    await setTier(A, 'trial', null, `now() - interval '3 days'`)
-    await spent(A, 249_500, { ago: '2 days' })
-    expect((await reserve(A, 'turnoTRI001', 1, 'haiku', 5000, 1000)).outcome).toBe('limit-month')
-    await setTier(B, 'trial', new Date(Date.now() - 1000).toISOString())
-    expect((await reserve(B, 'turnoTRI002', 1)).outcome).toBe('no-plan')
+  it('grátis não vence: conta antiga continua; só um bloqueio manual com prazo vencido tira o acesso', async () => {
+    await setTier(A, 'free', null, `now() - interval '400 days'`)
+    expect((await reserve(A, 'turnoOLD001', 1)).outcome).toBe('ok')
+    await setTier(B, 'free', new Date(Date.now() - 1000).toISOString())
+    expect((await reserve(B, 'turnoBLK002', 1)).outcome).toBe('no-plan')
   })
 
   it('análise profunda tem orçamento próprio; esgotado, o modelo rápido continua', async () => {
-    await spent(A, 119_000, { model: 'sonnet', ago: '1 hour' })
-    await setTier(A, 'trial', null, `now() - interval '1 day'`)
-    await db.query(`update ai_tiers set daily_micros = 200000 where tier = 'trial'`)
+    await spent(A, 149_000, { model: 'sonnet', ago: '1 second' })
+    await setTier(A, 'free')
+    await db.query(`update ai_tiers set daily_micros = 200000 where tier = 'free'`)
     try {
       expect((await reserve(A, 'turnoSNT001', 1, 'sonnet', 50000, 5000, 'profunda')).outcome).toBe('limit-sonnet')
       expect((await reserve(A, 'turnoSNT002', 1, 'haiku', 5000, 1000)).outcome).toBe('ok')
     } finally {
-      await db.query(`update ai_tiers set daily_micros = 80000 where tier = 'trial'`)
+      await db.query(`update ai_tiers set daily_micros = 50000 where tier = 'free'`)
     }
   })
 
@@ -202,18 +205,18 @@ describe('global', () => {
 
   it('o teto diário cresce com os níveis ativos e para no teto de segurança', async () => {
     expect(await cap()).toBe(1_000_000)
-    await setTier(A, 'subscriber')
-    await setTier(B, 'subscriber')
-    await setTier(C, 'trial', new Date(Date.now() + 86_400_000).toISOString())
-    // 1.000.000 + (30.000 + 30.000 + 35.714) × 2
-    expect(await cap()).toBe(1_000_000 + (30_000 + 30_000 + 35_714) * 2)
-    await setTier(C, 'trial', new Date(Date.now() - 1000).toISOString())
-    expect(await cap()).toBe(1_000_000 + 60_000 * 2)
+    await setTier(A, 'free')
+    await setTier(B, 'free')
+    await setTier(C, 'free', new Date(Date.now() + 86_400_000).toISOString())
+    // 1.000.000 + (16.666 × 3) × 2  (US$ 0,50 por mês ÷ 30 por conta ativa)
+    expect(await cap()).toBe(1_000_000 + 16_666 * 3 * 2)
+    await setTier(C, 'free', new Date(Date.now() - 1000).toISOString())
+    expect(await cap()).toBe(1_000_000 + 16_666 * 2 * 2)
     await db.query(`update quota_limits set max_value = 1050000 where key = 'ia.global_hard_daily_micros'`)
     try {
       expect(await cap()).toBe(1_050_000)
     } finally {
-      await db.query(`update quota_limits set max_value = 50000000 where key = 'ia.global_hard_daily_micros'`)
+      await db.query(`update quota_limits set max_value = 10000000 where key = 'ia.global_hard_daily_micros'`)
     }
   })
 
@@ -225,7 +228,7 @@ describe('global', () => {
     try {
       expect((await reserve(A, 'turnoGLO001', 1, 'haiku', 5000, 2000)).outcome).toBe('global')
     } finally {
-      await db.query(`update quota_limits set max_value = 50000000 where key = 'ia.global_hard_daily_micros'`)
+      await db.query(`update quota_limits set max_value = 10000000 where key = 'ia.global_hard_daily_micros'`)
       await db.query(`update quota_limits set max_value = 500000 where key = 'ia.anomaly_floor_hour_micros'`)
       await db.query(`update quota_limits set max_value = 2000000 where key = 'ia.pause_floor_hour_micros'`)
     }
@@ -253,15 +256,15 @@ describe('permissões e isolamento entre contas', () => {
   })
 
   it('cada conta vê só o próprio uso', async () => {
-    await setTier(A, 'subscriber')
-    await spent(A, 1000)
-    await spent(B, 99_000)
-    const mine = (await as('authenticated', A, `select tier, spent_day::int, daily::int, spent_period::int, period::int from ia_my_usage()`)).rows[0]
-    expect(mine).toEqual({ tier: 'subscriber', spent_day: 1000, daily: 120_000, spent_period: 1000, period: 900_000 })
+    await setTier(A, 'free')
+    await spent(A, 1000, { ago: '1 second' })
+    await spent(B, 49_000, { ago: '1 second' })
+    const mine = (await as('authenticated', A, `select tier, spent_day::int, daily::int, spent_period::int, period::int, day_resets > now() as dia_renova, extract(day from period_resets at time zone 'America/Sao_Paulo')::int as mes_renova_dia from ia_my_usage()`)).rows[0]
+    expect(mine).toEqual({ tier: 'free', spent_day: 1000, daily: 50_000, spent_period: 1000, period: 500_000, dia_renova: true, mes_renova_dia: 1 })
     const rows = (await as('authenticated', A, `select user_id from ai_usage where kind = 'ia'`)).rows
     expect(rows.every((r) => r.user_id === A)).toBe(true)
     const none = (await as('authenticated', C, `select tier, spent_day::int from ia_my_usage()`)).rows[0]
-    expect(none).toEqual({ tier: 'trial', spent_day: 0 })
+    expect(none).toEqual({ tier: 'free', spent_day: 0 })
   })
 
   it('o gasto de uma conta não consome o limite pessoal de outra', async () => {

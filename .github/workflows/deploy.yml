@@ -51,6 +51,8 @@ jobs:
           # Public values (GitHub → Settings → Variables). Empty = app works only on the device, as before.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # NÚCLEO IA: 'on' liga a IA no app (GitHub → Settings → Variables). Vazio = desligada.
+          VITE_NUCLEO_IA: ${{ vars.VITE_NUCLEO_IA }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           # Cloudflare Turnstile SITE key (public). The secret key goes only to Supabase Auth → Attack Protection.
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}

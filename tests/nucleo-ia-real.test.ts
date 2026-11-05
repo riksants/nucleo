@@ -6,7 +6,7 @@
  * ia_reserve / ia_settle exactly as the function will do on Supabase.
  *
  * Checks: model ids on the API, cost in US$, tokens, cache, speed, answer quality (8 questions),
- * zero invented values, prompt injection ignored, the trial budget stops calls BEFORE the model,
+ * zero invented values, prompt injection ignored, the free budget stops calls BEFORE the model,
  * and another account sees nothing of the first one.
  *
  * SKIPPED unless a key is available. The key is read from a FILE (never printed, never in Git):
@@ -130,7 +130,7 @@ describe.skipIf(!KEY)('NÚCLEO IA com os modelos reais (gasta dinheiro)', () => 
     // IA_MAX_USD − US$ 0,012; account B asks one fast question (≤ US$ 0,01 by the per-question cap).
     const maxUsd = Number(process.env.IA_MAX_USD ?? '0.10')
     const capA = Math.floor((maxUsd - 0.012) * 1e6)
-    await db.query(`update ai_tiers set period_micros = $1, daily_micros = $1, sonnet_period_micros = least(sonnet_period_micros, $1) where tier = 'trial'`, [capA])
+    await db.query(`update ai_tiers set period_micros = $1, daily_micros = $1, sonnet_period_micros = least(sonnet_period_micros, $1) where tier = 'free'`, [capA])
     const sql = async <T,>(q: string, p: unknown[] = []) => (await db.query<T>(q, p)).rows
     let modelCalls = 0
     const depsFor = (uid: string, calls: Call[]): Deps => ({
@@ -211,14 +211,14 @@ describe.skipIf(!KEY)('NÚCLEO IA com os modelos reais (gasta dinheiro)', () => 
       rows.push(row)
     }
 
-    // 3) Budget: what the database counted = what was measured; the trial cap stops BEFORE any model call.
+    // 3) Budget: what the database counted = what was measured; the free daily cap stops BEFORE any model call.
     const measured = rows.flatMap((r) => r.calls).reduce((s, c) => s + c.costMicros, 0)
     const [usageA] = await sql<{ tier: string; spent: number; n: number; pending: number }>(`select (select tier from ai_entitlements where user_id = $1) as tier, coalesce(sum(cost_micros),0)::int as spent, count(*)::int as n, count(*) filter (where status = 'pending')::int as pending from ai_usage where user_id = $1 and kind = 'ia'`, [A])
-    await db.query(`update ai_tiers set daily_micros = $1 where tier = 'trial'`, [usageA.spent + 300])
+    await db.query(`update ai_tiers set daily_micros = $1 where tier = 'free'`, [usageA.spent + 300])
     const before = modelCalls
     const blockedTurn = await ask(A, data, conv, 'E quanto gastei com transporte em outubro?', 99)
     const budgetStops = blockedTurn.out.status === 429 && modelCalls === before
-    await db.query(`update ai_tiers set daily_micros = $1 where tier = 'trial'`, [capA])
+    await db.query(`update ai_tiers set daily_micros = $1 where tier = 'free'`, [capA])
 
     // 4) Isolation: account B (its own empty data) asks about A's spending; B cannot continue A's turn; B's usage is its own.
     const rB = await ask(B, empty(), newConversation(B), 'Quanto gastei com mercado em outubro?', 0)
@@ -258,7 +258,7 @@ describe.skipIf(!KEY)('NÚCLEO IA com os modelos reais (gasta dinheiro)', () => 
       `**Total desta rodada (A + B):** ${usd(measured + bCost)} (teto ${usd(maxUsd * 1e6)}) · **A:** ${usd(measured)} em ${all.length} chamadas · banco contou ${usd(usageA.spent)} em ${usageA.n} linhas (${usageA.pending} pendentes) · nível ${usageA.tier}`,
       `**Cache:** ${(cacheShare * 100).toFixed(0)}% dos tokens de entrada vieram do cache · primeira chamada gravou ${all[0]?.cacheWrite ?? 0} tokens; leituras por chamada (mediana) ${median(all.map((c) => c.cacheRead))}`,
       `**Velocidade por chamada (mediana):** Haiku ${(median(haiku.map((c) => c.ms)) / 1000).toFixed(1)} s · Sonnet ${sonnet.length ? (median(sonnet.map((c) => c.ms)) / 1000).toFixed(1) + ' s' : '—'} · por pergunta (mediana) ${(median(rows.map((r) => r.ms)) / 1000).toFixed(1)} s`,
-      `**Orçamento do teste grátis:** limite do dia ajustado para o gasto atual + US$ 0,0003 → próxima pergunta ${budgetStops ? 'RECUSADA antes de chamar a IA (429)' : 'NÃO foi recusada'} (${(blockedTurn.out.body as { message?: string }).message ?? ''})`,
+      `**Orçamento grátis por conta:** limite do dia ajustado para o gasto atual + US$ 0,0003 → próxima pergunta ${budgetStops ? 'RECUSADA antes de chamar a IA (429)' : 'NÃO foi recusada'} (${(blockedTurn.out.body as { message?: string }).message ?? ''})`,
       '',
       '## Isolamento (conta B)',
       ...isolation.map((c) => `- ${c.ok ? '✅' : '❌'} ${c.name}`),
@@ -274,7 +274,7 @@ describe.skipIf(!KEY)('NÚCLEO IA com os modelos reais (gasta dinheiro)', () => 
     expect(rows.flatMap((r) => r.blocked), 'valores inventados').toEqual([])
     expect(usageA.spent, 'banco = medido').toBe(measured)
     expect(usageA.pending).toBe(0)
-    expect(budgetStops, 'limite do teste grátis').toBe(true)
+    expect(budgetStops, 'limite grátis por conta').toBe(true)
     expect(isolation.filter((c) => !c.ok).map((c) => c.name)).toEqual([])
     expect(rows.flatMap((r) => r.checks.filter((c) => !c.ok).map((c) => `${r.q}: ${c.name}`)), 'qualidade').toEqual([])
   }, 1_200_000)

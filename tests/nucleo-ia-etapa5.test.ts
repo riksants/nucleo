@@ -193,14 +193,15 @@ describe('resposta progressiva (streaming)', () => {
 })
 
 describe('painel de uso e voz', () => {
-  it('porcentagens, perguntas que cabem, aviso a partir de 80%, dólar só para o dono', () => {
-    const row = { tier: 'subscriber', validUntil: null, spentDay: 20_000, daily: 120_000, spentPeriod: 760_000, period: 900_000, spentSonnet: 100_000, sonnetPeriod: 500_000 }
+  it('grátis: porcentagens, perguntas que cabem, quando renova, aviso a partir de 80%, dólar só para o dono', () => {
+    const row = { tier: 'free', validUntil: null, spentDay: 20_000, daily: 50_000, spentPeriod: 420_000, period: 500_000, spentSonnet: 0, sonnetPeriod: 150_000, dayResets: '2026-11-06T03:00:00Z', periodResets: '2026-12-01T03:00:00Z' }
     const v = usageView(row)
-    expect(v).toMatchObject({ label: 'Assinatura', warn: true, blocked: false, dollars: null, questionsLeft: 40 })
-    expect(Math.round(v.period * 100)).toBe(84)
-    expect(usageView({ ...row, tier: 'owner' }).dollars?.period).toBe('US$ 0,76 de US$ 0,90')
-    expect(usageView({ ...row, spentPeriod: 900_000 })).toMatchObject({ blocked: true, questionsLeft: 0 })
-    expect(usageView({ ...row, tier: 'trial', validUntil: new Date(Date.now() + 3.5 * 86_400_000).toISOString() }).daysLeft).toBe(4)
+    expect(v).toMatchObject({ label: 'Grátis', warn: true, blocked: false, blockedText: null, dollars: null, questionsLeft: 12 })
+    expect(v.renew).toEqual({ day: 'Renova à meia-noite', period: 'Renova em 1º de dezembro' })
+    expect(usageView({ ...row, spentDay: 50_000 }).blockedText).toMatch(/hoje acabou\. Ele volta sozinho à meia-noite, sem custo/)
+    expect(usageView({ ...row, spentPeriod: 500_000 }).blockedText).toMatch(/deste mês acabou\. Ele volta sozinho em 1º de dezembro, sem custo/)
+    expect(usageView({ ...row, tier: 'none', period: 0 }).blockedText).toMatch(/não está disponível/)
+    expect(usageView({ ...row, tier: 'owner' }).dollars?.period).toBe('US$ 0,42 de US$ 0,50')
   })
 
   it('"Ouvir" lê os valores e diz quando é previsão ou valor informado', () => {
