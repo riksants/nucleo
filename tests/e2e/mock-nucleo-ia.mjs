@@ -21,7 +21,7 @@ function fakeModel(params) {
   const last = params.messages[params.messages.length - 1]
   const reply = (content, stop = 'end_turn') => ({ content: [{ type: 'thinking', thinking: '', signature: 'mock' }, ...content], stop_reason: stop, usage: USAGE, model: params.model })
   const say = (text) => reply([{ type: 'text', text }])
-  const use = (name, input) => reply([{ type: 'tool_use', id: `toolu_${Math.random().toString(36).slice(2, 10)}`, name, input }], 'tool_use')
+  const callTool = (name, input) => reply([{ type: 'tool_use', id: `toolu_${Math.random().toString(36).slice(2, 10)}`, name, input }], 'tool_use')
 
   if (Array.isArray(last.content) && last.content[0]?.type === 'tool_result') {
     const r = JSON.parse(last.content[0].content)
@@ -47,7 +47,7 @@ function fakeModel(params) {
       return say(`Hoje você tem {${r.saldo_hoje.id}}.${extra} ${end} Limitação: ${r.limitacoes[0]}`)
     }
     const asked = typeof params.messages.at(-3)?.content === 'string' ? params.messages.at(-3).content : JSON.stringify(params.messages.slice(-4, -2))
-    if (r.metas && /quero juntar/i.test(asked)) return use('calcular', { operacao: 'diferenca', fatos: ['informado', r.metas[0].guardado.id], numero: null, valor_informado: 8000, moeda_informada: 'EUR', rotulo: 'Quanto falta para juntar' })
+    if (r.metas && /quero juntar/i.test(asked)) return callTool('calcular', { operacao: 'diferenca', fatos: ['informado', r.metas[0].guardado.id], numero: null, valor_informado: 8000, moeda_informada: 'EUR', rotulo: 'Quanto falta para juntar' })
     if (r.resultado) return say(`Faltam {${r.resultado.id}} para chegar aos {${r.valor_informado.id}} que você quer juntar.`)
     if (r.metas) return say(`Para a meta ${r.metas[0].nome} faltam {${r.metas[0].falta.id}}.`)
     if (r.previa_mostrada_na_tela) return say(`Preparei a prévia com ${r.itens.length} itens: confira, ajuste se quiser e confirme.`)
@@ -56,17 +56,17 @@ function fakeModel(params) {
   const text = typeof last.content === 'string' ? last.content : ''
   const ctx = JSON.parse(text.match(/<contexto>\n(.*)\n<\/contexto>/s)[1])
   const q = text.split('</contexto>')[1].trim().toLowerCase()
-  if (q.includes('mercado')) return use('resumo_financeiro', { periodo: 'mes', referencia: ctx.hoje.slice(0, 7), categoria: 'mercado' })
+  if (q.includes('mercado')) return callTool('resumo_financeiro', { periodo: 'mes', referencia: ctx.hoje.slice(0, 7), categoria: 'mercado' })
   if (q.startsWith('e no mês anterior')) {
     const f = ctx.consultas_recentes.find((c) => c.tool === 'resumo_financeiro')
     if (!f) return say('Do que você está falando?')
-    return use('resumo_financeiro', { ...f.args, referencia: prevMonth(ctx.hoje) })
+    return callTool('resumo_financeiro', { ...f.args, referencia: prevMonth(ctx.hoje) })
   }
   // like the real run: the model SAYS it prepared a change without calling the tool
   if (q.startsWith('guarda')) return say('Preparei a reserva para a meta. Confira na tela e confirme.')
   if (q.startsWith('fechei')) {
     const d = (n) => new Date(Date.parse(ctx.hoje) + n * 86400000).toISOString().slice(0, 10)
-    return use('propor_acoes', {
+    return callTool('propor_acoes', {
       resumo: 'Venda do site da Clínica Nova com projeto e tarefas',
       acoes: [
         blankAction('a1', 'criar_cliente', { pessoa: 'Clínica Nova' }),
@@ -78,10 +78,10 @@ function fakeModel(params) {
       ],
     })
   }
-  if (q.includes('no azul')) return use('previsao_do_mes', {})
-  if (q.startsWith('lembra que')) return use('propor_lembrete', { texto: 'Prefere respostas curtas' })
-  if (q.startsWith('quero juntar')) return use('metas_financeiras', { nome: null })
-  if (q.includes('meta')) return use('metas_financeiras', { nome: null })
+  if (q.includes('no azul')) return callTool('previsao_do_mes', {})
+  if (q.startsWith('lembra que')) return callTool('propor_lembrete', { texto: 'Prefere respostas curtas' })
+  if (q.startsWith('quero juntar')) return callTool('metas_financeiras', { nome: null })
+  if (q.includes('meta')) return callTool('metas_financeiras', { nome: null })
   return say('Posso consultar sua agenda, finanças e metas.')
 }
 
