@@ -35,6 +35,15 @@ function fakeModel(params) {
       const items = r.dias.flatMap((d) => d.itens)
       return say(items.length ? `Amanhã você tem: ${items.map((i) => `{${i.fato}}`).join(', ')}.` : 'Amanhã você não tem compromissos.')
     }
+    // Etapa 4: forecast with its limitation; a plan over a value the person typed (calcular + "informado")
+    if (r.saldo_hoje) {
+      const cen = r.cenarios_fim_do_mes
+      const end = cen.selo === 'ausente' ? `Ainda não dá para prever o fim do mês ({${cen.id}}).` : `Previsão sem contar recebimentos: {${cen.sem_contar_recebimentos.id}}.`
+      return say(`Hoje você tem {${r.saldo_hoje.id}}. ${end} Limitação: ${r.limitacoes[0]}`)
+    }
+    const asked = typeof params.messages.at(-3)?.content === 'string' ? params.messages.at(-3).content : JSON.stringify(params.messages.slice(-4, -2))
+    if (r.metas && /quero juntar/i.test(asked)) return use('calcular', { operacao: 'diferenca', fatos: ['informado', r.metas[0].guardado.id], numero: null, valor_informado: 8000, moeda_informada: 'EUR', rotulo: 'Quanto falta para juntar' })
+    if (r.resultado) return say(`Faltam {${r.resultado.id}} para chegar aos {${r.valor_informado.id}} que você quer juntar.`)
     if (r.metas) return say(`Para a meta ${r.metas[0].nome} faltam {${r.metas[0].falta.id}}.`)
     if (r.previa_mostrada_na_tela) return say(`Preparei a prévia com ${r.itens.length} itens: confira, ajuste se quiser e confirme.`)
     return say('Pronto.')
@@ -64,6 +73,8 @@ function fakeModel(params) {
       ],
     })
   }
+  if (q.includes('no azul')) return use('previsao_do_mes', {})
+  if (q.startsWith('quero juntar')) return use('metas_financeiras', { nome: null })
   if (q.includes('meta')) return use('metas_financeiras', { nome: null })
   return say('Posso consultar sua agenda, finanças e metas.')
 }

@@ -58,7 +58,7 @@ export const err = (message: string): LookupResult => ({ content: JSON.stringify
 
 /** One money fact. */
 export function moneyFact(book: FactBook, cents: number, currency: Currency, label: string, seal: Fact['seal'] = 'confirmado', base?: string, path = '/finance') {
-  return factForModel(book.add({ kind: 'dinheiro', label, display: formatMoney(cents, currency), seal, base, open: { path } }))
+  return factForModel(book.add({ kind: 'dinheiro', label, display: formatMoney(cents, currency), seal, base, open: { path }, amount: { cents, currency } }))
 }
 
 /** Sums per currency — one fact each, never mixed. `[]` when there is nothing. */

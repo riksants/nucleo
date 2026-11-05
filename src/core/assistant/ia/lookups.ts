@@ -9,6 +9,7 @@
  */
 import { AREA_LABEL, TOOL_AREA, type ToolName } from '../../../../supabase/functions/_shared/ia/tools.ts'
 import { agendaLookup, searchLookup } from './areas/agenda'
+import { forecastLookup, trendLookup } from './areas/analysis'
 import { financeSummary, movements, paidRecurring } from './areas/finance'
 import { financeGoals, goalsAndPlans } from './areas/goals'
 import { habitsLookup, mealsLookup, notesLookup } from './areas/life'
@@ -21,6 +22,8 @@ export { areaAvailable, areasOffFor, type LookupCtx, type LookupResult } from '.
 const RUN: Record<ToolName, (input: Record<string, unknown>, ctx: LookupCtx) => LookupResult> = {
   consultar_agenda: agendaLookup,
   resumo_financeiro: financeSummary,
+  tendencia_financeira: trendLookup,
+  previsao_do_mes: forecastLookup,
   lancamentos: movements,
   contas_e_assinaturas_pagas: paidRecurring,
   metas_financeiras: financeGoals,

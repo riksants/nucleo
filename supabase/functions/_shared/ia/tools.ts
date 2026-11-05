@@ -8,10 +8,13 @@
  */
 
 import { ACTION_TOOL, ACTION_TOOL_DEF } from './actions.ts'
+import { CALC_TOOL, CALC_TOOL_DEF } from './calc.ts'
 
 export type ToolName =
   | 'consultar_agenda'
   | 'resumo_financeiro'
+  | 'tendencia_financeira'
+  | 'previsao_do_mes'
   | 'lancamentos'
   | 'contas_e_assinaturas_pagas'
   | 'metas_financeiras'
@@ -32,6 +35,8 @@ export const PRIVACY_AREAS: Exclude<Area, 'busca'>[] = ['agenda', 'tarefas', 'ha
 export const TOOL_AREA: Record<ToolName, Area> = {
   consultar_agenda: 'agenda',
   resumo_financeiro: 'financas',
+  tendencia_financeira: 'financas',
+  previsao_do_mes: 'financas',
   lancamentos: 'financas',
   contas_e_assinaturas_pagas: 'financas',
   metas_financeiras: 'metas',
@@ -101,6 +106,16 @@ export const TOOL_DEFS: ToolDef[] = [
     { periodo: { type: 'string', enum: ['mes', 'semana'] }, referencia: { type: 'string', description: 'Mês: AAAA-MM. Semana: qualquer dia dela, AAAA-MM-DD.' }, categoria: TEXT_OR_NULL('Nome da categoria, ou null.') },
   ),
   def(
+    'tendencia_financeira',
+    'Análise de vários meses completos (2 a 12): entradas e saídas mês a mês, média por mês, o mês atual comparado com a média dos MESMOS dias dos meses anteriores (com a leitura do app: acima, abaixo ou dentro do normal), as categorias que mais subiram ou caíram e as maiores categorias. Use para "estou gastando mais que o normal?", "minha média", "como vêm meus gastos", tendências. Filtra uma categoria opcional. Devolve as limitações da análise.',
+    { meses: { type: 'integer', description: 'Quantos meses completos para trás (2 a 12; use 6 se a pessoa não disser).' }, categoria: TEXT_OR_NULL('Nome da categoria, ou null.') },
+  ),
+  def(
+    'previsao_do_mes',
+    'Previsão até o fim do mês atual: saldo de hoje (o único valor disponível), o que está previsto para entrar (parcelas e cobranças com data, ainda não pagas), o vencido que pode não entrar, o a receber sem data, gastos variáveis e cobranças previstas e dois cenários de saldo no fim do mês (sem contar recebimentos / se os recebimentos previstos entrarem). Use para "vou fechar o mês no azul?", "quanto vai sobrar", "dá para gastar X". Devolve as limitações da previsão.',
+    {},
+  ),
+  def(
     'lancamentos',
     'Lista os lançamentos (movimentações) de um período, com filtros, e os totais do filtro. Mostra valor e moeda originais, categoria, se é transferência e se veio de um recebimento de venda/projeto/assinante (nesse caso é a MESMA entrada daquele recebimento, não some de novo). Use para "quais foram", "quanto paguei de X", "achar um gasto".',
     { de: DATE, ate: DATE, tipo: { type: 'string', enum: ['entrada', 'saida', 'todos'] }, categoria: TEXT_OR_NULL('Categoria, ou null.'), texto: TEXT_OR_NULL('Parte da descrição, ou null.'), pagina: PAGE },
@@ -129,10 +144,10 @@ export const ESCALATE_DEF: ToolDef = def(
 )
 
 /** Tool list per model (fixed per model → cached). Lookups, then the action planner. */
-export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, ACTION_TOOL_DEF, ESCALATE_DEF] : [...TOOL_DEFS, ACTION_TOOL_DEF])
+export const toolsFor = (model: 'haiku' | 'sonnet' | 'opus') => (model === 'haiku' ? [...TOOL_DEFS, CALC_TOOL_DEF, ACTION_TOOL_DEF, ESCALATE_DEF] : [...TOOL_DEFS, CALC_TOOL_DEF, ACTION_TOOL_DEF])
 
-/** Run by the app: every lookup and the action planner (which only builds a preview). */
-export const isAppTool = (name: string): boolean => (APP_TOOLS as string[]).includes(name) || name === ACTION_TOOL
+/** Run by the app: every lookup, `calcular` (over this turn's facts) and the action planner (which only builds a preview). */
+export const isAppTool = (name: string): boolean => (APP_TOOLS as string[]).includes(name) || name === ACTION_TOOL || name === CALC_TOOL
 
 /** Limits for what the app sends back for one lookup. */
 export const MAX_RESULT_CHARS = 12_000

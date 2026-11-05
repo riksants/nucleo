@@ -19,8 +19,8 @@ function run(tool: string, input: Record<string, unknown>, opts: { areasOff?: Ar
 }
 
 describe('ferramentas', () => {
-  it('14 consultas, todas estritas e com esquema completo', () => {
-    expect(APP_TOOLS).toHaveLength(14)
+  it('16 consultas, todas estritas e com esquema completo', () => {
+    expect(APP_TOOLS).toHaveLength(16)
     for (const t of TOOL_DEFS) {
       expect(t.strict).toBe(true)
       expect(Object.keys(t.input_schema.properties).sort()).toEqual([...t.input_schema.required].sort())

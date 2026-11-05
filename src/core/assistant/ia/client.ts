@@ -18,6 +18,8 @@ import { runActionsTool } from './actions/tool'
 import type { Plan } from './actions/plan'
 import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.ts'
 import { runLookup } from './lookups'
+import { CALC_TOOL } from '../../../../supabase/functions/_shared/ia/calc.ts'
+import { questionFacts, runCalc } from './calc'
 
 export type Transport = (body: TurnRequest) => Promise<{ ok: true; data: TurnResponse } | { ok: false; status: number; error: TurnError }>
 
@@ -80,6 +82,8 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   if (!(await sessionOk())) return { kind: 'error', code: 'session', message: 'A conta conectada mudou. A conversa foi encerrada.', conversation: null }
 
   const book = new FactBook()
+  // the person's own amounts (shown as "você informou" when the answer repeats them)
+  questionFacts(text, book, deps.snapshot().settings)
   const id = (deps.newTurnId ?? turnId)()
   // a holder: the plan is set inside the lookups callback
   const proposed: { plan: Plan | null; count: number } = { plan: null, count: 0 }
@@ -118,6 +122,10 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
         const r = runActionsTool(call.input, { data, settings, now: deps.now(), areasOff: deps.areasOff, uid: conversation.uid, planId: `${id}${++proposed.count}`, book })
         if (r.plan) proposed.plan = r.plan
         return { id: call.id, content: r.content, isError: r.isError }
+      }
+      if (call.name === CALC_TOOL) {
+        deps.onStatus?.('Calculando…')
+        return { id: call.id, ...runCalc(call.input, book, settings) }
       }
       const area = TOOL_AREA[call.name as ToolName]
       if (area) deps.onStatus?.(STATUS_TEXT[area])

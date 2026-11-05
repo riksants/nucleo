@@ -7,8 +7,11 @@
  * failure (quality tests require zero).
  */
 
-/** proposto: a value of a preview (Etapa 3) — what WILL be written if the person confirms. */
-export type Seal = 'confirmado' | 'previsto' | 'ausente' | 'proposto'
+/**
+ * proposto: a value of a preview (Etapa 3) — what WILL be written if the person confirms.
+ * informado: a value the person typed in the question (Etapa 4, `calcular`) — not a record of the app.
+ */
+export type Seal = 'confirmado' | 'previsto' | 'ausente' | 'proposto' | 'informado'
 /** What stands for a value in the history (the model is told it is a deliberate omission, not an error). */
 export const HISTORY_VALUE = '(valor omitido do histórico)'
 
@@ -26,6 +29,8 @@ export interface Fact {
   base?: string
   /** Screen of the app that shows it. */
   open?: { path: string; params?: Record<string, string> }
+  /** Exact amount behind a money fact (integer cents), for `calcular`. Never sent to the model. */
+  amount?: { cents: number; currency: string }
 }
 
 /** What the model sees for each fact (no internal ids, no links). */
@@ -80,9 +85,13 @@ function factForLiteral(literal: string, facts: ReadonlyMap<string, Fact>): Fact
   const all = [...facts.values()]
   const lit = literal.trim()
   const q = squash(lit)
-  // money with its currency: must equal a money fact exactly
-  if (/[a-z$€£]/i.test(lit) && /\d/.test(lit) && !/%/.test(lit) && !/:|\/|h\b|hora/i.test(lit)) {
-    return all.find((f) => f.kind === 'dinheiro' && squash(f.display) === q) ?? null
+  // "30 de novembro" is a date (handled below), not money
+  const textDate = /^\d{1,2}\s+de\s+[a-zç]+$/i.test(lit)
+  // money with its currency: must equal a money fact exactly. Written without cents ("R$ 500") it must
+  // equal a fact with ",00" ("R$ 500,00") — the same value, never a rounded one.
+  if (!textDate && /[a-z$€£]/i.test(lit) && /\d/.test(lit) && !/%/.test(lit) && !/:|\/|h\b|hora/i.test(lit)) {
+    const whole = /,\d/.test(lit) ? null : q.replace(/(\d)(?=\D*$)/, '$1,00')
+    return all.find((f) => f.kind === 'dinheiro' && (squash(f.display) === q || squash(f.display) === whole)) ?? null
   }
   // bare amount "1.500,00": only when one currency has it
   if (/^\d{1,3}(?:\.\d{3})*,\d{2}$|^\d+,\d{2}$/.test(lit)) {

@@ -22,7 +22,7 @@ export function financeGoals(input: Record<string, unknown>, ctx: LookupCtx): Lo
   return out({
     metas: list.slice(0, 10).map((g) => {
       const p = goalPlan(g, today)
-      const m = (cents: number, label: string, seal: Fact['seal'] = 'confirmado', base?: string) => factForModel(ctx.book.add({ kind: 'dinheiro', label, display: formatMoney(cents, g.currency), seal, base, open: { path: '/finance' } }))
+      const m = (cents: number, label: string, seal: Fact['seal'] = 'confirmado', base?: string) => factForModel(ctx.book.add({ kind: 'dinheiro', label, display: formatMoney(cents, g.currency), seal, base, open: { path: '/finance' }, amount: { cents, currency: g.currency } }))
       return {
         nome: g.name,
         alvo: m(g.target, `Alvo da meta “${g.name}”`),
@@ -70,7 +70,7 @@ export function goalsAndPlans(_input: Record<string, unknown>, ctx: LookupCtx): 
           calculado_pelo_app: p.auto,
         }
       }),
-      metas_de_compra: purchase.slice(0, 15).map((g) => ({ nome: g.name, preco: factForModel(book.add({ kind: 'dinheiro', label: `Preço de “${g.name}”`, display: formatMoney(g.price, g.currency), seal: 'confirmado' })) })),
+      metas_de_compra: purchase.slice(0, 15).map((g) => ({ nome: g.name, preco: factForModel(book.add({ kind: 'dinheiro', label: `Preço de “${g.name}”`, display: formatMoney(g.price, g.currency), seal: 'confirmado', amount: { cents: g.price, currency: g.currency } })) })),
       planos: plans.slice(0, 15).map((p) => {
         const prog = planProgress(p, data.planSteps, data.tasks)
         const next = data.planSteps.filter((s) => s.planId === p.id && s.status !== 'done').sort((a, b) => a.order - b.order)[0]

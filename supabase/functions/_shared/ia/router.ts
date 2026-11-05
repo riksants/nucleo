@@ -35,8 +35,10 @@ export const fold = (s: string) =>
 
 const has = (t: string, words: string[]) => words.some((w) => new RegExp(`(^|[^a-z])${w}`).test(t))
 
-const PLANNING = ['planej', 'planeja', 'monta um plano', 'monte um plano', 'me ajuda a', 'me ajude a', 'estrategia', 'devo ', 'vale a pena', 'como faco para', 'como eu faco', 'o que eu faco', 'quero juntar', 'quero guardar', 'quero economizar', 'quero quitar', 'quero pagar', 'consigo juntar', 'da pra juntar', 'da para juntar', 'decid', 'prioriz', 'reorganiz']
-const ANALYSIS = ['por que', 'porque ', 'por qual motivo', 'compar', 'analis', 'diferenca', 'tendencia', 'evolu', 'mais que o normal', 'menos que o normal', 'acima do normal', 'media', 'padrao', 'onde estou', 'onde gast', 'quanto falta', 'ritmo', 'previs', 'subiu', 'caiu', 'aumentou', 'diminuiu', 'piorou', 'melhorou']
+const PLANNING = ['planejar', 'planejamento', 'planeja ', 'preciso guardar', 'preciso juntar', 'quanto guardar', 'consigo comprar', 'posso comprar', 'da pra comprar', 'da para comprar', 'monta um plano', 'monte um plano', 'me ajuda a', 'me ajude a', 'estrategia', 'devo ', 'vale a pena', 'como faco para', 'como eu faco', 'o que eu faco', 'quero juntar', 'quero guardar', 'quero economizar', 'quero quitar', 'quero pagar', 'consigo juntar', 'da pra juntar', 'da para juntar', 'decid', 'prioriz', 'reorganiz']
+const ANALYSIS = ['por que', 'porque ', 'por qual motivo', 'compar', 'analis', 'diferenca', 'tendencia', 'evolu', 'normal', 'media', 'padrao', 'onde estou', 'onde gast', 'quanto falta', 'ritmo', 'previs', 'subi', 'caiu', 'cairam', 'aument', 'diminu', 'piorou', 'melhorou', 'melhor que', 'pior que', 'mais ou menos', 'estranh', 'incomum', 'porcentagem', 'percentual', 'pesa', 'gastei muito', 'gastando muito']
+/** Forecast of the month (Etapa 4): Haiku with medium effort over previsao_do_mes. */
+const FORECAST = ['no azul', 'no vermelho', 'sobrar', 'fechar o mes', 'vou fechar', 'posso gastar', 'da pra gastar', 'da para gastar', 'consigo gastar', 'vai entrar', 'vou receber', 'fim do mes', 'disponivel']
 const ACTION = ['cria', 'crie', 'criar', 'adiciona', 'adicione', 'coloca', 'coloque', 'registra', 'registre', 'lanca', 'lance', 'marca', 'marque', 'move', 'mova', 'muda', 'mude', 'passa ', 'agenda ', 'agende', 'lembra', 'lembre', 'cobra', 'cobre', 'anota', 'anote', 'reserva', 'reserve', 'guarda ', 'guarde', 'conclui', 'conclua']
 const AREAS: Record<string, string[]> = {
   tarefas: ['tarefa'],
@@ -62,6 +64,7 @@ export function routeFor(text: string, opts: { deep?: boolean; openPlan?: boolea
   const areas = Object.values(AREAS).filter((ws) => has(t, ws)).length
   if (actions >= 3 || (actions >= 1 && areas >= 2 && / e |, /.test(t))) return pick('profunda', 'ações em várias áreas')
   if (has(t, ANALYSIS)) return pick('atenta', 'comparação ou análise')
+  if (has(t, FORECAST)) return pick('atenta', 'previsão do mês')
   return pick('rapida', 'consulta ou conversa')
 }
 

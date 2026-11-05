@@ -113,7 +113,7 @@ try {
   r.check('sugestão marcada como sugestão', a[0]?.suggestion === true)
   r.check('rota rápida (Haiku) e botão "Analisar a fundo"', a[0]?.route === 'rapida' && /Analisar a fundo/.test(a[0]?.text))
   let log = await ia()
-  r.check('servidor: Haiku 5.5, esforço baixo, 14 consultas + ações + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 16)
+  r.check('servidor: Haiku 5.5, esforço baixo, 16 consultas + calcular + ações + escalada', log.calls[0]?.model === 'claude-haiku-5-5' && log.calls[0]?.effort === 'low' && log.calls[0]?.tools.length === 19)
   r.check('o app enviou só a pergunta, histórico e foco — nenhum registro no início', !JSON.stringify(log.requests.at(-2) ?? {}).includes('Continente'))
 
   // 2) Follow-up without repeating the subject.
@@ -135,6 +135,17 @@ try {
   a = await waitAnswers(B, 3)
   r.check('mudança de assunto: meta com valor que falta (€ 2.150,00)', /2\.150,00/.test(a[2]?.text), a[2]?.text)
   r.check('histórico inclui o comando local', (await ia()).requests.filter((x) => x.kind === 'start').at(-1)?.history?.length === 3)
+
+  // 4b) Etapa 4: forecast (Haiku medium) shows only today's balance as confirmed + the limitation;
+  // a plan over a value the person typed comes from calcular (seal "informado"), never retyped.
+  await ask(B, 'vou fechar o mês no azul?')
+  a = await waitAnswers(B, 4)
+  log = await ia()
+  r.check('previsão: rota atenta (Haiku, esforço médio) e consulta previsao_do_mes', a[3]?.route === 'atenta' && log.calls.at(-2)?.effort === 'medium', JSON.stringify(a[3]))
+  r.check('previsão: saldo de hoje confirmado e a limitação "não é dinheiro recebido nem disponível"', a[3]?.seals.includes('confirmado') && /não é dinheiro recebido nem disponível/.test(a[3]?.text) && a[3]?.blocked === 0, a[3]?.text)
+  await ask(B, 'quero juntar 8000 euros, quanto falta?')
+  a = await waitAnswers(B, 5)
+  r.check('calcular: falta € 4.150,00 (8.000 informado − 3.850 guardado), selo "informado", nada bloqueado', /4\.150,00/.test(a[4]?.text) && /8\.000,00/.test(a[4]?.text) && a[4]?.seals.includes('informado') && a[4]?.blocked === 0, JSON.stringify(a[4]))
 
   // 5) Isolation: a turn of this account cannot be continued with another account's login.
   const start = await fetch(MOCK + '/functions/v1/nucleo-ia', {

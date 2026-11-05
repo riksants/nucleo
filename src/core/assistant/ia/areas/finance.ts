@@ -42,7 +42,7 @@ export function financeSummary(input: Record<string, unknown>, ctx: LookupCtx): 
   const base = settings.baseCurrency
   const tz = zoneOf(settings)
   const today = todayIn(tz, now)
-  const money = (cents: number, label: string, seal: Fact['seal'], baseText?: string) => factForModel(book.add({ kind: 'dinheiro', label, display: formatMoney(cents, base), seal, base: baseText, open: { path: '/finance' } }))
+  const money = (cents: number, label: string, seal: Fact['seal'], baseText?: string) => factForModel(book.add({ kind: 'dinheiro', label, display: formatMoney(cents, base), seal, base: baseText, open: { path: '/finance' }, amount: { cents, currency: base } }))
   const periodo = input.periodo
   const ref = String(input.referencia ?? '')
   let from: string
