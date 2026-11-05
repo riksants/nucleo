@@ -92,3 +92,50 @@ describe('alertas financeiros calculados pelo app', () => {
     expect(r.alertas.join(' ')).toMatch(/Gastos fixos do mês passado ainda não lançados neste mês: Assinaturas/)
   })
 })
+
+describe('velocidade: consultas óbvias já vão com a pergunta (uma chamada a menos)', () => {
+  it('o app prevê só o que é claro (finanças), com o período certo', async () => {
+    const { prefetchFor } = await import('../src/core/assistant/ia/prefetch')
+    const p = (q: string) => prefetchFor(q, '2026-11-20', { settings })
+    expect(p('Quanto gastei com mercado em outubro?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' } }])
+    expect(p('Como estão minhas finanças este mês?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-11', categoria: null } }])
+    expect(p('Quanto gastei este mês comparado com o mês passado?')[0].args).toMatchObject({ referencia: '2026-11' })
+    expect(p('Quanto gastei no mês passado?')[0].args).toMatchObject({ referencia: '2026-10' })
+    expect(p('Quanto gastei em dezembro?')[0].args).toMatchObject({ referencia: '2025-12' })
+    expect(p('Vou fechar o mês no azul?')).toEqual([{ tool: 'previsao_do_mes', args: {} }])
+    expect(p('Estou gastando mais que o normal?')).toEqual([{ tool: 'tendencia_financeira', args: { meses: 6, categoria: null } }])
+    for (const q of ['Quanto tenho a receber de vendas?', 'Quais foram meus maiores gastos?', 'Compare outubro e setembro', 'Tenho tarefas atrasadas?', 'Como está a meta da viagem?', 'Oi']) expect(p(q), q).toEqual([])
+  })
+  it('o servidor coloca as consultas prontas como dados e ignora ferramenta desconhecida', () => {
+    const req = { kind: 'start', turnId: 'turno-0001', text: 'Quanto gastei?', today: '2026-11-20', timeZone: 'America/Sao_Paulo', deep: false, consentVersion: 2, history: [], topics: '', focus: [], areasOff: [], prefetch: [{ tool: 'resumo_financeiro', args: { periodo: 'mes' }, content: '{"totais":{"saidas":{"id":"f1"}}}' }, { tool: 'apagar_tudo', args: {}, content: '{}' }] } as StartRequest
+    const last = (baseMessages(req).at(-1) as { content: string }).content
+    expect(last).toContain('<consultas_ja_feitas>')
+    expect(last).toContain('"consulta":"resumo_financeiro"')
+    expect(last).not.toContain('apagar_tudo')
+    expect(last.endsWith('Quanto gastei?')).toBe(true)
+  })
+  it('o cliente envia a consulta pronta (fatos válidos na resposta) e respeita área desligada', async () => {
+    const { askIa } = await import('../src/core/assistant/ia/client')
+    const { newConversation } = await import('../src/core/assistant/ia/conversation')
+    const A = '11111111-1111-4111-8111-111111111111'
+    const sent: StartRequest[] = []
+    const run = async (areasOff: never[] | ['financas']) => {
+      const r = await askIa('Quanto gastei este mês?', newConversation(A), {
+        transport: async (b) => {
+          sent.push(b as StartRequest)
+          const f = /"saidas":\{"id":"(f\d+)"/.exec(JSON.stringify((b as StartRequest).prefetch ?? []))?.[1] ?? 'f1'
+          return { ok: true, data: { kind: 'answer', text: `Você gastou {${f}}.`, route: 'rapida', model: 'm', costMicros: 1, steps: 1, stop: 'end' } }
+        },
+        snapshot: () => ({ data: historyAccount(), settings }), now: () => new Date('2026-11-20T15:00:00Z'), currentUid: async () => A, today: '2026-11-20', timeZone: 'America/Sao_Paulo', areasOff,
+      })
+      return r
+    }
+    const r = await run([])
+    expect(sent[0].prefetch?.[0].tool).toBe('resumo_financeiro')
+    expect(r.kind === 'answer' && r.blocked).toEqual([])
+    expect(r.kind === 'answer' && r.segments.some((s) => s.t === 'fact' && /R\$/.test(s.fact.display))).toBe(true)
+    expect(JSON.parse(sent[0].prefetch![0].content).situacao_do_periodo).toMatch(/em andamento/)
+    await run(['financas'])
+    expect(sent[1].prefetch).toBeUndefined()
+  })
+})

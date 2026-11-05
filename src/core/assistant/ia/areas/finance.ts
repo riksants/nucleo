@@ -13,7 +13,7 @@ import { factForModel, type Fact } from '../../../../../supabase/functions/_shar
 import { absent, byCurrency, countFact, dateFact, dayLabel, err, fold, isDay, monthLong, moneyFact, moduleOn, out, PAGE_SIZE, pageArg, textArg, type LookupCtx, type LookupResult } from './shared'
 
 /** How people say it → the app's default category id (used only if that category exists). */
-const SYNONYMS: Record<string, string> = {
+export const SYNONYMS: Record<string, string> = {
   mercado: 'food', supermercado: 'food', comida: 'food', restaurante: 'food', restaurantes: 'food', ifood: 'food', lanche: 'food', padaria: 'food',
   uber: 'transport', gasolina: 'transport', combustivel: 'transport', onibus: 'transport', metro: 'transport', taxi: 'transport',
   aluguel: 'housing', condominio: 'housing', casa: 'housing',
@@ -163,6 +163,7 @@ export function financeSummary(input: Record<string, unknown>, ctx: LookupCtx): 
       ...(to !== (periodo === 'mes' ? monthBounds(ref).to : addDaysToDate(from, 6)) ? ['Período em andamento: considera até hoje.'] : []),
     ],
     categoria: cat?.label ?? null,
+    situacao_do_periodo: to !== (periodo === 'mes' ? monthBounds(ref).to : addDaysToDate(from, 6)) ? `em andamento: do início até hoje (${days} ${days === 1 ? 'dia' : 'dias'}); não é um período completo` : 'completo',
     ...(fatos.length ? { fatos } : {}),
     ...(totais ? { totais } : {}),
     saldo,

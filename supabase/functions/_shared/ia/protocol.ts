@@ -29,6 +29,8 @@ export const StartRequest = z.object({
   areasOff: z.array(z.string().max(20)).max(20),
   /** Etapa 5: long-term reminders the person confirmed (only when on). Optional for older apps. */
   memory: z.array(z.string().max(200)).max(20).optional(),
+  /** Lookups the app already ran for this question (same functions and areas as the model's): one call less. */
+  prefetch: z.array(z.object({ tool: z.string().max(40), args: z.record(z.string(), z.unknown()), content: z.string().max(12_000) })).max(2).optional(),
 })
 export type StartRequest = z.infer<typeof StartRequest>
 

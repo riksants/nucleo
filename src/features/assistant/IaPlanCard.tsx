@@ -84,7 +84,7 @@ export function IaPlanCard({ plan: proposed }: { plan: Plan }) {
       <div className="card mt-2 space-y-2 p-4" data-ia-plan={proposed.id} data-plan-state={state}>
         <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
           {state === 'applied' ? <Check size={16} className="text-accent-hi" /> : <Undo2 size={16} />}
-          {state === 'applied' ? `Feito: ${count} ${count === 1 ? 'item' : 'itens'} gravados no Núcleo` : 'Desfeito: tudo voltou como estava'}
+          {state === 'applied' ? `Feito: ${count === 1 ? '1 item gravado' : `${count} itens gravados`} no Núcleo` : 'Desfeito: tudo voltou como estava'}
         </p>
         {note && <p className="text-[13px] text-faint">{note}</p>}
         {ruleEffects.length > 0 && (

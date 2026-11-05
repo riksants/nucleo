@@ -18,6 +18,7 @@ import { runActionsTool } from './actions/tool'
 import type { Plan } from './actions/plan'
 import { ACTION_TOOL } from '../../../../supabase/functions/_shared/ia/actions.ts'
 import { runLookup } from './lookups'
+import { prefetchFor } from './prefetch'
 import { stablePrefix, type StreamEvent } from '../../../../supabase/functions/_shared/ia/stream.ts'
 import { CALC_TOOL } from '../../../../supabase/functions/_shared/ia/calc.ts'
 import { questionDates, questionFacts, runCalc } from './calc'
@@ -100,6 +101,17 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
   const ai0 = deps.snapshot().settings.assistantAi
   const memory = ai0?.memoryOn ? memoryForModel(ai0.memory) : []
   const lookups: { tool: string; args: Record<string, unknown>; about?: string[] }[] = []
+  // Lookups the app already knows this question needs: run here (same functions, areas and facts) and
+  // sent with the question, so the model answers in one call. The session was checked just above.
+  const snap = deps.snapshot()
+  const prefetch = prefetchFor(text, deps.today, { settings: snap.settings }).flatMap((p) => {
+    if (deps.areasOff.includes(TOOL_AREA[p.tool])) return []
+    const r = runLookup(p.tool, p.args, { data: snap.data, settings: snap.settings, now: deps.now(), book, areasOff: deps.areasOff })
+    if (r.isError) return []
+    lookups.push({ tool: p.tool, args: p.args, ...(r.about?.length ? { about: r.about.map((a) => a.slice(0, 80)) } : {}) })
+    return [{ tool: p.tool, args: p.args, content: r.content }]
+  })
+  if (prefetch.length) deps.onStatus?.(STATUS_TEXT[TOOL_AREA[prefetch[0].tool]])
   let raw = ''
   let shown = ''
   const onEvent = deps.onPartial
@@ -133,6 +145,7 @@ export async function askIa(text: string, conversation: Conversation, deps: Turn
     focus: conversation.focus,
     areasOff: deps.areasOff,
     ...(memory.length ? { memory } : {}),
+    ...(prefetch.length ? { prefetch } : {}),
   }, onEvent)
 
   for (let round = 0; round < MAX_ROUNDS; round++) {

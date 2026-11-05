@@ -29,7 +29,9 @@ export function remember(c: Conversation, q: string, a: string, lookups: { tool:
   const history = [...c.history, { q: clip(q, 600), a: clip(a, 900) }]
   const older = [...c.older]
   while (history.length > HISTORY_TURNS) older.push(clip(history.shift()!.q, 80))
-  const focus = lookups.length ? [...lookups, ...c.focus.filter((f) => !lookups.some((l) => l.tool === f.tool))].slice(0, 8) : c.focus
+  // the same lookup twice in one turn (the app's ready lookup and the model's) is kept once
+  const unique = lookups.filter((l, i) => lookups.findIndex((x) => x.tool === l.tool && JSON.stringify(x.args) === JSON.stringify(l.args)) === i)
+  const focus = unique.length ? [...unique, ...c.focus.filter((f) => !unique.some((l) => l.tool === f.tool))].slice(0, 8) : c.focus
   return { ...c, history, older: older.slice(-6), focus }
 }
 

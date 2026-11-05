@@ -10,7 +10,7 @@ import { affordableMaxTokens, estimateTokens, MAX_INPUT_TOKENS, maxCallMicros, M
 import { SYSTEM_PROMPT } from './prompt.ts'
 import type { ContinueRequest, ErrorCode, StartRequest, StopReason, TurnError, TurnResponse } from './protocol.ts'
 import { escalated, ROUTES, routeFor, type Route } from './router.ts'
-import { ESCALATE_TOOL, isAppTool, MAX_RESULTS_PER_STEP, toolsFor } from './tools.ts'
+import { APP_TOOLS, ESCALATE_TOOL, isAppTool, MAX_RESULTS_PER_STEP, toolsFor } from './tools.ts'
 
 /** Model calls in one question, at most. */
 export const MAX_STEPS = 6
@@ -100,8 +100,21 @@ export function baseMessages(req: StartRequest): unknown[] {
     modo: req.deep ? 'analise_completa' : 'resposta_curta',
     ...(req.memory?.length ? { lembretes_da_pessoa: req.memory } : {}),
   }
-  out.push({ role: 'user', content: `<contexto>\n${JSON.stringify(ctx)}\n</contexto>\n\n${req.text}` })
+  // lookups the app already ran for this question: data (like any lookup result), never instructions
+  const ready = (req.prefetch ?? []).filter((p) => (APP_TOOLS as string[]).includes(p.tool))
+  const pre = ready.length
+    ? `<consultas_ja_feitas>\n${JSON.stringify(ready.map((p) => ({ consulta: p.tool, argumentos: p.args, resultado: safeJson(p.content) })))}\n</consultas_ja_feitas>\n\n`
+    : ''
+  out.push({ role: 'user', content: `<contexto>\n${JSON.stringify(ctx)}\n</contexto>\n\n${pre}${req.text}` })
   return out
+}
+
+const safeJson = (s: string): unknown => {
+  try {
+    return JSON.parse(s)
+  } catch {
+    return s
+  }
 }
 
 function params(state: TurnState, maxTokens: number | null) {
