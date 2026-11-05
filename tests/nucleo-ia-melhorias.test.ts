@@ -99,12 +99,14 @@ describe('velocidade: consultas óbvias já vão com a pergunta (uma chamada a m
     const p = (q: string) => prefetchFor(q, '2026-11-20', { settings })
     expect(p('Quanto gastei com mercado em outubro?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-10', categoria: 'mercado' } }])
     expect(p('Como estão minhas finanças este mês?')).toEqual([{ tool: 'resumo_financeiro', args: { periodo: 'mes', referencia: '2026-11', categoria: null } }])
-    expect(p('Quanto gastei este mês comparado com o mês passado?')[0].args).toMatchObject({ referencia: '2026-11' })
+    expect(p('Quanto gastei este mês comparado com o mês passado?').map((x) => x.args.referencia)).toEqual(['2026-11', '2026-10'])
+    expect(p('Quanto gastei com mercado este mês comparado com o mês passado?').map((x) => x.args.categoria)).toEqual(['mercado', 'mercado'])
     expect(p('Quanto gastei no mês passado?')[0].args).toMatchObject({ referencia: '2026-10' })
     expect(p('Quanto gastei em dezembro?')[0].args).toMatchObject({ referencia: '2025-12' })
     expect(p('Vou fechar o mês no azul?')).toEqual([{ tool: 'previsao_do_mes', args: {} }])
     expect(p('Estou gastando mais que o normal?')).toEqual([{ tool: 'tendencia_financeira', args: { meses: 6, categoria: null } }])
-    for (const q of ['Quanto tenho a receber de vendas?', 'Quais foram meus maiores gastos?', 'Compare outubro e setembro', 'Tenho tarefas atrasadas?', 'Como está a meta da viagem?', 'Oi']) expect(p(q), q).toEqual([])
+    expect(p('Quanto gastei em outubro comparado com setembro, em porcentagem?').map((x) => x.args.referencia)).toEqual(['2026-10', '2026-09'])
+    for (const q of ['Quanto tenho a receber de vendas?', 'Quais foram meus maiores gastos?', 'Compare outubro e outubro', 'Tenho tarefas atrasadas?', 'Como está a meta da viagem?', 'Oi']) expect(p(q), q).toEqual([])
   })
   it('o servidor coloca as consultas prontas como dados e ignora ferramenta desconhecida', () => {
     const req = { kind: 'start', turnId: 'turno-0001', text: 'Quanto gastei?', today: '2026-11-20', timeZone: 'America/Sao_Paulo', deep: false, consentVersion: 2, history: [], topics: '', focus: [], areasOff: [], prefetch: [{ tool: 'resumo_financeiro', args: { periodo: 'mes' }, content: '{"totais":{"saidas":{"id":"f1"}}}' }, { tool: 'apagar_tudo', args: {}, content: '{}' }] } as StartRequest
@@ -137,5 +139,12 @@ describe('velocidade: consultas óbvias já vão com a pergunta (uma chamada a m
     expect(JSON.parse(sent[0].prefetch![0].content).situacao_do_periodo).toMatch(/em andamento/)
     await run(['financas'])
     expect(sent[1].prefetch).toBeUndefined()
+  })
+})
+
+describe('consultas prontas: anos explícitos', () => {
+  it('"outubro de 2025 comparado com setembro de 2025" usa os anos ditos', async () => {
+    const { prefetchFor } = await import('../src/core/assistant/ia/prefetch')
+    expect(prefetchFor('Quanto gastei em outubro de 2025 comparado com setembro de 2025?', '2026-11-20', { settings }).map((x) => x.args.referencia)).toEqual(['2025-10', '2025-09'])
   })
 })
