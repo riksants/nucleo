@@ -52,7 +52,7 @@ try {
   await fillIn('Horário', '12:30')
   await fillIn('Ingredientes', '200 g de frango\nArroz\n3 bananas')
   r.check('formulário de refeição cabe na tela (390px)', await dialogFits())
-  await b.click('Adicionar', '[role=dialog] button[type=submit]')
+  await b.click('Salvar', '[role=dialog] button[type=submit]')
   await b.sleep(400)
   // Another day: pick it on the day strip, then add there.
   await pickDay(other)
@@ -60,7 +60,7 @@ try {
   await b.click('Refeição', 'button')
   await b.click('Jantar', '[role=radio]')
   await fillIn('Ingredientes', '200 g frango\n2 bananas')
-  await b.click('Adicionar', '[role=dialog] button[type=submit]')
+  await b.click('Salvar', '[role=dialog] button[type=submit]')
   await b.sleep(400)
   let meals = await idb(b, 'meals')
   const lunch = meals.find((m) => m.name === 'Frango com arroz')

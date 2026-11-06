@@ -102,7 +102,7 @@ export function ActivitySheet({ open, onClose, block, plan, answers, day }: { op
   }
 
   return (
-    <FormSheet open={open} onClose={onClose} title={block ? 'Editar atividade' : 'Nova atividade'} submitLabel={block ? 'Salvar' : 'Adicionar'} onSubmit={submit} onDelete={block ? del : undefined}>
+    <FormSheet open={open} onClose={onClose} title={block ? 'Editar atividade' : 'Nova atividade'} submitLabel={block ? 'Salvar alterações' : 'Salvar atividade'} onSubmit={submit} onDelete={block ? del : undefined}>
       <FormGrid>
         {!block && (
           <div className="space-y-2">

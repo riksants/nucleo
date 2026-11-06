@@ -157,7 +157,7 @@ export function Onboarding() {
               <>
                 <div className="flex-1 pt-10">
                   <h1 className="text-[30px] leading-tight font-semibold tracking-[-0.03em]">O que você quer usar?</h1>
-                  <p className="mt-2 text-[16px] text-soft">Só aparece o que você escolher. Dá para mudar em Configurações, sem perder nada.</p>
+                  <p className="mt-2 text-[16px] text-soft">Só aparece o que você escolher. Dá para mudar em Você, sem perder nada.</p>
                   <div className="mt-6">
                     <ModulePicker value={modules} onChange={setModules} />
                   </div>
@@ -177,7 +177,7 @@ export function Onboarding() {
                     <AmountField size="lg" keys="always" currency={currency} autoFocus value={amount} onChange={setAmount} onEnter={finish} ariaLabel="Saldo inicial" />
                   </div>
                   {cents === null && <p className="mt-2 text-sm text-expense">Digite um valor válido</p>}
-                  <p className="mt-4 text-sm text-faint">Dá para corrigir depois em Configurações.</p>
+                  <p className="mt-4 text-sm text-faint">Dá para corrigir depois em Você.</p>
                 </div>
                 <Button size="lg" block onClick={finish} disabled={cents === null}>
                   Entrar

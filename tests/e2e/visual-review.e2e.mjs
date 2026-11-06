@@ -38,7 +38,7 @@ try {
   // ---------- 4) Short title on one line; compact bar while scrolled
   const h1 = await b.eval(`(() => { const h = document.querySelector('main h1'); return { text: h.textContent.trim(), h: Math.round(h.getBoundingClientRect().height) } })()`)
   r.check('Projetos: título curto numa linha só', h1.text === 'Projetos' && h1.h < 50, JSON.stringify(h1))
-  const bar = () => b.eval(`(() => { const el = [...document.querySelectorAll('div.fixed.top-0')].find((d) => d.textContent.trim().endsWith('Projetos')); if (!el) return null; const cs = getComputedStyle(el); return { opacity: cs.opacity, blur: cs.backdropFilter, pe: cs.pointerEvents } })()`)
+  const bar = () => b.eval(`(() => { const el = [...document.querySelectorAll('div.fixed.top-0')].find((d) => d.textContent.includes('Projetos')); if (!el) return null; const cs = getComputedStyle(el); return { opacity: cs.opacity, blur: cs.backdropFilter, pe: cs.pointerEvents } })()`)
   let s = await bar()
   r.check('no topo da tela a barra compacta fica escondida', s && s.opacity === '0' && s.pe === 'none', JSON.stringify(s))
   await b.eval(`window.scrollTo(0, 600)`)
@@ -65,7 +65,8 @@ try {
   const colors = await b.eval(`(() => { const of = (re) => { const due = [...document.querySelectorAll('main span.inline-flex')].find((x) => re.test(x.textContent)); return due ? getComputedStyle(due).color : null }; return { late: of(/^Atrasado/), today: of(/^Hoje$/), next: of(/em \\d+ dias/) } })()`)
   r.check('atrasada em vermelho, de hoje em âmbar, semana que vem neutra', colors.today === amber && colors.late !== amber && colors.next !== amber && colors.late !== colors.next, JSON.stringify(colors))
 
-  for (const [hash, label] of [['#/today', 'Modo do dia'], ['#/sales', 'Ver vendas por'], ['#/agenda', null]]) {
+  // The Hoje screen joined the Agenda; the Sales selector is labelled "Vendas" (outdated since c5e269d / 9994395).
+  for (const [hash, label] of [['#/sales', 'Vendas'], ['#/agenda', null]]) {
     await b.goto(BASE + hash)
     await sleep(1000)
     const ok = await b.eval(`(() => { const g = ${label ? `document.querySelector('[role=radiogroup][aria-label="${label}"]')` : `document.querySelector('main [role=radiogroup]')`}; return !!g && getComputedStyle(g).borderBottomStyle === 'solid' })()`)

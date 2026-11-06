@@ -34,10 +34,14 @@ try {
   r.check('ícones das abas todos do mesmo tamanho (24)', tabIcons.length >= 4 && tabIcons.every((w) => w === 24), JSON.stringify(tabIcons))
 
   // ---------- 11) Money in one font
+  // Right after loading, the balance shows its change for 2.4 s in place of the month line: wait for the month line.
+  for (let i = 0; i < 30 && !(await b.eval(`document.querySelector('main')?.innerText.includes('Entrou')`)); i++) await sleep(200)
+  await sleep(300)
   const fonts = await b.eval(`(() => {
-    const tile = [...document.querySelectorAll('main .card p')].find((p) => p.previousElementSibling?.textContent.startsWith('Entrou em'))
+    // the "Entrou em" tile left Início in c5e269d; the month's in/out amounts now sit under the balance, in the band
+    const tile = [...document.querySelectorAll('.num.font-semibold')].find((x) => /[0-9]/.test(x.textContent) && !/font-display/.test(x.className) && !x.closest('nav'))
     const hero = [...document.querySelectorAll('main span')].find((s) => /font-display/.test(s.className) && /\\d/.test(s.textContent))
-    const row = [...document.querySelectorAll('main .num')].find((x) => /€/.test(x.textContent) && !x.closest('.grid-cols-2'))
+    const row = [...document.querySelectorAll('main .num')].find((x) => /€/.test(x.textContent) && !x.closest('.grid-cols-2') && !/font-display/.test(x.className))
     const voice = (el) => el && { family: getComputedStyle(el).fontFamily, weight: getComputedStyle(el).fontWeight, size: parseFloat(getComputedStyle(el).fontSize), tracking: parseFloat(getComputedStyle(el).letterSpacing) / parseFloat(getComputedStyle(el).fontSize) }
     return { tile: voice(tile), hero: voice(hero), row: voice(row) }
   })()`)

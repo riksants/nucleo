@@ -16,7 +16,7 @@ const hits = (sel, dx, dy) => b.eval(`(() => { const el = document.querySelector
 const sheetFrames = () =>
   b.eval(`new Promise((res) => {
     const out = []
-    ;[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Adicionar').click()
+    ;[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova entrada').click()
     const t0 = performance.now()
     const tick = () => {
       const d = document.querySelector('[role=dialog] > div:nth-child(2)')
@@ -90,12 +90,11 @@ try {
   }
   await b.goto(BASE + '#/')
   await sleep(1200)
-  const verTudo = 'main button.hit'
-  const vt = await b.eval(`(() => { const el = [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Ver tudo'); if (!el) return null; el.id = 'vt'; const r = el.getBoundingClientRect(); return Math.round(r.height) })()`)
-  r.check('área de toque ≥ 44 pt: "Ver tudo" (20 pt de altura visual)', vt !== null && (await hits('#vt', 0, 21)) && (await hits('#vt', 0, -21)), `altura visual ${vt}`)
+    const vt = await b.eval(`(() => { const el = [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Ver agenda'); if (!el) return null; el.id = 'vt'; const r = el.getBoundingClientRect(); return Math.round(r.height) })()`)
+  r.check('área de toque ≥ 44 pt: "Ver agenda" (link de seção, 20 pt de altura visual)', vt !== null && (await hits('#vt', 0, 21)) && (await hits('#vt', 0, -21)), `altura visual ${vt}`)
   await b.goto(BASE + '#/finance')
   await sleep(900)
-  await b.click('Adicionar')
+  await b.click('Nova entrada')
   await sleep(700)
   const close = '[role=dialog] button[aria-label="Fechar"]'
   r.check('área de toque ≥ 44 pt: "Fechar" das folhas (36 pt visual)', (await hits(close, 0, 21)) && (await hits(close, 21, 0)) && (await hits(close, -21, 0)), JSON.stringify(await box(close)))
@@ -103,32 +102,18 @@ try {
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await sleep(500)
 
-  // ---------- 5) "+" hides while scrolling down, comes back on scroll up (Configurações: a long screen whose "+" is the
-  // capture; Início and Financeiro have no floating "+" and the other screens' "+" creates their own item)
-  await b.goto(BASE + '#/settings')
+  // ---------- 5) The floating tab bar steps aside while the keyboard is open (never covers fields), and comes back
+  await b.goto(BASE + '#/tasks')
   await sleep(1200)
-  const fab = 'button.fab'
-  const state = () => b.eval(`(() => { const el = document.querySelector(${JSON.stringify(fab)}); const cs = getComputedStyle(el); return { hidden: el.dataset.hidden, opacity: cs.opacity, pe: cs.pointerEvents } })()`)
-  r.check('"+" visível no topo', (await state()).hidden === 'false')
-  for (let i = 0; i < 6; i++) {
-    await b.eval(`window.scrollBy(0, 120)`)
-    await sleep(60)
-  }
-  await sleep(300)
-  const down = await state()
-  r.check('"+" some ao rolar para baixo (e não recebe toques)', down.hidden === 'true' && down.opacity === '0' && down.pe === 'none', JSON.stringify(down))
-  for (let i = 0; i < 3; i++) {
-    await b.eval(`window.scrollBy(0, -80)`)
-    await sleep(60)
-  }
-  await sleep(300)
-  const up = await state()
-  r.check('"+" volta ao rolar para cima', up.hidden === 'false' && up.opacity === '1', JSON.stringify(up))
-  await b.eval(`window.scrollBy(0, 400)`)
-  await sleep(300)
-  await b.eval(`location.hash = '/notes'`)
+  const bar = () => b.eval(`(() => { const n = document.querySelector('nav[aria-label="Navegação principal"]'); const cs = getComputedStyle(n); return { hidden: n.dataset.hidden, pe: cs.pointerEvents } })()`)
+  r.check('barra flutuante visível', (await bar()).hidden === 'false')
+  await b.eval(`document.querySelector('main input:not([type=checkbox])').focus()`)
   await sleep(500)
-  r.check('"+" reaparece ao trocar de seção', (await state()).hidden === 'false')
+  const typing = await bar()
+  r.check('com o teclado aberto, a barra sai do caminho (e não recebe toques)', typing.hidden === 'true' && typing.pe === 'none', JSON.stringify(typing))
+  await b.eval(`document.activeElement.blur()`)
+  await sleep(500)
+  r.check('ao fechar o teclado, a barra volta', (await bar()).hidden === 'false')
 
   // ---------- 1) Reduced motion: sheets appear without sliding
   await b.goto(BASE + '#/finance')
@@ -147,15 +132,6 @@ try {
   r.check('reduzir movimento: a folha aparece no lugar, sem deslizar', reducedFrames.length > 3 && Math.abs(reducedTop - settled) <= 2, `maior posição ${reducedTop} vs final ${settled}`)
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await sleep(400)
-  await b.goto(BASE + '#/settings')
-  await sleep(800)
-  for (let i = 0; i < 6; i++) {
-    await b.eval(`window.scrollBy(0, 120)`)
-    await sleep(60)
-  }
-  await sleep(300)
-  const fabReduced = await b.eval(`(() => { const el = document.querySelector(${JSON.stringify(fab)}); const cs = getComputedStyle(el); return { hidden: el.dataset.hidden, transform: cs.transform, opacity: cs.opacity } })()`)
-  r.check('reduzir movimento: "+" só esmaece (sem deslizar)', fabReduced.hidden === 'true' && fabReduced.transform === 'none' && fabReduced.opacity === '0', JSON.stringify(fabReduced))
   await b.send('Emulation.setEmulatedMedia', { features: [] })
 
   // ---------- 4) New logo in the desktop sidebar

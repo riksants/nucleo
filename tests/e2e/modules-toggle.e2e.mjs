@@ -5,9 +5,9 @@ import { BASE, idb, reporter, seedExistingUser } from './helpers.mjs'
 
 const r = reporter()
 const b = await launch(9385)
-const sidebar = () => b.eval(`[...document.querySelectorAll('aside a')].map(a => a.textContent.trim())`)
+const sidebar = () => b.eval(`[...document.querySelectorAll('aside a')].map(a => (a.querySelector('.truncate') ?? a).textContent.trim())`)
 // The side menu (phone; old #/more links open it) — on the computer the same list is the sidebar.
-const moreLinks = () => b.eval(`[...document.querySelectorAll('[role=dialog][aria-label="Menu"] a, aside a')].map(a => a.textContent.trim())`)
+const moreLinks = () => b.eval(`[...document.querySelectorAll('[role=dialog][aria-label="Menu"] a, aside a')].map(a => (a.querySelector('.truncate') ?? a).textContent.trim())`)
 const settings = () => idb(b, 'meta', 'settings')
 async function toggle(label) {
   await b.goto(BASE + '#/settings')
@@ -49,7 +49,7 @@ try {
   await b.sleep(1500)
   r.check('usuário existente: escolha preservada ao abrir (nada ligado/desligado sozinho)', JSON.stringify((await settings()).modules) === JSON.stringify(chosen), JSON.stringify((await settings()).modules))
   r.check('Vendas visível no menu e com os dados', (await sidebar()).includes('Vendas') && (await b.text()).includes('Maria'))
-  r.check('Hoje continua desligado (não é obrigatório)', !(await sidebar()).includes('Hoje') && (await switchState('Hoje')) === 'false')
+  r.check('Hoje continua desligado (não é obrigatório)', !(await sidebar()).includes('Hoje') && (await switchState('Começar e fechar o dia')) === 'false')
 
   // Turn Vendas off
   r.check('desativar Vendas', await toggle('Vendas'))
@@ -78,11 +78,11 @@ try {
   await b.sleep(800)
   r.check('reativar: nota volta', (await b.text()).includes('Ideia guardada'))
 
-  // Hoje can be turned on (and off again) — not mandatory
-  await toggle('Hoje')
-  r.check('Hoje pode ser ligado', (await sidebar()).includes('Hoje'))
-  await toggle('Hoje')
-  r.check('…e desligado de novo', !(await sidebar()).includes('Hoje'))
+  // Hoje (now "Começar e fechar o dia", the rituals inside the Agenda) can be turned on and off — not mandatory
+  await toggle('Começar e fechar o dia')
+  r.check('Hoje (rituais do dia) pode ser ligado', (await switchState('Começar e fechar o dia')) === 'true' && (await sidebar()).includes('Agenda'))
+  await toggle('Começar e fechar o dia')
+  r.check('…e desligado de novo', (await switchState('Começar e fechar o dia')) === 'false')
 
   // Always available: Início, the menu/Configurações, Busca are not sections
   await b.goto(BASE + '#/settings')

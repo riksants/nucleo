@@ -85,7 +85,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
       open={open}
       onClose={onClose}
       title={tool ? 'Editar assinatura' : 'Nova assinatura'}
-      submitLabel={tool ? 'Salvar' : 'Adicionar'}
+      submitLabel={tool ? 'Salvar alterações' : 'Salvar assinatura'}
       onSubmit={submit}
       size="lg"
       onDelete={tool ? () => del('tools', tool.id, 'assinatura', { feminine: true, after: onClose }) : undefined}
@@ -167,7 +167,7 @@ export function ToolForm({ open, onClose, tool }: { open: boolean; onClose(): vo
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-medium">Considerar pago automaticamente na data da cobrança</span>
               <span className="mt-0.5 block text-[13px] leading-snug text-faint">
-                {d.autoPaid ? 'A saída entra sozinha no Financeiro no dia da cobrança.' : 'Desligado: no dia, fica “A pagar” e só vira saída quando você confirmar.'}
+                {d.autoPaid ? 'A saída entra sozinha em Finanças no dia da cobrança.' : 'Desligado: no dia, fica “A pagar” e só vira saída quando você confirmar.'}
               </span>
             </span>
             <Switch checked={d.autoPaid} />

@@ -58,7 +58,7 @@ export function ConfirmChargeSheet({ run, open, onClose }: { run: AutomationRun 
     >
       <div className="space-y-4 pt-1">
         <p className="text-[15px] leading-relaxed text-soft">
-          {run.origin.label} · cobrança de {formatDateValue(run.date).toLowerCase()}. {income ? 'A entrada vai para o Financeiro' : 'A saída vai para o Financeiro'} só depois que você confirmar.
+          {run.origin.label} · cobrança de {formatDateValue(run.date).toLowerCase()}. {income ? 'A entrada vai para Finanças' : 'A saída vai para Finanças'} só depois que você confirmar.
         </p>
         <Field label={income ? 'Valor recebido' : 'Valor pago'}>
           <AmountField currency={currency} value={amount} onChange={setAmount} autoFocus />

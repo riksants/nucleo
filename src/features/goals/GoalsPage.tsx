@@ -1,4 +1,7 @@
 import { Target } from 'lucide-react'
+import { FinanceGoalsSection } from '../finance/FinanceGoals'
+import { useRoute } from '../../app/router'
+import { AreaTabs, useAreaTitle } from '../../app/areaTabs'
 import { PageHeader } from '../../app/Shell'
 import { sortByNewest } from '../../data/selectors'
 import { useStore } from '../../data/store'
@@ -11,6 +14,9 @@ import { GoalForm } from './GoalForm'
 
 export function GoalsPage() {
   const { data } = useStore()
+  const { params } = useRoute()
+  const reserves = params.get('view') === 'reservas'
+  const title = useAreaTitle('metas', 'Metas')
   const sheet = useSheet<Goal>()
   useOpenParam(data.goals, sheet.show)
 
@@ -21,16 +27,19 @@ export function GoalsPage() {
   return (
     <>
       <PageHeader
-        title="Metas de compra"
-        subtitle="Compare o que quer comprar com seu saldo"
-        primary={{ label: 'Nova meta', aria: 'Nova meta de compra', onPress: () => sheet.show() }}
+        title={title}
+        subtitle={reserves ? 'Dinheiro separado do seu saldo para um objetivo' : 'Compare o que quer comprar com seu saldo'}
+        below={<AreaTabs area="metas" />}
+        primary={reserves ? undefined : { label: 'Nova compra', aria: 'Nova compra planejada', onPress: () => sheet.show() }}
       />
-      {active.length === 0 && purchased.length === 0 ? (
+      {reserves ? (
+        <FinanceGoalsSection />
+      ) : active.length === 0 && purchased.length === 0 ? (
         <EmptyState
           icon={<Target size={20} />}
-          title="Nenhuma meta ainda"
+          title="Nenhuma compra planejada"
           text="Adicione algo que pretende comprar e veja quanto falta com base no seu saldo."
-          action="Adicionar meta"
+          action="Nova compra planejada"
           onAction={() => sheet.show()}
         />
       ) : (

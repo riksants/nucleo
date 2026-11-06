@@ -1,6 +1,7 @@
 import { pendingCount } from '../../core/automation/activity'
+import { HomeLayoutSheet } from '../home/HomePage'
 import { todayIn, zoneOf } from '../../core/period'
-import { Bell, ChevronRight, Clock, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound, Wand2 } from 'lucide-react'
+import { AlarmClock, Bell, ChevronRight, Clock, House, Coins, Download, Gauge, HardDrive, KeyRound, LayoutGrid, LogOut, MessageCircle, PanelBottom, RefreshCw, Scale, Sparkles, Sunrise, Tags, Upload, UserRound, Wand2 } from 'lucide-react'
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { enabledModules, isEnabled } from '../../app/modules'
 import { navigate, useRoute } from '../../app/router'
@@ -255,7 +256,7 @@ export function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   // "Mais → Personalizar" opens a panel directly (#/settings?painel=secoes or barra).
   const { params } = useRoute()
-  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'tabs' | 'vaultPassword' | 'categories' | null>(() =>
+  const [sheet, setSheet] = useState<'adjust' | 'rates' | 'currency' | 'modules' | 'tabs' | 'home' | 'vaultPassword' | 'categories' | null>(() =>
     params.get('painel') === 'secoes' ? 'modules' : params.get('painel') === 'barra' ? 'tabs' : null,
   )
   const { configured, email, userId, openAuth } = useSession()
@@ -297,7 +298,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Configurações" />
+      <PageHeader title="Você" subtitle={userId ? (email ?? undefined) : "Conta, avisos e ajustes"} />
       <div className="grid gap-7 lg:grid-cols-2 lg:items-start">
         <Group title="Conta" tone="blue" note={configured && !userId ? 'Seus dados ficam só neste aparelho. Com uma conta, eles sincronizam entre aparelhos.' : undefined}>
           {userId ? (
@@ -319,9 +320,30 @@ export function SettingsPage() {
           )}
         </Group>
 
+        <Group title="Avisos">
+          <Row label="Notificações" detail="O que o Núcleo avisou" icon={<Bell size={18} />} onClick={() => navigate('/notifications')} />
+          <Row label="Lembretes" detail="Horários, antecedência e silêncio" icon={<AlarmClock size={18} />} onClick={() => navigate('/reminders')} />
+        </Group>
+
+        <Group title="Do seu jeito">
+          <Row label="Início" detail="Escolha e ordene os blocos" icon={<House size={18} />} onClick={() => setSheet('home')} />
+          <Row
+            label="Barra inferior"
+            detail={[
+              ...primarySections(settings)
+                .slice(1)
+                .map((s) => s.shortLabel ?? s.label),
+              'Assistente',
+            ].join(' · ')}
+            icon={<PanelBottom size={18} />}
+            onClick={() => setSheet('tabs')}
+          />
+          <Row label="Seções visíveis" detail="Esconder nunca apaga dados" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
+        </Group>
+
         <Group title="Automações" tone="teal" note="O Núcleo automatiza ações, mas nunca inventa fatos: só considera algo pago quando você confirma ou escolhe isso no item.">
           <Row
-            label="Feito pelo Núcleo"
+            label="Histórico de automações"
             detail={(() => {
               const n = pendingCount(data, todayIn(zoneOf(settings)))
               return n ? `${n} esperando você · ligar ou desligar automações` : 'Histórico · ligar ou desligar automações'
@@ -330,7 +352,7 @@ export function SettingsPage() {
             onClick={() => navigate('/automations')}
           />
           <Row
-            label="Minhas regras"
+            label="Regras"
             detail={(() => {
               const n = data.rules.filter((r) => r.on).length
               return n ? `${n === 1 ? '1 regra ligada' : `${n} regras ligadas`} · quando X, faça Y` : 'Quando algo acontece, o Núcleo faz por você'
@@ -340,18 +362,8 @@ export function SettingsPage() {
           />
         </Group>
 
-        <Group title="Seções e lembretes">
-          <Row label="Seções visíveis" icon={<LayoutGrid size={18} />} onClick={() => setSheet('modules')} />
-          <Row
-            label="Barra de navegação"
-            detail={primarySections(settings)
-              .slice(1)
-              .map((s) => s.shortLabel ?? s.label)
-              .join(' · ')}
-            icon={<PanelBottom size={18} />}
-            onClick={() => setSheet('tabs')}
-          />
-          <Row label="Lembretes e notificações" icon={<Bell size={18} />} onClick={() => navigate('/reminders')} />
+        {(isEnabled(settings, 'week') || isEnabled(settings, 'today')) && (
+        <Group title="Rotina do dia e Score">
           {isEnabled(settings, 'week') && (
             <button
               type="button"
@@ -378,13 +390,14 @@ export function SettingsPage() {
             >
               <Tile><Sunrise size={18} /></Tile>
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px]">Abrir o Modo Manhã sozinho</span>
+                <span className="block text-[15px]">Abrir “Começar o dia” sozinho</span>
                 <span className="block text-[13px] text-faint">Uma vez por dia, antes do meio-dia</span>
               </span>
               <Switch checked={Boolean(settings.morningAutoOpen)} />
             </button>
           )}
         </Group>
+        )}
 
         <Group title="Assistente" tone="teal" note={settings.activeHours ? undefined : 'Sem faixa definida, uso os horários da sua rotina; sem rotina, 07:00–22:00.'}>
           <div className="px-4 py-3">
@@ -432,7 +445,7 @@ export function SettingsPage() {
           </div>
         </Group>
 
-        <Group title="Saldo" tone="green" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
+        <Group title="Finanças e moedas" tone="green" note={display !== settings.baseCurrency ? `Os valores continuam guardados na moeda em que foram registrados. O saldo é registrado em ${settings.baseCurrency} e mostrado em ${display} pela cotação atual.` : undefined}>
           <Row label="Moeda principal" icon={<Coins size={18} />} value={`${display} ${currencyInfo(display).symbol}`} onClick={() => setSheet('currency')} />
           {display !== settings.baseCurrency && <Row label="Moeda de registro do saldo" value={settings.baseCurrency} />}
           <Row label="Saldo inicial" value={formatMoney(settings.initialBalance, settings.baseCurrency)} />
@@ -501,6 +514,7 @@ export function SettingsPage() {
       <CurrencySheet open={sheet === 'currency'} onClose={() => setSheet(null)} value={display} onPick={pickMain} title="Moeda principal" />
       <ModulesSheet open={sheet === 'modules'} onClose={() => setSheet(null)} onTabs={() => setSheet('tabs')} />
       <TabsSheet open={sheet === 'tabs'} onClose={() => setSheet(null)} />
+      <HomeLayoutSheet open={sheet === 'home'} onClose={() => setSheet(null)} />
       <VaultPasswordSheet open={sheet === 'vaultPassword'} onClose={() => setSheet(null)} />
     </>
   )
@@ -519,13 +533,13 @@ function TabsSheet({ open, onClose }: { open: boolean; onClose(): void }) {
     void updateSettings({ tabs: [...current, id] })
   }
   return (
-    <Sheet open={open} onClose={onClose} title="Barra de navegação">
+    <Sheet open={open} onClose={onClose} title="Barra inferior">
       <p className="pb-4 text-[15px] leading-relaxed text-soft">
-        Escolha até {MAX_TABS} seções para ficar na barra de baixo, ao lado de Início. As outras continuam no menu (☰, no alto da tela).
+        Escolha até {MAX_TABS} seções para ficar na barra de baixo, entre Início e Assistente. As outras continuam no menu (☰, no alto da tela).
       </p>
       <div className="card mb-4 flex flex-wrap items-center justify-center gap-1.5 px-3 py-3 text-[13px] text-soft" aria-label="Prévia da barra">
-        {['Início', ...primarySections(settings).slice(1).map((s) => s.shortLabel ?? s.label)].map((l, i) => (
-          <span key={i} className={`rounded-full px-2.5 py-1 whitespace-nowrap ${i === 0 ? 'text-faint' : 'bg-accent/12 text-accent-hi'}`}>
+        {['Início', ...primarySections(settings).slice(1).map((s) => s.shortLabel ?? s.label), 'Assistente'].map((l, i, all) => (
+          <span key={i} className={`rounded-full px-2.5 py-1 whitespace-nowrap ${i === 0 || i === all.length - 1 ? 'text-faint' : 'bg-accent/12 text-accent-hi'}`}>
             {l}
           </span>
         ))}
@@ -568,7 +582,7 @@ function ModulesSheet({ open, onClose, onTabs }: { open: boolean; onClose(): voi
       <button type="button" onClick={onTabs} className="card tap mb-4 flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left">
         <Tile><PanelBottom size={18} /></Tile>
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-medium">Barra de navegação</span>
+          <span className="block text-[15px] font-medium">Barra inferior</span>
           <span className="block truncate text-[13px] text-faint">Escolha quais seções ficam na barra de baixo</span>
         </span>
         <ChevronRight size={18} className="shrink-0 text-accent-hi" />

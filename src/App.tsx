@@ -145,7 +145,7 @@ function NewSectionsSheet() {
       }
     >
       <p className="pb-4 text-[15px] leading-relaxed text-soft">
-        {firstTime ? 'Hoje, Vendas, Assinantes, Rotina e Alimentação chegaram desligadas.' : 'Chegaram seções novas, desligadas.'} Ligue só o que quiser usar — dá para mudar depois em Configurações, e esconder nunca apaga dados.
+        {firstTime ? 'Hoje, Vendas, Assinantes, Rotina e Alimentação chegaram desligadas.' : 'Chegaram seções novas, desligadas.'} Ligue só o que quiser usar — dá para mudar depois em Você, e esconder nunca apaga dados.
       </p>
       <ModulePicker value={settings.modules ?? {}} onChange={(modules) => updateSettings({ modules })} isOn={(id) => isEnabled(settings, id)} only={firstTime ? undefined : shown} />
     </Sheet>
@@ -272,7 +272,7 @@ export function App() {
       <div key={path}>
         {hiddenLabel && (
           <p className="mt-[calc(env(safe-area-inset-top)+12px)] mb-5 rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft lg:mt-0">
-            A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
+            A seção {hiddenLabel} está escondida. Ative em Você → Seções visíveis.
           </p>
         )}
         <Suspense fallback={null}>

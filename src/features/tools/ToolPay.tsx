@@ -50,7 +50,7 @@ export function PaySheet({ tool, onClose }: { tool: Tool | null; onClose(): void
           <button type="button" role="switch" aria-checked={d.deduct} onClick={() => set('deduct', !d.deduct)} className="flex w-full items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-left">
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-medium">Descontar do saldo</span>
-              <span className="mt-0.5 block text-[13px] leading-snug text-faint">{d.deduct ? 'Entra como saída no Financeiro.' : 'Fica só como pago aqui: o saldo não muda (ex.: pago por outra conta).'}</span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-faint">{d.deduct ? 'Entra como saída em Finanças.' : 'Fica só como pago aqui: o saldo não muda (ex.: pago por outra conta).'}</span>
             </span>
             <Switch checked={d.deduct} />
           </button>

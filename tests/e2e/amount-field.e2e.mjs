@@ -42,7 +42,7 @@ try {
   await sleep(1400)
 
   // ---------- open: the field gets the focus; the keyboard opens
-  await b.click('Adicionar', 'main button')
+  await b.click('Nova entrada', 'main button')
   await sleep(700)
   r.check('ao abrir "Adicionar dinheiro", o campo de valor recebe o foco', (await focused()) === 'tx-amount', await focused())
   await b.eval(`__kb(${KEYBOARD})`)
@@ -101,7 +101,7 @@ try {
   await type('50')
   await b.eval(`document.getElementById('tx-reason').focus()`)
   await type('Teste da calculadora')
-  r.check('o botão de confirmar já mostra o resultado da conta', /Adicionar\s+€\s*250,00/.test(await b.eval(`document.querySelector('[role=dialog] .border-t button').textContent`)), await b.eval(`document.querySelector('[role=dialog] .border-t button').textContent`))
+  r.check('o botão de confirmar já mostra o resultado da conta', /Salvar entrada de\s+€\s*250,00/.test(await b.eval(`document.querySelector('[role=dialog] .border-t button').textContent`)), await b.eval(`document.querySelector('[role=dialog] .border-t button').textContent`))
   await tap('[role=dialog] .border-t button')
   await sleep(900)
   const txs = await idb(b, 'transactions')
@@ -111,12 +111,12 @@ try {
 
   // ---------- cancel and reopen
   await b.eval(`__kb(0)`)
-  await b.click('Retirar', 'main button')
+  await b.click('Nova saída', 'main button')
   await sleep(700)
   await type('99')
   await b.click('Fechar', '[role=dialog] button')
   await sleep(600)
-  await b.click('Adicionar', 'main button')
+  await b.click('Nova entrada', 'main button')
   await sleep(700)
   r.check('cancelar e reabrir: campo vazio e focado de novo', (await value()) === '' && (await focused()) === 'tx-amount', `${JSON.stringify(await value())} / ${await focused()}`)
   await b.click('Fechar', '[role=dialog] button')
@@ -143,7 +143,7 @@ try {
   await b.desktop()
   await b.goto(BASE + '#/finance')
   await sleep(1200)
-  await b.click('Adicionar', 'main button')
+  await b.click('Nova entrada', 'main button')
   await sleep(600)
   await type('200+50')
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: '=', code: 'Equal', text: '=' })

@@ -15,7 +15,7 @@ const center = (sel) => b.eval(`(() => { const el = document.querySelector(${JSO
 async function openSheet() {
   await b.goto(BASE + '#/finance')
   await sleep(900)
-  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Adicionar').click()`)
+  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova entrada').click()`)
   await sleep(700)
 }
 /** A finger drag: `steps` moves of `dy` total over `ms`, then lift. Returns the panel transform seen mid-drag. */
@@ -49,7 +49,7 @@ try {
   await b.goto(BASE + '#/finance')
   await sleep(900)
   const gpu = await b.eval(`new Promise((res) => {
-    [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Adicionar').click()
+    [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova entrada').click()
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const outer = document.querySelector(${JSON.stringify(OUTER)})
       const anims = outer ? outer.getAnimations().map((a) => Object.keys(a.effect.getKeyframes()[0] || {}).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k))) : []
@@ -101,11 +101,11 @@ try {
   // ---------- 8) Toast on the GPU too
   await b.goto(BASE + '#/finance')
   await sleep(900)
-  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Retirar').click()`)
+  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova saída').click()`)
   await sleep(600)
   await b.eval(`(() => { const set = (sel, v) => { const el = document.querySelector(sel); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })) }; set('#tx-amount', '12'); set('#tx-reason', 'Café') })()`)
   const toast = await b.eval(`new Promise((res) => {
-    [...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Retirar R$')).click()
+    [...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Salvar saída de R$')).click()
     const t0 = performance.now()
     const look = () => {
       const t = document.querySelector('[role=status]')
@@ -129,7 +129,7 @@ try {
   await b.goto(BASE + '#/finance')
   await sleep(900)
   const rm = await b.eval(`new Promise((res) => {
-    [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Adicionar').click()
+    [...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova entrada').click()
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const outer = document.querySelector(${JSON.stringify(OUTER)})
       const keys = outer ? outer.getAnimations().map((a) => Object.keys(a.effect.getKeyframes()[0] || {})).flat() : []

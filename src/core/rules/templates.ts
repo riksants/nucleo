@@ -61,9 +61,9 @@ export const TEMPLATES: RuleTemplate[] = [
     id: 'month',
     group: 'Finanças',
     name: 'Fechamento do mês',
-    text: 'Todo dia 1, criar a tarefa “Revisar o mês no Financeiro”.',
+    text: 'Todo dia 1, criar a tarefa “Revisar o mês em Finanças”.',
     needsGoal: false,
-    draft: () => ({ name: 'Fechamento do mês', template: 'month', trigger: { kind: 'monthDay', day: 1 }, conditions: [], actions: [{ kind: 'createTask', title: 'Revisar o mês no Financeiro', dueDays: 0, linkProject: false, priority: 'none' }] }),
+    draft: () => ({ name: 'Fechamento do mês', template: 'month', trigger: { kind: 'monthDay', day: 1 }, conditions: [], actions: [{ kind: 'createTask', title: 'Revisar o mês em Finanças', dueDays: 0, linkProject: false, priority: 'none' }] }),
   },
   // ------------------------------------------------------------ Clientes e vendas
   {

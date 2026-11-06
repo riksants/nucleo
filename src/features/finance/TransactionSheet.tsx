@@ -128,8 +128,8 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
     onClose()
   }
 
-  const title = editing ? (kind === 'adjust' ? 'Ajuste de saldo' : 'Editar movimentação') : kind === 'in' ? 'Adicionar dinheiro' : 'Retirar dinheiro'
-  const verb = kind === 'in' ? 'Adicionar' : kind === 'out' ? 'Retirar' : 'Salvar'
+  const title = editing ? (kind === 'adjust' ? 'Ajuste de saldo' : 'Editar movimentação') : kind === 'in' ? 'Nova entrada' : 'Nova saída'
+  const verb = kind === 'in' ? 'Salvar entrada de' : kind === 'out' ? 'Salvar saída de' : 'Salvar'
   const confirmLabel = editing ? 'Salvar alterações' : cents ? `${verb} ${formatMoney(cents, draft.currency)}` : 'Confirmar'
 
   // An income created by a received payment is changed where the payment lives (project/sale),
@@ -187,7 +187,7 @@ export function TransactionSheet({ open, onClose, type, editing }: Props) {
           <p className="text-[13px] text-faint">{formatDateTime(editing.createdAt)}</p>
           <BankLine tx={editing} />
           <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">
-            Esta entrada veio de um pagamento registrado {kind === 'project' || kind === 'subscriber' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — o Financeiro acompanha.
+            Esta entrada veio de um pagamento registrado {kind === 'project' || kind === 'subscriber' ? 'no' : 'na'} {from}. Para corrigir o valor, a data ou excluir, altere o pagamento lá — Finanças acompanha.
           </p>
         </div>
       </Sheet>

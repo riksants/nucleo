@@ -67,7 +67,7 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
     if (legacy) {
       if (!draft.date) return setError('Informe a data em que o pagamento aconteceu')
       const pay: ProjectPayment = { id: newId(), date: draft.date, amount: project.received, currency: cur, note: draft.note.trim() }
-      return run({ ...project, received: 0, legacyReceived: undefined, payments: sorted([...(project.payments ?? []), pay]) }, 'Lançado no Financeiro')
+      return run({ ...project, received: 0, legacyReceived: undefined, payments: sorted([...(project.payments ?? []), pay]) }, 'Lançado em Finanças')
     }
     const pay: ProjectPayment = { id: payment?.id ?? newId(), date: draft.date, amount: parseMoney(draft.amount) ?? 0, currency: cur, note: draft.note.trim() }
     const problem = projectPaymentProblem(project, pay)
@@ -81,7 +81,7 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
     if (!payment) return
     const ok = await confirm({
       title: 'Excluir pagamento?',
-      message: `${formatMoney(payment.amount, cur)} de ${formatDateValue(payment.date).toLowerCase()}. A entrada correspondente sai do Financeiro e o saldo é recalculado.`,
+      message: `${formatMoney(payment.amount, cur)} de ${formatDateValue(payment.date).toLowerCase()}. A entrada correspondente sai de Finanças e o saldo é recalculado.`,
       confirmLabel: 'Excluir',
       danger: true,
     })
@@ -89,7 +89,7 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
     await run({ ...project, payments: (project.payments ?? []).filter((x) => x.id !== payment.id) }, 'Pagamento excluído')
   }
 
-  const title = legacy ? 'Lançar no Financeiro' : payment ? 'Editar pagamento' : 'Registrar pagamento'
+  const title = legacy ? 'Lançar em Finanças' : payment ? 'Editar pagamento' : 'Registrar pagamento'
   return (
     <Sheet
       open={open}
@@ -126,7 +126,7 @@ export function ProjectPaymentSheet({ project, payment, legacy, open, onClose }:
         </p>
         {legacy ? (
           <p className="rounded-2xl bg-raised p-4 text-[15px] leading-relaxed text-soft">
-            <span className="num font-semibold text-ink">{formatMoney(project.received, cur)}</span> foram marcados como recebidos antes do histórico de pagamentos. Informe quando esse dinheiro chegou: a entrada vai para esse dia no Financeiro.
+            <span className="num font-semibold text-ink">{formatMoney(project.received, cur)}</span> foram marcados como recebidos antes do histórico de pagamentos. Informe quando esse dinheiro chegou: a entrada vai para esse dia em Finanças.
           </p>
         ) : (
           <Field label="Valor recebido" error={error && error !== OVER_REMAINING ? error : null}>

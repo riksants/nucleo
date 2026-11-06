@@ -66,7 +66,7 @@ export function AccountForm({ open, onClose, account, onVault }: { open: boolean
       open={open}
       onClose={onClose}
       title={account ? 'Editar acesso' : 'Novo acesso'}
-      submitLabel={account ? 'Salvar' : 'Adicionar'}
+      submitLabel={account ? 'Salvar alterações' : 'Salvar acesso'}
       onSubmit={submit}
       size="lg"
       onDelete={account ? () => del('accounts', account.id, 'acesso', { after: onClose }) : undefined}

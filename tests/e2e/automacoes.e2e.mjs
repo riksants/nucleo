@@ -75,8 +75,13 @@ try {
   const tool1 = await idb(b, 'tools', 't1')
   r.check('próximas cobranças avançaram um mês', sub1.nextCharge > today && tool1.nextCharge > today, `${sub1.nextCharge} ${tool1.nextCharge}`)
   let home = await mainText()
-  r.check('Início mostra "Esperando você" com a cobrança da Ana', home.includes('Esperando você') && home.includes('Ana') && /a receber/i.test(home), home.slice(0, 400).replace(/\n/g, ' | '))
-  r.check('Início mostra "Feito pelo Núcleo"', home.includes('Feito pelo Núcleo'))
+  r.check('Início mostra "Precisa de você" com a cobrança da Ana', home.includes('Precisa de você') && home.includes('Ana') && /a receber/i.test(home), home.slice(0, 400).replace(/\n/g, ' | '))
+  // "Feito pelo Núcleo" is one of the blocks you can turn on in Personalizar Início (off by default since the redesign).
+  await b.eval(`localStorage.setItem('nucleo:home.layout', JSON.stringify({ order: ['agora', 'precisa', 'habitos', 'prazos', 'cobrancas', 'movimentacoes', 'metas', 'feito'], hidden: [] }))`)
+  await b.eval('location.reload()').catch(() => {})
+  await new Promise((res) => setTimeout(res, 2000))
+  home = await mainText()
+  r.check('Início mostra "Feito pelo Núcleo" (bloco ligado em Personalizar Início)', home.includes('Feito pelo Núcleo'))
 
   // ---------- Goal reservation: no expense, Disponível on the balance card
   await put('financeGoals', { id: 'g1', createdAt: T, updatedAt: T, name: 'Viagem', target: 100000, saved: 0, deadline: plusMonths(6), currency: 'EUR', note: '', status: 'active', history: [], inBalance: true, autoSave: { day: Number(today.slice(8, 10)), mode: 'fixed', amount: 20000, since: today } })

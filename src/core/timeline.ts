@@ -67,9 +67,9 @@ export function activeWindow(data: Pick<DataState, 'plannerProfiles'>, settings:
 }
 
 export const WINDOW_LABEL: Record<WindowSource, string> = {
-  settings: 'sua faixa de horário (Configurações)',
+  settings: 'sua faixa de horário (Você → Assistente)',
   routine: 'os horários da sua rotina',
-  default: 'a faixa padrão de 07:00 a 22:00 (ajustável em Configurações)',
+  default: 'a faixa padrão de 07:00 a 22:00 (ajustável em Você → Assistente)',
 }
 
 export type ConflictLevel = 'high' | 'medium'

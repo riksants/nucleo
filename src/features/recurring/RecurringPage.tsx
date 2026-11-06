@@ -1,4 +1,5 @@
 import { CalendarClock, ChevronDown, ListRestart, Pause, Receipt, Repeat } from 'lucide-react'
+import { AreaTabs, useAreaTitle } from '../../app/areaTabs'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '../../app/Shell'
 import { useDailyActions } from '../../core/actions'
@@ -64,6 +65,7 @@ function TodayRow({ item, date, status, onOpen }: { item: RecurringItem; date: s
 }
 
 export function RecurringPage() {
+  const rotinaTitle = useAreaTitle('rotina', 'Recorrentes')
   const { data, settings, save } = useStore()
   const { toast } = useFeedback()
   const form = useSheet<RecurringItem>()
@@ -98,7 +100,8 @@ export function RecurringPage() {
         rich
         icon={ListRestart}
         eyebrow="Coisas que voltam sempre"
-        title="Recorrentes"
+        title={rotinaTitle}
+        below={<AreaTabs area="rotina" />}
         primary={{ label: 'Novo', aria: 'Novo recorrente', onPress: () => form.show() }}
         stats={
           data.recurring.length

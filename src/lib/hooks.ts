@@ -82,3 +82,33 @@ export function useNow(everyMs = 60_000): Date {
   }, [everyMs])
   return now
 }
+
+/**
+ * Whether the on-screen keyboard is (about to be) open on a touch device: a text field has the focus, or the visible
+ * area shrank. Floating bars step aside meanwhile, so they never cover fields or buttons.
+ */
+export function useKeyboardOpen(): boolean {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const coarse = window.matchMedia('(pointer: coarse)')
+    const isText = (el: Element | null) =>
+      !!el && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]), textarea, select, [contenteditable="true"]')
+    const vv = window.visualViewport
+    const update = () => setOpen(coarse.matches && (isText(document.activeElement) || (!!vv && vv.height < window.innerHeight * 0.78)))
+    let timer = 0
+    const later = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(update, 60)
+    }
+    document.addEventListener('focusin', update)
+    document.addEventListener('focusout', later)
+    vv?.addEventListener('resize', update)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('focusin', update)
+      document.removeEventListener('focusout', later)
+      vv?.removeEventListener('resize', update)
+    }
+  }, [])
+  return open
+}

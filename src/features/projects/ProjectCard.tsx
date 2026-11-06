@@ -38,7 +38,7 @@ export function ProjectCard({ project, onOpen, onReceive }: { project: Project; 
       <button type="button" onClick={() => onOpen(project)} className="press block w-full p-5 text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[17px] font-semibold tracking-tight">{project.name}</h3>
+            <h3 className="text-[17px] leading-snug font-semibold tracking-tight [overflow-wrap:anywhere]">{project.name}</h3>
             <p className="mt-0.5 truncate text-sm text-soft">
               {optionOf(PROJECT_KIND, project.kind).label}
               {client && ` · ${client}`}
@@ -47,15 +47,17 @@ export function ProjectCard({ project, onOpen, onReceive }: { project: Project; 
           <Badge tone={status.tone}>{status.label}</Badge>
         </div>
   
+        {/* Money, not progress of the work: the received share, labelled as such, in the income green. */}
         {project.charged > 0 && (
-          <div className="mt-4">
-            <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
-              <span className="text-soft">
-                Recebido <span className="num font-medium text-ink">{formatMoney(received, project.currency)}</span>
-              </span>
-              <span className="num text-faint">de {formatMoney(project.charged, project.currency)}</span>
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[14px]">
+              <span className="text-soft">Pagamento</span>
+              <span className="num font-semibold whitespace-nowrap text-income">{Math.round((received / project.charged) * 100)}% recebido</span>
             </div>
-            <Progress value={(received / project.charged) * 100} tone={outstanding === 0 ? 'positive' : 'accent'} />
+            <Progress value={(received / project.charged) * 100} tone="positive" />
+            <p className="mt-1.5 text-[14px] text-soft">
+              <span className="num font-semibold whitespace-nowrap text-ink">{formatMoney(received, project.currency)}</span> de <span className="num whitespace-nowrap">{formatMoney(project.charged, project.currency)}</span>
+            </p>
           </div>
         )}
   

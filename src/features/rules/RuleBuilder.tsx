@@ -144,7 +144,7 @@ function ConditionEditor({ c, trigger, onChange }: { c: RuleCondition; trigger: 
             />
             <span>
               Comparar também outras moedas, convertidas para {c.currency}
-              <span className="mt-0.5 block text-[13px] text-faint">Usa as cotações do Financeiro. Sem cotação, a regra não roda naquele valor e diz por quê.</span>
+              <span className="mt-0.5 block text-[13px] text-faint">Usa as cotações de Finanças. Sem cotação, a regra não roda naquele valor e diz por quê.</span>
             </span>
           </label>
           {c.op === 'between' && <MoneyBox key={`b-${c.currency}`} label="Até" cents={c.value2 ?? 0} currency={c.currency} onChange={(value2) => onChange({ ...c, value2 })} />}
@@ -336,7 +336,7 @@ function warnings(d: Draft, data: ReturnType<typeof useStore>['data'], settings:
   for (const a of d.actions) {
     if (a.kind !== 'reserveFixed' && a.kind !== 'reservePercent') continue
     const g = data.financeGoals.find((x) => x.id === a.goalId)
-    if (g && !g.inBalance) out.push(`A meta ${g.name} não está marcada como “Este dinheiro está no meu saldo”: a reserva não será feita. Ligue isso na meta, em Financeiro.`)
+    if (g && !g.inBalance) out.push(`A meta ${g.name} não está marcada como “Este dinheiro está no meu saldo”: a reserva não será feita. Ligue isso na meta, em Finanças.`)
     if (a.kind === 'reservePercent' && g) out.push(`Se o dinheiro vier em outra moeda, os ${a.percent}% são convertidos para ${g.currency} pela cotação do dia. Reservar não cria saída: o dinheiro continua no seu saldo.`)
   }
   if (d.trigger.kind === 'projectDone' && d.actions.some((a) => a.kind === 'clientStatus') && automationSince(settings, 'projectClient')) out.push('A automação pronta “Projetos e clientes” já conclui o cliente quando o último projeto dele termina.')

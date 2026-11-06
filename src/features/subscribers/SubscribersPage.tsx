@@ -83,7 +83,7 @@ function Projection() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[13px] leading-relaxed text-faint">Soma dos pagamentos registrados. Só cobranças confirmadas (ou de assinantes marcados “Considerar pago”) entram no Financeiro.</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-faint">Soma dos pagamentos registrados. Só cobranças confirmadas (ou de assinantes marcados “Considerar pago”) entram em Finanças.</p>
       </div>
     </div>
   )

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Núcleo Redesenho Proposta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&amp;display=swap" rel="stylesheet">
+<style>
+/* Documento de decisão: uma coluna de leitura, tabelas para o que se compara, o laranja só para marcar decisões. */
+:root {
+  --font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bg: #f1efeb; --surface: #ffffff; --ink: #0b0b0c; --soft: #4f4d48; --faint: #6b6862;
+  --line: rgb(10 10 11 / 0.1); --accent: #ff5b2e; --accent-text: #b8350c; --accent-tint: rgb(255 91 46 / 0.1);
+  --ok: #0f7a4a; --warn: #8a5800; --warn-tint: rgb(245 178 61 / 0.16);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0a0a0b; --surface: #1a1a1d; --ink: #edebe6; --soft: #b5b2ab; --faint: #9b9993; --line: rgb(237 235 230 / 0.1); --accent-text: #ff7a4f; --accent-tint: rgb(255 91 46 / 0.14); --ok: #4cd38a; --warn: #f5b23d; --warn-tint: rgb(245 178 61 / 0.12); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0a0a0b; --surface: #1a1a1d; --ink: #edebe6; --soft: #b5b2ab; --faint: #9b9993; --line: rgb(237 235 230 / 0.1); --accent-text: #ff7a4f; --accent-tint: rgb(255 91 46 / 0.14); --ok: #4cd38a; --warn: #f5b23d; --warn-tint: rgb(245 178 61 / 0.12); color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+h1 { font-size: 36px; line-height: 1.1; letter-spacing: -0.035em; font-weight: 650; margin: 6px 0 12px; text-wrap: balance; }
+h2 { font-size: 24px; line-height: 1.2; letter-spacing: -0.025em; font-weight: 650; margin: 48px 0 12px; text-wrap: balance; }
+h3 { font-size: 18px; letter-spacing: -0.015em; font-weight: 650; margin: 28px 0 8px; }
+p, li { max-width: 68ch; }
+p { margin: 8px 0; color: var(--soft); }
+p strong, li strong { color: var(--ink); font-weight: 600; }
+ul, ol { padding-left: 22px; margin: 8px 0; color: var(--soft); }
+li + li { margin-top: 6px; }
+a { color: var(--accent-text); font-weight: 550; }
+.eyebrow { font-size: 14px; font-weight: 600; color: var(--faint); }
+.lead { font-size: 19px; color: var(--ink); }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 6px; }
+.cta a { display: inline-flex; align-items: center; height: 48px; padding: 0 20px; border-radius: 14px; background: var(--accent); color: #0b0b0c; text-decoration: none; font-weight: 650; }
+.cta a.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+nav.toc { margin-top: 24px; padding: 16px 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); font-size: 15px; }
+nav.toc ol { margin: 0; columns: 2; column-gap: 28px; }
+@media (max-width: 560px) { nav.toc ol { columns: 1; } }
+.wrap { overflow-x: auto; margin: 12px 0; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-top: 1px solid var(--line); }
+thead th { border-top: 0; font-size: 13px; font-weight: 650; color: var(--faint); background: color-mix(in srgb, var(--surface) 80%, var(--bg)); }
+td:first-child { font-weight: 600; color: var(--ink); }
+td { color: var(--soft); }
+code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em; padding: 1px 5px; border-radius: 6px; background: var(--accent-tint); color: var(--ink); }
+.box { margin: 14px 0; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.box.warn { background: var(--warn-tint); border-color: transparent; }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 650; background: var(--accent-tint); color: var(--accent-text); vertical-align: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 12px 0; }
+.grid .box { margin: 0; }
+.grid b { display: block; font-size: 15px; color: var(--ink); }
+.grid span { font-size: 14px; color: var(--soft); }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line); }
+footer { margin-top: 56px; font-size: 14px; color: var(--faint); }
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Núcleo · proposta de redesenho · 6 de novembro de 2026 · revisão 4 · branch <code>feat/redesign-proposta</code> (base <code>main</code> f0b3242)</div>
+<h1>Um Núcleo mais simples de usar, inteiro</h1>
+<p class="lead">O laranja do Núcleo volta a abrir cada tela numa faixa contínua. O menu ☰ continua, mais organizado e com a busca dentro dele. O Assistente ganha uma aba na barra flutuante de vidro, e os nomes passam a dizer o que cada botão faz.</p>
+<p><strong>Revisão 4:</strong> o nome volta a ser <strong>Finanças</strong> (barra, menu, títulos e textos) e a tela de Finanças recupera o cartão de saldo do app atual, com as mesmas informações e funções, no acabamento novo.</p>
+<p><strong>Revisão 3:</strong> cabeçalhos com tamanho proporcional à função (grande no Início, médio nas telas internas, compacto no Assistente), menos decoração repetida, percentuais de projeto explicados como pagamento recebido, hábitos com informação completa, menu mais enxuto, ações específicas ("Nova tarefa", "Novo projeto") e barra de vidro com destaque mais leve. Testado com listas vazias e cheias, nomes longos e valores grandes.</p>
+<p><strong>Revisão 2:</strong> topo laranja grande no Início (cabeçalho, saudação, saldo e atalhos numa só área), menu ☰ mantido, Assistente no lugar de Buscar na barra, mais laranja em cabeçalhos, ações e seleções, vidro da barra mais visível e nenhum botão flutuando sobre o conteúdo.</p>
+<p>Nada foi alterado no app publicado. O escopo final continua sendo o aplicativo inteiro. Dados, contas, segurança, cálculos, automações e notificações continuam iguais. As mudanças de comportamento estão separadas na seção 6 e continuam pendentes.</p>
+<div class="cta"><a id="go-preview" href="#">Abrir a prévia navegável</a><a class="ghost" href="#mudancas">Ver o que muda de comportamento</a></div>
+
+<nav class="toc" aria-label="Conteúdo"><ol>
+  <li><a href="#diagnostico">Diagnóstico</a></li>
+  <li><a href="#navegacao">Organização e navegação</a></li>
+  <li><a href="#nomes">Nomes das ações</a></li>
+  <li><a href="#padrao">Padrão visual</a></li>
+  <li><a href="#previa">A prévia</a></li>
+  <li><a href="#mudancas">Mudanças de comportamento</a></li>
+  <li><a href="#telas">Todas as telas</a></li>
+  <li><a href="#etapas">Etapas de implementação</a></li>
+</ol></nav>
+
+<h2 id="diagnostico">1. Diagnóstico</h2>
+<p>Examinei as 35 telas do app, a navegação, os componentes compartilhados e os fluxos principais. Os problemas abaixo são concretos e estão no código atual.</p>
+<div class="wrap"><table>
+<thead><tr><th>Problema</th><th>Onde aparece</th><th>Efeito</th></tr></thead>
+<tbody>
+<tr><td>A navegação mora em três lugares</td><td>Barra inferior (Início + 3), menu lateral ☰ com 7 grupos, e 6 botões no topo do Início (menu, sino, Assistente, Buscar, Configurações). <code>Shell.tsx</code>, <code>SideMenu.tsx</code>, <code>HomePage.tsx</code></td><td>Não existe um caminho óbvio. O Assistente aparece em 4 lugares; outras funções, em nenhum lugar visível.</td></tr>
+<tr><td>Funções escondidas</td><td>Lembretes só se acessam por Configurações ou Notificações. Planejamento só por Rotina e Alimentação. Modo Foco só dentro de uma tarefa, de um hábito ou do Modo Manhã. A escolha das abas e das seções fica dentro de Configurações.</td><td>Você mesmo não encontra recursos que existem.</td></tr>
+<tr><td>Três telas de importação</td><td>"Importação inteligente" (<code>/intake</code>), "Importar extrato" (<code>/import</code>) e "Extratos importados" (<code>/imports</code>), cada uma num caminho diferente.</td><td>Não fica claro qual usar, nem onde está o que já foi importado.</td></tr>
+<tr><td>O mesmo dia em seis telas</td><td>Hoje, Agenda, Rotina (aba Hoje), Hábitos (seção Hoje), Recorrentes (seção Hoje) e o cartão de foco do Início. A Agenda já reúne compromissos, tarefas, rotina, hábitos e recorrentes. "Semana" (revisão com Score) tem o mesmo nome da vista Semana da Agenda.</td><td>A pessoa não sabe onde olhar nem onde marcar algo como feito.</td></tr>
+<tr><td>Nomes ambíguos</td><td>No Início, "Criar" abre a frase inteligente, "Adicionar" registra uma entrada de dinheiro e "Retirar" registra uma saída. O formulário diz "Retirar dinheiro", o que soa como sacar ou tirar de uma meta. Botões finais usam "Adicionar", "Criar" ou "Salvar" para a mesma ação.</td><td>A pessoa precisa adivinhar o que o botão faz.</td></tr>
+<tr><td>Duas portas para criar</td><td>O "+" flutuante guarda na Caixa de entrada (ou faz a ação da tela); a folha "Criar" entende frases. Início e Financeiro não têm "+".</td><td>O mesmo gesto faz coisas diferentes em cada tela.</td></tr>
+<tr><td>"Metas" com quatro sentidos</td><td>Metas de compra (<code>/goals</code>), metas com reserva no Financeiro, Metas da semana e Objetivos em Vida. Também "Projetos de trabalho" e projetos pessoais em Vida.</td><td>Confusão sobre onde cada meta vive e se o dinheiro é reservado.</td></tr>
+<tr><td>Laranja em todo lugar</td><td>Toda tela abre com uma faixa vermelhão. Barra de status, setas, links e item atual também são laranja (<code>PageHeader</code>, <code>.band</code> em <code>index.css</code>).</td><td>O laranja deixa de indicar "aja aqui" e tudo disputa atenção.</td></tr>
+<tr><td>Início sem prioridade</td><td>Até 12 blocos fixos: saldo, 4 atalhos, foco do dia, "Esperando você", "Feito pelo Núcleo", sugestão, atenção, movimentações, tarefas, projetos, metas, cobranças. Não dá para escolher nem ordenar.</td><td>O que importa hoje se perde no meio do resto.</td></tr>
+<tr><td>Formulários longos</td><td>Venda tem 15 campos, Projeto 11, Assinatura 10, Tarefa 7. Só Venda, Hábito e Refeição separam "Mais opções". Projeto pede Moeda, Link e "Terminou em" junto com o Nome.</td><td>Cadastrar algo simples parece trabalhoso.</td></tr>
+<tr><td>Letra pequena</td><td>Corpo de 15 px; rótulos, subtítulos e nomes das abas com 12 a 13 px. A Apple recomenda 17 pt para texto de leitura no iPhone e 11 pt como mínimo.</td><td>Cansa a leitura e piora a acessibilidade.</td></tr>
+<tr><td>Configurações numa página só</td><td>12 grupos misturados: conta, automações, seções, assistente, aparência, saldo, câmbio, cofre, backup, diagnóstico.</td><td>É difícil achar um ajuste específico.</td></tr>
+</tbody></table></div>
+
+<h2 id="navegacao">2. Organização e navegação</h2>
+<h3>Três caminhos, cada um com uma função</h3>
+<ul>
+  <li><strong>Barra flutuante: Início · Agenda · Finanças · Projetos · Assistente.</strong> As três abas do meio continuam personalizáveis (Você → Barra inferior). Início e Assistente ficam fixos. A aba Assistente abre direto a conversa, com o mesmo ícone de balão que o app usa hoje.</li>
+  <li><strong>Menu ☰ no canto superior esquerdo, em todas as telas principais.</strong> Ele mostra todas as áreas, agrupadas pelo que fazem, cada uma com uma frase curta e o número de itens. No topo ficam o acesso a <strong>Você</strong> e o campo <strong>Buscar em tudo</strong>. A busca filtra o próprio menu e encontra seus registros (projetos, clientes, movimentações, tarefas). Uma pergunta (terminada em "?") oferece "Perguntar ao Assistente". A escolha de tema também fica no menu.</li>
+  <li><strong>Topo de cada tela (faixa laranja), em três tamanhos:</strong>
+    <ul>
+      <li><strong>Grande, só no Início:</strong> cabeçalho, saudação, saldo e atalhos.</li>
+      <li><strong>Médio, nas telas internas:</strong> ☰ e as ações na mesma linha, o título embaixo e só o número que importa naquela tela. Sobra mais espaço para o conteúdo.</li>
+      <li><strong>Compacto no Assistente:</strong> uma linha só, com ☰ e o nome, para priorizar a conversa.</li>
+    </ul>
+    Quando a faixa sai da tela ao rolar, uma barra laranja compacta fica fixa no alto com o ☰, o nome da tela e a mesma ação. Nenhum botão flutua sobre o conteúdo.</li>
+  <li><strong>Ações com nome e destino específicos:</strong> cada botão abre direto o formulário certo.
+    <ul>
+      <li>Agenda: "Nova tarefa" e "Compromisso".</li>
+      <li>Finanças: "Nova entrada" e "Nova saída", no cartão de saldo.</li>
+      <li>Projetos: "Novo projeto".</li>
+      <li>Detalhe do projeto: "Registrar pagamento" e "Nova tarefa", já ligada ao projeto.</li>
+      <li>A folha geral "Novo", com a frase e todos os tipos, continua no Início.</li>
+    </ul>
+    Essa mudança está registrada como <a href="#mudancas">C12</a> para sua avaliação.</li>
+  <li><strong>No computador</strong>, o menu ☰ fica aberto como barra lateral permanente, com os mesmos grupos.</li>
+</ul>
+<h3>O menu ☰ por dentro</h3>
+<div class="wrap"><table>
+<thead><tr><th>Grupo</th><th>Itens (com uma frase do que fazem)</th></tr></thead>
+<tbody>
+<tr><td>Topo</td><td><strong>Você</strong> (conta, avisos e ajustes) e <strong>Buscar em tudo</strong></td></tr>
+<tr><td>Dia a dia</td><td><strong>Agenda</strong> (hoje e semana), <strong>Tarefas</strong>, <strong>Rotina</strong> (atividades, hábitos e recorrentes), <strong>Alimentação</strong> (refeições, lista de compras e planejador), <strong>Caixa de entrada</strong></td></tr>
+<tr><td>Finanças</td><td><strong>Finanças</strong> (saldo, movimentações, a receber, resumo do mês), <strong>Vendas</strong>, <strong>Assinantes</strong>, <strong>Assinaturas</strong>, <strong>Metas</strong> (reservas e compras planejadas)</td></tr>
+<tr><td>Trabalho</td><td><strong>Projetos</strong>, <strong>Clientes</strong>, <strong>Portfólio</strong></td></tr>
+<tr><td>Planejamento</td><td><strong>Revisão da semana</strong> (Score, metas da semana, sequências, desafios), <strong>Vida</strong> (projetos pessoais, objetivos, evolução)</td></tr>
+<tr><td>Guardados</td><td><strong>Anotações</strong>, <strong>Senhas</strong></td></tr>
+<tr><td>Ferramentas</td><td><strong>Assistente</strong>, <strong>Automações</strong> (histórico e regras), <strong>Importar</strong> (uma tela, com histórico), <strong>Notificações e lembretes</strong>, <strong>Modo Foco</strong></td></tr>
+<tr><td>Conta e ajustes</td><td><strong>Você</strong>, <strong>Personalizar</strong> (Início, barra inferior e seções visíveis)</td></tr>
+</tbody></table></div>
+<p><strong>Menu mais fácil de percorrer:</strong> cada linha tem um ícone pequeno sem caixa, o nome e o número de itens, com altura de 46 px. A explicação curta aparece só onde o nome não basta:</p>
+<ul>
+  <li>Rotina, Alimentação e Caixa de entrada;</li>
+  <li>Assinantes, Assinaturas e Metas;</li>
+  <li>Portfólio, Revisão da semana e Vida;</li>
+  <li>Automações, Importar e Modo Foco.</li>
+</ul>
+<p>Funções que hoje estão escondidas ganham uma linha própria: Lembretes, Modo Foco e Personalizar.</p>
+<h3>Hoje, Agenda, Rotina, Hábitos e Semana</h3>
+<p><strong>Agenda é onde se vê e se marca o dia.</strong> Rotina é onde se configura o que se repete. A Revisão da semana olha para trás e planeja a próxima.</p>
+<ul>
+  <li><strong>Agenda › Hoje</strong> mostra compromissos, tarefas, atividades da rotina, hábitos e recorrentes, com filtros. Os rituais da tela Hoje ("Começar o dia", "Fechar o dia") aparecem como cartão no horário certo.</li>
+  <li><strong>Agenda › Semana</strong> mostra os dias com seus itens.</li>
+  <li><strong>Rotina</strong> tem três abas, Atividades, Hábitos e Recorrentes, para criar e ajustar.</li>
+  <li><strong>Revisão da semana</strong> traz Score, check-in, metas, sequências e desafios.</li>
+</ul>
+<p>Nenhuma regra muda: os mesmos itens aparecem nos mesmos dias, com os mesmos lembretes. A unificação de Hoje com Agenda continua pendente (<a href="#mudancas">C1</a>).</p>
+<h3>Início: a central do seu dia</h3>
+<p>Uma área laranja contínua, de ponta a ponta, reúne:</p>
+<ol>
+  <li>Cabeçalho: ☰, o "N" com NÚCLEO, notificações e Você.</li>
+  <li>Data e saudação, com o resumo do dia.</li>
+  <li>Saldo disponível e o que entrou e saiu no mês.</li>
+  <li>Quatro atalhos redondos: Entrada, Saída, Tarefa e Novo.</li>
+</ol>
+<p>O conteúdo sobe sobre o laranja com cantos arredondados, e os blocos vêm em ordem de prioridade (você escolhe quais aparecem e em que ordem):</p>
+<ol>
+  <li><strong>Agora</strong>: o próximo compromisso e as tarefas de hoje, que dá para marcar ali mesmo.</li>
+  <li><strong>Precisa de você</strong>: pagamentos a confirmar, cobranças próximas e tarefas atrasadas.</li>
+  <li>Hábitos de hoje: cartões com nome, quantidade e unidade completas ("5 de 8 copos", "0 de 20 min", "Feito hoje") e uma barra fina. Um toque registra mais um. Depois, prazos de projetos.</li>
+  <li>Disponíveis para ligar: movimentações recentes, metas, próximas cobranças e "Feito pelo Núcleo".</li>
+</ol>
+<h2 id="nomes">3. Nomes das ações</h2>
+<p>Regra única: o botão diz o verbo e a coisa. Criar diz "Salvar tarefa", editar diz "Salvar alterações", apagar diz "Excluir…" e pede confirmação.</p>
+<div class="wrap"><table>
+<thead><tr><th>Hoje</th><th>O que faz de verdade</th><th>Proposta</th></tr></thead>
+<tbody>
+<tr><td>Início: "Criar"</td><td>Abre a frase inteligente ou os botões de cada tipo</td><td>Atalho <strong>Novo</strong> e botão "+ Novo" no topo → folha <strong>Novo</strong></td></tr>
+<tr><td>Início: "Adicionar"</td><td>Registra dinheiro que entrou</td><td><strong>Entrada</strong>; formulário "Nova entrada"; botão "Salvar entrada"</td></tr>
+<tr><td>Início: "Retirar" / "Retirar dinheiro"</td><td>Registra dinheiro que saiu</td><td><strong>Saída</strong>; formulário "Nova saída"; botão "Salvar saída"</td></tr>
+<tr><td>Formulários: "Adicionar", "Criar"</td><td>Salvam um item novo</td><td><strong>Salvar &lt;coisa&gt;</strong> ("Salvar refeição", "Salvar assinatura")</td></tr>
+<tr><td>"Capturar"</td><td>Guarda um texto na Caixa de entrada</td><td><strong>Guardar para organizar depois</strong></td></tr>
+<tr><td>Financeiro</td><td>Saldo, movimentações, a receber, resumo</td><td><strong>Finanças</strong>, o nome que você escolheu, também usado no grupo do menu e na aba</td></tr>
+<tr><td>Metas de compra / metas com reserva</td><td>Comprar algo / separar dinheiro</td><td><strong>Metas › Compras planejadas</strong> e <strong>Metas › Reservas</strong></td></tr>
+<tr><td>Semana</td><td>Revisão com Score, metas e desafios</td><td><strong>Revisão da semana</strong></td></tr>
+<tr><td>Feito pelo Núcleo / Minhas regras</td><td>Histórico e regras de automação</td><td><strong>Automações › Histórico</strong> e <strong>Automações › Regras</strong></td></tr>
+<tr><td>Importação inteligente / Importar extrato / Extratos importados</td><td>Trazer dados de arquivos</td><td><strong>Importar</strong> (uma tela; histórico embaixo)</td></tr>
+<tr><td>Configurações</td><td>Ajustes do app e da conta</td><td><strong>Você</strong> (perfil, avisos, personalização, dados), aberto pelo menu ☰ ou pela inicial no Início</td></tr>
+</tbody></table></div>
+
+<h2 id="padrao">4. Padrão visual</h2>
+<p>O laranja é a identidade e a estrutura do Núcleo: abre cada tela, marca o que está selecionado e a ação principal. O conteúdo fica em superfícies calmas para a leitura não cansar. O mesmo sistema vale no claro e no escuro, no celular e no computador.</p>
+<h3>Tipografia (Geist)</h3>
+<div class="wrap"><table>
+<thead><tr><th>Estilo</th><th>Tamanho / peso</th><th>Uso</th></tr></thead>
+<tbody>
+<tr><td>Título grande</td><td>34 px · 650 · -0,035 em</td><td>Nome da tela (um por tela)</td></tr>
+<tr><td>Valor de destaque</td><td>40 px · 650 · algarismos alinhados</td><td>Saldo do Início, valor no formulário (46 px)</td></tr>
+<tr><td>Título de seção</td><td>20 px · 650</td><td>"Agora", "Pagamentos"</td></tr>
+<tr><td>Corpo e título de linha</td><td>17 px · 400/550</td><td>Textos, nomes nas listas, campos</td></tr>
+<tr><td>Secundário</td><td>15 px · 400</td><td>Subtítulos das linhas, notas</td></tr>
+<tr><td>Rótulo</td><td>13 px · 600</td><td>Rótulos de grupo e de número</td></tr>
+<tr><td>Mínimo</td><td>11,5 px · 600</td><td>Só nos nomes da barra inferior</td></tr>
+</tbody></table></div>
+<p><strong>Licenças.</strong> A Geist já está no app (SIL Open Font License 1.1) e pode ser usada na web, no Android e no computador. <strong>Não uso a SF Pro:</strong> a licença da Apple permite só maquetes para plataformas Apple e proíbe embutir a fonte em produtos. Os ícones continuam sendo Lucide (licença ISC, já no app). <strong>Não uso SF Symbols</strong>, que são exclusivos das plataformas Apple.</p>
+<h3>Espaço e forma</h3>
+<div class="grid">
+  <div class="box"><b>Grade de 4 px</b><span>Espaços 4, 8, 12, 16, 20, 24, 32. Margem da tela 20 px (16 px abaixo de 360 px).</span></div>
+  <div class="box"><b>Cantos</b><span>Cartões e grupos 20 px, campos e botões 14 a 16 px, folhas 28 px, barra em cápsula.</span></div>
+  <div class="box"><b>Toque</b><span>Toda área tocável com no mínimo 44 × 44 px; linhas de lista com 60 px.</span></div>
+  <div class="box"><b>Profundidade</b><span>Claro: cartões brancos com sombra suave. Escuro: um degrau de tom e um fio de luz. Sem bordas grossas.</span></div>
+</div>
+<h3>Cor: onde o laranja aparece</h3>
+<ul>
+  <li><span class="swatch" style="background:#ff5b2e"></span><strong>Faixa laranja contínua no topo de toda tela</strong>, incluindo a área da barra de status do iPhone, com o tamanho de acordo com a função (grande, médio ou compacto).</li>
+  <li>No modo claro, textos, títulos e ícones sobre a faixa são pretos (contraste de 6,4:1).</li>
+  <li>No modo escuro, ficam brancos e sólidos, como no app atual: o laranja é o mesmo e a hierarquia vem do tamanho e do peso. Os botões escuros da faixa viram brancos com texto escuro.</li>
+  <li>A troca de tema atualiza as cores na hora.</li>
+  <li><strong>Decoração com função, sem repetir:</strong>
+    <ul>
+      <li>o brilho suave e o "N" em marca-d'água ficam só no Início;</li>
+      <li>as telas internas usam laranja liso;</li>
+      <li>os títulos de seção não têm mais marcador;</li>
+      <li>cartões e painéis não usam degradê.</li>
+    </ul></li>
+  <li><strong>Laranja que orienta:</strong>
+    <ul>
+      <li>chip de filtro ativo, opção escolhida, dia escolhido e interruptores ligados;</li>
+      <li>tarefas concluídas;</li>
+      <li>a linha do próximo compromisso e o painel do valor nos formulários;</li>
+      <li>ícones de itens que pedem ação e links em laranja escuro (#b8350c no claro, #ff7a4f no escuro).</li>
+    </ul></li>
+  <li><strong>Pagamentos recebidos em verde:</strong> a barra de pagamento dos projetos é verde e sempre vem com a legenda "Pagamento · 40% recebido" e o valor ("R$ 1.600,00 de R$ 4.000,00"). A situação do trabalho (Em andamento, Em revisão…) fica no selo ao lado do cliente. Assim, andamento e pagamento não se confundem.</li>
+  <li>Vermelho-rosa para alertas e exclusão, âmbar para atenção e azul-petróleo para previsto e a receber. Saídas ficam na cor do texto.</li>
+</ul>
+<h3>Finanças: o cartão de saldo de volta</h3>
+<p>A tela de Finanças mantém o cartão de saldo que existe hoje (<code>BalanceCard</code>), com as mesmas informações e funções e o acabamento novo. Ele fica meio sobre a faixa laranja, numa superfície neutra. O laranja aparece em três pontos: um traço curto no topo, o quadradinho ao lado de "Saldo" e o botão principal.</p>
+<ul>
+  <li><strong>Saldo</strong> com a escolha da <strong>moeda de exibição</strong> no canto. Muda só como o saldo aparece; com outra moeda, a linha de cotação aparece embaixo.</li>
+  <li><strong>Valor grande</strong>: a parte inteira em destaque, símbolo e centavos menores. Ele diminui sozinho em valores de milhões para não sair do cartão.</li>
+  <li><strong>Variação depois de um lançamento</strong> (por exemplo "−R$ 120,00"), por alguns segundos. O número conta até o novo saldo em 0,75 s; com "Reduzir movimento", troca na hora.</li>
+  <li><strong>Reservado para metas / Disponível</strong>, só quando alguma meta reserva dinheiro do saldo.</li>
+  <li><strong>Nova entrada</strong> (laranja) e <strong>Nova saída</strong> (contorno). Fazem o mesmo que "Adicionar" e "Retirar" de hoje; só o nome muda (C8).</li>
+</ul>
+<p>Com o cartão, a faixa de Finanças fica média e mostra só o título e o valor a receber. As ações saíram da faixa para não aparecerem duas vezes.</p>
+<figure style="margin:14px 0"><img src="img/financas.jpg" alt="Tela de Finanças com o cartão de saldo: claro, logo depois de uma saída com a variação, escuro e com valores na casa do milhão" style="width:100%;border-radius:14px;border:1px solid var(--line)"><figcaption style="font-size:14px;color:var(--faint);margin-top:6px">Finanças: claro, logo depois de registrar uma saída (variação em vermelho), escuro e o cenário com valores grandes.</figcaption></figure>
+<h3>Componentes</h3>
+<div class="wrap"><table>
+<thead><tr><th>Peça</th><th>Padrão</th></tr></thead>
+<tbody>
+<tr><td>Botões</td><td>Principal (laranja, um por tela), Secundário (cinza translúcido), Escuro (confirmação dentro de cartões), Texto (link). Altura 50 px, ou 36 px no compacto.</td></tr>
+<tr><td>Listas</td><td>Grupos com cantos arredondados; linha com ícone em quadrado suave (38 px), título 17 px, detalhe 15 px, valor ou seta à direita; divisória a partir do texto.</td></tr>
+<tr><td>Filtros</td><td>Chips em cápsula de 38 px com contador; o ativo fica preenchido.</td></tr>
+<tr><td>Período e tipo</td><td>Controle segmentado de 2 a 4 opções.</td></tr>
+<tr><td>Formulários</td><td>Folha que sobe de baixo; o essencial primeiro (valor em destaque, descrição, categoria, data); "Mais opções" fechado, dizendo o que tem dentro; botão final fixo e desativado enquanto falta o obrigatório; desfazer depois de salvar.</td></tr>
+<tr><td>Detalhe</td><td>Situação (selo), título grande, número principal com progresso, dois fatos lado a lado, seções; ação principal fixa embaixo; "Editar" em cima; ações raras em "⋯"; Excluir sempre por último e em vermelho.</td></tr>
+<tr><td>Telas vazias</td><td>Uma frase do que aparecerá ali e uma ação.</td></tr>
+<tr><td>Movimento</td><td>Folhas sobem com mola curta e aba ativa sem atraso. Com "Reduzir movimento", tudo vira troca imediata ou esmaecer.</td></tr>
+</tbody></table></div>
+<h3>A barra inferior de vidro</h3>
+<ul>
+  <li>Cápsula de 64 px, 12 px das laterais e 10 px acima da área segura do iPhone (<code>env(safe-area-inset-bottom)</code>), com largura máxima de 460 px. Nomes de uma palavra abaixo dos ícones.</li>
+  <li><strong>Vidro:</strong> fundo translúcido em leve degradê vertical, com desfoque de 14 px e saturação. O conteúdo que rola por trás aparece desfocado.</li>
+  <li><strong>Borda e sombra mais suaves:</strong> borda finíssima quase invisível, um reflexo leve no topo e sombra externa suave.</li>
+  <li><strong>Aba ativa mais leve:</strong> deixa de ter fundo marrom ou alaranjado.
+    <ul>
+      <li>No claro, uma superfície branca translúcida integrada ao vidro, com sombra mínima e ícone e nome em laranja escuro (#b8350c), com contraste de pelo menos 4,5:1.</li>
+      <li>No escuro, um clarão discreto, com ícone e nome em laranja claro (#ff8f6b).</li>
+      <li>As outras abas ficam em tom escuro (claro) ou claro (escuro), bem legível.</li>
+    </ul></li>
+  <li><strong>Fundo alternativo:</strong> sem desfoque disponível (<code>@supports</code>) ou com "Reduzir transparência" ligado, a mesma barra com fundo sólido.</li>
+  <li><strong>Teclado aberto:</strong> a barra e as ações presas embaixo descem e somem. O campo de conversa do Assistente desce até a borda.</li>
+  <li><strong>Nada fica escondido:</strong> a margem inferior é calculada (barra + área segura + 24 px) e cresce nas telas com ação presa embaixo ou campo de conversa.</li>
+  <li>O efeito usa CSS padrão da web (<code>backdrop-filter</code>), sem depender de recurso nativo da Apple.</li>
+</ul>
+<h3>Proporções</h3>
+<p>Comparadas à primeira versão da prévia, as proporções ficaram mais justas:</p>
+<ul>
+  <li>linhas de lista com 56 px;</li>
+  <li>títulos de seção com 19 px e menos espaço acima;</li>
+  <li>chips com 36 px;</li>
+  <li>cartões com 18 px de canto;</li>
+  <li>hábitos em cartões com o texto completo e uma barra fina;</li>
+  <li>cabeçalho médio nas telas internas, bem mais baixo que o do Início (sem saldo grande nem atalhos).</li>
+</ul>
+<p>O texto de leitura continua em 16,5 a 17 px e toda área tocável mantém pelo menos 44 px.</p>
+<h2 id="previa">5. A prévia</h2>
+<p>É uma página separada, com dados fictícios. Ela não usa o banco, a conta nem o código publicado.</p>
+<figure style="margin:14px 0"><img src="img/telas-claro.jpg" alt="Prévia no modo claro: Início, Início rolado, Agenda e Projetos, com a faixa laranja no topo e a barra de vidro embaixo" style="width:100%;border-radius:14px;border:1px solid var(--line)"><figcaption style="font-size:14px;color:var(--faint);margin-top:6px">Modo claro: Início, Início rolado (hábitos com informação completa), Agenda com cabeçalho médio e Projetos com a barra "Pagamento · % recebido".</figcaption></figure>
+<figure style="margin:14px 0"><img src="img/telas-escuro.jpg" alt="Prévia no modo escuro com as mesmas telas" style="width:100%;border-radius:14px;border:1px solid var(--line)"><figcaption style="font-size:14px;color:var(--faint);margin-top:6px">Modo escuro: Início, Finanças com o cartão de saldo, detalhe do projeto e Assistente com cabeçalho compacto. A faixa continua laranja, com textos brancos.</figcaption></figure>
+<figure style="margin:14px 0"><img src="img/menu-detalhe-assistente.jpg" alt="Menu de três traços enxuto, formulário Novo projeto, menu no escuro e Projetos no escuro" style="width:100%;border-radius:14px;border:1px solid var(--line)"><figcaption style="font-size:14px;color:var(--faint);margin-top:6px">Menu ☰ enxuto (claro), formulário Novo projeto aberto por "Novo projeto", menu no escuro e Projetos no escuro.</figcaption></figure>
+<ul>
+  <li><strong>Início</strong> com a área laranja contínua.</li>
+  <li><strong>Menu ☰</strong>: busca, todas as áreas e o tema.</li>
+  <li><strong>Agenda</strong>: Hoje e Semana, com filtros.</li>
+  <li><strong>Finanças</strong>: cartão de saldo, busca, filtros e a vista A receber.</li>
+  <li><strong>Projetos</strong> e o detalhe <strong>Site Clínica Nova</strong>.</li>
+  <li><strong>Nova saída / Nova entrada</strong>: funciona de verdade, salva na lista e oferece desfazer.</li>
+  <li><strong>Novo</strong> (no Início): frase ou tipo.</li>
+  <li><strong>Nova tarefa, Novo compromisso, Novo projeto e Registrar pagamento</strong>: formulários específicos, que funcionam de verdade.</li>
+  <li><strong>Assistente</strong>: só o visual. A tela avisa que as mensagens são exemplos fixos e que ali ele não responde; nada mostrado representa recurso do Assistente real.</li>
+  <li><strong>Você</strong>: tema e barra sem transparência.</li>
+</ul>
+<h3>O que funciona e o que é demonstração</h3>
+<div class="wrap"><table>
+<thead><tr><th>Funciona de verdade (com dados fictícios)</th><th>Só demonstração</th></tr></thead>
+<tbody><tr>
+<td style="font-weight:400">
+  <ul style="margin:0;padding-left:18px">
+    <li>Barra inferior, menu ☰ e a busca do menu (áreas e registros).</li>
+    <li>Filtros, Hoje/Semana e busca de movimentações.</li>
+    <li>Marcar tarefas e registrar hábitos, com desfazer.</li>
+    <li>Nova entrada, Nova saída, Nova tarefa, Novo compromisso, Novo projeto e Registrar pagamento: salvam, atualizam as telas e oferecem desfazer.</li>
+    <li>Abrir qualquer projeto.</li>
+    <li>Personalizar Início (mostrar e ocultar blocos).</li>
+    <li>Cartão de saldo em Finanças: moeda de exibição (cotações de exemplo), variação depois de um lançamento e Reservado para metas / Disponível.</li>
+    <li>Tema, barra sem transparência e os cenários Normal, Muitos e Vazio (em Você → Sobre esta prévia).</li>
+  </ul>
+</td>
+<td>
+  <ul style="margin:0;padding-left:18px">
+    <li>Assistente: só o visual; ele não responde.</li>
+    <li>Frase da folha "Novo": mostra como seria entendida, mas não salva.</li>
+    <li>Notificações, voz, Editar, ações do "⋯", Confirmar pagamento, telas fora da prévia e a escolha das abas da barra.</li>
+    <li>Esses botões mostram um aviso que começa com "Demonstração".</li>
+  </ul>
+</td>
+</tr></tbody></table></div>
+<h3>Verificação no tamanho do iPhone</h3>
+<p>Rodei uma checagem automática nas larguras de 390 px (iPhone 12 a 16) e 375 px (iPhone SE e mini). Ela cobriu:</p>
+<ul>
+  <li>os modos claro e escuro;</li>
+  <li>os cenários Normal, Muitos (nomes longos, valores na casa do milhão e listas extensas) e Vazio;</li>
+  <li>todas as telas da prévia, as vistas Semana e A receber e o menu aberto.</li>
+</ul>
+<p>Em cada tela, ela procurou rolagem horizontal, texto cortado, texto saindo da tela e o último conteúdo atrás da barra. Resultado: nenhum problema encontrado. As capturas também foram conferidas visualmente; o que apareceu foi corrigido antes de publicar (valor de pagamento quebrando no meio, balão da conversa sem cor no escuro). Os dez fluxos testados funcionaram:</p>
+<ul>
+  <li>Novo projeto, Nova tarefa e Novo compromisso abrem o formulário certo e o item aparece na tela;</li>
+  <li>o botão salvar fica desativado até o nome ser preenchido;</li>
+  <li>Registrar pagamento leva o projeto a 100% recebido;</li>
+  <li>o hábito registra mais um;</li>
+  <li>a folha geral "Novo" continua no Início.</li>
+</ul>
+<h2 id="mudancas">6. Mudanças de comportamento <span class="tag">pendentes</span></h2>
+<div class="box warn"><p>As revisões 2 e 3 aprovaram só ajustes visuais e de organização da proposta e da prévia. Nenhuma mudança de comportamento abaixo está aprovada. Nenhuma delas muda dados, cálculos, sincronização, login, automações, regras, lembretes ou notificações, nem apaga funções.</p></div>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Mudança</th><th>Antes → depois</th><th>Situação</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td>Hoje entra na Agenda</td><td>Seção Hoje separada → vista "Hoje" da Agenda, com os rituais da manhã e da noite. Links <code>#/today</code> levam para a Agenda; "Abrir Modo Manhã ao abrir o app" continua.</td><td>Pendente</td></tr>
+<tr><td>C2</td><td><s>Sai o menu ☰</s></td><td>O menu fica, reorganizado, com a busca dentro.</td><td>Retirada a seu pedido</td></tr>
+<tr><td>C3</td><td>Ações de criar</td><td>"+" flutuante (captura) e folha "Criar" → ação principal no topo de cada tela + folha "Novo" no Início. "Guardar para organizar depois" continua como opção da folha.</td><td>Pendente (sem botão flutuante)</td></tr>
+<tr><td>C4</td><td>Configurações viram Você</td><td>Página longa → grupos curtos, abertos pelo menu ☰ ou pela inicial no Início. Mesmas opções; <code>#/settings</code> continua funcionando.</td><td>Pendente</td></tr>
+<tr><td>C5</td><td>Início personalizável</td><td>Blocos fixos → blocos que você escolhe e ordena. A ordem padrão é a da seção 2.</td><td>Pendente</td></tr>
+<tr><td>C6</td><td>Rotina reúne Hábitos e Recorrentes</td><td>3 seções soltas → 1 seção com 3 abas. Cada parte continua podendo ser escondida.</td><td>Pendente</td></tr>
+<tr><td>C7</td><td>Importar unificado</td><td>3 telas → 1 tela com histórico, mantendo os mesmos fluxos e o desfazer.</td><td>Pendente</td></tr>
+<tr><td>C8</td><td>Novos nomes</td><td>Tabela da seção 3; o nome da seção passa a ser "Finanças", por sua escolha. A busca e o Assistente aprendem os nomes antigos como sinônimos.</td><td>Pendente</td></tr>
+<tr><td>C9</td><td>Assistente fixo na barra</td><td>Início + 3 escolhidas → Início + 3 escolhidas + Assistente. As 3 abas que você escolheu continuam; o Assistente sai do topo do Início.</td><td>Aprovado como direção da prévia; implementação pendente</td></tr>
+<tr><td>C10</td><td>Busca dentro do menu</td><td>Tela Buscar separada → campo "Buscar em tudo" no topo do menu ☰. O atalho "/" do teclado no computador continua.</td><td>Aprovado como direção da prévia; implementação pendente</td></tr>
+<tr><td>C11</td><td>Barra laranja compacta com ação</td><td>Barra compacta só com o título → título + ☰ + ação específica da tela ao rolar</td><td>Pendente</td></tr>
+<tr><td>C12</td><td>Ações específicas por tela</td><td>Hoje o "+" de cada tela abre a ação daquela tela ou a captura na Caixa de entrada → botões com nome específico que abrem direto o formulário:
+<ul>
+  <li>Agenda: "Nova tarefa" e "Compromisso";</li>
+  <li>Finanças: "Nova entrada" e "Nova saída", no cartão de saldo;</li>
+  <li>Projetos: "Novo projeto";</li>
+  <li>detalhe do projeto: "Registrar pagamento" e "Nova tarefa", que já vem ligada ao projeto.</li>
+</ul>
+A folha geral "Novo" fica no Início. Os formulários são os mesmos de hoje; só muda o caminho até eles.</td><td>Pendente, para sua avaliação</td></tr>
+</tbody></table></div>
+<h2 id="telas">7. Todas as telas e como recebem o padrão</h2>
+<p>Cada tela usa um de seis modelos. Mudam o visual e a organização; o conteúdo e as regras ficam.</p>
+<div class="wrap"><table>
+<thead><tr><th>Modelo</th><th>Telas</th><th>O que muda</th></tr></thead>
+<tbody>
+<tr><td>Painel</td><td>Início, Finanças (resumo do mês), Revisão da semana, Vida (evolução), Score</td><td>Faixa laranja (grande no Início, média nas demais) com o número principal; blocos em grupos; gráficos com a mesma escala de cor.</td></tr>
+<tr><td>Lista</td><td>Agenda, Tarefas, Rotina (3 abas), Alimentação, Caixa de entrada, Movimentações, Vendas, Assinantes, Assinaturas, Metas, Projetos, Clientes, Portfólio, Anotações, Senhas, Notificações, Automações, Regras</td><td>Chips com contador; linhas de 60 px; busca no topo onde há muitos itens; tela vazia com uma ação.</td></tr>
+<tr><td>Detalhe</td><td>Projeto, Cliente, Venda, Comprador, Assinante, Assinatura, Meta, Hábito, Projeto pessoal, Objetivo, Anotação, Senha, Movimentação</td><td>Situação, título, número principal, fatos, seções; ação principal fixa; "Editar" em cima; "⋯" para o raro.</td></tr>
+<tr><td>Formulário</td><td>Tarefa, Compromisso, Entrada/Saída, Venda, Pagamento, Projeto, Cliente, Assinatura, Assinante, Plano, Meta, Hábito, Atividade, Refeição, Recorrente, Regra, Lembrete, Senha</td><td>Essencial primeiro e "Mais opções" com resumo. Exemplos: Venda (cliente, o que vendeu, valor e já recebeu?), Projeto (nome, cliente, valor e prazo), Assinatura (nome, preço e recorrência). Botão "Salvar &lt;coisa&gt;".</td></tr>
+<tr><td>Fluxo</td><td>Boas-vindas, Entrar/Criar conta, Importar, Planejamento, Modo Foco, Começar e Fechar o dia, Assistente</td><td>Uma pergunta por passo, progresso visível, botão principal fixo, sempre com "Voltar".</td></tr>
+<tr><td>Ajustes</td><td>Você, Conta, Lembretes, Seções, Barra, Início, Moedas, Cofre, Backup, Diagnóstico</td><td>Grupos curtos com nomes de tarefa ("Trocar senha do cofre"), interruptores à direita e uma explicação de uma linha.</td></tr>
+</tbody></table></div>
+
+<h2 id="etapas">8. Etapas de implementação (depois da sua aprovação)</h2>
+<ol>
+  <li><strong>Base</strong>: cores, tipografia e componentes compartilhados (botões, linhas, chips, segmentado, folha, campos, faixa laranja do topo e barra compacta) e a barra flutuante de vidro.</li>
+  <li><strong>Navegação</strong>: menu ☰ reorganizado com a busca, aba Assistente, Você, ações no topo e os links antigos redirecionados.</li>
+  <li><strong>Início</strong> personalizável.</li>
+  <li><strong>Dia a dia</strong>: Agenda com Hoje, Rotina com 3 abas, Revisão da semana.</li>
+  <li><strong>Finanças</strong>: Finanças (com o cartão de saldo), Vendas, Assinantes, Assinaturas, Metas e Importar.</li>
+  <li><strong>Trabalho, Planejamento, Guardados e Ferramentas.</strong></li>
+  <li><strong>Computador</strong>, acessibilidade (contraste, foco, leitores de tela, texto ampliado) e revisão completa no claro e no escuro.</li>
+</ol>
+<p>Cada etapa roda os testes automáticos (unitários e de tela) antes de seguir. Os testes só mudam quando o texto ou o lugar mudou de propósito, e cada mudança é explicada. Nada vai para a <code>main</code> nem para o site sem a sua aprovação.</p>
+
+<footer>Fontes consultadas: Apple Human Interface Guidelines (Tab bars, Materials, Typography, Accessibility) e a licença da fonte SF publicada em developer.apple.com/fonts. A análise das telas foi feita sobre o código da <code>main</code> (f0b3242). A branch <code>feat/motion</code> não foi usada.</footer>
+</main>
+<script>
+// O link da prévia é preenchido depois da publicação.
+document.getElementById('go-preview').href = 'https://claude.ai/artifact/7vT47MTYktivT5ayZPjxrp';
+</script>
+</body>
+</html>

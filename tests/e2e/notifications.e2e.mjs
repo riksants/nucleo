@@ -84,6 +84,8 @@ try {
   )
 
   await b.goto(BASE + '#/reminders')
+  // Wait for the screen to load before reading (it used to be read too early).
+  for (let i = 0; i < 40 && !(await b.text()).includes('Notificações'); i++) await b.sleep(150)
   let text = await b.text()
   r.check('tela simples: só o botão de ativar (nada para configurar antes)', text.includes('Ativar notificações') && !text.includes('Quando avisar') && !text.includes('Minutos antes'))
   await b.shot('notificacoes-desligadas')

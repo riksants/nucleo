@@ -1,4 +1,5 @@
 import { Check, Sparkles, Wand2, X } from 'lucide-react'
+import { AreaTabs } from '../../app/areaTabs'
 import { useMemo, useState } from 'react'
 import { navigate, type RoutePath, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -90,7 +91,7 @@ function RunRow({ run, onChangeMonth }: { run: AutomationRun; onChangeMonth(r: A
         confirmLabel: 'Desfazer também',
       }))
     const { partial } = await undo(run, 'undone', alsoLinked)
-    if (run.fromPending && partial) return toast('Não desfeito: você alterou a movimentação depois. Se quiser, apague-a no Financeiro.', 'error')
+    if (run.fromPending && partial) return toast('Não desfeito: você alterou a movimentação depois. Se quiser, apague-a em Finanças.', 'error')
     toast(
       run.fromPending
         ? 'Confirmação desfeita: a cobrança voltou para a lista'
@@ -322,7 +323,7 @@ function PendingRow({ item, onConfirmCharge }: { item: PendingItem; onConfirmCha
     if (item.kind === 'charge') {
       const ok = await confirm({
         title: income ? 'Não recebeu?' : 'Não pagou?',
-        message: income ? `A cobrança de ${run.origin.label} sai da lista. Nada entra no Financeiro.` : `A cobrança de ${run.origin.label} sai da lista. Nada sai do Financeiro.`,
+        message: income ? `A cobrança de ${run.origin.label} sai da lista. Nada entra em Finanças.` : `A cobrança de ${run.origin.label} sai da lista. Nada sai de Finanças.`,
         confirmLabel: income ? 'Não recebi' : 'Não paguei',
       })
       if (ok) await decline(run)
@@ -399,7 +400,7 @@ export function AutomationsPage() {
 
   return (
     <>
-      <PageHeader title="Feito pelo Núcleo" subtitle="O que o Núcleo fez, por quê, e o que espera você" />
+      <PageHeader title="Automações" subtitle="O que o Núcleo fez, por quê, e o que espera você" below={<AreaTabs area="automacoes" />} />
       {pause && <p className="card mb-5 px-4 py-3 text-[14px] leading-relaxed text-warn">{pause}</p>}
       {digest.length > 0 && !onlyRule && (
         <div className="card mb-5 divide-y divide-line">

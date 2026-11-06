@@ -55,7 +55,7 @@ try {
   r.check('escuro: saudação e saldo em branco no cabeçalho', darkColor === 'rgb(255, 255, 255)' && /^rgba?\(255, 255, 255/.test(darkBalance), `${darkColor} / ${darkBalance}`)
   r.check('Início destaca a tarefa atrasada (o que importa agora)', text.includes('Enviar proposta') && text.includes('Atrasada'))
   r.check('escuro: moeda escolhida legível (pílula branca, texto escuro)', (await b.eval(`getComputedStyle([...document.querySelectorAll('header.band [role=radio][aria-checked=true]')][0]).color`)) === 'rgb(10, 10, 11)')
-  r.check('ações rápidas: Criar, Adicionar, Retirar, Hoje', await b.eval(`[...document.querySelectorAll('nav[aria-label="Ações rápidas"] button')].map(x => x.textContent.trim()).join(',') === 'Criar,Adicionar,Retirar,Hoje'`))
+  r.check('atalhos no topo: Entrada, Saída, Tarefa, Novo', await b.eval(`[...document.querySelectorAll('nav[aria-label="Atalhos"] button')].map(x => x.textContent.trim()).join(',') === 'Entrada,Saída,Tarefa,Novo'`))
   await b.shot('e1-inicio-escuro')
   await b.eval(`localStorage.setItem('nucleo:theme', '"light"')`)
   await b.goto(BASE + 'favicon.svg')
@@ -69,7 +69,7 @@ try {
 
   // ---------- Cadastro inteligente: frase → conferência no formulário → só então salva
   await b.goto(BASE + '#/')
-  await b.click('Criar', 'nav[aria-label="Ações rápidas"] button')
+  await b.click('Novo', 'nav[aria-label="Atalhos"] button')
   await sentence('Tenho dentista amanhã às 15h')
   text = await dialog()
   r.check('frase entendida: compromisso, amanhã, 15:00–16:00', text.includes('Dentista') && text.includes('Amanhã') && text.includes('15:00–16:00') && text.includes('Compromisso'))
@@ -84,7 +84,7 @@ try {
   r.check('compromisso criado pelo mesmo cadastro do manual', ev?.title === 'Dentista' && ev.date === tomorrow && ev.start === '15:00' && ev.end === '16:00')
 
   // Hora ambígua: pergunta; voltar não salva nada.
-  await b.click('Criar', 'nav[aria-label="Ações rápidas"] button')
+  await b.click('Novo', 'nav[aria-label="Atalhos"] button')
   await sentence('reunião com Ana amanhã às 3')
   text = await dialog()
   r.check('hora ambígua: pergunta 03:00 ou 15:00 (não adivinha)', text.includes('Qual horário?') && text.includes('03:00') && text.includes('15:00') && !text.includes('Conferir e criar'))
@@ -97,7 +97,7 @@ try {
   r.check('desistir não grava nada', (await idb(b, 'events')).length === 1)
 
   // Voz (reconhecedor do aparelho, simulado aqui).
-  await b.click('Criar', 'nav[aria-label="Ações rápidas"] button')
+  await b.click('Novo', 'nav[aria-label="Atalhos"] button')
   await b.click('Falar', '[role=dialog] button')
   await sleep(700)
   const heard = await b.eval(`document.querySelector('input[aria-label="Escreva em uma frase"]').value`)
@@ -116,19 +116,23 @@ try {
   // ---------- Recorrente por frase (hoje e daqui a 2 dias, às 23:30)
   const d1 = DAY_NAMES[wd]
   const d2 = DAY_NAMES[(wd + 2) % 7]
-  await b.click('Criar', 'nav[aria-label="Ações rápidas"] button')
+  await b.click('Novo', 'nav[aria-label="Atalhos"] button')
   await sentence(`Estudar inglês toda ${d1} e ${d2} às 23h30`)
   text = await dialog()
   r.check('frase de repetição vira recorrente', text.includes('Estudar inglês') && text.includes('Recorrente') && text.includes('23:30'))
   await b.click('Conferir e criar', '[role=dialog] button')
   await sleep(500)
   r.check('formulário de recorrente preenchido', (await inDialog('O que fazer')) === 'Estudar inglês' && (await inDialog('Horário')) === '23:30')
-  await b.click('Criar', '[role=dialog] button[type=submit]')
+  await b.click('Salvar', '[role=dialog] button[type=submit]')
   await sleep(600)
   let rec = (await idb(b, 'recurring'))[0]
   r.check('regra salva: os dois dias da semana', rec?.rule.type === 'weekdays' && rec.rule.days.length === 2 && rec.rule.days.includes(wd) && rec.rule.days.includes((wd + 2) % 7))
 
+  // "Hoje" lives in the Agenda now (#/today lands there). Periods that are over start folded: open them first.
   await b.goto(BASE + '#/today')
+  await sleep(900)
+  await b.eval(`[...document.querySelectorAll('main button[aria-expanded="false"]')].forEach((x) => x.textContent.trim() === 'Ver' && x.click())`)
+  await sleep(300)
   r.check('Hoje mostra a ocorrência uma vez, na Noite', (await count('Estudar inglês')) === 1 && (await b.eval(`document.querySelector('section[aria-label="Noite"]')?.innerText.includes('Estudar inglês')`)))
   text = await b.text()
   r.check('rotina que já passou: "Horário encerrado", sem pedir confirmação', text.includes('Alongar') && text.includes('Horário encerrado') && !(await b.eval(`document.querySelector('section[aria-label="Aguardando confirmação"]')?.innerText.includes('Alongar') ?? false`)))

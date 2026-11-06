@@ -67,13 +67,13 @@ export function ruleReply(sketch: RuleSketch, ctx: RuleReplyCtx): Reply {
   const actions: RuleAction[] = []
   for (const [i, a] of sketch.actions.entries()) {
     if (a.kind === 'reservePercent' || a.kind === 'reserveFixed') {
-      if (info.scheduled) return stop('Regras por data não reservam dinheiro. Para guardar todo mês, use “Guardar todo mês” na meta, em Financeiro.')
+      if (info.scheduled) return stop('Regras por data não reservam dinheiro. Para guardar todo mês, use “Guardar todo mês” na meta, em Finanças.')
       if (a.kind === 'reservePercent' && !info.income) return stop('Reservar uma porcentagem só vale quando entra dinheiro (um recebimento).')
       if (a.kind === 'reservePercent' && !(a.percent >= 1 && a.percent <= 100)) return stop('A porcentagem vai de 1 a 100.')
       let goal: FinanceGoal | undefined = goals.find((g) => g.id === sketch.goals?.[i])
       const what = a.kind === 'reservePercent' ? `os ${a.percent}%` : formatMoney(a.amount, a.currency ?? goals[0]?.currency ?? settings.baseCurrency)
       if (!goal) {
-        if (!goals.length) return stop('Você ainda não tem uma meta para receber a reserva. Crie a meta em Financeiro e escreva de novo.', { link: { label: 'Abrir Financeiro', path: '/finance' } })
+        if (!goals.length) return stop('Você ainda não tem uma meta para receber a reserva. Crie a meta em Finanças e escreva de novo.', { link: { label: 'Abrir Finanças', path: '/finance' } })
         const choices = (list: FinanceGoal[]) => list.slice(0, 8).map((g) => ({ label: g.name, sketch: { ...sketch, goals: { ...sketch.goals, [i]: g.id } } }))
         if (!a.goal) return ask(`Para qual meta você quer reservar ${what}?`, choices(goals))
         const found = findByName(goals, (g) => g.name, a.goal)

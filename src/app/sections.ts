@@ -14,10 +14,10 @@ export const HOME: Section = { path: '/', label: 'Início', icon: House }
 export const SEARCH: Section = { path: '/search', label: 'Buscar', icon: Search }
 /** Always available (not a hideable section): Início, the side menu and the sidebar link to it. */
 export const ASSISTANT: Section = { path: '/assistant', label: 'Assistente', icon: MessageCircle }
-export const SETTINGS: Section = { path: '/settings', label: 'Configurações', icon: SettingsIcon }
+export const SETTINGS: Section = { path: '/settings', label: 'Você', icon: SettingsIcon }
 
-/** Preferred order for the three tab-bar slots after Início. The original three come first. */
-const PRIMARY_ORDER: ModuleId[] = ['finance', 'projects', 'tasks', 'today', 'agenda', 'week', 'sales', 'routine', 'meals', 'subscribers', 'clients', 'notes']
+/** Preferred order for the three tab-bar slots between Início and Assistente (Agenda, Finanças, Projetos by default). */
+const PRIMARY_ORDER: ModuleId[] = ['agenda', 'finance', 'projects', 'tasks', 'week', 'sales', 'routine', 'meals', 'subscribers', 'clients', 'notes']
 
 /** Up to three sections fit in the tab bar after Início. */
 export const MAX_TABS = 3
@@ -28,7 +28,8 @@ export const MAX_TABS = 3
  */
 export function primarySections(settings: Pick<Settings, 'modules' | 'tabs'>): Section[] {
   const enabled = enabledModules(settings)
-  const order = settings.tabs ?? PRIMARY_ORDER
+  // A bar chosen before "Hoje" moved into the Agenda keeps its slot: Hoje becomes the Agenda.
+  const order = [...new Set((settings.tabs ?? PRIMARY_ORDER).map((id) => (id === 'today' ? 'agenda' : id)))]
   const picked = order.filter((id) => isEnabled(settings, id)).slice(0, MAX_TABS)
   return [HOME, ...picked.map((id) => enabled.find((m) => m.id === id)!)]
 }

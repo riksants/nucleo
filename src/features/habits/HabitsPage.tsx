@@ -1,4 +1,5 @@
 import { ChevronDown, Flame, Link2, Play, Sprout } from 'lucide-react'
+import { AreaTabs, useAreaTitle } from '../../app/areaTabs'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -40,6 +41,7 @@ function Week({ habit, dates, index, today }: { habit: Habit; dates: string[]; i
 }
 
 export function HabitsPage() {
+  const rotinaTitle = useAreaTitle('rotina', 'Hábitos')
   const { data, settings } = useStore()
   const form = useSheet<Habit>()
   useOpenParam(data.habits, form.show)
@@ -91,7 +93,8 @@ export function HabitsPage() {
         rich
         icon={Sprout}
         eyebrow={due.length ? `${due.length} para hoje` : 'Hábitos'}
-        title="Hábitos"
+        title={rotinaTitle}
+        below={<AreaTabs area="rotina" />}
         primary={{ label: 'Novo', aria: 'Novo hábito', onPress: () => form.show() }}
         stats={
           data.habits.length

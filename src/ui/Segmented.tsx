@@ -56,10 +56,10 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
             aria-checked={active}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
-            className={`hit relative rounded-full font-medium transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'min-w-0 flex-1 leading-tight max-[359px]:h-auto max-[359px]:min-h-10 max-[359px]:px-1.5 max-[359px]:py-1 max-[359px]:whitespace-normal whitespace-nowrap' : 'whitespace-nowrap'} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-accent-hi' : 'text-faint hover:text-soft'}`}
+            className={`hit relative rounded-full font-medium transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'min-w-0 flex-1 leading-tight max-[359px]:h-auto max-[359px]:min-h-10 max-[359px]:px-1.5 max-[359px]:py-1 max-[359px]:whitespace-normal whitespace-nowrap' : 'whitespace-nowrap'} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'font-semibold text-on-accent' : 'text-faint hover:text-soft'}`}
           >
-            {/* The current choice: a soft vermilion pill with vermilion text (a coal pill on the vermilion band). */}
-            {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-accent/[0.14] ring-1 ring-accent/35 ring-inset'}`} transition={SLIDE} />}
+            {/* The current choice: an orange pill with dark text (a coal pill on the orange band). */}
+            {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-accent'}`} transition={SLIDE} />}
             <span className="relative">{o.label}</span>
           </button>
         )
@@ -81,7 +81,7 @@ export function Chips<V extends string>({ value, onChange, options }: Omit<Segme
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={`press hit relative h-9 shrink-0 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${
-              active ? 'border-accent/40 bg-accent/[0.14] text-accent-hi' : 'border-line bg-surface text-soft hover:text-ink'
+              active ? 'border-accent bg-accent font-semibold text-on-accent' : 'border-line bg-surface text-soft hover:text-ink'
             }`}
           >
             {o.label}

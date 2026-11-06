@@ -490,3 +490,137 @@
     backdrop-filter: none;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------------
+   2026-11 redesign: the floating glass tab bar (capsule away from the edges and the bottom) and its active tab.
+   Glass only here (navigation layer), never on content. Solid with "Reduzir transparência", higher contrast or no
+   blur support. Steps aside while the keyboard is open (data-hidden) so it never covers fields or buttons.
+   --------------------------------------------------------------------------------------------------- */
+@utility tabbar-glass {
+  --tab-top: rgb(60 60 66 / 0.5);
+  --tab-bottom: rgb(28 28 32 / 0.42);
+  --tab-border: rgb(255 255 255 / 0.08);
+  --tab-hi: rgb(255 255 255 / 0.12);
+  --tab-ink: #e9e7e2;
+  --tab-on-bg: rgb(255 255 255 / 0.12);
+  --tab-on-ink: #ff8f6b;
+  --tab-on-shadow: none;
+  --tab-solid: #222225;
+  background-image: linear-gradient(180deg, var(--tab-top), var(--tab-bottom));
+  -webkit-backdrop-filter: blur(14px) saturate(1.8);
+  backdrop-filter: blur(14px) saturate(1.8);
+  border: 0.5px solid var(--tab-border);
+  box-shadow:
+    0 16px 36px -14px rgb(0 0 0 / 0.7),
+    0 2px 6px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 var(--tab-hi);
+  transition:
+    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 200ms ease;
+  &[data-hidden='true'] {
+    transform: translateY(170%);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+:root[data-theme='light'] .tabbar-glass {
+  --tab-top: rgb(255 255 255 / 0.56);
+  --tab-bottom: rgb(255 255 255 / 0.36);
+  --tab-border: rgb(10 10 11 / 0.07);
+  --tab-hi: rgb(255 255 255 / 0.75);
+  --tab-ink: #2a2925;
+  --tab-on-bg: rgb(255 255 255 / 0.78);
+  --tab-on-ink: #b8350c;
+  --tab-on-shadow: 0 1px 3px rgb(10 10 11 / 0.1);
+  --tab-solid: #fbfaf8;
+  box-shadow:
+    0 16px 36px -16px rgb(10 10 11 / 0.32),
+    0 2px 6px rgb(10 10 11 / 0.06),
+    inset 0 1px 0 var(--tab-hi);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar-glass {
+    background: var(--tab-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .tabbar-glass {
+    background: var(--tab-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* The page lifts over the orange band with rounded corners (phone). */
+@utility band-lift {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1.25rem;
+  border-radius: 22px 22px 0 0;
+  background: var(--color-bg);
+}
+
+/* A pill placed on the orange band: dark pill with light text in light, white pill with dark text in dark
+   (the band re-points coal/paper). The soft one is a translucent veil. */
+@utility band-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 2.25rem;
+  padding-inline: 0.8rem;
+  border-radius: 999px;
+  background: var(--color-coal);
+  color: var(--color-paper);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex: none;
+  transition: transform 160ms var(--ease-out);
+  &:active {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+}
+@utility band-pill-soft {
+  background: rgb(10 10 11 / 0.1);
+  color: var(--color-coal);
+}
+:root:not([data-theme='light']) .band .band-pill-soft,
+:root:not([data-theme='light']) .band-pill-soft.on-band {
+  background: rgb(10 10 11 / 0.16);
+}
+
+/* "Você" on the menu's orange top: a light veil in light, a dark veil in dark (white type stays readable). */
+.you-card {
+  background: rgb(255 255 255 / 0.25);
+}
+:root:not([data-theme='light']) .band .you-card {
+  background: rgb(10 10 11 / 0.16);
+}
+
+/* Início's shortcuts on the orange band: a light veil in light, a dark veil in dark (white glyphs stay readable). */
+.home-shortcut {
+  background: rgb(255 255 255 / 0.28);
+}
+:root:not([data-theme='light']) .band .home-shortcut {
+  background: rgb(10 10 11 / 0.14);
+}
+
+/* Tabs that join screens of one area, on the orange band: a veil track and a white pill on the current one. */
+.section-tabs {
+  background: rgb(10 10 11 / 0.1);
+}
+.section-tab-on {
+  background: #ffffff;
+  color: #0a0a0b;
+  box-shadow: 0 1px 4px rgb(10 10 11 / 0.16);
+}
+:root:not([data-theme='light']) .band .section-tabs {
+  background: rgb(10 10 11 / 0.16);
+}

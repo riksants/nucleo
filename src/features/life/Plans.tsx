@@ -78,7 +78,7 @@ export function PlanForm({ open, onClose, kind, plan, initial, onSaved }: { open
 
   const categories = PLAN_TEMPLATES.filter((t) => t.kinds.includes(k))
   return (
-    <FormSheet open={open} onClose={onClose} title={plan ? `Editar ${KIND_LABEL[k].one.toLowerCase()}` : k === 'objective' ? 'Novo objetivo' : 'Novo projeto pessoal'} submitLabel={plan ? 'Salvar' : 'Criar'} onSubmit={submit}>
+    <FormSheet open={open} onClose={onClose} title={plan ? `Editar ${KIND_LABEL[k].one.toLowerCase()}` : k === 'objective' ? 'Novo objetivo' : 'Novo projeto pessoal'} submitLabel={plan ? 'Salvar alterações' : k === 'objective' ? 'Salvar objetivo' : 'Salvar projeto'} onSubmit={submit}>
       <FormGrid>
         <Field label={k === 'objective' ? 'Objetivo' : 'Nome'}>
           <TextInput value={d.title} onChange={(e) => set('title', e.target.value)} placeholder={k === 'objective' ? 'Ex.: Aprender inglês' : 'Ex.: Viagem para Itália'} autoFocus={!plan} maxLength={120} />

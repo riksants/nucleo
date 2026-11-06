@@ -80,7 +80,7 @@ export function WeekPage() {
         rich
         icon={CalendarDays}
         eyebrow={w.isCurrent ? 'Esta semana' : w.snapshot ? 'Semana fechada' : 'Semana anterior'}
-        title="Semana"
+        title="Revisão da semana"
         subtitle={weekLabel(w.week)}
         stats={[
           { label: 'Concluído', value: h.itemsPercent !== null ? `${h.itemsPercent}%` : '—' },

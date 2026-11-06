@@ -107,7 +107,11 @@ try {
   // ---------- 14b) A person's debt settled: the "Pago" seal celebrates once
   await b.goto(BASE + '#/sales')
   await sleep(1000)
+  for (let i = 0; i < 40 && !(await b.text()).includes('Maria'); i++) await sleep(150)
+  // Tapping the sale opens the sale; the person's page is "Tudo de Maria" (outdated step, from before the redesign).
   await b.click('Maria', 'button')
+  await sleep(600)
+  await clickIn('Tudo de Maria')
   await sleep(600)
   await clickIn('Pagamento geral')
   await sleep(300)
@@ -119,7 +123,12 @@ try {
   r.check('venda quitada: selo "Pago" celebra', text.includes('Pago') && paid, `anel: ${paid}`)
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await sleep(500)
+  // Paid, the sale left "A receber": it is under "Quitadas".
+  await b.click('Quitadas', '[role=radio], button')
+  await sleep(500)
   await b.click('Maria', 'button')
+  await sleep(600)
+  await clickIn('Tudo de Maria')
   await sleep(600)
   r.check('reabrir a pessoa já paga não celebra de novo', !(await ringPlaying()))
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })

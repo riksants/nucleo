@@ -120,7 +120,7 @@ export function RecurringForm({
   }
 
   return (
-    <FormSheet open={open} onClose={onClose} title={item ? 'Editar recorrente' : 'Novo recorrente'} submitLabel={item ? 'Salvar' : 'Criar'} onSubmit={submit} onDelete={item ? del : undefined}>
+    <FormSheet open={open} onClose={onClose} title={item ? 'Editar recorrente' : 'Novo recorrente'} submitLabel={item ? 'Salvar alterações' : 'Salvar recorrente'} onSubmit={submit} onDelete={item ? del : undefined}>
       <FormGrid>
         {item && (
           <div className="flex flex-wrap items-center gap-2">

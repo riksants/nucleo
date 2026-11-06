@@ -2,6 +2,7 @@
  * Importação inteligente (Etapa 4): a document or pasted text → what it probably is → a preview that can be
  * corrected → the records, only after "Importar". Read on this device only; the document is never stored.
  */
+import { AreaTabs } from '../../app/areaTabs'
 import { emptyMealAnswers } from '../../../supabase/functions/_shared/planner/foodSafety.ts'
 import { ClipboardPaste, FileUp, ShieldCheck } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
@@ -198,7 +199,7 @@ export function IntakePage() {
     setRun({ ...current, status: 'undone' })
   }
 
-  const header = <PageHeader title="Importação inteligente" subtitle={step === 'pick' ? 'Um documento ou texto vira registros no Núcleo' : (read?.source ?? '')} />
+  const header = <PageHeader title="Importar" subtitle={step === 'pick' ? 'Um documento ou texto vira registros no Núcleo' : (read?.source ?? '')} below={<AreaTabs area="importar" />} />
 
   if (step === 'done' && run?.smartImport) {
     const s = run.smartImport

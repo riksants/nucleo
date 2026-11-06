@@ -1,4 +1,5 @@
 import { FileUp, History } from 'lucide-react'
+import { AreaTabs } from '../../app/areaTabs'
 import { useEffect, useRef, useState } from 'react'
 import { clearParams, navigate, useRoute } from '../../app/router'
 import { usePrimaryAction } from '../../app/primaryAction'
@@ -38,7 +39,7 @@ function ImportRow({ run, highlight }: { run: AutomationRun; highlight: boolean 
     const rules = run.status === 'done'
     const ok = await confirm({
       title: 'Desfazer esta importação?',
-      message: `As movimentações criadas por ela saem do Financeiro (as que você editou depois ficam). As conciliadas continuam — só deixam de estar ligadas ao extrato.${rules ? ' O que suas regras fizeram por causa delas também é desfeito.' : ''}`,
+      message: `As movimentações criadas por ela saem de Finanças (as que você editou depois ficam). As conciliadas continuam — só deixam de estar ligadas ao extrato.${rules ? ' O que suas regras fizeram por causa delas também é desfeito.' : ''}`,
       confirmLabel: 'Desfazer importação',
       danger: true,
     })
@@ -112,8 +113,9 @@ export function ImportsPage() {
   return (
     <>
       <PageHeader
-        title="Importações"
+        title="Importar"
         subtitle="Extratos importados, e como desfazer"
+        below={<AreaTabs area="importar" />}
         actions={
           <Button icon={<FileUp size={18} />} onClick={() => navigate('/import')}>
             Importar extrato

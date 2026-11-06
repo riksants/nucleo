@@ -1,4 +1,5 @@
 import { useOpenParam } from '../useOpenParam'
+import { AreaTabs } from '../../app/areaTabs'
 import { AlertTriangle, CalendarClock, Check, MessageCircle, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
@@ -289,6 +290,7 @@ export function RoutinePage() {
         icon={CalendarClock}
         eyebrow={routineDraft ? 'Proposta para revisar' : routine ? 'Sua semana' : 'Rotina'}
         title="Rotina"
+        below={<AreaTabs area="rotina" />}
         stats={routine ? routineStats(routine) : undefined}
         actions={
           <Button variant="secondary" icon={<MessageCircle size={18} />} onClick={() => navigate('/planner')}>

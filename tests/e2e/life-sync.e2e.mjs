@@ -89,7 +89,7 @@ try {
   await A.sleep(800)
   await A.click('Novo objetivo')
   await fillIn(A, 'Objetivo', 'Aprender inglês')
-  await A.click('Criar', '[role=dialog] button[type=submit]')
+  await A.click('Salvar', '[role=dialog] button[type=submit]')
   await A.sleep(500)
   await A.click('Aprender inglês', 'button')
   for (const t of ['Estudar o básico', 'Terminar curso A', 'Conversar 15 minutos']) {

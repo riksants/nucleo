@@ -84,11 +84,11 @@ export function ReceiveSheet({ sale, payment, onClose }: { sale: Sale | null; pa
     if (payment.generalId) {
       const pieces = data.sales.flatMap((s) => s.payments.filter((x) => x.generalId === payment.generalId))
       const whole = pieces.reduce((sum, x) => sum + x.amount, 0)
-      const ok = await confirm({ title: 'Remover pagamento geral?', message: `Este valor faz parte de um pagamento geral de ${formatMoney(whole, sale.currency)}. Ele sai de todas as compras e do Financeiro.`, confirmLabel: 'Remover', danger: true })
+      const ok = await confirm({ title: 'Remover pagamento geral?', message: `Este valor faz parte de um pagamento geral de ${formatMoney(whole, sale.currency)}. Ele sai de todas as compras e de Finanças.`, confirmLabel: 'Remover', danger: true })
       if (!ok) return
       await saveSales(withoutGeneralPayment(data.sales, payment.generalId))
     } else {
-      const ok = await confirm({ title: 'Remover este pagamento?', message: `${formatMoney(payment.amount, sale.currency)} de ${formatDateValue(payment.date).toLowerCase()}. A entrada dele no Financeiro também sai; a venda volta a ter esse valor a receber.`, confirmLabel: 'Remover', danger: true })
+      const ok = await confirm({ title: 'Remover este pagamento?', message: `${formatMoney(payment.amount, sale.currency)} de ${formatDateValue(payment.date).toLowerCase()}. A entrada dele em Finanças também sai; a venda volta a ter esse valor a receber.`, confirmLabel: 'Remover', danger: true })
       if (!ok) return
       await saveSales([{ ...sale, payments: sale.payments.filter((x) => x.id !== payment.id) }])
     }
@@ -137,7 +137,7 @@ export function ReceiveSheet({ sale, payment, onClose }: { sale: Sale | null; pa
             </Button>
           )}
         </div>
-        <p className="text-[12px] text-faint">Entra também no Financeiro como entrada, uma vez só.</p>
+        <p className="text-[12px] text-faint">Entra também em Finanças como entrada, uma vez só.</p>
       </div>
     </Sheet>
   )

@@ -32,29 +32,29 @@ try {
   await b.sleep(1200)
   await b.click('Tudo', '[role=radio], button')
   let text = await b.text()
-  r.check('Financeiro abre com histórico antigo e saldo, como antes', text.includes('Pagamento antigo') && text.includes('Mercado antigo') && text.includes('Adicionar') && text.includes('Retirar'))
+  r.check('Finanças abre com histórico antigo e saldo, como antes', text.includes('Pagamento antigo') && text.includes('Mercado antigo') && text.includes('Nova entrada') && text.includes('Nova saída'))
   const v = await b.eval(`new Promise(r => { const q = indexedDB.open('nucleo'); q.onsuccess = () => { const v = q.result.version; const has = q.result.objectStoreNames.contains('financeGoals'); q.result.close(); r(v + ':' + has) } })`)
   r.check('banco do aparelho atualizado (v5 ou mais) com metas financeiras', Number(v.split(':')[0]) >= 5 && v.endsWith(':true'), v)
   const oldRec = await idb(b, 'transactions', 'old-out')
   r.check('movimentação antiga intacta (sem categoria criada sozinha)', oldRec && !('category' in oldRec) && !('unnecessary' in oldRec) && oldRec.baseAmount === -12000)
 
   // New expense with category + unnecessary
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await setValue(b, '#tx-amount', '25')
   await setValue(b, '#tx-reason', 'Lanche')
   await choose('#tx-category', 'food')
   await b.click('Gasto desnecessário', '[role=switch]')
-  await b.click('Retirar R$ 25,00', 'button')
+  await b.click('Salvar saída de R$ 25,00', 'button')
   await b.sleep(500)
   let all = await idb(b, 'transactions')
   const lanche = all.find((t) => t.reason === 'Lanche')
   r.check('saída com categoria e marcada como desnecessária', lanche?.category === 'food' && lanche.unnecessary === true && lanche.baseAmount === -2500)
 
   // New expense without category: no extra fields
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await setValue(b, '#tx-amount', '10')
   await setValue(b, '#tx-reason', 'Café')
-  await b.click('Retirar R$ 10,00', 'button')
+  await b.click('Salvar saída de R$ 10,00', 'button')
   await b.sleep(500)
   all = await idb(b, 'transactions')
   const cafe = all.find((t) => t.reason === 'Café')
@@ -109,7 +109,7 @@ try {
   // Rename
   await b.goto(BASE + '#/goals')
   await b.sleep(500)
-  r.check('seção antiga agora se chama "Metas de compra"', (await b.text()).includes('Metas de compra'))
+  r.check('metas de compra ficam em Metas › Compras planejadas', (await b.text()).includes('Compras planejadas'))
 
   // Week: money card + weekly "Guardar" goal + challenge
   await b.goto(BASE + '#/week')
@@ -129,6 +129,7 @@ try {
   text = await b.text()
   r.check('meta "Guardar R$ 200" usa o valor registrado na meta (R$ 300 → cumprida)', wg?.metric === 'finance.saved' && wg.title === 'Guardar R$ 200,00' && /Guardar R\$ 200,00\s*Cumprida/.test(text), JSON.stringify(wg) + ' | ' + text.slice(Math.max(0, text.indexOf('Guardar')), text.indexOf('Guardar') + 160))
 
+  await b.click('Sequências e desafios')
   await b.click('Escolher')
   await b.click('7 dias sem gasto desnecessário', 'button')
   await b.click('Começar desafio')
@@ -157,7 +158,7 @@ try {
   await b.click('Mostrar Viagem', '[role=switch]')
   await b.sleep(400)
   await b.goto(BASE + '#/finance')
-  await b.click('Retirar')
+  await b.click('Nova saída')
   const options = await b.eval(`[...document.querySelectorAll('#tx-category option')].map(o => o.textContent)`)
   r.check('categoria personalizada aparece e a oculta some da escolha', options.includes('Pets') && !options.includes('Viagem') && options[0] === 'Sem categoria')
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })

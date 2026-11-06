@@ -124,12 +124,12 @@ export function runIntent(intent: Intent, ctx: Ctx): Reply {
       return { lines: lines.length ? lines : ['Ainda não há registros suficientes nesta semana para um resumo.'], link: { label: 'Abrir Semana', path: '/week' } }
     }
     case 'finance': {
-      if (!on('finance')) return { lines: ['O Financeiro está desligado em Seções visíveis.'] }
+      if (!on('finance')) return { lines: ['Finanças está desligada em Seções visíveis.'] }
       const cur = settings.baseCurrency
       if (intent.period === 'week') {
         const w = weekMoney(data, settings, weekStart(today), now)
         const lines = weekMoneySentences({ current: true, income: w.totals.income, expense: w.totals.expense, net: w.totals.net, count: w.totals.count, dailyAverage: w.dailyAverage, top: w.top ? { label: categoryLabel(settings, w.top.category), amount: w.top.amount } : null, expenseDiff: w.expenseDiff, unnecessaryCount: w.totals.unnecessaryCount, unnecessaryAmount: w.totals.unnecessaryAmount, saved: null }, cur)
-        return { lines: lines.length ? lines : ['Nenhuma movimentação registrada nesta semana.'], link: { label: 'Abrir Financeiro', path: '/finance' } }
+        return { lines: lines.length ? lines : ['Nenhuma movimentação registrada nesta semana.'], link: { label: 'Abrir Finanças', path: '/finance' } }
       }
       const s = monthSummary(data, settings, monthOf(today), now)
       const lines = [`${monthLabel(monthOf(today))[0].toUpperCase()}${monthLabel(monthOf(today)).slice(1)} até agora: entradas ${formatMoney(s.totals.income, cur)}, saídas ${formatMoney(s.totals.expense, cur)}, resultado ${formatMoney(s.totals.net, cur, { sign: true })}.`]

@@ -66,7 +66,7 @@ export function salesLookup(input: Record<string, unknown>, ctx: LookupCtx): Loo
           ...(s.recurring?.status === 'active' ? { recorrente: s.recurring.every === 'month' ? 'mensal' : s.recurring.every === 'week' ? 'semanal' : 'anual' } : {}),
         }
       }),
-      observacoes: ['Recebido vem dos pagamentos registrados; falta receber = total menos recebido. Moedas nunca são somadas entre si.', 'Cada pagamento recebido já virou uma entrada no Financeiro: não some as duas coisas.'],
+      observacoes: ['Recebido vem dos pagamentos registrados; falta receber = total menos recebido. Moedas nunca são somadas entre si.', 'Cada pagamento recebido já virou uma entrada em Finanças: não some as duas coisas.'],
     },
     [...new Set(pageItems.map((s) => nameOf(s)))].slice(0, 5),
   )

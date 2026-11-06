@@ -213,8 +213,8 @@ export function SubscriberForm({ open, onClose, subscriber, defaultOfferingId }:
         </Field>
         <p className="text-[13px] leading-relaxed text-faint">
           {d.paymentMode === 'confirm'
-            ? 'No dia da renovação, o Núcleo cria a cobrança “A receber”. O dinheiro só entra no Financeiro quando você confirmar.'
-            : 'Considerar pago automaticamente na data: no dia da renovação, o Núcleo registra o pagamento e a entrada no Financeiro sozinho. Se não pagar, é só desfazer.'}
+            ? 'No dia da renovação, o Núcleo cria a cobrança “A receber”. O dinheiro só entra em Finanças quando você confirmar.'
+            : 'Considerar pago automaticamente na data: no dia da renovação, o Núcleo registra o pagamento e a entrada em Finanças sozinho. Se não pagar, é só desfazer.'}
         </p>
         <Field label="Observações" hint="opcional">
           <TextArea rows={2} value={d.notes} onChange={(e) => set('notes', e.target.value)} />
@@ -261,7 +261,7 @@ export function SubscriberPayments({ subscriber, plan }: { subscriber: Subscribe
     if (run) {
       const ok = await confirm({
         title: 'Remover pagamento?',
-        message: run.fromPending ? 'A entrada desta cobrança também sai do Financeiro, e a cobrança volta para “A receber”.' : 'A entrada desta cobrança também sai do Financeiro.',
+        message: run.fromPending ? 'A entrada desta cobrança também sai de Finanças, e a cobrança volta para “A receber”.' : 'A entrada desta cobrança também sai de Finanças.',
         confirmLabel: 'Remover',
         danger: true,
       })

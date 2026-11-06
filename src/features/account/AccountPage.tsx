@@ -43,7 +43,7 @@ export function AccountPage() {
       <>
         <PageHeader title="Conta" />
         <div className="card p-5 text-[15px] leading-relaxed text-soft">
-          A sincronização ainda não foi configurada nesta versão do app. Seus dados continuam salvos neste aparelho — use Configurações → Exportar para ter um backup.
+          A sincronização ainda não foi configurada nesta versão do app. Seus dados continuam salvos neste aparelho — use Você → Backup → Exportar para ter um backup.
         </div>
       </>
     )

@@ -3,18 +3,16 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { navigate, useRoute, type RoutePath } from './router'
 import { useStore } from '../data/store'
 import { LOGO_ACCENT, LOGO_LIGHT, LOGO_VIEWBOX } from './logoMark'
-import { isEnabled, MODULE_BY_ID, MODULE_BY_PATH, MODULE_GROUPS } from './modules'
+import { MODULE_BY_PATH } from './modules'
 import { usePrimaryAction, type PrimaryAction } from './primaryAction'
 import { ChevronLeft, Menu, Plus, type LucideIcon } from 'lucide-react'
-import { usePrefersReducedMotion } from '../lib/hooks'
-import { EASE_OUT_SOFT } from '../lib/motion'
-import { Button } from '../ui/Button'
+import { useIsDesktop, useKeyboardOpen } from '../lib/hooks'
 import { SyncBadge } from '../features/account/SyncBadge'
-import { QuickCaptureButton, SidebarCapture } from '../features/inbox/QuickCapture'
-import { ASSISTANT, primarySections, SEARCH, secondarySections, SETTINGS, type Section } from './sections'
+import { ASSISTANT, primarySections, type Section } from './sections'
 import { openMenu, useMenuOpen } from './menu'
-import { LogoTile, SideMenu } from './SideMenu'
+import { LogoTile, MenuBody, SideMenu, YouCard } from './SideMenu'
 import { useNewParam } from '../features/useOpenParam'
+import { CreateSheet } from '../features/daily/CreateSheet'
 
 /** Active-tab indicator: critically damped (damping ratio ≈ 1), so it settles in ~0.2 s without overshooting. */
 const INDICATOR_SPRING = { type: 'spring', stiffness: 500, damping: 45 } as const
@@ -35,124 +33,85 @@ export function Wordmark({ className = '' }: { className?: string }) {
   return <span className={`font-semibold tracking-[0.14em] ${className}`}>NÚCLEO</span>
 }
 
+/** The tabs: Início, the three sections the person chose and the Assistente. */
+function tabsOf(settings: Parameters<typeof primarySections>[0]): Section[] {
+  return [...primarySections(settings), ASSISTANT]
+}
+
 /**
- * Tab bar (phone): Início + the sections the person chose. Light: icons and names in a quiet tone, the current one
- * in vermilion with a short bar on top that slides between tabs. Everything else lives in the side menu.
+ * Tab bar (phone): a floating glass capsule away from the edges and the bottom, short names under the icons and a
+ * light rounded surface behind the current tab. It steps aside while the keyboard is open. Everything else lives in
+ * the menu (☰).
  */
 function BottomNav({ path }: { path: RoutePath }) {
   const { settings } = useStore()
-  const primary = primarySections(settings)
+  const keyboard = useKeyboardOpen()
+  const tabs = tabsOf(settings)
   return (
-    <nav className="glass-smoke fixed! inset-x-0 bottom-0 z-40 border-t border-line lg:hidden" aria-label="Navegação principal">
-      <div className="mx-auto grid max-w-lg px-2" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))', gridTemplateColumns: `repeat(${primary.length}, minmax(0, 1fr))` }}>
-        {primary.map((s) => {
-          const active = s.path === path
-          const Icon = s.icon
-          return (
-            <a
-              key={s.path}
-              href={`#${s.path}`}
-              aria-current={active ? 'page' : undefined}
-              className={`press relative flex flex-col items-center gap-1 pt-2.5 pb-1.5 text-[12px] tracking-[-0.01em] transition-colors duration-150 ${active ? 'font-semibold text-accent-hi' : 'font-medium text-faint'}`}
-            >
-              {active && <motion.span layoutId="nav-bar" aria-hidden className="absolute top-0 h-[3px] w-10 rounded-b-full bg-accent" transition={INDICATOR_SPRING} />}
-              <Icon size={24} strokeWidth={active ? 2.4 : 2} />
-              {s.shortLabel ?? s.label}
-            </a>
-          )
-        })}
-      </div>
+    <nav
+      aria-label="Navegação principal"
+      data-hidden={keyboard}
+      className="tabbar-glass fixed! bottom-[calc(env(safe-area-inset-bottom)+10px)] left-1/2 z-40 grid h-16 w-[min(100%-24px,460px)] -translate-x-1/2 gap-0.5 rounded-full p-[5px] lg:hidden"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      {tabs.map((s) => {
+        const active = s.path === path
+        const Icon = s.icon
+        return (
+          <a
+            key={s.path}
+            href={`#${s.path}`}
+            aria-current={active ? 'page' : undefined}
+            className={`press relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full text-[12px] tracking-[-0.01em] ${active ? 'font-bold text-(--tab-on-ink)' : 'font-semibold text-(--tab-ink)'}`}
+          >
+            {active && <motion.span layoutId="tab-pill" aria-hidden className="absolute inset-0 rounded-full bg-(--tab-on-bg) [box-shadow:var(--tab-on-shadow)]" transition={INDICATOR_SPRING} />}
+            <Icon size={24} strokeWidth={active ? 2.4 : 2} className="relative" />
+            <span className="relative max-w-full truncate px-0.5">{s.shortLabel ?? s.label}</span>
+          </a>
+        )
+      })}
     </nav>
   )
 }
 
-function SideLink({ section, path }: { section: Section; path: RoutePath }) {
-  const active = section.path === path
-  const Icon = section.icon
+/** Computer: the menu (☰) is a sidebar that is always open, with the same groups and the search. */
+function Sidebar() {
+  const [create, setCreate] = useState(false)
   return (
-    <a
-      href={`#${section.path}`}
-      aria-current={active ? 'page' : undefined}
-      className={`relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium tracking-[-0.01em] transition-colors ${
-        active ? 'text-accent-hi' : 'text-soft hover:bg-tint/[0.03] tap hover:text-ink'
-      }`}
-    >
-      {/* Where you are: a soft vermilion tint with a bar on the left, sliding to the new item. */}
-      {active && (
-        <motion.span layoutId="side-pill" className="absolute inset-0 rounded-xl bg-accent/[0.1]" transition={INDICATOR_SPRING}>
-          <span aria-hidden className="absolute inset-y-2.5 left-0 w-[3px] rounded-r-full bg-accent" />
-        </motion.span>
-      )}
-      <Icon size={20} strokeWidth={active ? 2.4 : 2} className="relative" />
-      <span className="relative min-w-0 flex-1 truncate pr-3">{section.label}</span>
-    </a>
-  )
-}
-
-/** Computer: the same organization as the side menu, always open on the left. */
-function Sidebar({ path }: { path: RoutePath }) {
-  const { settings } = useStore()
-  const here = new Set(secondarySections(settings).map((s) => s.path))
-  const groups = MODULE_GROUPS.map((g) => ({ title: g.title, sections: g.ids.map((id) => MODULE_BY_ID[id]).filter((m) => here.has(m.path)) })).filter((g) => g.sections.length > 0)
-  return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-bg lg:flex" aria-label="Navegação">
-      <div className="band flex items-center gap-3 px-6 py-5">
-        <LogoTile className="size-8" />
-        <Wordmark className="text-[15px]" />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-6">
-        <button
-          type="button"
-          onClick={() => navigate('/search')}
-          className="mb-5 flex h-10 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-sm text-faint transition-colors hover:border-line-strong hover:text-soft"
-        >
-          <SEARCH.icon size={16} className="text-accent-hi" />
-          Buscar em tudo
-          <kbd className="ml-auto rounded-md border border-line px-1.5 font-mono text-[11px]">/</kbd>
-        </button>
-        <SidebarCapture />
-        <nav className="flex flex-col gap-0.5">
-          <SideLink section={ASSISTANT} path={path} />
-          {primarySections(settings).map((s) => (
-            <SideLink key={s.path} section={s} path={path} />
-          ))}
-        </nav>
-        <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]">
-          {groups.map((g) => (
-            <div key={g.title}>
-              <div className="mt-6 mb-2 px-3 text-[13px] font-semibold text-ink">{g.title}</div>
-              <nav className="flex flex-col gap-0.5" aria-label={g.title}>
-                {g.sections.map((s) => (
-                  <SideLink key={s.path} section={s} path={path} />
-                ))}
-              </nav>
-            </div>
-          ))}
+    <aside className="fixed inset-y-3 left-3 z-40 hidden w-[19rem] flex-col overflow-hidden rounded-[1.5rem] border border-line bg-bg shadow-[0_10px_40px_-24px_var(--color-shade)] lg:flex" aria-label="Navegação">
+      <div className="band shrink-0 px-4 pt-4 pb-3">
+        <div className="flex h-10 items-center gap-2.5">
+          <LogoTile className="size-8" />
+          <Wordmark className="flex-1 text-[14px]" />
+          <button type="button" onClick={() => setCreate(true)} className="band-pill">
+            <Plus size={16} strokeWidth={2.4} />
+            Novo
+          </button>
         </div>
-        <div className="space-y-2 pt-4">
-          <SyncBadge />
-          <SideLink section={SETTINGS} path={path} />
+        <div className="mt-2.5">
+          <YouCard />
         </div>
       </div>
+      <MenuBody />
+      <div className="shrink-0 border-t border-line px-4 py-3">
+        <SyncBadge />
+      </div>
+      <CreateSheet open={create} onClose={() => setCreate(false)} />
     </aside>
   )
 }
 
 export function Shell({ children }: { children: ReactNode }) {
   const { path } = useRoute()
-  const { settings } = useStore()
+  // The sidebar exists only on the computer (on the phone the same content is the menu ☰): no hidden copy of it.
+  const desktop = useIsDesktop()
   return (
     <div className="min-h-dvh">
-      <Sidebar path={path} />
-      <main
-        className={`px-5 lg:ml-64 lg:px-10 lg:pt-10 lg:pb-16 ${
-          // Extra room so the quick-capture button never covers the end of a list.
-          isEnabled(settings, 'inbox') ? 'pb-[calc(env(safe-area-inset-bottom)+164px)]' : 'pb-[calc(env(safe-area-inset-bottom)+96px)]'
-        }`}
-      >
+      {desktop && <Sidebar />}
+      {/* Room under the content for the floating bar (and the safe area): the last item is always reachable. */}
+      <main className="px-5 pb-[calc(env(safe-area-inset-bottom)+104px)] lg:ml-[20.5rem] lg:px-10 lg:pt-6 lg:pb-16">
         <div className="mx-auto w-full max-w-lg lg:max-w-5xl">{children}</div>
       </main>
-      <QuickCaptureButton />
       <BottomNav path={path} />
       <SideMenu />
     </div>
@@ -161,15 +120,16 @@ export function Shell({ children }: { children: ReactNode }) {
 
 /**
  * The phone's way around: Início, the tab-bar sections and every section of the menu open the menu (top-level
- * screens); other screens (Configurações, Busca, Conta, Automações…) go back where you came from, and a view
- * inside a section goes back to the section.
+ * screens); other screens (Configurações, Busca, Conta…) go back where you came from, and a view inside a section
+ * goes back to the section.
  */
 function useBack(): { label: string; go(): void } | null {
   const { path, params } = useRoute()
   const { settings } = useStore()
-  // A view inside a section (Financeiro → Resumo do mês, Semana → Planejar) goes back to the section.
+  // A view inside a section (Finanças → Resumo do mês, Semana → Planejar) goes back to the section.
   if (params.get('view')) return { label: 'Voltar', go: () => navigate(path) }
-  if (path === '/' || MODULE_BY_PATH[path] || primarySections(settings).some((s) => s.path === path)) return null
+  const topLevel: RoutePath[] = ['/', '/assistant', '/automations', '/rules', '/intake', '/notifications', '/settings']
+  if (topLevel.includes(path) || MODULE_BY_PATH[path] || primarySections(settings).some((s) => s.path === path)) return null
   return { label: 'Voltar', go: () => (history.length > 1 ? history.back() : navigate('/')) }
 }
 
@@ -178,36 +138,42 @@ export function HeaderNavButton({ className = '' }: { className?: string }) {
   const back = useBack()
   const open = useMenuOpen()
   return back ? (
-    <button type="button" onClick={back.go} aria-label={back.label} className={`press hit relative -ml-2 flex h-10 items-center gap-0.5 rounded-full pr-2 text-[16px] font-semibold lg:hidden ${className}`}>
+    <button type="button" onClick={back.go} aria-label={back.label} className={`press hit relative -ml-2 flex h-10 shrink-0 items-center gap-0.5 rounded-full pr-2 text-[16px] font-semibold lg:hidden ${className}`}>
       <ChevronLeft size={24} strokeWidth={2.4} />
       {back.label}
     </button>
   ) : (
-    <button type="button" onClick={openMenu} aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={open} className={`press hit relative -ml-2 grid size-10 place-items-center rounded-full hover:bg-coal/[0.08] lg:hidden ${className}`}>
+    <button type="button" onClick={openMenu} aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={open} className={`press hit relative -ml-2 grid size-10 shrink-0 place-items-center rounded-full hover:bg-coal/[0.08] lg:hidden ${className}`}>
       <Menu size={24} />
     </button>
   )
 }
 
+/** The screen's main action as a pill on the orange band: its full, specific name ("Nova tarefa", "Novo projeto"). */
+function PrimaryPill({ action, compact }: { action: PrimaryAction; compact?: boolean }) {
+  return (
+    <button type="button" onClick={action.onPress} disabled={action.disabled} className={`band-pill ${compact ? 'h-[34px]! text-[14px]!' : ''}`}>
+      <Plus size={16} strokeWidth={2.4} />
+      {action.aria}
+    </button>
+  )
+}
+
 /**
- * Phone: once the big title scrolls away, a compact vermilion bar with the screen's name (and the menu or the way
- * back) stays at the top.
+ * Phone: once the title scrolls away, a compact orange bar stays at the top with the menu (or the way back), the
+ * screen's name and its main action.
  */
-function CompactBar({ title, visible }: { title: string; visible: boolean }) {
+function CompactBar({ title, visible, primary }: { title: string; visible: boolean; primary?: PrimaryAction }) {
   return (
     <div
       aria-hidden={!visible}
       inert={!visible}
-      className={`band fixed inset-x-0 top-0 z-30 pt-[env(safe-area-inset-top)] shadow-[0_6px_16px_-10px_rgb(0_0_0/0.45)] transition-opacity duration-200 lg:hidden ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      className={`band fixed inset-x-0 top-0 z-30 pt-[env(safe-area-inset-top)] shadow-[0_6px_16px_-10px_rgb(0_0_0/0.45)] transition-[opacity,transform] duration-200 lg:hidden ${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0'}`}
     >
-      <div className="relative mx-auto flex h-12 max-w-lg items-center justify-center px-14">
-        {/* Only while shown, so the page never has a second, invisible menu/back button. */}
-        {visible && (
-          <span className="absolute left-5">
-            <HeaderNavButton />
-          </span>
-        )}
-        <span className="truncate text-[17px] font-semibold tracking-[-0.02em]">{title}</span>
+      <div className="relative mx-auto flex h-[50px] max-w-lg items-center gap-2 px-5">
+        {visible && <HeaderNavButton />}
+        <span className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.02em]">{title}</span>
+        {visible && primary && <PrimaryPill action={primary} compact />}
       </div>
     </div>
   )
@@ -220,9 +186,13 @@ export interface HeaderStat {
 }
 
 /**
- * Standard page header: the vermilion band with the menu (or back), big title, optional subtitle and actions.
- * `primary`: what this screen creates — the floating "+" on the phone, a button here on the computer.
- * `overlap`: the band leaves room at the bottom for a card that sits half over it (Financeiro's balance).
+ * Standard page header: the orange band, sized by what the screen needs.
+ * - Phone: the menu (or back), the screen's own buttons and its main action on the top line; the title under it.
+ *   The page lifts over the band with rounded corners.
+ * - `primary`: what this screen creates, by name ("Nova tarefa"). Also on the compact bar while scrolling.
+ * - `overlap`: the band leaves room at the bottom for a card that sits half over it (Finanças' balance).
+ * - `compact`: one line only (Assistente: the conversation comes first).
+ * - `eyebrow`, `stats`, `below`: a small line above the title, the screen's figures, a control under them.
  */
 export function PageHeader(props: {
   title: string
@@ -230,139 +200,88 @@ export function PageHeader(props: {
   actions?: ReactNode
   primary?: PrimaryAction
   overlap?: boolean
-  /** Opt-in richer band (the reworked screens): a small line above the title, live figures and the section's mark. */
+  compact?: boolean
+  /** Kept for screens written before the redesign; the band no longer changes with it. */
   rich?: boolean
   eyebrow?: ReactNode
   stats?: HeaderStat[]
+  /** Kept for screens written before the redesign (the faint section mark is gone: decoration only on Início). */
   icon?: LucideIcon
+  below?: ReactNode
 }) {
-  const { title, subtitle, actions, primary, overlap } = props
+  const { title, subtitle, actions, primary, overlap, compact, eyebrow, stats, below } = props
   usePrimaryAction(primary)
-  // Buscar → "Novo cliente" opens this screen with ?novo=1: same as tapping its "+".
+  // Buscar → "Novo cliente" opens this screen with ?novo=1: same as tapping its main action.
   useNewParam(primary && !primary.disabled ? () => primary.onPress() : undefined)
-  // The compact bar shows once the big title has scrolled under the top edge.
+  // The compact bar shows once the title has scrolled under the top edge.
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [collapsed, setCollapsed] = useState(false)
   useEffect(() => {
     const el = titleRef.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
+    if (!el || compact || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver(([e]) => setCollapsed(!e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: '-56px 0px 0px 0px' })
     io.observe(el)
     return () => io.disconnect()
-  }, [])
-  if (props.rich) return <RichHeader {...props} titleRef={titleRef} collapsed={collapsed} />
-  return (
-    <>
-      <CompactBar title={title} visible={collapsed} />
-      <header
-        className={`band -mx-5 px-5 pt-[calc(env(safe-area-inset-top)+6px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 ${
-          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-6 pb-6 lg:mb-8 lg:pb-8'
-        }`}
-      >
-        <div className="flex h-12 items-center lg:hidden">
-          <HeaderNavButton />
-        </div>
-        <div className="mt-1 flex items-end justify-between gap-4 lg:mt-0">
-          <div className="min-w-0">
-            <h1 ref={titleRef} className="text-[30px] leading-[1.08] font-semibold tracking-[-0.04em] lg:text-[40px]">
-              {title}
-            </h1>
-            {subtitle && <p className="mt-1 text-[15px] text-coal/75">{subtitle}</p>}
-          </div>
-          {(actions || primary) && (
-            <div className="flex shrink-0 items-center gap-2">
-              {actions}
-              {/* On the phone this action is the floating "+" (one per screen). */}
-              {primary && (
-                <span className="hidden lg:block">
-                  <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
-                    {primary.label}
-                  </Button>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
-    </>
-  )
-}
+  }, [compact])
 
-/**
- * The richer band of the reworked screens. Same vermilion, same coal type; it earns its height with information:
- * a small line above the title (date, context), the title, then the screen's figures in a quiet strip, so the band
- * is never a big empty block. Depth comes from light on the band (band-depth), the section's line mark faint in the
- * corner and, on the phone, the page "lifting" over the band with a rounded edge.
- */
-function RichHeader({
-  title,
-  subtitle,
-  actions,
-  primary,
-  overlap,
-  eyebrow,
-  stats,
-  icon: Icon,
-  titleRef,
-  collapsed,
-}: Parameters<typeof PageHeader>[0] & { titleRef: React.RefObject<HTMLHeadingElement | null>; collapsed: boolean }) {
-  const reduce = usePrefersReducedMotion()
-  const enter = (delay: number) =>
-    reduce ? {} : { initial: { opacity: 0, transform: 'translateY(6px)' }, animate: { opacity: 1, transform: 'translateY(0px)' }, transition: { duration: 0.32, delay, ease: EASE_OUT_SOFT } }
+  if (compact)
+    return (
+      <header className="band relative -mx-5 mb-3 px-5 pt-[calc(env(safe-area-inset-top)+2px)] pb-6 lg:mx-0 lg:mb-6 lg:rounded-[1.75rem] lg:px-8 lg:py-5">
+        <div className="flex h-[50px] items-center gap-2">
+          <HeaderNavButton />
+          <h1 ref={titleRef} className="min-w-0 flex-1 truncate text-[21px] font-semibold tracking-[-0.03em] lg:text-[28px]">
+            {title}
+          </h1>
+          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+          {primary && <PrimaryPill action={primary} />}
+        </div>
+        <span aria-hidden className="band-lift h-4! lg:hidden" />
+      </header>
+    )
+
   return (
     <>
-      <CompactBar title={title} visible={collapsed} />
+      <CompactBar title={title} visible={collapsed} primary={primary} />
       <header
-        className={`band band-depth relative isolate -mx-5 overflow-hidden px-5 pt-[calc(env(safe-area-inset-top)+6px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-7 ${
-          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-5 pb-8 lg:mb-8 lg:pb-8'
+        className={`band relative -mx-5 px-5 pt-[calc(env(safe-area-inset-top)+2px)] lg:mx-0 lg:rounded-[1.75rem] lg:px-8 lg:pt-6 ${
+          overlap ? 'pb-20 lg:mb-8 lg:pb-8' : 'mb-3 pb-9 lg:mb-8 lg:pb-7'
         }`}
       >
-        {Icon && (
-          <Icon
-            aria-hidden
-            size={24}
-            className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+10px)] -right-9 -z-10 size-36 text-coal/[0.06] lg:hidden [&_*]:[vector-effect:non-scaling-stroke]"
-          />
-        )}
-        {/* Phone: the screen's own buttons sit on the menu row, so the title and its line get the full width. */}
-        <div className="flex h-12 items-center justify-between gap-2 lg:hidden">
+        {/* Phone: the menu, the screen's buttons and its main action share the top line; the title gets the width. */}
+        <div className="flex h-[50px] items-center gap-2 lg:hidden">
           <HeaderNavButton />
+          <span className="flex-1" />
           {actions && <div className="flex min-w-0 items-center gap-2">{actions}</div>}
+          {primary && <PrimaryPill action={primary} />}
         </div>
-        <motion.div {...enter(0)} className="mt-1 flex items-end justify-between gap-4 lg:mt-0">
+        <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
-            {eyebrow && <p className="mb-1 text-[12px] font-semibold tracking-[0.1em] text-coal/70 uppercase">{eyebrow}</p>}
-            <h1 ref={titleRef} className="text-[32px] leading-[1.05] font-semibold tracking-[-0.045em] lg:text-[42px]">
+            {eyebrow && <p className="mb-0.5 text-[13px] font-semibold tracking-[0.06em] text-coal/75 uppercase">{eyebrow}</p>}
+            <h1 ref={titleRef} className="text-[27px] leading-[1.1] font-semibold tracking-[-0.035em] [overflow-wrap:anywhere] lg:text-[38px]">
               {title}
             </h1>
-            {subtitle && <p className="mt-1.5 text-[15px] leading-snug text-coal/75">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-[15px] leading-snug text-coal/80">{subtitle}</p>}
           </div>
           {(actions || primary) && (
             <div className="hidden shrink-0 items-center gap-2 lg:flex">
               {actions}
-              {primary && (
-                <Button icon={<Plus size={18} />} onClick={primary.onPress} disabled={primary.disabled} aria-label={primary.aria}>
-                  {primary.label}
-                </Button>
-              )}
+              {primary && <PrimaryPill action={primary} />}
             </div>
           )}
-        </motion.div>
+        </div>
+        {below && <div className="mt-3">{below}</div>}
         {stats && stats.length > 0 && (
-          <motion.dl
-            {...enter(0.05)}
-            className="mt-5 grid auto-cols-fr grid-flow-col divide-x divide-coal/[0.12] rounded-2xl bg-coal/[0.06] py-3 ring-1 ring-coal/[0.06] ring-inset lg:max-w-xl"
-          >
+          <dl className="mt-3 grid auto-cols-fr grid-flow-col divide-x divide-coal/[0.12] rounded-2xl bg-coal/[0.06] py-2.5 lg:max-w-xl">
             {stats.map((s) => (
-              <div key={s.label} className="flex min-w-0 flex-col-reverse px-3.5">
-                <dt className="truncate text-[12px] font-medium text-coal/70">{s.label}</dt>
-                <dd className="num truncate text-[20px] leading-tight font-semibold tracking-[-0.03em]">{s.value}</dd>
+              <div key={s.label} className="flex min-w-0 flex-col-reverse px-3">
+                <dt className="truncate text-[13px] font-medium text-coal/75">{s.label}</dt>
+                <dd className="num truncate text-[18px] leading-tight font-semibold tracking-[-0.03em]">{s.value}</dd>
               </div>
             ))}
-          </motion.dl>
+          </dl>
         )}
         {/* Phone: the page lifts over the band with a rounded edge. */}
-        {!overlap && <span aria-hidden className="absolute inset-x-0 bottom-0 h-5 rounded-t-[22px] bg-bg lg:hidden" />}
+        {!overlap && <span aria-hidden className="band-lift lg:hidden" />}
       </header>
     </>
   )

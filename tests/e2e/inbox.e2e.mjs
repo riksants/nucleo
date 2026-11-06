@@ -13,16 +13,21 @@ try {
   await b.goto(BASE)
   let text = await b.text()
   const sheet = await b.eval(`document.querySelector('[role=dialog]')?.innerText ?? ''`)
-  r.check('usuário existente: aviso mostra só as seções novas', sheet.includes('Chegaram seções novas') && sheet.includes('Caixa de entrada') && !sheet.includes('Financeiro'))
-  r.check('usuário existente: nada é ligado sozinho (sem botão +)', !(await b.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`)))
+  r.check('usuário existente: aviso mostra só as seções novas', sheet.includes('Chegaram seções novas') && sheet.includes('Caixa de entrada') && !sheet.includes('Finanças'))
+  const novoOffersCapture = async () => {
+    await b.click('Novo', 'nav[aria-label="Atalhos"] button')
+    await b.sleep(500)
+    const has = (await b.eval(`document.querySelector('[role=dialog]')?.innerText ?? ''`)).includes('Guardar para organizar depois')
+    await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+    await b.sleep(500)
+    return has
+  }
   await b.click('Caixa de entrada', '[role=switch]')
   await b.click('Pronto')
-  // Início has no floating "+" (it has its own actions): the capture shows on screens like Configurações.
-  await b.goto(BASE + '#/settings')
-  await b.sleep(600)
-  r.check('ao ligar a seção, o botão + aparece', await b.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`))
+  await b.sleep(500)
+  r.check('ao ligar a seção, "Novo" oferece "Guardar para organizar depois"', await novoOffersCapture())
   const nav = await b.eval(`[...document.querySelectorAll('nav[aria-label="Navegação principal"] a')].map(a => a.textContent.trim())`)
-  r.check('abas inferiores continuam as mesmas', JSON.stringify(nav) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas']), JSON.stringify(nav))
+  r.check('abas inferiores: as mesmas seções, com o Assistente no fim', JSON.stringify(nav) === JSON.stringify(['Início', 'Finanças', 'Projetos', 'Tarefas', 'Assistente']), JSON.stringify(nav))
   const oldTask = await idb(b, 'tasks', 'old1')
   r.check('tarefa antiga intacta e sem campo novo obrigatório', oldTask.title === 'Tarefa antiga' && !('notes' in oldTask))
   await b.goto(BASE)
@@ -30,9 +35,12 @@ try {
   r.check('aviso aparece só uma vez', !text.includes('Chegaram seções novas'))
 
   // ---------- Quick capture
-  await b.goto(BASE + '#/settings')
+  await b.goto(BASE)
   await b.sleep(600)
-  await b.click('Capturar na caixa de entrada')
+  await b.click('Novo', 'nav[aria-label="Atalhos"] button')
+  await b.sleep(400)
+  await b.click('Guardar para organizar depois', '[role=dialog] button')
+  await b.sleep(500)
   await setValue(b, 'textarea[aria-label="O que você quer guardar?"]', 'Ligar para João amanhã')
   await b.shot('inbox-captura')
   await b.click('Guardar para organizar depois')
@@ -88,7 +96,7 @@ try {
   // ---------- Desktop: sidebar capture
   await b.desktop()
   await b.goto(BASE + '#/inbox')
-  r.check('computador: botão Capturar no menu lateral', await b.eval(`[...document.querySelectorAll('aside button')].some(x => x.textContent.trim() === 'Capturar')`))
+  r.check('computador: botão "Novo" na barra lateral', await b.eval(`[...document.querySelectorAll('aside button')].some(x => x.textContent.trim() === 'Novo')`))
   r.check('sem rolagem horizontal (1366px)', await noHorizontalScroll(b))
   await b.shot('inbox-desktop')
 } catch (err) {

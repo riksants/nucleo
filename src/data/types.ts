@@ -134,7 +134,7 @@ export interface Project extends Entity {
   charged: Cents
   /**
    * Amount received before the payment history existed (typed by hand in the old form). It is not
-   * in Financeiro unless the person launches it ("Lançar no Financeiro agora" turns it into a payment).
+   * in Financeiro unless the person launches it ("Lançar em Finanças agora" turns it into a payment).
    * Total received = this + the payments.
    */
   received: Cents

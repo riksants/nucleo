@@ -27,7 +27,8 @@ function Figure({ cents, currency }: { cents: Cents; currency: Currency }) {
       {!suffix && <span className={small}>{symbol}</span>}
       <span className={`${big} font-display leading-none font-semibold tracking-[-0.042em]`}>
         {whole}
-        <span className={small}>,{decimals}</span>
+        {/* cents: their own tracking and a small gap, on the same baseline as the whole part */}
+        <span className={`${small} ml-0.5 font-semibold tracking-[-0.01em]`}>,{decimals}</span>
       </span>
       {suffix && <span className={small}>{symbol}</span>}
     </span>
@@ -154,7 +155,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
 
       <motion.div
         key={delta?.id ?? 'idle'}
-        className={hero ? 'mt-3 mb-1' : 'mt-4 mb-1 lg:mt-6'}
+        className={hero ? 'mt-3 mb-1' : 'mt-3 mb-1 lg:mt-5'}
         style={{ color: ink }}
         // On the band income/expense are coal (green or red on vermilion would not read), so there it stays still.
         animate={delta ? { color: [ink, delta.cents > 0 ? 'var(--color-income)' : 'var(--color-expense)', ink] } : undefined}
@@ -163,7 +164,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
         <Figure cents={shown} currency={currency} />
       </motion.div>
 
-      <div className="min-h-6">
+      <div className={delta || rateLine || note ? 'min-h-6' : ''}>
         <AnimatePresence initial={false}>
           {delta ? (
             <motion.span
@@ -199,7 +200,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
             className="press flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold tracking-[-0.01em] text-on-accent hover:bg-accent-soft"
           >
             <Plus size={20} strokeWidth={2.4} />
-            Adicionar
+            Nova entrada
           </button>
           <button
             type="button"
@@ -207,7 +208,7 @@ export function BalanceCard({ variant = 'card', note }: { variant?: 'card' | 'he
             className="press flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-semibold tracking-[-0.01em] text-ink ring-1 ring-line-strong ring-inset hover:bg-tint/[0.05]"
           >
             <Minus size={20} strokeWidth={2.4} />
-            Retirar
+            Nova saída
           </button>
         </div>
       )}

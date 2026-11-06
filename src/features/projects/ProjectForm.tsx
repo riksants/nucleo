@@ -75,7 +75,7 @@ export function ProjectForm({
     if (!linked) return del('projects', p.id, 'projeto', { after: () => (onClose(), onDeleted?.()) })
     const ok = await confirm({
       title: 'Excluir projeto?',
-      message: `${linked === 1 ? 'A entrada deste pagamento continua' : `As ${linked} entradas dos pagamentos continuam`} no Financeiro (o dinheiro foi recebido), mas ${linked === 1 ? 'fica' : 'ficam'} sem vínculo com o projeto.`,
+      message: `${linked === 1 ? 'A entrada deste pagamento continua' : `As ${linked} entradas dos pagamentos continuam`} em Finanças (o dinheiro foi recebido), mas ${linked === 1 ? 'fica' : 'ficam'} sem vínculo com o projeto.`,
       confirmLabel: 'Excluir',
       danger: true,
     })

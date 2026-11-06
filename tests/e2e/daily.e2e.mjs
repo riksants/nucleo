@@ -151,7 +151,7 @@ try {
   await b.sleep(2500)
   r.check('desligada por padrão: não abre sozinha', (await b.eval('location.hash')) === '#/')
   await b.goto(BASE + '#/settings')
-  await b.click('Abrir o Modo Manhã sozinho', '[role=switch]')
+  await b.click('Abrir “Começar o dia” sozinho', '[role=switch]')
   await b.sleep(400)
   await b.goto(BASE + '#/')
   await b.send('Page.reload', { ignoreCache: true })

@@ -74,7 +74,7 @@ export function MealForm({ open, onClose, meal, initial, onSaved }: { open: bool
   }
 
   return (
-    <FormSheet open={open} onClose={onClose} title={meal ? 'Editar refeição' : 'Nova refeição'} submitLabel={meal ? 'Salvar' : 'Adicionar'} onSubmit={submit} onDelete={meal ? del : undefined}>
+    <FormSheet open={open} onClose={onClose} title={meal ? 'Editar refeição' : 'Nova refeição'} submitLabel={meal ? 'Salvar alterações' : 'Salvar refeição'} onSubmit={submit} onDelete={meal ? del : undefined}>
       <FormGrid>
         <div role="radiogroup" aria-label="Tipo de refeição" className="flex flex-wrap gap-2">
           {types.map((t) => (

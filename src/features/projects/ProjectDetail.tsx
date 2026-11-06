@@ -121,16 +121,16 @@ export function ProjectDetail({ project, open, onClose, onEdit }: { project: Pro
                   <span className="text-soft">registrados antes do histórico</span>
                 </p>
                 {current.legacyReceived === 'inFinance' ? (
-                  <p className="mt-0.5 text-[13px] text-faint">Você indicou que já estão no Financeiro.</p>
+                  <p className="mt-0.5 text-[13px] text-faint">Você indicou que já estão em Finanças.</p>
                 ) : (
                   <>
-                    <p className="mt-0.5 text-[13px] leading-relaxed text-faint">Não foram lançados no Financeiro por aqui. Se você já lançou à mão, marque para não contar duas vezes.</p>
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-faint">Não foram lançados em Finanças por aqui. Se você já lançou à mão, marque para não contar duas vezes.</p>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <Button variant="secondary" onClick={() => void saveProject({ ...current, legacyReceived: 'inFinance' })}>
-                        Já está no Financeiro
+                        Já está em Finanças
                       </Button>
                       <Button variant="secondary" onClick={() => setPaying({ payment: null, legacy: true })}>
-                        Lançar no Financeiro agora
+                        Lançar em Finanças agora
                       </Button>
                     </div>
                   </>

@@ -72,7 +72,7 @@ function FinanceHome() {
 
   return (
     <>
-      <PageHeader title="Financeiro" overlap />
+      <PageHeader title="Finanças" overlap />
       {/* The balance card sits half over the band (phone). */}
       <div className="relative -mt-14 grid grid-cols-[minmax(0,1fr)] gap-6 lg:mt-0 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-8">
         <div className="space-y-4">

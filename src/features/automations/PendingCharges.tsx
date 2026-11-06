@@ -20,7 +20,7 @@ export function PendingCharges({ runs }: { runs: AutomationRun[] }) {
     const income = isIncome(run)
     const ok = await confirm({
       title: income ? 'Não recebeu?' : 'Não pagou?',
-      message: income ? `A cobrança de ${run.origin.label} sai da lista. Nada entra no Financeiro.` : `A cobrança de ${run.origin.label} sai da lista. Nada sai do Financeiro.`,
+      message: income ? `A cobrança de ${run.origin.label} sai da lista. Nada entra em Finanças.` : `A cobrança de ${run.origin.label} sai da lista. Nada sai de Finanças.`,
       confirmLabel: income ? 'Não recebi' : 'Não paguei',
     })
     if (ok) await decline(run)

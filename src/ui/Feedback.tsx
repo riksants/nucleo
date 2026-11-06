@@ -58,7 +58,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     <FeedbackContext.Provider value={api}>
       {children}
       {createPortal(
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+84px)] z-[70] flex justify-center px-4 lg:bottom-8 lg:pl-64">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+86px)] z-[70] flex justify-center px-4 lg:bottom-8 lg:pl-[20.5rem]">
           <AnimatePresence mode="popLayout">
             {toast && (
               <motion.div

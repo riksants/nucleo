@@ -60,11 +60,11 @@ async function chooseFile(selector, path) {
 async function expense(value, reason) {
   await b.goto(BASE + '#/finance')
   await sleep(1200)
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await setValue(b, '#tx-amount', value)
   await setValue(b, '#tx-reason', reason)
   await sleep(200)
-  if (!(await clickIn('Retirar '))) r.results.push('FAIL botão de salvar a saída não encontrado')
+  if (!(await clickIn('Salvar saída de '))) r.results.push('FAIL botão de salvar a saída não encontrado')
   await sleep(1400)
 }
 
@@ -99,7 +99,9 @@ try {
   await b.eval('location.reload()').catch(() => {})
   await sleep(2500)
 
-  // ---------- Minhas regras: frase → editor preenchido (nada salvo)
+  // ---------- Regras: frase → editor preenchido (nada salvo). Wait for the screen after the reload (it used to be read
+  // too early on a slow machine).
+  for (let i = 0; i < 40 && !(await mainText()).includes('Pede sua confirmação antes de fazer'); i++) await sleep(200)
   let text = await mainText()
   r.check('Minhas regras mostra “Descreva sua regra” e o aviso de confirmação na regra', text.includes('Descreva sua regra') && text.includes('Pede sua confirmação antes de fazer'), text.slice(0, 400).replace(/\n/g, ' | '))
   await setValue(b, 'input[aria-label="Descreva sua regra em uma frase"]', 'Quando eu concluir todas as tarefas de um projeto, me avisar')
@@ -179,9 +181,10 @@ try {
   await b.eval('location.reload()').catch(() => {})
   await sleep(2500)
   const createFrom = async (sentence) => {
-    await b.goto(BASE + '#/today')
+    // The sentence lives in the "Novo" sheet (Início's shortcut) since the redesign; "Hoje" moved into the Agenda.
+    await b.goto(BASE + '#/')
     await sleep(1200)
-    await b.eval(`(() => { const el = [...document.querySelectorAll('button')].find((x) => (x.getAttribute('aria-label') || '') === 'Criar no seu dia' || x.textContent.trim() === 'Criar'); el?.click(); return Boolean(el) })()`)
+    await b.eval(`[...document.querySelectorAll('nav[aria-label="Atalhos"] button')].find((x) => x.textContent.trim() === 'Novo')?.click()`)
     await sleep(700)
     await setValue(b, 'input[aria-label="Escreva em uma frase"]', sentence)
     await clickIn('Entender')
@@ -265,12 +268,12 @@ try {
   await clickMain('EUR')
   await sleep(1200)
   text = await mainText()
-  r.check('movimentações seguem para a prévia de Importar extrato', text.includes('Importar extrato') && text.includes('Padaria') && text.includes('Farmácia'), text.slice(0, 500).replace(/\n/g, ' | '))
+  r.check('movimentações seguem para a prévia de Importar extrato', text.includes('Extrato') && text.includes('Padaria') && text.includes('Farmácia'), text.slice(0, 500).replace(/\n/g, ' | '))
 
-  await widths('#/intake', 'Importação inteligente')
-  await widths('#/automations', 'Feito pelo Núcleo')
-  await widths('#/import', 'Importar extrato')
-  await widths('#/rules', 'Minhas regras')
+  await widths('#/intake', 'Importar')
+  await widths('#/automations', 'Automações')
+  await widths('#/import', 'Importar')
+  await widths('#/rules', 'Automações')
 } catch (err) {
   r.results.push('ERROR ' + err.message)
   await b.shot('etapa4-erro').catch(() => {})

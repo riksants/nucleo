@@ -1,4 +1,5 @@
 import { ClipboardPaste, FileUp, History, ShieldCheck } from 'lucide-react'
+import { AreaTabs } from '../../app/areaTabs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { navigate } from '../../app/router'
 import { usePrimaryAction } from '../../app/primaryAction'
@@ -218,7 +219,7 @@ export function ImportPage() {
     }
   }
 
-  const header = <PageHeader title="Importar extrato" subtitle={step === 'pick' ? 'CSV, OFX, Excel ou texto do seu banco' : fileName} />
+  const header = <PageHeader title="Importar" subtitle={step === 'pick' ? 'Extrato do banco: CSV, OFX, Excel ou texto' : fileName} below={<AreaTabs area="importar" />} />
 
   if (step === 'done' && run?.bankImport) {
     const b = run.bankImport
@@ -245,7 +246,7 @@ export function ImportPage() {
             {row('Deixadas de fora (revisão)', b.possible + b.review + b.errors)}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate('/finance')}>Ver no Financeiro</Button>
+            <Button onClick={() => navigate('/finance')}>Ver em Finanças</Button>
             <Button variant="secondary" onClick={() => navigate('/imports', { open: run.id })}>
               Ver em Importações
             </Button>

@@ -43,6 +43,8 @@ try {
 
   // ---------- Vendas
   await b.goto(BASE + '#/sales')
+  // Vendas loads on demand: wait for it before tapping.
+  for (let i = 0; i < 40 && !(await b.eval(`document.body.innerText.includes('Registrar venda')`)); i++) await new Promise((res) => setTimeout(res, 150))
   await b.click('Registrar venda')
   await b.fill('Cliente', 'Maria')
   await b.fill('O que vendeu', 'Bolo de cenoura')
@@ -201,7 +203,7 @@ try {
   text = await b.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await b.sleep(400)
-  check('menu mostra só seções ligadas', text.includes('Vendas') && text.includes('Assinantes') && text.includes('Hoje') && !text.includes('Portfólio'))
+  check('menu mostra só seções ligadas', text.includes('Vendas') && text.includes('Assinantes') && text.includes('Agenda') && !text.includes('Portfólio'))
   // hidden module by URL
   await b.goto(BASE + '#/portfolio')
   text = await b.text()

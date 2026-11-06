@@ -94,7 +94,7 @@ try {
   await A.goto(BASE + '#/more')
   await A.sleep(900)
   const menuText = await A.eval(`document.querySelector('[role=dialog][aria-label="Menu"]')?.innerText ?? ''`)
-  r.check('menu lateral mostra a linha "Conta" e o e-mail conectado', menuText.includes('Conta') && menuText.includes('ana@conta.com'))
+  r.check('menu lateral mostra "Você" com o e-mail conectado', menuText.includes('Você') && menuText.includes('ana@conta.com'))
   await A.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
   await A.sleep(400)
   await A.goto(BASE + '#/settings')

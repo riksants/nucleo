@@ -4,7 +4,8 @@
  */
 import { useEffect, useState } from 'react'
 import { isEnabled } from '../../app/modules'
-import { navigate } from '../../app/router'
+import { navigate, type RoutePath } from '../../app/router'
+import { CaptureSheet } from '../inbox/QuickCapture'
 import { dayWords, type CaptureDraft, type CaptureKind } from '../../core/capture'
 import { useToday, zoneOf } from '../../core/period'
 import { describeRule } from '../../core/recurrence'
@@ -56,7 +57,7 @@ type Opened = { kind: CaptureKind; draft: CaptureDraft | null } | null
  * "Criar": one sentence (written or spoken) or the manual buttons. The sentence opens the right form already
  * filled — that form is the confirmation. `kinds` limits what is offered (sections that are off are hidden).
  */
-export function CreateSheet({ open, onClose, title = 'Criar', initialText }: { open: boolean; onClose(): void; title?: string; initialText?: string }) {
+export function CreateSheet({ open, onClose, title = 'Novo', initialText }: { open: boolean; onClose(): void; title?: string; initialText?: string }) {
   const { settings, data, convert } = useStore()
   const today = useToday(zoneOf(settings))
   const [draft, setDraft] = useState<CaptureDraft | null>(null)
@@ -94,6 +95,7 @@ export function CreateSheet({ open, onClose, title = 'Criar', initialText }: { o
       setBusy(false)
     }
   }
+  const [capture, setCapture] = useState(false)
   const [kind, setKind] = useState<CaptureKind>('task')
   const [form, setForm] = useState<Opened>(null)
   const on = (id: Parameters<typeof isEnabled>[1]) => isEnabled(settings, id)
@@ -181,7 +183,24 @@ export function CreateSheet({ open, onClose, title = 'Criar', initialText }: { o
                     Anotação
                   </button>
                 )}
+                {(
+                  [
+                    on('finance') && ['Entrada', '/finance', 'in'],
+                    on('finance') && ['Saída', '/finance', 'out'],
+                    on('projects') && ['Projeto', '/projects', '1'],
+                    on('sales') && ['Venda', '/sales', '1'],
+                  ].filter(Boolean) as [string, RoutePath, string][]
+                ).map(([label, path, novo]) => (
+                  <button key={label} type="button" onClick={() => (onClose(), navigate(path, { novo }))} className="press flex h-12 items-center justify-center rounded-2xl border border-line bg-surface text-[15px] font-medium hover:border-line-strong">
+                    {label}
+                  </button>
+                ))}
               </div>
+              {on('inbox') && (
+                <button type="button" onClick={() => (onClose(), setCapture(true))} className="press mt-2 flex h-12 w-full items-center justify-center rounded-2xl border border-line bg-surface text-[15px] font-medium hover:border-line-strong">
+                  Guardar para organizar depois
+                </button>
+              )}
               <button type="button" onClick={() => (onClose(), navigate('/intake'))} className="press mt-2 flex h-12 w-full items-center justify-center rounded-2xl border border-dashed border-line text-[15px] font-medium text-soft hover:text-ink">
                 Importar documento ou texto
               </button>
@@ -205,6 +224,7 @@ export function CreateSheet({ open, onClose, title = 'Criar', initialText }: { o
       {last === 'event' && <EventForm open={form?.kind === 'event'} onClose={closeForm} event={null} initial={d ? { title: d.title, date: d.date ?? '', start: d.time ?? '', end: d.end ?? '' } : undefined} />}
       {last === 'habit' && <HabitForm open={form?.kind === 'habit'} onClose={closeForm} habit={null} initial={d ? { name: d.title, rule: d.rule, time: d.time ?? '', minutes: d.minutes } : undefined} />}
       {sale && <SaleForm open={Boolean(sale)} onClose={() => setSale(null)} sale={null} initial={sale} onSaved={() => setSale(null)} />}
+      {capture && <CaptureSheet open onClose={() => setCapture(false)} />}
       {last === 'recurring' && <RecurringForm open={form?.kind === 'recurring'} onClose={closeForm} item={null} initial={d ? { title: d.title, rule: d.rule, time: d.time ?? '', startDate: d.date } : undefined} />}
     </>
   )

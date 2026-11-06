@@ -182,7 +182,7 @@ export function InboxPage() {
         icon={Inbox}
         eyebrow="Capture rápido, organize depois"
         title="Caixa de entrada"
-        primary={{ label: 'Capturar', aria: 'Capturar na caixa de entrada', onPress: () => document.getElementById('inbox-capture')?.focus() }}
+        primary={{ label: 'Guardar', aria: 'Guardar para depois', onPress: () => document.getElementById('inbox-capture')?.focus() }}
         stats={[
           { label: 'Novos', value: open.length },
           { label: 'Organizados', value: organized.length },

@@ -130,7 +130,7 @@ function FinanceGoalForm({ open, onClose, goal }: { open: boolean; onClose(): vo
         <button type="button" role="switch" aria-checked={d.inBalance} onClick={() => set('inBalance', !d.inBalance)} className="flex w-full items-start gap-3 rounded-2xl bg-raised px-4 py-3 text-left">
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium">Este dinheiro está no meu saldo</span>
-            <span className="mt-0.5 block text-[13px] leading-snug text-faint">O valor guardado fica reservado: o Disponível no Financeiro desconta ele. Nada sai do saldo.</span>
+            <span className="mt-0.5 block text-[13px] leading-snug text-faint">O valor guardado fica reservado: o Disponível em Finanças desconta ele. Nada sai do saldo.</span>
           </span>
           <Switch checked={d.inBalance} />
         </button>

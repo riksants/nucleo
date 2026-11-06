@@ -16,7 +16,16 @@ interface FormSheetProps {
   size?: 'md' | 'lg'
 }
 
-export function FormSheet({ open, onClose, title, submitLabel = 'Salvar', onSubmit, onDelete, children, size }: FormSheetProps) {
+/** The button says what happens: "Nova tarefa" → "Salvar tarefa", "Editar …" → "Salvar alterações". */
+function defaultSubmit(title: string): string {
+  const m = /^(Novo|Nova|Novos|Novas) (.+)$/.exec(title)
+  if (m) return `Salvar ${m[2]}`
+  if (/^Editar /.test(title)) return 'Salvar alterações'
+  return 'Salvar'
+}
+
+export function FormSheet({ open, onClose, title, submitLabel, onSubmit, onDelete, children, size }: FormSheetProps) {
+  const label = submitLabel ?? defaultSubmit(title)
   const { toast } = useFeedback()
   const [busy, setBusy] = useState(false)
   const formId = `form-${title.replace(/\s+/g, '-')}`
@@ -49,7 +58,7 @@ export function FormSheet({ open, onClose, title, submitLabel = 'Salvar', onSubm
             </IconButton>
           )}
           <Button type="submit" form={formId} size="lg" block disabled={busy}>
-            {submitLabel}
+            {label}
           </Button>
         </div>
       }

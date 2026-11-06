@@ -17,14 +17,14 @@ try {
   await b.click('Criar item')
   await b.fill('O que fazer', 'Lavar roupa')
   await b.click('Semanal', '[role=radio]')
-  await b.click('Criar', 'button[type=submit]')
+  await b.click('Salvar', 'button[type=submit]')
   // Monthly on today's day of month
   await b.click('Novo recorrente', 'button')
   await b.fill('O que fazer', 'Pagar aluguel')
   await b.click('Mensal', '[role=radio]')
   await b.fill('Dia do mês', String(Number(today.slice(8, 10))))
   await b.shot('recorrente-form-mensal')
-  await b.click('Criar', 'button[type=submit]')
+  await b.click('Salvar', 'button[type=submit]')
   // Weekly on another day → not today
   const wd = await b.eval(`new Date(${JSON.stringify(today)} + 'T12:00:00Z').getUTCDay()`)
   const other = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][(wd + 3) % 7]
@@ -32,13 +32,13 @@ try {
   await b.fill('O que fazer', 'Revisar finanças')
   await b.click('Semanal', '[role=radio]')
   await b.click(other, 'button[aria-pressed=false]')
-  await b.click('Criar', 'button[type=submit]')
+  await b.click('Salvar', 'button[type=submit]')
   await b.sleep(400)
 
   const items = await idb(b, 'recurring')
   r.check('três recorrentes criados (semanal, mensal, outro dia)', items.length === 3 && items.find((i) => i.title === 'Pagar aluguel')?.rule.type === 'monthly')
   let text = await b.text()
-  const hojeSection = await b.eval(`[...document.querySelectorAll('section')][0]?.innerText ?? ''`)
+  const hojeSection = await b.eval(`[...document.querySelectorAll('main section')].find((s) => s.querySelector('h2')?.textContent.trim() === 'Hoje')?.innerText ?? ''`)
   r.check('"Hoje" mostra semanal e mensal de hoje, não o de outro dia', hojeSection.includes('Lavar roupa') && hojeSection.includes('Pagar aluguel') && !hojeSection.includes('Revisar finanças'))
   r.check('"Próximos" mostra a próxima data calculada', text.includes('Revisar finanças'))
   r.check('nenhuma ocorrência futura gravada no banco', (await idb(b, 'completions')).length === 0)

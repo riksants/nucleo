@@ -179,7 +179,7 @@ export function SaleForm({ open, onClose, sale, preset, initial, onSaved }: { op
     const parts = [
       s.payments.some((p) => p.generalId) ? 'Parte de um pagamento geral foi aplicada nesta compra. Esse valor sai junto com a venda (o restante do pagamento geral continua nas outras compras).' : '',
       // The money was received: its incomes stay in Financeiro, only without the link.
-      linked ? `${linked === 1 ? 'A entrada do pagamento continua' : `As ${linked} entradas dos pagamentos continuam`} no Financeiro, sem vínculo com a venda.` : '',
+      linked ? `${linked === 1 ? 'A entrada do pagamento continua' : `As ${linked} entradas dos pagamentos continuam`} em Finanças, sem vínculo com a venda.` : '',
     ].filter(Boolean)
     const ok = await confirm({ title: 'Excluir venda?', message: parts.join(' ') || 'Essa ação não pode ser desfeita.', confirmLabel: 'Excluir', danger: true })
     if (!ok) return

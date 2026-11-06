@@ -292,7 +292,7 @@ export function buildPlan(planId: string, uid: string, summary: string, actions:
         const owed = Math.max(0, (total ?? 0) - (a.ja_recebido_ou_pago === true ? down : 0))
         if (a.parcelas && owed > 0 && !a.primeira_parcela) err('Falta a data da primeira parcela.')
         if (a.parcelas && owed <= 0) err('Não há saldo a parcelar.')
-        details.push(`Total ${money(total ?? 0, cur)} · ${a.ja_recebido_ou_pago === true && down ? `recebido agora ${money(down, cur)} (vira entrada no Financeiro)` : 'nada recebido agora'}`)
+        details.push(`Total ${money(total ?? 0, cur)} · ${a.ja_recebido_ou_pago === true && down ? `recebido agora ${money(down, cur)} (vira entrada em Finanças)` : 'nada recebido agora'}`)
         if (a.parcelas && a.primeira_parcela && owed > 0) {
           const inst = buildInstallments(owed, a.parcelas, a.primeira_parcela, a.intervalo_parcelas === 'semana' ? 'week' : 'month', () => 'x')
           details.push(`${inst.length} parcelas a receber: ${inst.map((i) => `${dayLabel(i.due)} ${money(i.amount, cur)}`).join(' · ')}`)
@@ -359,7 +359,7 @@ export function buildPlan(planId: string, uid: string, summary: string, actions:
           }
         }
         if (a.moeda && r.currency && a.moeda.toUpperCase() !== r.currency) err(`Esse registro é em ${r.currency}; o recebimento precisa ser na mesma moeda.`)
-        if (r.currency) details.push(`${money(r.amount, r.currency)} em ${dayLabel(date)} · vira uma entrada no Financeiro (uma só)`)
+        if (r.currency) details.push(`${money(r.amount, r.currency)} em ${dayLabel(date)} · vira uma entrada em Finanças (uma só)`)
         break
       }
       case 'registrar_despesa':
@@ -374,7 +374,7 @@ export function buildPlan(planId: string, uid: string, summary: string, actions:
         r.amount = amount ?? 0
         r.currency = cur
         r.date = date
-        if (date > today) err('Data no futuro: o Financeiro registra o que já aconteceu. Para algo futuro, crie uma tarefa ou lembrete.')
+        if (date > today) err('Data no futuro: Finanças registra o que já aconteceu. Para algo futuro, crie uma tarefa ou lembrete.')
         const type = a.tipo === 'registrar_entrada' || (a.tipo === 'registrar_transferencia' && a.sentido === 'entrada') ? 'in' : 'out'
         if (a.tipo !== 'registrar_transferencia' && a.categoria) {
           const c = categoryIdFor(a.categoria, { data, settings, now, book: null as never, areasOff: [] }, type)
@@ -879,7 +879,7 @@ export function previewValues(plan: Plan, ref: string, ctx: Pick<PlanCtx, 'data'
       const down = a.ja_recebido_ou_pago === true ? (cents(a.entrada_recebida) ?? 0) : 0
       out.push({ kind: 'dinheiro', label: 'Total da venda', display: money(total) })
       if (a.data) out.push({ kind: 'data', label: 'Dia da venda', display: dayLabel(a.data) })
-      if (down) out.push({ kind: 'dinheiro', label: 'Entrada já recebida (vira uma entrada no Financeiro)', display: money(down) })
+      if (down) out.push({ kind: 'dinheiro', label: 'Entrada já recebida (vira uma entrada em Finanças)', display: money(down) })
       if (total - down > 0) out.push({ kind: 'dinheiro', label: 'Fica a receber', display: money(total - down) })
       if (a.parcelas && a.primeira_parcela && total - down > 0) {
         const inst = buildInstallments(total - down, a.parcelas, a.primeira_parcela, a.intervalo_parcelas === 'semana' ? 'week' : 'month', () => 'x')

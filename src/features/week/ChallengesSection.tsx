@@ -58,7 +58,7 @@ function ChallengeForm({ open, onClose, today }: { open: boolean; onClose(): voi
     d.mode === 'daily'
       ? [
           { value: 'manual', label: 'Eu marco cada dia' },
-          ...(isEnabled(settings, 'finance') ? [{ value: FINANCE_NOSPEND, label: 'Sem gasto desnecessário (Financeiro)' }] : []),
+          ...(isEnabled(settings, 'finance') ? [{ value: FINANCE_NOSPEND, label: 'Sem gasto desnecessário (Finanças)' }] : []),
           { value: 'training', label: 'Treino feito no dia' },
           { value: 'routine:80', label: '80% da rotina no dia' },
           ...categories.map((c) => ({ value: `category:${c}`, label: `Hábito de ${CATEGORY_LABEL[c].toLowerCase()} feito` })),
@@ -119,7 +119,7 @@ function ChallengeForm({ open, onClose, today }: { open: boolean; onClose(): voi
             <TextInput type="date" min={today} value={d.startDate} onChange={(e) => set('startDate', e.target.value)} />
           </Field>
         </div>
-        {d.rule === FINANCE_NOSPEND && <p className="text-[13px] leading-relaxed text-faint">Usa suas saídas do Financeiro: o dia conta quando há saídas registradas e nenhuma marcada como desnecessária. Dia sem nenhum registro não é considerado automaticamente — você pode confirmar tocando nele.</p>}
+        {d.rule === FINANCE_NOSPEND && <p className="text-[13px] leading-relaxed text-faint">Usa suas saídas de Finanças: o dia conta quando há saídas registradas e nenhuma marcada como desnecessária. Dia sem nenhum registro não é considerado automaticamente — você pode confirmar tocando nele.</p>}
       </FormGrid>
     </FormSheet>
   )

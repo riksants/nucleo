@@ -33,7 +33,7 @@ function ItemForm({ open, onClose, row, week, categories }: { open: boolean; onC
   const del = row && !auto ? async () => (await remove('shoppingItems', row.id), onClose()) : undefined
 
   return (
-    <FormSheet open={open} onClose={onClose} title={row ? (auto ? row.name : 'Editar item') : 'Novo item'} submitLabel={row ? 'Salvar' : 'Adicionar'} onSubmit={submit} onDelete={del}>
+    <FormSheet open={open} onClose={onClose} title={row ? (auto ? row.name : 'Editar item') : 'Novo item'} submitLabel={row ? 'Salvar' : 'Salvar item'} onSubmit={submit} onDelete={del}>
       <FormGrid>
         {auto ? (
           <p className="text-[14px] leading-relaxed text-soft">{row?.orphan ? 'Comprado antes; não está mais nas refeições desta semana.' : `Vem das refeições (${row?.meals} ${row?.meals === 1 ? 'refeição' : 'refeições'})${row?.amount ? ` · ${row.amount}` : ''}. Para mudar a quantidade, edite as refeições.`}</p>

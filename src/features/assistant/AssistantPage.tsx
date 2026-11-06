@@ -1,4 +1,5 @@
 import { ArrowUp, ChevronRight, Gauge, MessageCircle, Mic, ShieldCheck, Square, X } from 'lucide-react'
+import { useKeyboardOpen } from '../../lib/hooks'
 import { useEffect, useRef, useState } from 'react'
 import { navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -174,6 +175,8 @@ function ReplyView({ reply, onFollow, onChoose }: { reply: Reply; onFollow(text:
  */
 export function AssistantPage() {
   const { data, settings, updateSettings } = useStore()
+  // The floating bar steps aside with the keyboard; the composer then sits at the bottom edge.
+  const keyboard = useKeyboardOpen()
   const { userId } = useSession()
   const { params } = useRoute()
   const { all } = useInsights()
@@ -378,13 +381,14 @@ export function AssistantPage() {
     const today = nowIn(zoneOf(s)).date
     const busy = busyOf(buildAgenda(d, s, today, addDaysToDate(today, 2))).find((b) => b.key === a.key && b.date === a.date)
     const proposal = busy ? replanItem(d, s, busy) : null
-    push([{ from: 'me', text: i.title }, { from: 'nucleo', reply: proposal ? { lines: [proposal.summary], proposal } : { lines: ['Não encontrei um horário livre nos próximos 7 dias dentro da sua faixa de horário. Você pode ajustar a faixa em Configurações.'] } }])
+    push([{ from: 'me', text: i.title }, { from: 'nucleo', reply: proposal ? { lines: [proposal.summary], proposal } : { lines: ['Não encontrei um horário livre nos próximos 7 dias dentro da sua faixa de horário. Você pode ajustar a faixa em Você.'] } }])
   }
 
   const shown = all.slice(0, ASSISTANT_LIMIT)
   return (
     <>
-      <PageHeader title="Assistente" subtitle={iaReady ? 'Usa o que está no seu NÚCLEO. Perguntas que os comandos não respondem vão para a IA, com só os trechos necessários.' : !NUCLEO_IA && aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'} />
+      <PageHeader compact title="Assistente" />
+      <p className="mx-auto mb-4 max-w-2xl px-1 text-[14px] leading-relaxed text-faint">{iaReady ? 'Usa o que está no seu NÚCLEO. Perguntas que os comandos não respondem vão para a IA, com só os trechos necessários.' : !NUCLEO_IA && aiActive(settings.assistantAi) ? 'Usa o que está no seu NÚCLEO. Frases que os comandos não entendem vão para a IA (só a frase).' : 'Usa só o que está no seu NÚCLEO — nada é enviado para fora'}</p>
       <div className="mx-auto max-w-2xl pb-36">
         {shown.length > 0 && (
           <section className="mb-6">
@@ -477,7 +481,7 @@ export function AssistantPage() {
           e.preventDefault()
           ask(text)
         }}
-        className="glass-smoke fixed! inset-x-0 bottom-[calc(max(8px,env(safe-area-inset-bottom))+66px)] z-30 border-t border-line px-4 py-2.5 lg:bottom-0 lg:left-64 lg:pb-[max(10px,env(safe-area-inset-bottom))]"
+        className={`glass-smoke fixed! inset-x-0 z-30 border-t border-line px-4 py-2.5 transition-[bottom] duration-200 lg:bottom-0! lg:left-[20.5rem] lg:pb-[max(10px,env(safe-area-inset-bottom))] ${keyboard ? 'bottom-[max(8px,env(safe-area-inset-bottom))]' : 'bottom-[calc(env(safe-area-inset-bottom)+82px)]'}`}
         style={{ '--glass-base': 'var(--color-bg)' } as React.CSSProperties}
       >
         <div className="mx-auto flex max-w-2xl items-center gap-2">

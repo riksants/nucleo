@@ -147,7 +147,7 @@ export function ReminderCenter() {
   }, [occurrences, data, settings, repository, prefs.quiet, userId, ready, anyEnabled, idle, retry])
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+10px)] z-[65] flex flex-col items-center gap-2 px-4 lg:pl-64">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+10px)] z-[65] flex flex-col items-center gap-2 px-4 lg:pl-[20.5rem]">
       <AnimatePresence>
         {visible.map((o) => (
           <motion.div

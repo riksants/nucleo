@@ -92,7 +92,7 @@ try {
   await A.click('Refeição', 'button')
   await A.click('Almoço', '[role=radio]')
   await fillIn(A, 'Ingredientes', '3 bananas\nArroz')
-  await A.click('Adicionar', '[role=dialog] button[type=submit]')
+  await A.click('Salvar', '[role=dialog] button[type=submit]')
   await A.sleep(400)
   await A.click('Marcar Almoço como realizada')
   await A.click('Compras', '[role=radio]')

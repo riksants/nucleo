@@ -1,6 +1,9 @@
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, CalendarDays, CalendarSearch, ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, CalendarSearch, ChevronLeft, ChevronRight, Moon, Plus, Sunrise } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { navigate } from '../../app/router'
+import { isEnabled } from '../../app/modules'
+import { TaskForm } from '../tasks/TaskForm'
+import { DayView } from '../today/TodayPage'
 import { PageHeader } from '../../app/Shell'
 import { buildAgenda, itemLabel, type AgendaItem } from '../../core/agenda'
 import { conflictsOf } from '../../core/timeline'
@@ -171,20 +174,24 @@ export function AgendaPage() {
   const dayMoney = filter === 'all' ? (money.get(day) ?? []) : []
   const weekCount = items.length
   const weekMoney = [...money.values()].reduce((n, l) => n + l.length, 0)
+  const tasksOn = isEnabled(settings, 'tasks')
+  const newTask = useSheet<null>()
+  // The rituals of the old "Hoje" (Começar o dia / Fechar o dia), when they fit the clock.
+  const hour = nowIn(tz, clock).hour
+  const ritual = isEnabled(settings, 'today') && day === today ? (hour >= 4 && hour < 12 ? 'morning' : hour >= 17 || hour < 4 ? 'night' : null) : null
 
   return (
     <>
       <PageHeader
-        rich
-        icon={CalendarDays}
         eyebrow={MONTH.format(at(day))}
         title="Agenda"
-        subtitle="Compromissos, tarefas, rotina, hábitos e cobranças num lugar só"
-        primary={{ label: 'Compromisso', aria: 'Novo compromisso', onPress: () => newEvent.show(day) }}
+        primary={tasksOn ? { label: 'Nova tarefa', aria: 'Nova tarefa', onPress: () => newTask.show() } : { label: 'Compromisso', aria: 'Novo compromisso', onPress: () => newEvent.show(day) }}
         actions={
-          <button type="button" onClick={() => create.show()} className="press flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-            <Sparkles size={16} /> Em uma frase
-          </button>
+          tasksOn ? (
+            <button type="button" onClick={() => newEvent.show(day)} className="band-pill band-pill-soft">
+              <Plus size={16} strokeWidth={2.4} /> Compromisso
+            </button>
+          ) : undefined
         }
         stats={[
           { label: day === today ? 'Hoje' : 'Neste dia', value: dayItems.length },
@@ -234,7 +241,25 @@ export function AgendaPage() {
         </div>
       )}
 
-      {view === 'day' ? (
+      {ritual && view === 'day' && (
+        <button type="button" onClick={() => navigate('/today', { mode: ritual })} className="card tap mb-5 flex w-full items-center gap-3 px-4 py-3 text-left">
+          <span aria-hidden className="icon-tile grid size-9 shrink-0 place-items-center rounded-xl">
+            {ritual === 'morning' ? <Sunrise size={18} /> : <Moon size={18} />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-semibold">{ritual === 'morning' ? 'Começar o dia' : 'Fechar o dia'}</span>
+            <span className="block text-[14px] text-soft">{ritual === 'morning' ? 'Veja o plano e escolha o foco de hoje' : 'Revise o que ficou e prepare amanhã'}</span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-faint" />
+        </button>
+      )}
+
+      {view === 'day' && day === today && filter === 'all' ? (
+        <>
+          <Conflicts items={dayItems} onOpen={open} />
+          <DayView today={today} items={dayItems} nowTime={nowTime} onCreate={() => create.show()} />
+        </>
+      ) : view === 'day' ? (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
           <section aria-label={dayTitle(day)}>
             <h2 className="mb-2 px-1 text-[15px] font-semibold tracking-[-0.01em] first-letter:uppercase">{day === today ? `Hoje, ${dayTitle(day).split(', ')[1]}` : dayTitle(day)}</h2>
@@ -284,7 +309,8 @@ export function AgendaPage() {
       )}
       <EventForm open={newEvent.open} onClose={newEvent.close} event={null} initial={{ date: newEvent.item ?? today }} />
       <EventForm open={editEvent.open} onClose={editEvent.close} event={editEvent.item} />
-      <CreateSheet open={create.open} onClose={create.close} />
+      <CreateSheet open={create.open} onClose={create.close} title="Novo" />
+      <TaskForm open={newTask.open} onClose={newTask.close} task={null} initial={{ dueDate: day }} />
       {sheets}
     </>
   )

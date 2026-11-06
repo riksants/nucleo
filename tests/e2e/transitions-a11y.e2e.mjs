@@ -67,10 +67,10 @@ try {
   const solid = await nav()
   r.check('reduzir transparência: barra de abas sólida (sem desfoque)', solid.blur === 'none' && /^rgb\(/.test(solid.bg), JSON.stringify(solid))
   // Toast too
-  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Retirar').click()`)
+  await b.eval(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Nova saída').click()`)
   await sleep(600)
   await b.eval(`(() => { const set = (sel, v) => { const el = document.querySelector(sel); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })) }; set('#tx-amount', '5'); set('#tx-reason', 'Teste') })()`)
-  await b.eval(`[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Retirar R$')).click()`)
+  await b.eval(`[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent.includes('Salvar saída de R$')).click()`)
   await sleep(400)
   const toast = await b.eval(`(() => { const t = document.querySelector('[role=status]'); if (!t) return null; const cs = getComputedStyle(t); return { blur: cs.backdropFilter, bg: cs.backgroundColor } })()`)
   r.check('reduzir transparência: aviso (toast) sólido', !!toast && toast.blur === 'none' && toast.bg === 'rgb(46, 46, 50)', JSON.stringify(toast))

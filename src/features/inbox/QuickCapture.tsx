@@ -38,7 +38,7 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose(): void
     <Sheet
       open={open}
       onClose={onClose}
-      title="Capturar"
+      title="Guardar para depois"
       footer={
         <div className="space-y-2">
           <Button size="lg" block onClick={submit} disabled={!text.trim() || busy}>

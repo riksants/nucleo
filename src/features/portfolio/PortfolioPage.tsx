@@ -87,7 +87,7 @@ function PortfolioForm({ open, onClose, item }: { open: boolean; onClose(): void
       open={open}
       onClose={onClose}
       title={item ? 'Editar trabalho' : 'Novo trabalho'}
-      submitLabel={item ? 'Salvar' : 'Adicionar'}
+      submitLabel={item ? 'Salvar alterações' : 'Salvar trabalho'}
       onSubmit={submit}
       onDelete={item ? () => del('portfolio', item.id, 'trabalho', { after: onClose }) : undefined}
     >
@@ -255,7 +255,7 @@ export function PortfolioPage() {
         icon={Briefcase}
         eyebrow="Seus trabalhos, só para você"
         title="Portfólio"
-        primary={{ label: 'Adicionar', aria: 'Adicionar ao portfólio', onPress: () => form.show() }}
+        primary={{ label: 'Novo', aria: 'Novo trabalho', onPress: () => form.show() }}
         stats={
           all.length
             ? [

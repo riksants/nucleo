@@ -37,24 +37,24 @@ export interface ModuleDef {
 }
 
 export const MODULES: ModuleDef[] = [
-  { id: 'today', path: '/today', label: 'Hoje', icon: CalendarCheck, description: 'Tarefas, rotina, refeições e prazos do dia', legacy: false },
-  { id: 'finance', path: '/finance', label: 'Financeiro', icon: Wallet, description: 'Saldo, entradas e saídas', legacy: true },
-  { id: 'projects', path: '/projects', label: 'Projetos de trabalho', shortLabel: 'Projetos', icon: FolderKanban, description: 'Trabalhos, prazos e valores', legacy: true },
+  { id: 'today', path: '/today', label: 'Começar e fechar o dia', shortLabel: 'Hoje', icon: CalendarCheck, description: 'Os rituais da manhã e da noite, na Agenda', legacy: false },
+  { id: 'finance', path: '/finance', label: 'Finanças', icon: Wallet, description: 'Saldo, entradas, saídas e a receber', legacy: true },
+  { id: 'projects', path: '/projects', label: 'Projetos', icon: FolderKanban, description: 'Trabalhos, prazos e pagamentos', legacy: true },
   { id: 'tasks', path: '/tasks', label: 'Tarefas', icon: ListTodo, description: 'O que fazer e compromissos', legacy: true },
   { id: 'clients', path: '/clients', label: 'Clientes', icon: Users, description: 'Contatos e histórico', legacy: true },
-  { id: 'goals', path: '/goals', label: 'Metas de compra', icon: Target, description: 'Compras que você quer fazer', legacy: true },
+  { id: 'goals', path: '/goals', label: 'Metas', icon: Target, description: 'Compras planejadas e reservas', legacy: true },
   { id: 'tools', path: '/tools', label: 'Assinaturas', icon: Wrench, description: 'O que você paga todo mês: apps, ferramentas e serviços', legacy: true },
   { id: 'accounts', path: '/accounts', label: 'Senhas', icon: KeyRound, description: 'Acessos e senhas, protegidos pelo cofre', legacy: true },
   { id: 'notes', path: '/notes', label: 'Anotações', icon: NotebookPen, description: 'Notas rápidas', legacy: true },
   { id: 'portfolio', path: '/portfolio', label: 'Portfólio', icon: Briefcase, description: 'Trabalhos entregues', legacy: true },
   { id: 'sales', path: '/sales', label: 'Vendas', icon: BadgeDollarSign, description: 'Quem comprou, quanto pagou e quanto falta', legacy: false },
   { id: 'subscribers', path: '/subscribers', label: 'Assinantes', icon: Repeat, description: 'Planos e assinantes dos seus projetos', legacy: false },
-  { id: 'routine', path: '/routine', label: 'Rotina', icon: CalendarClock, description: 'Suas atividades da semana, com horários', legacy: false },
+  { id: 'routine', path: '/routine', label: 'Rotina', icon: CalendarClock, description: 'Atividades da semana, com horários', legacy: false },
   { id: 'meals', path: '/meals', label: 'Alimentação', icon: Salad, description: 'Refeições da semana e lista de compras', legacy: false },
   { id: 'life', path: '/life', label: 'Vida', icon: Compass, description: 'Calendário, projetos pessoais, objetivos e o que mudou', legacy: false },
-  { id: 'week', path: '/week', label: 'Semana', icon: CalendarRange, description: 'Resumo, metas, sequências, desafios e Score', legacy: false },
+  { id: 'week', path: '/week', label: 'Revisão da semana', shortLabel: 'Revisão', icon: CalendarRange, description: 'Score, metas da semana, sequências e desafios', legacy: false },
   { id: 'agenda', path: '/agenda', label: 'Agenda', icon: CalendarDays, description: 'Hoje e semana: compromissos, tarefas, rotina e hábitos', legacy: false },
-  { id: 'inbox', path: '/inbox', label: 'Caixa de entrada', icon: Inbox, description: 'Capture rápido, organize depois', legacy: false },
+  { id: 'inbox', path: '/inbox', label: 'Caixa de entrada', icon: Inbox, description: 'Guarde rápido, organize depois', legacy: false },
   { id: 'recurring', path: '/recurring', label: 'Recorrentes', icon: ListRestart, description: 'Checklist que se repete (contas, rotinas da casa…)', legacy: false },
   { id: 'habits', path: '/habits', label: 'Hábitos', icon: Sprout, description: 'Água, treino, leitura… um dia de cada vez', legacy: false },
 ]
@@ -64,8 +64,8 @@ export const MODULES: ModuleDef[] = [
  * Every section belongs to exactly one group.
  */
 export const MODULE_GROUPS: { title: string; ids: ModuleId[] }[] = [
-  { title: 'Dia a dia', ids: ['today', 'agenda', 'tasks', 'habits', 'recurring', 'routine', 'meals', 'inbox'] },
-  { title: 'Dinheiro', ids: ['finance', 'sales', 'subscribers', 'tools', 'goals'] },
+  { title: 'Dia a dia', ids: ['agenda', 'today', 'tasks', 'routine', 'habits', 'recurring', 'meals', 'inbox'] },
+  { title: 'Finanças', ids: ['finance', 'sales', 'subscribers', 'tools', 'goals'] },
   { title: 'Trabalho', ids: ['projects', 'clients', 'portfolio'] },
   { title: 'Planejamento', ids: ['week', 'life'] },
   { title: 'Guardados', ids: ['notes', 'accounts'] },
@@ -97,7 +97,10 @@ export const MODULE_BY_PATH = Object.fromEntries(MODULES.map((m) => [m.path, m])
 export function isEnabled(settings: Pick<Settings, 'modules'>, id: ModuleId): boolean {
   const mod = MODULE_BY_ID[id]
   if (!mod) return false
-  return settings.modules?.[id] ?? mod.legacy
+  const on = settings.modules?.[id] ?? mod.legacy
+  // "Hoje" moved into the Agenda (its rituals live there): with Hoje on, the Agenda is reachable too.
+  if (id === 'agenda' && !on) return settings.modules?.today ?? false
+  return on
 }
 
 export function enabledModules(settings: Pick<Settings, 'modules'>): ModuleDef[] {

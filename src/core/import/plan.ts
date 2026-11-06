@@ -168,7 +168,7 @@ export function planImport(analysis: Analysis, decisions: Map<number, Decision>,
 
   if (missingRate.size) {
     const list = [...missingRate].join(', ')
-    return `Sem cotação para converter ${list} na sua moeda principal. Atualize as cotações (ou informe uma manual em Configurações) e tente de novo — nada foi importado.`
+    return `Sem cotação para converter ${list} na sua moeda principal. Atualize as cotações (ou informe uma manual em Você → Câmbio) e tente de novo — nada foi importado.`
   }
 
   const parts: string[] = []

@@ -59,12 +59,12 @@ const fillIn = (b, labelText, value) =>
 
 async function expense(b, amount, reason, { category, unnecessary } = {}) {
   await b.goto(BASE + '#/finance')
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await setValue(b, '#tx-amount', amount)
   await setValue(b, '#tx-reason', reason)
   if (category) await choose(b, '#tx-category', category)
   if (unnecessary) await b.click('Gasto desnecessário', '[role=switch]')
-  await b.click(`Retirar R$ ${amount},00`, 'button')
+  await b.click(`Salvar saída de R$ ${amount},00`, 'button')
   await b.sleep(500)
 }
 

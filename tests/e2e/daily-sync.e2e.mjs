@@ -67,7 +67,7 @@ try {
   // The inbox "+" lives on the inbox screen since "um '+' por tela" (20d69b3).
   await A.goto(BASE + '#/inbox')
   await A.sleep(800)
-  r.check('conta nova: seções sugeridas incluem Caixa de entrada (botão +)', await A.eval(`!!document.querySelector('[aria-label="Capturar na caixa de entrada"]')`))
+  r.check('conta nova: seções sugeridas incluem Caixa de entrada (com "Guardar para depois")', await A.eval(`[...document.querySelectorAll('main header button.band-pill')].some((x) => x.textContent.includes('Guardar para depois'))`))
 
   // A: habit + mark today
   await A.goto(BASE + '#/habits')

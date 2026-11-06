@@ -26,7 +26,7 @@ try {
   await b.sleep(1200)
 
   // Adicionar: 2500 + 750 + 120 = → 3.370 → Confirmar registra 3.370
-  await b.click('Adicionar')
+  await b.click('Nova entrada')
   await b.sleep(400)
   r.check('teclas da calculadora aparecem no campo de valor', (await key('Somar')) !== false && (await b.text()).includes('÷'))
   await setValue(b, '#tx-amount', '2500')
@@ -36,21 +36,21 @@ try {
   await key('Somar')
   await typeMore('120')
   r.check('mostra a conta e o resultado', (await amount()) === '2500 + 750 + 120' && (await preview()) === '= 3.370', `${await amount()} | ${await preview()}`)
-  r.check('Confirmar já mostra o resultado final', (await b.text()).includes('Adicionar R$ 3.370,00'))
+  r.check('Confirmar já mostra o resultado final', (await b.text()).includes('Salvar entrada de R$ 3.370,00'))
   const before = (await idb(b, 'transactions')).length
   await key('Calcular')
   await b.sleep(300)
   r.check('"=" mostra o resultado no campo e não registra nada', (await amount()) === '3.370' && (await idb(b, 'transactions')).length === before)
   await b.shot('calc-adicionar')
   await setValue(b, '#tx-reason', 'Projetos do mês')
-  await b.click('Adicionar R$ 3.370,00', 'button')
+  await b.click('Salvar entrada de R$ 3.370,00', 'button')
   await b.sleep(500)
   let all = await idb(b, 'transactions')
   const added = all.find((t) => t.reason === 'Projetos do mês')
   r.check('Confirmar registra uma entrada de 3.370', added?.type === 'in' && added.amount === 337000 && added.baseAmount === 337000 && added.currency === 'BRL' && all.length === before + 1)
 
   // Retirar: 100 + 50 = 150, continua 150 + 50 = 200, corrige com apagar
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await b.sleep(400)
   await setValue(b, '#tx-amount', '100')
   await key('Somar')
@@ -62,7 +62,7 @@ try {
   // Apagar (corrigir antes de confirmar): "150 + 5" → "150 + " → "150 + 50"
   await setValue(b, '#tx-amount', (await amount()).slice(0, -1))
   await typeMore('50')
-  r.check('continua calculando depois do "=": 150 + 50 = 200', (await preview()) === '= 200' && (await b.text()).includes('Retirar R$ 200,00'))
+  r.check('continua calculando depois do "=": 150 + 50 = 200', (await preview()) === '= 200' && (await b.text()).includes('Salvar saída de R$ 200,00'))
   await key('Multiplicar')
   await key('Dividir')
   r.check('trocar de operador não cria conta inválida', (await amount()) === '150 + 50 ÷ ')
@@ -73,7 +73,7 @@ try {
   await b.sleep(400)
   r.check('com conta inválida, Confirmar não registra nada', !(await idb(b, 'transactions')).some((t) => t.reason === 'Conta dividida'))
   await setValue(b, '#tx-amount', '150 + 50')
-  await b.click('Retirar R$ 200,00', 'button')
+  await b.click('Salvar saída de R$ 200,00', 'button')
   await b.sleep(500)
   all = await idb(b, 'transactions')
   const out = all.find((t) => t.reason === 'Conta dividida')
@@ -81,11 +81,11 @@ try {
   r.check('nenhum valor inválido salvo', all.every((t) => Number.isSafeInteger(t.amount) && t.amount > 0 && Number.isFinite(t.baseAmount)))
 
   // Valor único continua como antes, com centavos
-  await b.click('Retirar')
+  await b.click('Nova saída')
   await b.sleep(400)
   await setValue(b, '#tx-amount', '12,50')
   await setValue(b, '#tx-reason', 'Café')
-  await b.click('Retirar R$ 12,50', 'button')
+  await b.click('Salvar saída de R$ 12,50', 'button')
   await b.sleep(500)
   const cafe = (await idb(b, 'transactions')).find((t) => t.reason === 'Café')
   r.check('valor único com centavos funciona como antes', cafe?.amount === 1250 && cafe.baseAmount === -1250)
@@ -100,7 +100,7 @@ try {
   const old = await idb(b, 'transactions', 'old-in')
   r.check('editar sem mudar mantém o valor', old.amount === 100000 && old.baseAmount === 100000)
 
-  await b.click('Adicionar')
+  await b.click('Nova entrada')
   await b.sleep(400)
   await setValue(b, '#tx-amount', '999999 × 999999 + 123456,78')
   r.check('sem rolagem horizontal com conta longa (390px)', await noHorizontalScroll(b))

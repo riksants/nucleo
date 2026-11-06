@@ -197,7 +197,7 @@ try {
   // ---------- Semana e Vida
   await b.goto(BASE + '#/week')
   text = await b.text()
-  r.check('Semana: topo novo e pendência real da semana', text.includes('Semana') && (text.includes('Ficou pendente') || text.includes('Avançou') || text.includes('Resumo')))
+  r.check('Revisão da semana: topo novo e pendência real da semana', text.includes('Revisão da semana') && (text.includes('Ficou pendente') || text.includes('Avançou') || text.includes('Resumo')))
   await b.goto(BASE + '#/life')
   text = await b.text()
   r.check('Vida: abas Calendário · Projetos · Objetivos · Evolução', ['Calendário', 'Projetos', 'Objetivos', 'Evolução'].every((x) => text.includes(x)))

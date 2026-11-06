@@ -1,13 +1,12 @@
 import { AnimatePresence } from 'framer-motion'
-import { CalendarCheck, Check, ChevronLeft, ChevronRight, MessageCircle, Moon, Sunrise } from 'lucide-react'
+import { CalendarCheck, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isEnabled } from '../../app/modules'
 import { clearParams, navigate, useRoute, type RoutePath } from '../../app/router'
-import { buildAgenda, tally, type AgendaItem } from '../../core/agenda'
+import { buildAgenda, type AgendaItem } from '../../core/agenda'
 import { planDay } from '../../core/day'
 import { addDaysToDate, nowIn, useToday, zoneOf } from '../../core/period'
 import { dayWords } from '../../core/capture'
-import { nextUp, timeState } from '../../core/timeState'
 import { PageHeader } from '../../app/Shell'
 import { ACTIVE_PROJECT_STATUSES, isPaidTool, nextChargeDate, sortOpenTasks } from '../../data/selectors'
 import { isOverdue, saleRemaining } from '../../data/sales'
@@ -22,7 +21,6 @@ import { SectionTitle } from '../../ui/Display'
 import { useSheet } from '../../ui/formHooks'
 import { useOpenItem } from '../agenda/openItem'
 import { dotOf } from '../agenda/AgendaRow'
-import { CreateSheet } from '../daily/CreateSheet'
 import { DayTimeline } from '../daily/DayParts'
 import { useBuyerName } from '../sales/useBuyerName'
 import { TaskForm } from '../tasks/TaskForm'
@@ -58,7 +56,7 @@ interface DueItem {
  * yes/no, the day as a timeline (tasks, appointments, routine, habits, recurring, meals), late tasks and money due.
  * Marking here marks the record itself; the clock alone never marks anything as done.
  */
-function DayView({ today, items, nowTime, onCreate }: { today: string; items: AgendaItem[]; nowTime: string; onCreate(): void }) {
+export function DayView({ today, items, nowTime, onCreate }: { today: string; items: AgendaItem[]; nowTime: string; onCreate(): void }) {
   const { data, settings } = useStore()
   const buyer = useBuyerName()
   const taskSheet = useSheet<Task>()
@@ -134,7 +132,7 @@ function DayView({ today, items, nowTime, onCreate }: { today: string; items: Ag
         <div className="space-y-6">
           {items.length > 0 && (
             <section aria-label="Linha do dia">
-              <SectionTitle action="Criar" onAction={onCreate}>
+              <SectionTitle action="Novo" onAction={onCreate}>
                 Seu dia
               </SectionTitle>
               {cleared && (
@@ -222,68 +220,39 @@ const LONG_DATE = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'nume
  * Hoje: one view of the day split into Manhã · Tarde · Noite. The short start-of-day and end-of-day summaries
  * (Começar o dia / Fechar o dia) are one tap away when they fit the clock, and still open with ?mode=.
  */
+/**
+ * "Hoje" now lives inside the Agenda: its day (Seu dia, Atrasadas, Prazos, Próximos dias) is the Agenda's view of
+ * today. This screen keeps only the two rituals — Começar o dia (?mode=morning) and Fechar o dia (?mode=night) —
+ * opened from the Agenda, Início or the morning auto-open. Any other link to #/today lands on the Agenda.
+ */
 export function TodayPage() {
   const { data, settings } = useStore()
   const { params } = useRoute()
   const tz = zoneOf(settings)
   const today = useToday(tz)
-  // Follows the clock: states (Em horário → Aguardando confirmação) update while the screen stays open.
   const clock = useNow(30_000)
-  const { hour, time: nowTime } = nowIn(tz, clock)
+  const { hour } = nowIn(tz, clock)
   const asked = params.get('mode')
-  const [mode, setMode] = useState<DayMode>(asked === 'morning' || asked === 'night' ? asked : 'day')
+  const mode: DayMode = asked === 'morning' || asked === 'night' ? asked : 'day'
   useEffect(() => {
-    if (asked === 'morning' || asked === 'night' || asked === 'day') setMode(asked)
-  }, [asked])
-  const create = useSheet<null>()
-  const items = useMemo(() => buildAgenda(data, settings, today, today, clock), [data, settings, today, clock])
+    if (mode === 'day') location.replace(`${location.pathname}${location.search}#/agenda`)
+  }, [mode])
   const plan = useMemo(() => (mode === 'day' ? null : planDay(data, settings, new Date(), today)), [mode, data, settings, today])
   const tomorrowPlan = useMemo(() => (mode === 'night' ? planDay(data, settings, new Date(), addDaysToDate(today, 1)) : null), [mode, data, settings, today])
-  const hint = hour >= 4 && hour < 12 ? { to: 'morning' as const, label: 'Começar o dia' } : hour >= 18 || hour < 4 ? { to: 'night' as const, label: 'Fechar o dia' } : null
-
-  const t = tally(items)
-  const late = isEnabled(settings, 'tasks') ? data.tasks.filter((x) => x.status !== 'done' && x.dueDate && (x.dueDate < today || (x.dueDate === today && !!x.dueTime && x.dueTime < nowTime))).length : 0
-  const next = nextUp(items, today, nowTime)
+  if (mode === 'day') return null
 
   return (
     <>
-      <PageHeader
-        rich
-        icon={CalendarCheck}
-        eyebrow={LONG_DATE.format(new Date(`${today}T12:00:00Z`))}
-        title="Hoje"
-        subtitle={greeting(hour)}
-        primary={{ label: 'Criar', aria: 'Criar no seu dia', onPress: () => create.show() }}
-        stats={[
-          { label: 'Feitos', value: t.total ? `${t.done}/${t.total}` : '—' },
-          { label: 'Atrasadas', value: late },
-          { label: next && timeState(next, today, nowTime) === 'now' ? 'Agora' : 'Próximo', value: next?.start || '—' },
-        ]}
-        actions={
-          <button type="button" onClick={() => navigate('/assistant')} className="press flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[14px] font-medium text-soft hover:text-ink">
-            <MessageCircle size={16} /> Assistente
-          </button>
-        }
-      />
+      <PageHeader eyebrow={LONG_DATE.format(new Date(`${today}T12:00:00Z`))} title={mode === 'morning' ? 'Começar o dia' : 'Fechar o dia'} subtitle={greeting(hour)} />
       <div className="mb-5 flex min-h-6 flex-wrap items-center gap-3">
-        {mode !== 'day' ? (
-          <button type="button" onClick={() => (setMode('day'), clearParams())} className="hit relative flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
-            <ChevronLeft size={16} /> Voltar ao dia
-          </button>
-        ) : (
-          hint && (
-            <button type="button" onClick={() => setMode(hint.to)} className="press inline-flex h-9 items-center gap-1.5 rounded-full bg-accent/[0.1] px-3.5 text-[14px] font-medium text-accent-hi hover:bg-accent/[0.16]">
-              {hint.to === 'morning' ? <Sunrise size={16} /> : <Moon size={16} />} {hint.label}
-            </button>
-          )
-        )}
+        <button type="button" onClick={() => (clearParams(), navigate('/agenda'))} className="hit relative flex items-center gap-1 text-[14px] font-medium text-accent-hi hover:text-ink">
+          <ChevronLeft size={16} /> Voltar à Agenda
+        </button>
       </div>
       <Suspense fallback={null}>
-        {mode === 'day' && <DayView today={today} items={items} nowTime={nowTime} onCreate={() => create.show()} />}
         {mode === 'morning' && plan && <MorningView plan={plan} greeting={greeting(hour)} />}
         {mode === 'night' && plan && tomorrowPlan && <NightView plan={plan} tomorrowPlan={tomorrowPlan} />}
       </Suspense>
-      <CreateSheet open={create.open} onClose={create.close} />
     </>
   )
 }

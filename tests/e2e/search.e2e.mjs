@@ -79,7 +79,7 @@ try {
   gs = await search('assinaturas')
   r.check('"assinaturas" → seção e ação "Nova assinatura" + o registro', rowsOf(gs, 'Ir para')[0] === 'Assinaturas' && rowsOf(gs, 'Fazer agora').includes('Nova assinatura'), JSON.stringify(gs))
   gs = await search('pagamento')
-  r.check('"pagamento" → Financeiro, ação de registrar e a movimentação real', rowsOf(gs, 'Ir para').includes('Financeiro') && rowsOf(gs, 'Fazer agora').includes('Registrar saída') && rowsOf(gs, 'Movimentações').includes('Pagamento do aluguel'), JSON.stringify(gs))
+  r.check('"pagamento" → Finanças, ação de registrar e a movimentação real', rowsOf(gs, 'Ir para').includes('Finanças') && rowsOf(gs, 'Fazer agora').includes('Registrar saída') && rowsOf(gs, 'Movimentações').includes('Pagamento do aluguel'), JSON.stringify(gs))
   gs = await search('backup')
   r.check('configurações também aparecem ("backup")', rowsOf(gs, 'Ir para')[0] === 'Backup', JSON.stringify(gs))
   gs = await search('cli')
@@ -99,7 +99,7 @@ try {
   r.check('"Registrar pagamento" → "Registrar saída"', gs[0]?.rows[0] === 'Registrar saída', JSON.stringify(gs))
   await b.click('Registrar saída', 'main .card > button')
   await b.sleep(900)
-  r.check('abre "Retirar dinheiro" no Financeiro', (await b.eval('location.hash')) === '#/finance' && (await dialogTitle()).includes('Retirar dinheiro'), await dialogTitle())
+  r.check('abre "Nova saída" em Finanças', (await b.eval('location.hash')) === '#/finance' && (await dialogTitle()).includes('Nova saída'), await dialogTitle())
   await escape()
 
   await openSearch()

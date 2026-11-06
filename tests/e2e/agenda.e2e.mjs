@@ -20,13 +20,19 @@ try {
     { modules: { agenda: true, habits: true }, modulesSeen: ALL },
   )
   await b.goto(BASE + '#/agenda')
+  // Wait for the day to load before reading (the test used to read the screen too early).
+  for (let i = 0; i < 40 && !(await b.text()).includes('Ligar para cliente'); i++) await b.sleep(150)
+  // Periods of the day that are over start folded (by design): open them before reading, whatever the hour.
+  await b.eval(`[...document.querySelectorAll('main button[aria-expanded="false"]')].forEach((x) => x.textContent.trim() === 'Ver' && x.click())`)
+  await b.sleep(300)
   let text = await b.text()
   r.check('agenda de hoje junta tarefa com horário, hábito e compromisso', text.includes('Ligar para cliente') && text.includes('Tarefa com horário') && text.includes('Ler 20 min') && text.includes('Café cedo'))
   r.check('compromisso que já passou aparece como "Horário encerrado" (nunca como feito)', text.includes('Horário encerrado'))
   r.check('agenda não gravou nada (só visualiza)', (await idb(b, 'completions')).length === 0 && (await idb(b, 'events')).length === 1)
 
   // New appointment
-  await b.click('Novo compromisso', 'button')
+  // The Agenda's top: "Nova tarefa" (main) and "Compromisso".
+  await b.click('Compromisso', 'main header button')
   await b.fill('Título', 'Reunião com Ana')
   await b.fill('Início', '22:00')
   await b.shot('agenda-novo-compromisso')

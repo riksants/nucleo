@@ -1,4 +1,5 @@
 import { Ellipsis, Sparkles, Wand2 } from 'lucide-react'
+import { AreaTabs } from '../../app/areaTabs'
 import { useEffect, useState } from 'react'
 import { clearParams, navigate, useRoute } from '../../app/router'
 import { PageHeader } from '../../app/Shell'
@@ -201,8 +202,9 @@ export function RulesPage() {
   return (
     <>
       <PageHeader
-        title="Minhas regras"
-        subtitle="Quando algo acontece, o Núcleo faz por você"
+        title="Automações"
+        subtitle="Suas regras: quando algo acontece, o Núcleo faz por você"
+        below={<AreaTabs area="automacoes" />}
         actions={
           <Button icon={<Wand2 size={18} />} onClick={() => edit({ name: '', trigger: { kind: 'projectPayment' }, conditions: [], actions: [] })}>
             Nova regra

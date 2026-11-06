@@ -31,7 +31,7 @@ export interface IntakePlan {
   duplicates: number
 }
 
-const TARGET_SHORT: Record<Proposal['target'], string> = { meals: 'Alimentação', training: 'Treino', schedule: 'Agenda e rotina', finance: 'Financeiro', project: 'Projetos', shopping: 'Lista de compras', note: 'Anotações' }
+const TARGET_SHORT: Record<Proposal['target'], string> = { meals: 'Alimentação', training: 'Treino', schedule: 'Agenda e rotina', finance: 'Finanças', project: 'Projetos', shopping: 'Lista de compras', note: 'Anotações' }
 
 export const itemId = (hash: string, target: string, key: string) => `in-${hash16(`${hash}|${target}|${key}`)}`
 
