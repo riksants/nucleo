@@ -61,6 +61,12 @@ async function connect(port, page, onClose) {
   await send('Page.enable')
   await send('Page.bringToFront')
   await send('Emulation.setFocusEmulationEnabled', { enabled: true })
+  // Optional: simulate a slow/overloaded device (e.g. E2E_CPU_THROTTLE=6) to tell timing problems from regressions.
+  if (process.env.E2E_NET_LATENCY) {
+    await send('Network.enable')
+    await send('Network.emulateNetworkConditions', { offline: false, latency: Number(process.env.E2E_NET_LATENCY), downloadThroughput: -1, uploadThroughput: -1 })
+  }
+  if (process.env.E2E_CPU_THROTTLE) await send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.E2E_CPU_THROTTLE) })
 
   const api = {
     logs,
@@ -126,6 +132,15 @@ async function connect(port, page, onClose) {
       await sleep(150)
     },
     text: () => api.eval('document.body.innerText'),
+    /** Waits until the page shows `t` (the page's content, not just the header, has loaded). */
+    async waitText(t, ms = 15000) {
+      const end = Date.now() + ms
+      while (Date.now() < end) {
+        if ((await api.text()).includes(t)) return true
+        await sleep(150)
+      }
+      return false
+    },
     sleep,
     close() {
       ws.close()

@@ -109,6 +109,9 @@ try {
   await sleep(1000)
   await b.click('Maria', 'button')
   await sleep(600)
+  // since 9994395 a sale row opens the sale; the person's summary (with "Pagamento geral") is one tap further
+  await clickIn('Tudo de Maria')
+  await sleep(600)
   await clickIn('Pagamento geral')
   await sleep(300)
   await b.eval(`(() => { const el = document.querySelector('input[aria-label="Valor do pagamento geral"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '100'); el.dispatchEvent(new Event('input', { bubbles: true })) })()`)
@@ -118,6 +121,9 @@ try {
   text = await b.eval(`[...document.querySelectorAll('[role=dialog]')].map((d) => d.innerText).join(' ')`)
   r.check('venda quitada: selo "Pago" celebra', text.includes('Pago') && paid, `anel: ${paid}`)
   await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+  await sleep(500)
+  // paid, the sale left "A receber": the person is reopened from "Pessoas"
+  await b.click('Pessoas', '[role=radio]')
   await sleep(500)
   await b.click('Maria', 'button')
   await sleep(600)

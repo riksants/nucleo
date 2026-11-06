@@ -1,10 +1,11 @@
 import { animate, AnimatePresence, motion, type MotionProps } from 'framer-motion'
 import { X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsDesktop, usePrefersReducedMotion, useScrollLock, useVisualViewport } from '../lib/hooks'
 import { IconButton } from './Button'
 import { EASE_OUT_SOFT } from '../lib/motion'
+import { EASE_EXPAND, type ExpandOrigin, markEntrance, peekExpandOrigin } from './Motion'
 
 interface SheetProps {
   open: boolean
@@ -20,6 +21,7 @@ interface SheetProps {
 
 /** Critically damped (no overshoot), settles in ~0.27 s. */
 const SPRING = { type: 'spring', stiffness: 420, damping: 40, mass: 0.9 } as const
+const FULL_CLIP = 'inset(0px 0px 0px 0px round 0px)'
 /** Close on a drag past this distance… */
 const DISMISS_DISTANCE = 110
 /** …or on a downward flick faster than this (px/ms), even if short. */
@@ -147,9 +149,51 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Opened by tapping a card (Projetos, Metas, Clientes): the sheet grows out of that card — it starts
+  // exactly over the card (FLIP: moved there, clipped to its size) and opens to its place; closing goes
+  // back into the card. Decided when it opens (React's "adjust state while rendering" pattern).
+  const [opening, setOpening] = useState<{ open: boolean; origin: ExpandOrigin | null }>({ open: false, origin: null })
+  const [fromCard, setFromCard] = useState<{ transform: string; clipPath: string } | null>(null)
+  if (opening.open !== open) {
+    setOpening({ open, origin: open ? (reduce ? null : peekExpandOrigin()) : opening.origin })
+    if (open) {
+      setFromCard(null)
+      markEntrance()
+    }
+  }
+  const origin = opening.origin
+  const shell = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = shell.current
+    if (!open || !origin || !el || !origin.el.isConnected) return
+    // one layout read for both boxes (the sheet's layout is needed for its first frame anyway)
+    const box = el.getBoundingClientRect()
+    const r = origin.el.getBoundingClientRect()
+    const radius = parseFloat(getComputedStyle(origin.el).borderTopLeftRadius) || 16
+    const from = {
+      transform: `translateY(${Math.round(r.top - box.top)}px)`,
+      clipPath: `inset(0px ${Math.max(0, Math.round(box.right - r.right))}px ${Math.max(0, Math.round(box.height - r.height))}px ${Math.max(0, Math.round(r.left - box.left))}px round ${radius}px)`,
+    }
+    // WAAPI, compositor-friendly (transform + clip-path), like the reference's detail opening.
+    const anim = el.animate([from, { transform: 'translateY(0px)', clipPath: FULL_CLIP }], { duration: 560, easing: EASE_EXPAND })
+    // The way back into the card is only needed to close: kept once the opening ends, so the sheet isn't
+    // rendered a second time on its first frame. Closed before that, it simply fades out.
+    let live = true
+    anim.finished.then(() => live && setFromCard(from)).catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [open, origin])
+
   const width = size === 'lg' ? 'lg:max-w-2xl' : 'lg:max-w-lg'
   // Full transform strings run on the GPU (WAAPI). "Reduzir movimento": fade only, no slide.
-  const motionProps: MotionProps = reduce
+  const motionProps: MotionProps = origin
+    ? {
+        initial: { transform: 'translateY(0px)', clipPath: FULL_CLIP },
+        animate: { transform: 'translateY(0px)', clipPath: FULL_CLIP },
+        exit: fromCard ? { ...fromCard, transition: { duration: 0.42, ease: [0.5, 0, 0.2, 1] } } : { opacity: 0, transition: { duration: 0.2 } },
+      }
+    : reduce
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } }
     : desktop
       ? {
@@ -173,23 +217,27 @@ export function Sheet({ open, onClose, title, actions, footer, children, size = 
             onClick={onClose}
           />
           {/* Outer layer: enter/exit. Inner layer: follows the finger while dragging. */}
-          <motion.div className={`relative w-full ${width}`} {...motionProps}>
+          <motion.div ref={shell} className={`relative w-full ${width}`} {...motionProps}>
             <div
               ref={panel}
               style={vv ? { maxHeight: `calc(${vv.height}px - env(safe-area-inset-top) - 8px)` } : undefined}
-              className="flex w-full flex-col border border-line-strong bg-sheet shadow-[0_24px_48px_-16px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.5rem] lg:max-h-[86dvh] lg:rounded-[1.5rem]"
+              className={`flex w-full flex-col border border-line-strong bg-sheet shadow-[0_24px_48px_-16px_var(--color-shade)] max-h-[calc(100dvh-env(safe-area-inset-top)-12px)] rounded-t-[1.5rem] lg:max-h-[86dvh] lg:rounded-[1.5rem]${origin ? ' sheet-reveal' : ''}`}
             >
               <header ref={header} className="shrink-0 touch-none px-5 pb-2 lg:touch-auto lg:px-6 lg:pt-5">
                 {!desktop && <div className="mx-auto mt-2.5 mb-3 h-1.5 w-10 rounded-full bg-tint/15" aria-hidden />}
                 <div className="flex items-center gap-3">
-                  <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">{title}</h2>
+                  <h2 className="min-w-0 flex-1 overflow-hidden text-lg font-semibold tracking-tight">
+                    <span data-sheet-title className="block truncate">
+                      {title}
+                    </span>
+                  </h2>
                   {actions}
                   <IconButton label="Fechar" size="sm" tone="raised" onClick={onClose}>
                     <X size={20} />
                   </IconButton>
                 </div>
               </header>
-              <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 lg:px-6">
+              <div ref={scroller} data-sheet-body className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 lg:px-6">
                 {children}
               </div>
               {footer && (

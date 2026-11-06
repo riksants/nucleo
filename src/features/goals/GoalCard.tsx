@@ -6,6 +6,7 @@ import type { Goal } from '../../data/types'
 import { formatDateTime } from '../../lib/dates'
 import { formatMoney } from '../../lib/money'
 import { Badge, Progress } from '../../ui/Display'
+import { Rolling } from '../../ui/Motion'
 import { useFeedback } from '../../ui/Feedback'
 
 export function GoalCard({ goal, onOpen, compact }: { goal: Goal; onOpen(g: Goal): void; compact?: boolean }) {
@@ -20,8 +21,8 @@ export function GoalCard({ goal, onOpen, compact }: { goal: Goal; onOpen(g: Goal
   }
 
   return (
-    <motion.article layout="position" className={`card p-5 ${purchased ? 'opacity-60' : ''}`}>
-      <button type="button" onClick={() => onOpen(goal)} className="block w-full text-left">
+    <motion.article layout="position" data-expand-box className={`card p-5 ${purchased ? 'opacity-60' : ''}`}>
+      <button type="button" data-expand onClick={() => onOpen(goal)} className="block w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[17px] font-semibold tracking-tight">{goal.name}</h3>
@@ -43,7 +44,7 @@ export function GoalCard({ goal, onOpen, compact }: { goal: Goal; onOpen(g: Goal
                 <Progress value={p.percent ?? 0} tone={p.reached ? 'positive' : 'goal'} />
               </div>
               <span className={`num w-11 text-right text-[15px] font-semibold ${p.reached ? 'text-income' : 'text-goal'}`}>
-                {p.percent === null ? '—' : `${p.percent}%`}
+                <Rolling value={p.percent === null ? '—' : `${p.percent}%`} />
               </span>
             </div>
             {p.balance === null ? (

@@ -28,7 +28,8 @@ try {
   r.check('quem nunca escolheu: barra igual a antes (Financeiro, Projetos, Tarefas)', JSON.stringify(await tabs()) === JSON.stringify(['Início', 'Financeiro', 'Projetos', 'Tarefas']), (await tabs()).join(', '))
 
   // Início: "Hoje" and "Assistente" with names
-  const shortcuts = await b.eval(`[...document.querySelectorAll('main button')].map((x) => x.textContent.trim()).filter((t) => t === 'Hoje' || t === 'Assistente')`)
+  // Since the "dia a dia" Etapa 1 (c5e269d), Assistente is a named icon button on the band (the action row keeps 4 items)
+  const shortcuts = await b.eval(`[...document.querySelectorAll('button')].map((x) => x.textContent.trim() || (x.getAttribute('aria-label') || '').trim()).filter((t) => t === 'Hoje' || t === 'Assistente')`)
   r.check('Início mostra "Hoje" e "Assistente" com nome', shortcuts.includes('Hoje') && shortcuts.includes('Assistente'), shortcuts.join(', '))
   await b.click('Assistente', 'main button')
   await sleep(700)

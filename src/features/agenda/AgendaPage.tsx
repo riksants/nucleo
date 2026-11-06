@@ -20,6 +20,7 @@ import { DayTimeline } from '../daily/DayParts'
 import { useOpenParam } from '../useOpenParam'
 import { dotOf } from './AgendaRow'
 import { EventForm } from './EventForm'
+import { SwapIn } from '../../ui/Motion'
 import { useOpenItem } from './openItem'
 
 const LONG = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
@@ -234,6 +235,7 @@ export function AgendaPage() {
         </div>
       )}
 
+      <SwapIn value={view} order={['day', 'week']}>
       {view === 'day' ? (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
           <section aria-label={dayTitle(day)}>
@@ -282,6 +284,7 @@ export function AgendaPage() {
           })}
         </div>
       )}
+      </SwapIn>
       <EventForm open={newEvent.open} onClose={newEvent.close} event={null} initial={{ date: newEvent.item ?? today }} />
       <EventForm open={editEvent.open} onClose={editEvent.close} event={editEvent.item} />
       <CreateSheet open={create.open} onClose={create.close} />

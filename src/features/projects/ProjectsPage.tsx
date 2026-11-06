@@ -12,6 +12,7 @@ import { useOpenParam } from '../useOpenParam'
 import { ProjectCard } from './ProjectCard'
 import { ProjectDetail } from './ProjectDetail'
 import { ProjectForm } from './ProjectForm'
+import { Rolling } from '../../ui/Motion'
 import { ProjectPaymentSheet } from './ProjectPaymentSheet'
 
 type Filter = 'active' | 'idea' | 'paused' | 'done' | 'all'
@@ -67,12 +68,14 @@ export function ProjectsPage() {
           <div className="mb-5 grid grid-cols-2 gap-3">
             <div className="card p-4">
               <p className="text-[13px] text-soft">Em andamento</p>
-              <p className="num mt-1 text-[24px] font-semibold">{activeCount}</p>
+              <p className="num mt-1 text-[24px] font-semibold">
+                <Rolling value={String(activeCount)} />
+              </p>
             </div>
             <div className="card p-4">
               <p className="text-[13px] text-soft">A receber</p>
               <p className="num mt-1 text-[24px] font-semibold tracking-[-0.03em]">
-                {formatMoney(receivable.total, displayCurrency, { compact: true })}
+                <Rolling value={formatMoney(receivable.total, displayCurrency, { compact: true })} />
               </p>
             </div>
           </div>

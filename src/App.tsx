@@ -37,6 +37,7 @@ import { isEnabled } from './app/modules'
 import { nowIn, zoneOf } from './core/period'
 import { readPref, writePref } from './lib/prefs'
 import { Button } from './ui/Button'
+import { PageEnter } from './ui/Motion'
 import { Sheet } from './ui/Sheet'
 
 // These sections load on demand, outside the initial bundle; the enabled ones are preloaded when the phone is idle.
@@ -268,8 +269,8 @@ export function App() {
   const hiddenLabel = !allowed ? MODULE_BY_PATH[path]?.label : null
   return (
     <Shell>
-      {/* Switching sections is instant (core navigation, many times a day — no transition). */}
-      <div key={path}>
+      {/* Switching sections: a short entrance (fade + 10px rise, ~0.4 s) that never delays a tap. */}
+      <PageEnter key={path}>
         {hiddenLabel && (
           <p className="mt-[calc(env(safe-area-inset-top)+12px)] mb-5 rounded-2xl bg-tint/[0.04] px-4 py-3 text-[14px] text-soft lg:mt-0">
             A seção {hiddenLabel} está escondida. Ative em Configurações → Seções visíveis.
@@ -278,7 +279,7 @@ export function App() {
         <Suspense fallback={null}>
           <Page />
         </Suspense>
-      </div>
+      </PageEnter>
       {unseenModules(settings).length > 0 && <NewSectionsSheet />}
       <ReminderCenter />
     </Shell>

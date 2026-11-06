@@ -117,12 +117,12 @@ try {
   })`)
   r.check('aviso (toast) entra com transform na GPU', Array.isArray(toast) && toast.includes('transform'), JSON.stringify(toast))
 
-  // ---------- 9) Progress bar: value shown right away, animated only when it changes (clip-path, 300 ms)
+  // ---------- 9) Progress bar: fills from empty when it appears (clip-path, 700 ms; never the width) and settles on the value
   await b.goto(BASE + '#/goals')
-  await sleep(150)
+  await sleep(1100)
   const bar = await b.eval(`(() => { const fill = document.querySelector('[role=progressbar] > div'); if (!fill) return null; const cs = getComputedStyle(fill); return { clip: fill.style.clipPath, anims: fill.getAnimations().length, prop: cs.transitionProperty, dur: cs.transitionDuration, width: Math.round(fill.getBoundingClientRect().width), track: Math.round(fill.parentElement.getBoundingClientRect().width), now: fill.parentElement.getAttribute('aria-valuenow') } })()`)
-  r.check('barra de progresso já abre no valor (sem animar a largura)', !!bar && bar.anims === 0 && bar.width === bar.track && /inset\(0(px)? \d/.test(bar.clip), JSON.stringify(bar))
-  r.check('mudança de valor anima por clip-path em 300 ms', !!bar && bar.prop.includes('clip-path') && bar.dur.startsWith('0.3s'), `${bar?.prop} ${bar?.dur}`)
+  r.check('barra de progresso preenchida até o valor (sem animar a largura)', !!bar && bar.anims === 0 && bar.width === bar.track && /inset\(0(px)? \d/.test(bar.clip), JSON.stringify(bar))
+  r.check('preenchimento anima por clip-path em 700 ms', !!bar && bar.prop.includes('clip-path') && bar.dur.startsWith('0.7s'), `${bar?.prop} ${bar?.dur}`)
 
   // ---------- Reduced motion: sheet and toast only fade; progress bar doesn't animate
   await b.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })

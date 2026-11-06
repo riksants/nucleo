@@ -20,6 +20,8 @@ try {
     { modules: { agenda: true, habits: true }, modulesSeen: ALL },
   )
   await b.goto(BASE + '#/agenda')
+  // the header appears before the section's code/data: wait for the agenda itself
+  await b.waitText('Ligar para cliente')
   let text = await b.text()
   r.check('agenda de hoje junta tarefa com horário, hábito e compromisso', text.includes('Ligar para cliente') && text.includes('Tarefa com horário') && text.includes('Ler 20 min') && text.includes('Café cedo'))
   r.check('compromisso que já passou aparece como "Horário encerrado" (nunca como feito)', text.includes('Horário encerrado'))

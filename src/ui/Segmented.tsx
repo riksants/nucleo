@@ -33,7 +33,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
               aria-checked={active}
               disabled={o.disabled}
               onClick={() => onChange(o.value)}
-              className={`relative flex h-11 shrink-0 items-end pb-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors disabled:opacity-35 ${active ? 'text-ink' : 'text-faint hover:text-soft'}`}
+              className={`relative flex h-11 shrink-0 items-end pb-2.5 text-[15px] font-semibold whitespace-nowrap transition-colors duration-300 disabled:opacity-35 ${active ? 'text-ink' : 'text-faint hover:text-soft'}`}
             >
               {o.label}
               {active && <motion.span layoutId={id} className="absolute inset-x-0 -bottom-px h-[3px] rounded-t-full bg-accent" transition={SLIDE} />}
@@ -56,7 +56,7 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
             aria-checked={active}
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
-            className={`hit relative rounded-full font-medium transition-colors duration-150 disabled:opacity-35 ${h} ${block ? 'min-w-0 flex-1 leading-tight max-[359px]:h-auto max-[359px]:min-h-10 max-[359px]:px-1.5 max-[359px]:py-1 max-[359px]:whitespace-normal whitespace-nowrap' : 'whitespace-nowrap'} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-accent-hi' : 'text-faint hover:text-soft'}`}
+            className={`hit relative rounded-full font-medium transition-colors duration-300 disabled:opacity-35 ${h} ${block ? 'min-w-0 flex-1 leading-tight max-[359px]:h-auto max-[359px]:min-h-10 max-[359px]:px-1.5 max-[359px]:py-1 max-[359px]:whitespace-normal whitespace-nowrap' : 'whitespace-nowrap'} ${onAccent ? (active ? 'text-paper' : 'text-coal/70 hover:text-coal') : active ? 'text-accent-hi' : 'text-faint hover:text-soft'}`}
           >
             {/* The current choice: a soft vermilion pill with vermilion text (a coal pill on the vermilion band). */}
             {active && <motion.span layoutId={id} className={`absolute inset-0 rounded-full ${onAccent ? 'bg-coal' : 'bg-accent/[0.14] ring-1 ring-accent/35 ring-inset'}`} transition={SLIDE} />}
@@ -68,10 +68,12 @@ export function Segmented<V extends string>({ value, onChange, options, size = '
   )
 }
 
-/** Horizontally scrolling filter chips, for longer option lists. */
+/** Horizontally scrolling filter chips, for longer option lists. The current one is marked by a soft
+ *  vermilion pill that slides from chip to chip (same spring as Segmented). */
 export function Chips<V extends string>({ value, onChange, options }: Omit<SegmentedProps<V>, 'size' | 'block'>) {
+  const id = useId()
   return (
-    <div className="no-scrollbar -mx-5 -my-1 flex gap-2 overflow-x-auto px-5 py-1 lg:mx-0 lg:flex-wrap lg:px-0">
+    <motion.div layoutScroll className="no-scrollbar -mx-5 -my-1 flex gap-2 overflow-x-auto px-5 py-1 lg:mx-0 lg:flex-wrap lg:px-0">
       {options.map((o) => {
         const active = o.value === value
         return (
@@ -80,14 +82,15 @@ export function Chips<V extends string>({ value, onChange, options }: Omit<Segme
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className={`press hit relative h-9 shrink-0 rounded-full border px-4 text-sm font-medium whitespace-nowrap ${
-              active ? 'border-accent/40 bg-accent/[0.14] text-accent-hi' : 'border-line bg-surface text-soft hover:text-ink'
+            className={`press hit relative h-9 shrink-0 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors duration-300 ${
+              active ? 'border-transparent text-accent-hi' : 'border-line bg-surface text-soft hover:text-ink'
             }`}
           >
-            {o.label}
+            {active && <motion.span layoutId={id} className="absolute -inset-px rounded-full border border-accent/40 bg-accent/[0.14]" transition={SLIDE} />}
+            <span className="relative">{o.label}</span>
           </button>
         )
       })}
-    </div>
+    </motion.div>
   )
 }

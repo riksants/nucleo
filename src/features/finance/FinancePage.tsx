@@ -19,6 +19,7 @@ import { FinanceGoalsSection } from './FinanceGoals'
 import { MonthSummaryView, ThisMonthCard } from './MonthView'
 import { BalanceCard } from './BalanceCard'
 import { GroupedTransactions } from './TransactionList'
+import { Rolling } from '../../ui/Motion'
 import { TransactionSheet } from './TransactionSheet'
 
 type TypeFilter = 'all' | 'in' | 'out'
@@ -38,7 +39,7 @@ function WeekBars() {
   return (
     <div className="flex h-14 shrink-0 items-end gap-1.5" aria-hidden>
       {spent.map((v, i) => (
-        <span key={days[i]} className={`w-3 rounded-full ${i === 6 ? 'bg-accent' : v ? 'bg-tint/25' : 'bg-tint/10'}`} style={{ height: `${Math.max(10, (v / max) * 100)}%` }} />
+        <span key={days[i]} className={`bar-grow w-3 rounded-full ${i === 6 ? 'bg-accent' : v ? 'bg-tint/25' : 'bg-tint/10'}`} style={{ height: `${Math.max(10, (v / max) * 100)}%`, '--i': i } as React.CSSProperties} />
       ))}
     </div>
   )
@@ -90,8 +91,7 @@ function FinanceHome() {
               <div className="min-w-0">
                 <p className="text-[14px] text-soft">Resultado do período</p>
                 <p className={`display-num mt-1 text-[30px] leading-tight font-semibold ${totals.net < 0 ? 'text-expense' : totals.net > 0 ? 'text-income' : 'text-ink'}`}>
-                  {totals.net > 0 ? '+' : ''}
-                  {show(totals.net)}
+                  <Rolling value={`${totals.net > 0 ? '+' : ''}${show(totals.net)}`} />
                 </p>
               </div>
               <WeekBars />
@@ -99,11 +99,15 @@ function FinanceHome() {
             <div className="grid grid-cols-2 gap-3">
               <div className="card p-4">
                 <p className="text-[13px] text-soft">Entradas</p>
-                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.income ? 'text-income' : 'text-soft'}`}>{show(totals.income)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.income ? 'text-income' : 'text-soft'}`}>
+                  <Rolling value={show(totals.income)} />
+                </p>
               </div>
               <div className="card p-4">
                 <p className="text-[13px] text-soft">Saídas</p>
-                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.expense ? 'text-expense' : 'text-soft'}`}>{show(totals.expense)}</p>
+                <p className={`num mt-1 text-[20px] leading-tight font-semibold [overflow-wrap:anywhere] ${totals.expense ? 'text-expense' : 'text-soft'}`}>
+                  <Rolling value={show(totals.expense)} />
+                </p>
               </div>
             </div>
           </section>

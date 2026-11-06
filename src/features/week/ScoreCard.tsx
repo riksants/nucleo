@@ -2,6 +2,7 @@ import { Gauge, Info } from 'lucide-react'
 import { useState } from 'react'
 import { describeChange, MIN_VALID_AREAS, SCORE_AREAS, scoreBand } from '../../core/score'
 import { Badge, Progress } from '../../ui/Display'
+import { Rolling } from '../../ui/Motion'
 import { Sheet } from '../../ui/Sheet'
 
 /** Personal score: compared only with the person's own previous week. */
@@ -24,7 +25,9 @@ export function ScoreCard({ overall, areas, previous, version, details }: { over
             <p className="mt-1 text-[17px] font-semibold">Dados insuficientes</p>
           ) : (
             <p className="mt-0.5 flex items-baseline gap-2">
-              <span className="num text-[30px] leading-none font-semibold tracking-tight">≈ {band.approx}</span>
+              <span className="num text-[30px] leading-none font-semibold tracking-tight">
+                <Rolling value={`≈ ${band.approx}`} />
+              </span>
               <span className="text-[15px] font-medium text-soft">{band.label}</span>
             </p>
           )}
@@ -42,7 +45,9 @@ export function ScoreCard({ overall, areas, previous, version, details }: { over
               <div key={a.id}>
                 <div className="mb-1 flex items-baseline justify-between gap-2 text-[13px]">
                   <span className="text-soft">{a.label}</span>
-                  <span className="num font-medium">{details?.[a.id] ?? `${s}%`}</span>
+                  <span className="num font-medium">
+                    <Rolling value={details?.[a.id] ?? `${s}%`} />
+                  </span>
                 </div>
                 <Progress value={s} tone="accent" />
               </div>

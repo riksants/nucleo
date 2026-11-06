@@ -7,6 +7,7 @@ import { useStore } from '../../data/store'
 import { Segmented } from '../../ui/Segmented'
 import { ChangesView } from './ChangesView'
 import { LifeCalendar } from './LifeCalendar'
+import { SwapIn } from '../../ui/Motion'
 import { PlansView } from './Plans'
 
 type View = 'calendar' | 'projects' | 'objectives' | 'changes'
@@ -54,10 +55,12 @@ export function LifePage() {
       <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
         <Segmented<View> variant="underline" size="sm" label="Vida" value={view} onChange={setView} options={VIEWS} />
       </div>
+      <SwapIn value={view} order={VIEWS.map((v) => v.value)}>
       {view === 'calendar' && <LifeCalendar />}
       {view === 'projects' && <PlansView key="projects" kind="project" />}
       {view === 'objectives' && <PlansView key="objectives" kind="objective" />}
       {view === 'changes' && <ChangesView />}
+      </SwapIn>
     </>
   )
 }

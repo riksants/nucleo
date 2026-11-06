@@ -34,8 +34,8 @@ export function ProjectCard({ project, onOpen, onReceive }: { project: Project; 
   const canReceive = Boolean(onReceive) && project.charged > 0 && outstanding > 0
 
   return (
-    <motion.div layout="position" className="card overflow-hidden hover:border-line-strong">
-      <button type="button" onClick={() => onOpen(project)} className="press block w-full p-5 text-left">
+    <motion.div layout="position" data-expand-box className="card overflow-hidden hover:border-line-strong">
+      <button type="button" data-expand onClick={() => onOpen(project)} className="press block w-full p-5 text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[17px] font-semibold tracking-tight">{project.name}</h3>

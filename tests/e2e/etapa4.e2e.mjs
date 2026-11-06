@@ -98,6 +98,8 @@ try {
   await putDb('rules', { id: 'rv', createdAt: T, updatedAt: T, name: 'Despesa grande', on: true, since, order: 1, trigger: { kind: 'moneyOut' }, conditions: [{ field: 'amount', op: 'gt', value: 50000, currency: 'EUR' }], actions: [{ kind: 'askReview', text: 'Conferir: {descricao} ({valor})' }] })
   await b.eval('location.reload()').catch(() => {})
   await sleep(2500)
+  // a fixed wait isn't enough on a slow/loaded device: wait for the screen itself
+  await b.waitText('Pede sua confirmação antes de fazer')
 
   // ---------- Minhas regras: frase → editor preenchido (nada salvo)
   let text = await mainText()

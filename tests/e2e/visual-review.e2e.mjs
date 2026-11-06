@@ -65,7 +65,8 @@ try {
   const colors = await b.eval(`(() => { const of = (re) => { const due = [...document.querySelectorAll('main span.inline-flex')].find((x) => re.test(x.textContent)); return due ? getComputedStyle(due).color : null }; return { late: of(/^Atrasado/), today: of(/^Hoje$/), next: of(/em \\d+ dias/) } })()`)
   r.check('atrasada em vermelho, de hoje em âmbar, semana que vem neutra', colors.today === amber && colors.late !== amber && colors.next !== amber && colors.late !== colors.next, JSON.stringify(colors))
 
-  for (const [hash, label] of [['#/today', 'Modo do dia'], ['#/sales', 'Ver vendas por'], ['#/agenda', null]]) {
+  // "Modo do dia" left Hoje in c5e269d (dia a dia, Etapa 1); the sales tabs are labelled "Vendas" since 9994395
+  for (const [hash, label] of [['#/sales', 'Vendas'], ['#/agenda', null]]) {
     await b.goto(BASE + hash)
     await sleep(1000)
     const ok = await b.eval(`(() => { const g = ${label ? `document.querySelector('[role=radiogroup][aria-label="${label}"]')` : `document.querySelector('main [role=radiogroup]')`}; return !!g && getComputedStyle(g).borderBottomStyle === 'solid' })()`)

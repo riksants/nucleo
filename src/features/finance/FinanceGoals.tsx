@@ -21,6 +21,7 @@ import { Sheet } from '../../ui/Sheet'
 import { GoalStrategies, StrategyTeaser } from './GoalStrategies'
 import { parseMoney } from '../../lib/calc'
 import { AmountField } from '../../ui/AmountField'
+import { Rolling, SwapIn } from '../../ui/Motion'
 import { Switch } from '../settings/ModulePicker'
 
 /** Neutral sentence about what would be needed (never "you are late"). */
@@ -223,7 +224,7 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
       <div className="space-y-5 pt-1">
         <div>
           <p className="num text-[26px] font-semibold">
-            {formatMoney(goal.saved, goal.currency)} <span className="text-[15px] font-normal text-soft">de {formatMoney(goal.target, goal.currency)}</span>
+            <Rolling value={formatMoney(goal.saved, goal.currency)} /> <span className="text-[15px] font-normal text-soft">de {formatMoney(goal.target, goal.currency)}</span>
           </p>
           <div className="mt-2">
             <Progress value={p.percent} tone={p.reached ? 'positive' : 'goal'} />
@@ -239,10 +240,11 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
         {planning && (
           <Segmented<'update' | 'strategies'> variant="underline" label="Ver" value={tab} onChange={setView} options={[{ value: 'update', label: 'Atualizar' }, { value: 'strategies', label: 'Como alcançar' }]} />
         )}
-        {tab === 'strategies' ? (
-          <GoalStrategies goal={goal} today={today} />
-        ) : (
-          <>
+        <SwapIn value={tab} order={['update', 'strategies']} className="space-y-5">
+          {tab === 'strategies' ? (
+            <GoalStrategies goal={goal} today={today} />
+          ) : (
+            <>
             <Segmented<'add' | 'remove' | 'total'> block size="sm" label="Como atualizar" value={mode} onChange={setMode} options={[{ value: 'add', label: 'Guardei' }, { value: 'remove', label: 'Retirei' }, { value: 'total', label: 'Novo total' }]} />
             <Field label={mode === 'total' ? 'Total guardado agora' : mode === 'add' ? 'Quanto guardou' : 'Quanto retirou'}>
               <AmountField currency={goal.currency} value={value} onChange={setValue} autoFocus />
@@ -255,8 +257,9 @@ function SavedSheet({ goal, open, onClose, onEdit, startOn = 'update' }: { goal:
                 {goal.status === 'archived' ? 'Reativar' : 'Arquivar'}
               </Button>
             </div>
-          </>
-        )}
+            </>
+          )}
+        </SwapIn>
       </div>
     </Sheet>
   )
@@ -266,7 +269,7 @@ export function FinanceGoalCard({ goal, today, onOpen, onPlan }: { goal: Finance
   const p = goalPlan(goal, today)
   return (
     <div>
-      <button type="button" onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
+      <button type="button" data-expand onClick={() => onOpen(goal)} className="block w-full px-4 py-3.5 text-left hover:bg-tint/[0.03] tap">
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{goal.name}</span>
           {goal.inBalance && <Badge>{goal.autoSave ? 'guarda todo mês' : 'no saldo'}</Badge>}

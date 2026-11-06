@@ -14,6 +14,7 @@ import { MEALS_CURRENT, MEALS_DRAFT } from '../planner/plans'
 import { useOpenParam } from '../useOpenParam'
 import { MealForm } from './MealForm'
 import { ShoppingList } from './ShoppingList'
+import { SwapIn } from '../../ui/Motion'
 import { WeekPlanner } from './WeekPlanner'
 
 type View = 'week' | 'shopping' | 'plan'
@@ -63,9 +64,11 @@ export function MealsPage() {
       <div className="no-scrollbar -mx-5 -mt-1.5 mb-3.5 overflow-x-auto px-5 py-1.5 lg:mx-0 lg:px-0">
         <Segmented<View> variant="underline" size="sm" label="Alimentação" value={view} onChange={setView} options={VIEWS} />
       </div>
+      <SwapIn value={view} order={VIEWS.map((v) => v.value)}>
       {view === 'week' && <WeekPlanner week={week} onWeek={setWeek} />}
       {view === 'shopping' && <ShoppingList week={week} onWeek={setWeek} />}
       {view === 'plan' && <AiPlanView />}
+      </SwapIn>
       <MealForm open={meal.open} onClose={meal.close} meal={meal.item} />
       {view !== 'plan' && <p className="mt-8 px-1 text-[12px] leading-relaxed text-faint">O Núcleo organiza refeições e compras; não substitui orientação de nutricionista nem de médico.</p>}
     </>

@@ -78,6 +78,8 @@
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-mask: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 :root[data-theme='light'] {
@@ -351,16 +353,28 @@
   box-shadow: var(--card-shadow);
 }
 
+/* Press: the finger pushes the control in quickly (90 ms) and it springs back with a small overshoot on
+   release (Nike "Try the Look": --ease-spring). Only transform/colors: no layout work. */
 @utility press {
   transition:
-    transform 160ms var(--ease-out),
+    transform 420ms var(--ease-spring),
     background-color 150ms ease,
     color 150ms ease,
     box-shadow 150ms ease,
     opacity 150ms ease;
   &:active {
-    transform: scale(0.97);
-    transition-duration: 100ms;
+    transform: scale(var(--press-scale, 0.97));
+    transition:
+      transform 90ms var(--ease-out),
+      background-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:active {
+      transform: none;
+    }
   }
 }
 
@@ -488,5 +502,149 @@
     background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------
+   Motion (adapted from the reference prompts: Nike runway, Curved VHS archive, VHS filmography,
+   VirtualFit). Transform/opacity/clip-path only; everything stops with "Reduzir movimento".
+   --------------------------------------------------------------------------------------------------- */
+
+/* Button icon: a 2px nudge toward the action on hover (pointer devices only). */
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon {
+    transition: transform 320ms var(--ease-spring);
+  }
+  button:hover > .btn-icon {
+    transform: translateX(2px);
+  }
+}
+
+/* Main action: a soft light sweeps across once on hover (pointer devices only). */
+@utility shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.22) 50%, transparent 65%);
+    transform: translateX(-120%);
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    &:hover::before {
+      transform: translateX(120%);
+      transition: transform 700ms var(--ease-out-soft);
+    }
+  }
+}
+
+/* Rolling value (VirtualFit): both values share one cell; the mask hides what is outside it. */
+.roll {
+  display: inline-grid;
+  vertical-align: bottom;
+  overflow: hidden;
+  /* room for accents/descenders inside the mask */
+  padding-block: 0.06em;
+  margin-block: -0.06em;
+}
+.roll > * {
+  grid-area: 1 / 1;
+}
+.roll-in {
+  animation: roll-in 560ms var(--ease-out-soft) both;
+}
+.roll-out {
+  animation: roll-out 560ms var(--ease-out-soft) both;
+}
+@keyframes roll-in {
+  from {
+    transform: translateY(105%);
+  }
+}
+@keyframes roll-out {
+  to {
+    transform: translateY(-105%);
+  }
+}
+
+/* Page / tab entrance: the content rises 10px and fades in. Never on an element that holds a fixed bar
+   (a transformed ancestor would carry the bar along); browsers without :has() only fade. */
+.page-in {
+  animation: page-fade 280ms var(--ease-out) backwards;
+}
+.page-in > :not(.fixed, [class~='fixed!'], :has(.fixed, [class~='fixed!'])) {
+  animation: page-rise 420ms var(--ease-out-soft) backwards;
+}
+.swap-in,
+.page-in > .swap-in {
+  animation: swap-in 360ms var(--ease-out-soft) backwards;
+}
+.swap-in[data-dir='back'] {
+  --swap-x: -14px;
+}
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes page-rise {
+  from {
+    transform: translateY(10px);
+  }
+}
+@keyframes swap-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--swap-x, 14px));
+  }
+}
+
+/* Detail opened from a card (Curved VHS): the title rises out of its own mask, the content follows. */
+.sheet-reveal [data-sheet-title] {
+  animation: line-rise 620ms var(--ease-out-soft) 180ms backwards;
+}
+.sheet-reveal [data-sheet-body] {
+  animation: body-rise 520ms var(--ease-out-soft) 240ms backwards;
+}
+@keyframes line-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+@keyframes body-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Small bar charts: bars grow from the baseline, one after the other, and follow value changes. */
+.bar-grow {
+  transform-origin: bottom;
+  animation: bar-grow 620ms var(--ease-out-soft) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+  transition: height 420ms var(--ease-out-soft);
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-in,
+  .roll-out,
+  .page-in,
+  .page-in > *,
+  .swap-in,
+  .sheet-reveal [data-sheet-title],
+  .sheet-reveal [data-sheet-body],
+  .bar-grow {
+    animation: none !important;
+    transition: none !important;
   }
 }

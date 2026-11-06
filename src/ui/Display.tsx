@@ -6,6 +6,7 @@ import { TONE_BADGE, type Tone } from '../data/labels'
 import type { Cents, Currency } from '../data/types'
 import { formatMoney } from '../lib/money'
 import { EASE_OUT_SOFT } from '../lib/motion'
+import { isEntering } from './Motion'
 
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {
   return (
@@ -17,17 +18,27 @@ export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: R
 }
 
 /**
- * Progress bar. It shows the value right away (data being read shouldn't move on every visit) and only
- * animates when the value changes: 300 ms, revealed with clip-path (no layout work, rounded tip kept).
+ * Progress bar. It fills from empty when its screen or detail opens (700 ms), shows its value right away
+ * when it reappears on the same screen (e.g. switching a filter), and follows value changes; revealed with
+ * clip-path (no layout work, rounded tip kept). Reduced motion: shown right away.
  */
 export function Progress({ value, tone = 'goal' }: { value: number; tone?: 'goal' | 'accent' | 'positive' }) {
   const color = { goal: 'bg-goal', accent: 'bg-accent', positive: 'bg-income' }[tone]
   const pct = Math.max(0, Math.min(100, value))
+  const reduce = usePrefersReducedMotion()
+  const [filled, setFilled] = useState(() => (isEntering() ? 0 : pct))
+  useEffect(() => {
+    if (reduce) return
+    // next frame, so the empty bar is painted first and the fill is a transition
+    const f = requestAnimationFrame(() => setFilled(pct))
+    return () => cancelAnimationFrame(f)
+  }, [pct, reduce])
+  const shown = reduce ? pct : filled
   return (
     <div className="h-2 overflow-hidden rounded-full bg-tint/[0.06]" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
       <div
-        className={`h-full w-full rounded-full transition-[clip-path] duration-300 ease-(--ease-out-soft) motion-reduce:transition-none ${color}`}
-        style={{ clipPath: `inset(0 ${100 - pct}% 0 0 round 999px)` }}
+        className={`h-full w-full rounded-full transition-[clip-path] duration-700 ease-(--ease-out-soft) motion-reduce:transition-none ${color}`}
+        style={{ clipPath: `inset(0 ${100 - shown}% 0 0 round 999px)` }}
       />
     </div>
   )

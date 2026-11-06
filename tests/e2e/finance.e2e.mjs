@@ -129,6 +129,8 @@ try {
   text = await b.text()
   r.check('meta "Guardar R$ 200" usa o valor registrado na meta (R$ 300 → cumprida)', wg?.metric === 'finance.saved' && wg.title === 'Guardar R$ 200,00' && /Guardar R\$ 200,00\s*Cumprida/.test(text), JSON.stringify(wg) + ' | ' + text.slice(Math.max(0, text.indexOf('Guardar')), text.indexOf('Guardar') + 160))
 
+  // challenges live inside "Sequências e desafios" on the Week page (collapsed since the Etapa 3 rework)
+  await b.click('Sequências e desafios')
   await b.click('Escolher')
   await b.click('7 dias sem gasto desnecessário', 'button')
   await b.click('Começar desafio')

@@ -17,6 +17,7 @@ import { BuyerDetail } from './BuyerDetail'
 import { SaleDetail } from './SaleDetail'
 import { SaleForm, type BuyerPreset, type SaleInitial } from './SaleForm'
 import { usePeople } from './SaleFields'
+import { SwapIn } from '../../ui/Motion'
 import { useBuyerName } from './useBuyerName'
 
 type Tab = 'open' | 'late' | 'paid' | 'all' | 'people'
@@ -414,6 +415,7 @@ export function SalesPage() {
                 ]}
               />
             </div>
+            <SwapIn value={tab} order={['open', 'late', 'paid', 'all', 'people']}>
             {(tab === 'all' || tab === 'people') && <Overview totals={overview.totals} owing={overview.owing} />}
             {tab === 'people' ? (
               <>
@@ -437,6 +439,7 @@ export function SalesPage() {
             ) : (
               <EmptyState compact icon={<BadgeDollarSign size={20} />} title={tab === 'late' ? 'Nada atrasado' : tab === 'open' ? 'Nada a receber' : tab === 'paid' ? 'Nenhuma quitada ainda' : 'Nenhuma venda'} text={tab === 'late' || tab === 'open' ? 'Tudo recebido.' : undefined} />
             )}
+            </SwapIn>
           </>
         ))}
 

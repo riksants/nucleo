@@ -27,10 +27,10 @@ export function Button({ variant = 'primary', size = 'md', icon, block, classNam
   return (
     <button
       type="button"
-      className={`press inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] select-none disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
+      className={`press inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] select-none disabled:pointer-events-none ${variant === 'primary' ? 'shine' : ''} ${VARIANTS[variant]} ${SIZES[size]} ${block ? 'w-full' : ''} ${className}`}
       {...rest}
     >
-      {icon}
+      {icon && <span className="btn-icon inline-flex">{icon}</span>}
       {children}
     </button>
   )
@@ -53,7 +53,7 @@ const ICON_TONES = {
 export function IconButton({ label, tone = 'plain', size = 'md', className = '', children, ...rest }: IconButtonProps) {
   const dims = size === 'sm' ? 'size-9 rounded-full' : 'size-11 rounded-full'
   return (
-    <button type="button" aria-label={label} title={label} className={`press hit relative grid place-items-center shrink-0 ${dims} ${ICON_TONES[tone]} ${className}`} {...rest}>
+    <button type="button" aria-label={label} title={label} className={`press hit relative grid place-items-center shrink-0 [--press-scale:0.9] ${dims} ${ICON_TONES[tone]} ${className}`} {...rest}>
       {children}
     </button>
   )
