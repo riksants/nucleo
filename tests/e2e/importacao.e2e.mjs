@@ -32,6 +32,20 @@ async function waitFor(check, label, tries = 40) {
   return false
 }
 
+/**
+ * The file's dates are the last few days, so from the 1st to the ~13th of a month every one of them also reads as
+ * month/day: then the Núcleo must ASK the order (columns screen, dia/mês already suggested) instead of guessing.
+ * On other days it goes straight on. Either way the check is strict; only the path depends on the calendar.
+ */
+async function passDateOrder(label) {
+  await waitFor(`/não diz em que moeda|Diga o que cada coluna é/.test(document.querySelector('main')?.innerText ?? '')`, label)
+  if (!(await mainText()).includes('Diga o que cada coluna é')) return
+  const asks = (await mainText()).includes('todas as datas servem nas duas ordens') && (await b.eval(`document.querySelector('select[aria-label="Ordem das datas"]')?.value === 'dmy'`))
+  r.check(`${label}: datas que servem nas duas ordens — pergunta (sugere dia/mês) em vez de adivinhar`, asks, (await mainText()).slice(0, 300).replace(/\n/g, ' | '))
+  await clickMain('Continuar')
+  await waitFor(`document.querySelector('main')?.innerText.includes('não diz em que moeda')`, label + ' → moeda')
+}
+
 const FILE = `Fecha;Concepto;Importe;Saldo
 ${br(5)};MERCADONA VALENCIA 1234;-45,30;1.954,70
 ${br(4)};PERFECT CLEAN BCN;200,00;2.154,70
@@ -74,7 +88,7 @@ try {
 
   // ---------- CSV: prévia
   await pickFile('sabadell-outubro.csv', FILE)
-  await waitFor(`document.querySelector('main')?.innerText.includes('não diz em que moeda')`, 'pede a moeda')
+  await passDateOrder('CSV de banco espanhol')
   r.check('CSV sem moeda: pede a moeda antes da prévia (não adivinha)', (await mainText()).includes('Escolha a moeda acima'))
   await clickMain('EUR')
   await waitFor(`document.querySelector('main')?.innerText.includes('lidas')`, 'prévia')
@@ -119,7 +133,7 @@ try {
   await clickMain('Importar outro arquivo')
   await sleep(600)
   await pickFile('sabadell-outubro.csv', FILE)
-  await sleep(800)
+  await passDateOrder('mesmo arquivo de novo')
   await clickMain('EUR')
   await waitFor(`document.querySelector('main')?.innerText.includes('lidas')`, 'prévia 2')
   text = await mainText()

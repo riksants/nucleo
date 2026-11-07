@@ -173,10 +173,24 @@ describe('migração local → conta', () => {
     const again = await migrateLocalToAccount({ uid: 'u3', remote: server.api, plan, accountSettings: null, sealAccount })
     expect(again.verified).toBe(4)
     expect(server.rows.size).toBe(4)
+    // The local copy lost its plain password after the first migration: sending again must not wipe the
+    // sealed one in the account (same updatedAt, so the server's stale-write rule alone doesn't protect it).
+    const kept = server.rows.get('accounts:a1')!.data as unknown as Account
+    expect(kept.secret).toBeTruthy()
+    expect(await open(key, kept.secret!)).toBe('abc123')
 
     const after = await localSummary()
     expect(after.total).toBe(4)
     expect(after.migratedTo).toContain('u3')
+
+    // Edited on the device afterwards (newer, still without a password): the edit goes up, the sealed password stays.
+    const edited = (await local.load()).data.accounts.find((a) => a.id === 'a1')!
+    expect(edited.password).toBe('')
+    await local.bulkWrite({ accounts: [{ ...edited, notes: 'agência 0001', updatedAt: '2026-09-02T10:00:00.000Z' }] } as never, null, false)
+    await migrateLocalToAccount({ uid: 'u3', remote: server.api, plan, accountSettings: null, sealAccount })
+    const merged = server.rows.get('accounts:a1')!.data as unknown as Account
+    expect(merged.notes).toBe('agência 0001')
+    expect(await open(key, merged.secret!)).toBe('abc123')
   }, 30_000)
 
   it('conta já configurada com outra moeda: movimentações ficam no aparelho; saldo inicial vira ajuste só com mesma moeda', () => {

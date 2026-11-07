@@ -12,14 +12,22 @@ export async function launch(port = 9333) {
   const profile = mkdtempSync(join(tmpdir(), 'edge-nucleo-'))
   const proc = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-gpu', 'about:blank'], { stdio: 'ignore' })
   let targets
-  for (let i = 0; i < 50; i++) {
+  // Up to 30 s: right after a build, on a machine short of memory, Edge can take well over 10 s to open.
+  for (let i = 0; i < 150; i++) {
     try {
       targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
       if (targets.some((t) => t.type === 'page')) break
     } catch {}
     await sleep(200)
   }
-  return connect(port, targets.find((t) => t.type === 'page'), () => {
+  const page = targets?.find((t) => t.type === 'page')
+  if (!page) {
+    try {
+      process.kill(proc.pid)
+    } catch {}
+    throw new Error(`Edge headless não abriu na porta ${port} em 30 s (máquina sem memória livre?)`)
+  }
+  return connect(port, page, () => {
     try {
       process.kill(proc.pid)
     } catch {}

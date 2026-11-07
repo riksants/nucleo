@@ -35,10 +35,23 @@ async function waitFor(check, tries = 40) {
   }
   return false
 }
-const onSignIn = (b) => waitFor(async () => (await b.text()).includes('Esqueci minha senha'))
+// The sign-in form itself (the "Esqueci minha senha" button next to an E-mail field) — not just the words,
+// which also appear in the help text of Conta, the screen the user leaves from.
+const onSignIn = (b) => waitFor(() => b.eval(`[...document.querySelectorAll('button')].some((x) => x.textContent.trim() === 'Esqueci minha senha') && [...document.querySelectorAll('label')].some((l) => l.textContent.trim().startsWith('E-mail') && l.querySelector('input'))`))
+/** Confirms in the sheet: waits for it (signing out syncs first, so it can take a moment) and taps its button. */
+async function confirmSheet(b, label) {
+  const open = await waitFor(() => b.eval(`[...document.querySelectorAll('[role=dialog] button')].some((x) => x.textContent.trim() === ${JSON.stringify(label)})`), 30)
+  if (!open) throw new Error('confirmação não abriu: ' + label)
+  await b.click(label, '[role=dialog] button')
+}
 const caches = (b) => b.eval(`indexedDB.databases().then((l) => l.map((d) => d.name).filter((n) => n.startsWith('nucleo-u-')))`)
 const hasSession = (b) => b.eval(`Boolean(localStorage.getItem('nucleo:auth'))`)
-const showsTask = (b) => waitFor(async () => (await b.text()).includes(TASK), 16)
+// The task has no date, so it lives in Tarefas (Início only shows today's agenda). A hash change, not a
+// reload: the account's data must already be in this page, synced from the server after signing in.
+const showsTask = async (b) => {
+  await b.eval(`location.hash !== '#/tasks' && (location.hash = '#/tasks')`)
+  return waitFor(async () => (await b.text()).includes(TASK), 16)
+}
 const errorText = (b) => b.eval(`document.querySelector('[role=alert]')?.textContent ?? ''`)
 const tokenCalls = async () => (await state()).requests.filter((x) => x.startsWith('POST /auth/v1/token?grant_type=password')).length
 
@@ -50,6 +63,8 @@ async function signInHere(b, email, password) {
 }
 async function openSignIn(b) {
   await b.goto(BASE)
+  // The first paint can take a while on a slow machine: wait for one of the two screens, then decide.
+  await waitFor(async () => /Esqueci minha senha|Entrar ou criar conta/.test(await b.text()))
   if (!(await b.text()).includes('Esqueci minha senha')) await b.click('Entrar ou criar conta')
 }
 const typeIn = (b, selector, value) =>
@@ -103,7 +118,7 @@ try {
   for (const step of ['Configurar minha conta', 'Continuar', 'Continuar', 'Entrar']) await A.click(step).catch(() => {})
   await A.sleep(1500)
   await A.goto(BASE + '#/tasks')
-  await A.sleep(700)
+  if (!(await waitFor(() => A.eval(`Boolean(document.querySelector('input[aria-label="Adicionar tarefa rápida"]'))`)))) throw new Error('Tarefas não abriu depois do cadastro')
   await typeIn(A, 'input[aria-label="Adicionar tarefa rápida"]', TASK)
   await A.eval(`document.querySelector('input[aria-label="Adicionar tarefa rápida"]').closest('form').requestSubmit()`)
   await A.sleep(500)
@@ -112,7 +127,7 @@ try {
 
   // ------------------------------------------------ 4. Logout normal
   await A.click('Sair desta conta')
-  await A.click('Sair', 'button')
+  await confirmSheet(A, 'Sair')
   r.check('logout normal: tela de entrada', await onSignIn(A))
   r.check('logout normal: nenhum dado da conta no aparelho (Etapa 1)', (await caches(A)).length === 0 && !(await hasSession(A)) && !(await A.text()).includes(TASK))
 
@@ -152,7 +167,7 @@ try {
   await A.send('Page.bringToFront')
   await A.goto(BASE + '#/account')
   await A.click('Sair desta conta')
-  await A.click('Sair', 'button')
+  await confirmSheet(A, 'Sair')
   r.check('duas abas: a aba onde saiu vai para a entrada', await onSignIn(A))
   r.check('duas abas: a outra aba também vai para a entrada, sozinha', await onSignIn(tab2), JSON.stringify({ text: (await tab2.text().catch((e) => 'ERR ' + e.message)).slice(0, 200), caches: await caches(tab2).catch(() => null), logs: tab2.logs.slice(-8), aText: (await A.text()).slice(0, 120) }))
   r.check('duas abas: nada da conta fica na outra aba nem no aparelho', !(await tab2.text()).includes(TASK) && (await caches(tab2)).length === 0)
@@ -228,7 +243,7 @@ try {
   await A.goto(BASE + '#/account')
   await A.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
   await A.click('Sair de todos os aparelhos')
-  await A.click('Sair de todos', 'button')
+  await confirmSheet(A, 'Sair de todos')
   await A.sleep(1500)
   const offlineText = await A.text()
   r.check('sem internet: avisa que nenhum aparelho foi desconectado', offlineText.includes('Nenhum aparelho foi desconectado'), offlineText.slice(0, 300))
@@ -236,7 +251,7 @@ try {
   r.check('sem internet: nenhuma sessão foi encerrada no servidor', (await sessionsOf(EMAIL)).filter((x) => !x.revoked).length === 2)
   await A.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
   await A.click('Sair de todos os aparelhos')
-  await A.click('Sair de todos', 'button')
+  await confirmSheet(A, 'Sair de todos')
   r.check('sair de todos: este aparelho vai para a entrada', await onSignIn(A))
   r.check('sair de todos: explica o que aconteceu', (await A.text()).includes('Você saiu da conta em todos os aparelhos'))
   r.check('sair de todos: nada da conta neste aparelho (Etapa 1)', (await caches(A)).length === 0 && !(await hasSession(A)))

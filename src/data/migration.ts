@@ -1,6 +1,6 @@
 import type { MigrationMark } from './deviceCleanup'
 import { done, LOCAL_DB, META, openDatabase, readAll, readMeta, SETTINGS_KEY, writeMeta } from './repository'
-import type { RemoteApi } from './sync'
+import type { RemoteApi, RemoteRow } from './sync'
 import { COLLECTION_NAMES, type Account, type CollectionName, type DataState, type Entity, type Settings, type Transaction } from './types'
 
 export interface LocalSummary {
@@ -113,8 +113,34 @@ export async function migrateLocalToAccount(opts: {
     rows.push({ collection: 'transactions', item: adj })
   }
 
-  for (let i = 0; i < rows.length; i += 200) {
-    const chunk = rows.slice(i, i + 200)
+  // What the account already has. Sending again must never overwrite it with the device's copy of the same
+  // version (the server only refuses OLDER writes) — above all a password: after a verified migration the
+  // local copy keeps no plain-text password, so re-sending it would erase the sealed one in the account.
+  const existing = new Map<string, RemoteRow>()
+  const idsBy = new Map<CollectionName, string[]>()
+  for (const r of rows) idsBy.set(r.collection, [...(idsBy.get(r.collection) ?? []), r.item.id])
+  for (const [collection, ids] of idsBy) {
+    for (let i = 0; i < ids.length; i += 200) {
+      for (const row of await remote.fetch(collection, ids.slice(i, i + 200))) existing.set(`${collection}:${row.id}`, row)
+    }
+  }
+  const upload: { collection: CollectionName; item: Entity }[] = []
+  for (const r of rows) {
+    const server = existing.get(`${r.collection}:${r.item.id}`)
+    // Already there, same version or newer (or deleted later on purpose): nothing to send.
+    if (server && server.client_updated_at >= r.item.updatedAt) continue
+    let item = r.item
+    if (r.collection === 'accounts' && server && !server.deleted) {
+      const mine = item as Account
+      const theirs = server.data as Account | null
+      // Edited on the device after the migration (newer, no password here): keep the account's sealed one.
+      if (!mine.password && !mine.secret && theirs?.secret) item = { ...mine, secret: theirs.secret } as Entity
+    }
+    upload.push({ collection: r.collection, item })
+  }
+
+  for (let i = 0; i < upload.length; i += 200) {
+    const chunk = upload.slice(i, i + 200)
     await remote.upsert(chunk.map(({ collection, item }) => ({ collection, id: item.id, data: item, deleted: false, client_updated_at: item.updatedAt })))
   }
 

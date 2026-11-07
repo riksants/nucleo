@@ -1,7 +1,17 @@
+// Against the LOCAL mock of Supabase (tests/e2e/mock-supabase.mjs) and the mock build in dist-e2e-cloud
+// (npm run build:e2e-cloud with VITE_TURNSTILE_SITE_KEY= empty). Starts both itself, like the other *-sync suites.
+import { spawn } from 'node:child_process'
 import { launch } from './cdp.mjs'
 
 const BASE = 'http://localhost:4318/nucleo/'
 const MOCK = 'http://localhost:54399'
+const procs = [spawn(process.execPath, ['tests/e2e/mock-supabase.mjs'], { stdio: 'ignore' }), spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e-cloud', '--port', '4318', '--strictPort'], { stdio: 'ignore', env: { ...process.env, NUCLEO_BASE: '/nucleo/' } })]
+for (let i = 0; i < 40; i++) {
+  try {
+    if ((await fetch(BASE)).ok && (await fetch(MOCK + '/__state')).ok) break
+  } catch {}
+  await new Promise((r) => setTimeout(r, 500))
+}
 const results = []
 const check = (name, ok, extra = '') => results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`)
 const state = async () => (await fetch(MOCK + '/__state')).json()
@@ -100,6 +110,10 @@ try {
   await B.goto(BASE + '#/accounts')
   text = await B.text()
   check('no outro aparelho a senha continua protegida pelo cofre', text.includes('Cofre fechado') && !text.includes('senha-antiga'))
+  check('no outro aparelho o acesso chega com a senha selada (nada se perdeu ao migrar de novo)', /1\s*No cofre/.test(text), text.slice(0, 160))
+  // A new device first lists the sections it doesn't know yet; then the password lives in the access' details.
+  if ((await B.text()).includes('Novas seções disponíveis')) await B.click('Pronto', '[role=dialog] button')
+  await B.click('Email', 'li button')
   await B.click('Mostrar senha')
   await B.fill('Senha do cofre', 'cofre-da-ana-1')
   await B.click('Desbloquear', 'button[type=submit]')
@@ -203,4 +217,9 @@ try {
   console.log('LOGS B:\n' + B.logs.slice(0, 10).join('\n'))
   A.close()
   B.close()
+  for (const p of procs) p.kill()
+  const failed = results.filter((x) => !x.startsWith('PASS')).length
+  console.log(`
+${results.length - failed}/${results.length} ok`)
+  process.exit(failed ? 1 : 0)
 }

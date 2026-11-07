@@ -1,5 +1,30 @@
 # Pendências
 
+## Pendências de teste revistas em 2026-11-07 (base main bcbcc83)
+
+- **Defeito real corrigido (cofre):** "Enviar de novo (não duplica)" em Conta apagava a senha selada dos acessos
+  na conta. Depois da 1ª migração conferida, a cópia sem conta perde a senha em texto puro; o reenvio mandava esse
+  registro com o MESMO `updatedAt`, e o servidor só recusa versões mais antigas → sobrescrevia `secret`.
+  Agora `migrateLocalToAccount` lê o que a conta já tem: não reenvia versão igual/mais nova e, num acesso editado
+  depois no aparelho (sem senha), mantém o `secret` da conta. Teste: tests/vault-sync.test.ts.
+  Não dá para saber se aconteceu em produção sem olhar os dados (acessos com `password` vazio e sem `secret`).
+- **Defeito real corrigido (Início):** ao voltar para a Início depois de mudar algo em outra tela, o cartão de
+  atenção sumia e entrava de novo empurrando a tela (o cache era descartado inteiro). Agora mostra o último
+  resultado e recalcula logo depois. Com "reduzir movimento" o cartão aparece sem animar (o `reducedMotion` do
+  framer-motion não desliga altura/opacidade). home-switch 9/9 (antes 7/9 também na f0b3242).
+- **Falhas que eram do teste (corrigidas sem afrouxar):**
+  - auth-sessions 44/48: procurava a tarefa sem prazo na Início (que só mostra a agenda de hoje) → olha em
+    Tarefas; "estou na tela de entrada" aceitava o texto de ajuda da tela Conta → exige o formulário; tocava
+    "Sair" antes da confirmação abrir (a saída sincroniza antes) → espera o painel. 48/48. Mesmo ajuste em
+    account-switch (12/12).
+  - regression-account-sync: não subia o mock nem o preview (SecurityError = página de erro) → sobe os dois;
+    a senha agora fica no detalhe do acesso. 27/27, com checagem nova "1 No cofre" no outro aparelho.
+  - importacao 10/24: as datas do arquivo (últimos 5 dias) servem nas duas ordens do dia 1 ao ~13 de cada mês, e
+    o app pergunta a ordem de propósito → o teste exige a pergunta (dia/mês sugerido) e segue. 32/32.
+  - cdp.mjs: o Edge às vezes leva mais de 10 s para abrir nesta máquina → espera até 30 s, com erro claro.
+- Visual: todas as telas com o Shell têm a faixa laranja nos dois temas. Exceção intencional: Modo foco (tela
+  cheia, fora do Shell).
+
 ## NÚCLEO IA — PUBLICADO para todos em 2026-11-05 (grátis)
 
 - Feito: ensaio com o backup real de 01/11 (restauração idêntica; migração/reversão/reaplicação ok); snapshot

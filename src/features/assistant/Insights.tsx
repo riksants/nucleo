@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { navigate } from '../../app/router'
@@ -20,8 +20,9 @@ export function useInsights() {
   const today = useToday(zoneOf(settings))
   const cached = lastInsights && lastInsights.data === data && lastInsights.settings === settings && lastInsights.today === today ? lastInsights.all : null
   // Computed just after the screen shows (never blocks the first paint); dismiss/snooze still apply instantly.
-  // Coming back to a screen, the last result is shown right away — the card doesn't pop in and push the page again.
-  const [all, setAll] = useState<Insight[]>(() => cached ?? [])
+  // Coming back to a screen, the last result is shown right away — even when something changed elsewhere in the
+  // meantime (it is recomputed just after): the card doesn't vanish and pop in again, pushing the page.
+  const [all, setAll] = useState<Insight[]>(() => cached ?? (lastInsights && lastInsights.today === today ? lastInsights.all : []))
   useEffect(() => {
     if (cached) return
     const timer = window.setTimeout(() => {
@@ -88,6 +89,8 @@ export function InsightCard({ insight, onAction }: { insight: Insight; onAction(
 export function AttentionCard() {
   const { all } = useInsights()
   const top = all.slice(0, HOME_LIMIT)
+  // MotionConfig's reducedMotion only drops transforms; height and opacity must be turned off here.
+  const reduce = useReducedMotion()
   // Already known when the screen opens: shown in place. Arriving a moment later: opens smoothly (200 ms)
   // instead of shoving the page down. Reduced motion: appears without animating.
   return (
@@ -99,7 +102,7 @@ export function AttentionCard() {
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+          transition={reduce ? { duration: 0 } : { duration: 0.2, ease: EASE_OUT_SOFT }}
         >
           <AttentionButton all={all} top={top} />
         </motion.div>

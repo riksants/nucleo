@@ -66,13 +66,26 @@ async function addTask(b, title) {
   await b.eval(`document.querySelector('input[aria-label="Adicionar tarefa rápida"]').closest('form').requestSubmit()`)
   await b.sleep(500)
 }
+async function until(check, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    if (await check().catch(() => false)) return true
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  return false
+}
+/** Taps "Sair" in the confirmation once it is open (signing out syncs first, so it can take a moment). */
+async function confirmSignOut(b) {
+  if (!(await until(() => b.eval(`[...document.querySelectorAll('[role=dialog] button')].some((x) => x.textContent.trim() === 'Sair')`)))) throw new Error('confirmação de saída não abriu')
+  await b.click('Sair', '[role=dialog] button')
+}
+/** The sign-in form itself (signing out reloads the page into it), not just leftover words of the old screen. */
+const onSignIn = (b) => until(() => b.eval(`[...document.querySelectorAll('button')].some((x) => x.textContent.trim() === 'Esqueci minha senha') && [...document.querySelectorAll('label')].some((l) => l.textContent.trim().startsWith('E-mail') && l.querySelector('input'))`))
 async function signOutFromSettings(b) {
   await b.goto(BASE + '#/settings')
   await b.sleep(600)
   await b.click('Sair da conta', 'button')
-  await b.sleep(800)
-  await b.click('Sair', '[role=dialog] button')
-  await b.sleep(1800)
+  await confirmSignOut(b)
+  if (!(await onSignIn(b))) throw new Error('tela de entrada não abriu depois de sair')
 }
 async function signInHere(b, email) {
   await b.fill('E-mail', email)
@@ -112,11 +125,10 @@ try {
 
   // Sign out → sign-in screen
   await A.click('Sair da conta', 'button')
-  await A.sleep(800)
-  await A.click('Sair', '[role=dialog] button')
-  await A.sleep(1800)
+  await confirmSignOut(A)
+  const signedOut = await onSignIn(A)
   text = await A.text()
-  r.check('depois de sair, aparece a tela de entrada', text.includes('Esqueci minha senha') && !text.includes('Tarefa da Ana'))
+  r.check('depois de sair, aparece a tela de entrada', signedOut && !text.includes('Tarefa da Ana'))
 
   // Same account again: data comes back
   await signInHere(A, 'ana@conta.com')
