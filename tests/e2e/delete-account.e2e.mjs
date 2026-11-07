@@ -85,13 +85,15 @@ try {
   await A.sleep(800)
   r.check('sem digitar EXCLUIR, nada é apagado', (await A.text()).includes('Digite EXCLUIR') && (await state()).users.some((u) => u.id === aId))
 
-  // Wrong password: nothing is deleted.
+  // Wrong password: nothing is deleted — and nothing on this device changes either (notifications stay on).
+  await A.eval(`localStorage.setItem('nucleo:pushWanted', 'true')`)
   await fillDialog(A, 'Digite EXCLUIR', 'excluir')
   await fillDialog(A, 'Senha da conta', 'senha-errada-1')
   await submit(A)
   await A.sleep(1500)
   s = await state()
   r.check('senha errada: aviso e nada apagado', (await A.text()).includes('Nada foi apagado') && s.users.some((u) => u.id === aId) && s.records.some((x) => x.user_id === aId))
+  r.check('senha errada: as notificações deste aparelho continuam ligadas', (await A.eval(`localStorage.getItem('nucleo:pushWanted')`)) === 'true')
 
   await fillDialog(A, 'Senha da conta', 'Nucleo-teste-42')
   await submit(A)
@@ -103,6 +105,21 @@ try {
   const dbs = await A.eval(`indexedDB.databases().then((l) => l.map((d) => d.name))`)
   r.check('a cópia da conta saiu deste aparelho', !dbs.includes(`nucleo-u-${aId}`), JSON.stringify(dbs))
   r.check('pediu a exclusão só depois de confirmar a senha', s.requests.filter((q) => q.includes('delete_my_account')).length === 1)
+
+  // Reopening the app: no session left; the old password doesn't get in nor bring anything back.
+  await A.goto('about:blank')
+  await A.goto(BASE + '#/notes')
+  await A.sleep(2500)
+  r.check('reabrindo o app: sem sessão e nada da conta excluída', !(await A.eval(`Boolean(localStorage.getItem('nucleo:auth'))`)) && !(await A.text()).includes('Nota que vai sumir'))
+  if (!(await A.text()).includes('Esqueci minha senha')) await A.click('Entrar ou criar conta').catch(() => {})
+  await A.fill('E-mail', 'apagar@teste.com')
+  await A.fill('Senha', 'Nucleo-teste-42')
+  await A.click('Entrar', 'button[type=submit]')
+  await A.sleep(2000)
+  const err = await A.eval(`document.querySelector('[role=alert]')?.textContent ?? ''`)
+  r.check('a senha antiga não entra mais (mesma mensagem de senha errada)', err.includes('E-mail ou senha incorretos.') && !(await A.eval(`Boolean(localStorage.getItem('nucleo:auth'))`)), err)
+  s = await state()
+  r.check('nenhum dado da conta excluída volta ao servidor', !s.records.some((x) => x.user_id === aId) && !(await A.text()).includes('Nota que vai sumir'))
 } catch (err) {
   r.check('ERRO', false, err.message)
 } finally {

@@ -5,7 +5,6 @@ import { Button } from '../../ui/Button'
 import { Field, TextInput } from '../../ui/Field'
 import { FormSheet } from '../../ui/FormSheet'
 import { useVault } from '../accounts/vault'
-import { forgetPushOnThisDevice } from '../reminders/push'
 import { PasswordInput } from './AuthScreen'
 import { Captcha } from './Captcha'
 import { captchaOn } from './captchaKey'
@@ -36,9 +35,11 @@ export function DeleteAccountSheet({ open, onClose }: { open: boolean; onClose()
     if (!password) return 'Digite a senha da conta.'
     if (captchaOn && !token) return 'Aguarde a verificação de segurança terminar.'
     try {
-      vault.lock()
-      await forgetPushOnThisDevice().catch(() => {})
+      // Only after the server deleted the account: a wrong password (or a failure) leaves this device exactly as it
+      // was — vault and notifications included. The server's cascade drops the push subscription and the device
+      // cleanup that follows silences push here.
       await auth.deleteAccount(password, token ?? undefined)
+      vault.lock()
     } finally {
       // A token works once: a new check for the next try.
       setToken(null)
