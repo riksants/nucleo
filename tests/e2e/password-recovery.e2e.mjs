@@ -80,7 +80,7 @@ try {
   await A.sleep(800)
   const s1 = await state()
   r.check('pedido de recuperação vai para o servidor (POST /auth/v1/recover)', s1.requests.some((x) => x.startsWith('POST /auth/v1/recover')))
-  r.check('tela orienta a digitar o código de 6 dígitos (sem precisar do link)', (await A.text()).includes('código de 6 dígitos do e-mail'))
+  r.check('tela orienta a digitar o código do e-mail (sem precisar do link)', (await A.text()).includes('código que veio no e-mail'))
   await A.fill('Código do e-mail', '000000')
   await A.click('Continuar', 'button[type=submit]')
   await A.sleep(800)

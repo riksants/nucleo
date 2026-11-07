@@ -159,8 +159,8 @@ export function AuthScreen() {
   const captcha = captchaOn && <Captcha key={`${step}-${captchaRound}`} onToken={setCaptchaToken} />
 
   const codeField = (
-    <Field label="Código do e-mail" hint="6 dígitos">
-      <TextInput inputMode="numeric" autoComplete="one-time-code" className="num text-[22px]! tracking-[0.3em]" maxLength={8} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+    <Field label="Código do e-mail" hint="só os números">
+      <TextInput inputMode="numeric" autoComplete="one-time-code" className="num text-[22px]! tracking-[0.3em]" maxLength={12} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
     </Field>
   )
 
@@ -281,7 +281,7 @@ export function AuthScreen() {
               title="Digite o código"
               text={
                 <>
-                  Se existir uma conta com <span className="text-ink">{email}</span>, o e-mail chega em instantes. Digite aqui o código de 6 dígitos do e-mail — não é preciso abrir o link. Se não chegar, confira o spam ou peça outro código daqui a um minuto.
+                  Se existir uma conta com <span className="text-ink">{email}</span>, o e-mail chega em instantes. Digite aqui o código que veio no e-mail — não é preciso abrir o link. Se não chegar, confira o spam ou peça outro código daqui a um minuto.
                 </>
               }
               onBack={() => go('forgot')}

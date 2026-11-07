@@ -1,5 +1,22 @@
 # Pendências
 
+## PARTE 9 — rate limiting (2026-11-07) — NADA aplicado/publicado ainda
+
+- Medido em produção: login, cadastro, recuperação, reenvio e OTP sem CAPTCHA válido → 400 captcha_failed em
+  rajada e em paralelo (nenhuma sessão, conta ou e-mail). Verificação de código (/auth/v1/verify, sem CAPTCHA):
+  429 na 29ª tentativa errada por IP (~30 por 5 min), sem bloqueio por conta e sem Retry-After.
+- Lacuna 1 (corrigida, migration 20261107010000_teste_notificacao_atomico.sql, NÃO aplicada): a notificação de
+  teste contava e depois inseria sem trava; 20 sessões simultâneas no PostgreSQL 17 criaram 6 (limite 5). Com a
+  trava por conta: 5. Responde HTTP 429 + Retry-After com o mesmo texto quota_exceeded (o app já reconhece).
+- Lacuna 2 (código de e-mail de 6 dígitos): sem limite por conta, ~30 tentativas por 5 min por IP e validade de
+  30 min → força bruta distribuída viável contra a recuperação de senha. Ordem de ativação:
+  1. publicar o app (o campo do código aceita até 12 caracteres e os textos não falam mais em "6 dígitos");
+  2. esperar os aparelhos atualizarem;
+  3. Supabase → Authentication → Sign In / Providers → Email: "Email OTP Length" = 10 e "Email OTP Expiration" = 600.
+- Sem limite de frequência de propósito: sync_notifications (idempotente, serializado por conta, teto de 2.000,
+  statement timeout) e CRUD comum. Risco de plataforma: usuário logado pode gastar invocações de Edge Function com
+  pedidos inválidos (400 antes de qualquer custo); o Supabase não oferece limite por usuário antes da invocação.
+
 ## PARTE 6 — validação de dinheiro no banco (2026-11-07) — migration NÃO aplicada
 
 - `supabase/migrations/20261107000000_validacao_dinheiro.sql` (constraint `records_money_shape`): antes o servidor

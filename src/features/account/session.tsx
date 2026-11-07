@@ -209,7 +209,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // PKCE links only complete in the browser that asked for them. The e-mail is
         // still confirmed on the server, so signing in works from here.
         // Recovery links land here too (the link doesn't say which it was): explain both.
-        setNotice('Se você confirmou o cadastro, já pode entrar com seu e-mail e senha. Se pediu para trocar a senha, toque em “Esqueci minha senha” e use o código de 6 dígitos do e-mail.')
+        setNotice('Se você confirmou o cadastro, já pode entrar com seu e-mail e senha. Se pediu para trocar a senha, toque em “Esqueci minha senha” e use o código que veio no e-mail.')
         setScreen('signin')
       } else if (error) setNotice(authMessage(error))
       cleanAuthParams()
