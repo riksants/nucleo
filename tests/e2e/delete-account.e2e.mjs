@@ -21,6 +21,8 @@ const state = async () => (await fetch(MOCK + '/__state')).json()
 
 async function signUp(b, email) {
   await b.goto(BASE)
+  // The first paint can take a while on a slow machine: wait for the start screen before tapping.
+  for (let i = 0; i < 40 && !(await b.text()).includes('Entrar ou criar conta'); i++) await sleep(500)
   await b.click('Entrar ou criar conta')
   await b.click('Criar conta')
   await b.fill('E-mail', email)
