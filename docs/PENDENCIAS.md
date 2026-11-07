@@ -6,19 +6,30 @@
 mantenedor e versão no registry/npm oficial e repositório/documentação). Evita typosquatting e pacotes
 inventados. Preferir solução sem nova dependência quando simples. CI usa `npm ci` (instalação reproduzível).
 
-## PARTE 11 — dependências / supply chain (2026-11-07) — sem alteração necessária
+## PARTE 11 — dependências / supply chain (2026-11-07)
 
-- npm audit: 0 críticas, 0 altas, 4 moderadas, 2 baixas — TODAS numa só devDependency de build
-  (`vite-plugin-pwa` → `workbox-build@7.4.1` → glob/minimatch/deepmerge). São ferramentas de build, não vão
-  para o bundle nem para o service worker (conferido) e não processam dado do usuário. Sem correção para frente:
-  `vite-plugin-pwa@2.0.0` (major) ainda usa `workbox-build@7.4.1`; a "correção" do npm é um downgrade que quebra.
-  Exposição real ≈ nula → NÃO atualizar (evita quebrar o build por warnings de dev).
-- devDependencies não usadas: `web-push` e `@types/web-push` (o envio de push foi reescrito em WebCrypto em
-  `supabase/functions/_shared/push/webpush.ts`; o pacote quebra no runtime Edge). Remoção é segura e opcional
-  (não é segurança; não removido para não mexer sem necessidade).
-- Lockfile único (npm), em sincronia; Node 24 local = CI; Actions oficiais fixadas por SHA; imports das Edge
-  Functions são `npm:` com versão fixa; sem script preinstall/install/postinstall em dependências; sem
-  typosquatting, git deps ou registry alternativo.
+Estado final: npm audit = **0 críticas, 0 altas, 0 moderadas, 4 baixas**.
+
+- Removidas `web-push` e `@types/web-push` (não usadas; o envio de push é WebCrypto próprio em
+  `supabase/functions/_shared/push/webpush.ts`).
+- As 2 moderadas de `glob`/`minimatch` foram ELIMINADAS com `overrides: { "glob": "^14.0.4" }` (glob 14.0.4 já
+  corrigido traz minimatch 11.0.5 corrigido). Build, service worker (77 entradas de precache) e push e2e
+  (push-display 7/7) continuam ok. `npm ci` limpo.
+- **Bloqueio técnico das 4 baixas restantes:** todas descem de um único pacote, `deepmerge@4.3.1`, alcançado por
+  `@rollup/plugin-node-resolve@16.0.3 → deepmerge`, dentro de `workbox-build@7.4.1 → vite-plugin-pwa`. Advisory
+  GHSA-gcqx-w48m-w2h4 (prototype pollution). **Não há versão corrigida de `deepmerge`** (latest = 4.3.1, de
+  2023-03-16, é o topo do range afetado) e o `@rollup/plugin-node-resolve` mais novo (16.0.3) ainda depende dele;
+  não existe override legítimo para onde apontar. `vite-plugin-pwa@2.0.0` (major) continua usando o mesmo
+  `workbox-build@7.4.1`.
+  - Alcançável no Núcleo: NÃO. `deepmerge` é usado em tempo de build para mesclar opções de plugin (config
+    nossa), nunca dado do usuário; o `prototype pollution` exige objeto controlado pelo atacante.
+  - Entra no bundle/site publicado: NÃO (ferramenta de build; conferido no bundle e no sw.js).
+  - Única forma de zerar: substituir `vite-plugin-pwa` por um service worker próprio (manifest + precache/offline
+    à mão) — mudança grande, com risco real a PWA/instalação/offline. DECISÃO DO DONO: fazer essa troca ou
+    aceitar as 4 baixas não exploráveis e travadas upstream.
+- Lockfile único (npm), em sincronia; Node 24 local = CI; `npm ci` no CI; Actions oficiais fixadas por SHA;
+  imports das Edge Functions são `npm:` com versão fixa; sem script preinstall/install/postinstall em
+  dependências; sem typosquatting, git deps ou registry alternativo.
 
 
 
