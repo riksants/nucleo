@@ -263,7 +263,8 @@ describe('contagem sempre igual à realidade', () => {
       const col = cols[i % cols.length]
       const id = `x${i % 37}`
       const r = (i * 7919) % 10
-      if (r < 5) await put(C, col, id, { n: 'y'.repeat(i) })
+      // A real movement shape for transactions (money values are checked by the database since PARTE 6).
+      if (r < 5) await put(C, col, id, col === 'transactions' ? { type: 'out', amount: i, currency: 'EUR', baseAmount: -i, n: 'y'.repeat(i) } : { n: 'y'.repeat(i) })
       else if (r < 8) await put(C, col, id, {}, true)
       else await as(C, `delete from records where collection = $1 and id = $2`, [col, id])
     }

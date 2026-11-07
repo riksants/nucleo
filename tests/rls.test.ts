@@ -164,7 +164,7 @@ describe('Etapas 1 e 2: coleções novas', () => {
 describe('Etapa 3: finanças', () => {
   it('B não lê, altera nem apaga movimentações e metas financeiras de A', async () => {
     await as(A, `insert into records (collection, id, data, client_updated_at) values ('financeGoals', 'fg1', '{"name":"Reserva","target":500000,"saved":200000}', $1)`, [now()])
-    await as(A, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'tx-cat', '{"type":"out","amount":1000,"category":"food","unnecessary":true}', $1)`, [now()])
+    await as(A, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'tx-cat', '{"type":"out","amount":1000,"currency":"EUR","baseAmount":-1000,"category":"food","unnecessary":true}', $1)`, [now()])
     for (const c of ['financeGoals', 'transactions']) expect((await as(B, 'select * from records where collection = $1', [c])).rows).toHaveLength(0)
     expect((await as(B, `update records set data = '{"saved":0}' where id = 'fg1'`)).affectedRows).toBe(0)
     expect((await as(B, `delete from records where collection in ('financeGoals', 'transactions')`)).affectedRows).toBe(0)
@@ -278,7 +278,7 @@ describe('Importação de extratos (Automações Parte 3)', () => {
     expect((await as(B, `delete from records where id = 'bank-0123456789abcdef'`)).affectedRows).toBe(0)
     await expect(as(B, `insert into records (user_id, collection, id, data, client_updated_at) values ($1, 'automationRuns', 'import-b', '{}', $2)`, [A, now()])).rejects.toThrow(/row-level security/)
     // The same statement imported in B's account: same line id, separate rows.
-    await as(B, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'bank-0123456789abcdef', '{"reason":"de B"}', $1)`, [now()])
+    await as(B, `insert into records (collection, id, data, client_updated_at) values ('transactions', 'bank-0123456789abcdef', '{"type":"out","amount":4530,"currency":"EUR","baseAmount":-4530,"reason":"de B"}', $1)`, [now()])
     expect((await as(A, `select data from records where id = 'bank-0123456789abcdef'`)).rows[0].data.reason).toBe('Mercadona')
     expect((await as(B, `select data from records where id = 'bank-0123456789abcdef'`)).rows[0].data.reason).toBe('de B')
   })

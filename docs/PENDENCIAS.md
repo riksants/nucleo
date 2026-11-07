@@ -1,5 +1,14 @@
 # Pendências
 
+## PARTE 6 — validação de dinheiro no banco (2026-11-07) — migration NÃO aplicada
+
+- `supabase/migrations/20261107000000_validacao_dinheiro.sql` (constraint `records_money_shape`): antes o servidor
+  aceitava valor "abc", 1e300, objeto ou tipo inventado em movimentações/projetos/vendas/metas/assinaturas, e o app
+  publicado quebrava em Início/Finanças/Projetos/Vendas (reproduzido em produção com conta descartável).
+- Conferido em produção (somente leitura): 0 de 215 linhas seriam recusadas. Entra NOT VALID e é validada na mesma
+  transação. Desfazer: `alter table public.records drop constraint if exists records_money_shape;`
+- Aplicar só com autorização do dono. Teste: tests/money-validation-db.test.ts.
+
 ## Pendências de teste revistas em 2026-11-07 (base main bcbcc83)
 
 - **Defeito real corrigido (cofre):** "Enviar de novo (não duplica)" em Conta apagava a senha selada dos acessos
