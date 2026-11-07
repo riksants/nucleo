@@ -1,18 +1,17 @@
 # Pendências
 
-## PARTE 9 — rate limiting (2026-11-07) — NADA aplicado/publicado ainda
+## PARTE 9 — rate limiting — APLICADO E VALIDADO EM PRODUÇÃO (2026-11-07)
 
 - Medido em produção: login, cadastro, recuperação, reenvio e OTP sem CAPTCHA válido → 400 captcha_failed em
-  rajada e em paralelo (nenhuma sessão, conta ou e-mail). Verificação de código (/auth/v1/verify, sem CAPTCHA):
-  429 na 29ª tentativa errada por IP (~30 por 5 min), sem bloqueio por conta e sem Retry-After.
-- Lacuna 1 (corrigida, migration 20261107010000_teste_notificacao_atomico.sql, NÃO aplicada): a notificação de
-  teste contava e depois inseria sem trava; 20 sessões simultâneas no PostgreSQL 17 criaram 6 (limite 5). Com a
-  trava por conta: 5. Responde HTTP 429 + Retry-After com o mesmo texto quota_exceeded (o app já reconhece).
-- Lacuna 2 (código de e-mail de 6 dígitos): sem limite por conta, ~30 tentativas por 5 min por IP e validade de
-  30 min → força bruta distribuída viável contra a recuperação de senha. Ordem de ativação:
-  1. publicar o app (o campo do código aceita até 12 caracteres e os textos não falam mais em "6 dígitos");
-  2. esperar os aparelhos atualizarem;
-  3. Supabase → Authentication → Sign In / Providers → Email: "Email OTP Length" = 10 e "Email OTP Expiration" = 600.
+  rajada e em paralelo (nenhuma sessão, conta ou e-mail). CAPTCHA (Turnstile) continua obrigatório.
+- Lacuna 1 RESOLVIDA: migration 20261107010000_teste_notificacao_atomico.sql APLICADA (main dad0d97). A
+  notificação de teste contava e depois inseria sem trava; 20 sessões simultâneas no PostgreSQL 17 criaram 6
+  (limite 5). Agora conta e insere sob trava por conta: prod verificado em 5/hora exatos, concorrência nunca
+  cria a 6ª, HTTP 429 + Retry-After com o texto quota_exceeded que o app já reconhece.
+- Lacuna 2 RESOLVIDA: app publicado (main dad0d97) aceita códigos de e-mail de 10 dígitos; o dono alterou no
+  Supabase "Email OTP Length" = 10 e "Email OTP Expiration" = 600 s. Verificado em produção com códigos reais:
+  cadastro e recuperação com 10 dígitos, código usado/antigo não vale, expira em ~600 s (ok aos 541 s, expirado
+  aos 631 s). Os 6 primeiros dígitos sozinhos não confirmam.
 - Sem limite de frequência de propósito: sync_notifications (idempotente, serializado por conta, teto de 2.000,
   statement timeout) e CRUD comum. Risco de plataforma: usuário logado pode gastar invocações de Edge Function com
   pedidos inválidos (400 antes de qualquer custo); o Supabase não oferece limite por usuário antes da invocação.
