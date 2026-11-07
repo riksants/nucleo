@@ -1,0 +1,29 @@
+{
+  "name": "deepmerge",
+  "description": "A library for deep (recursive) merging of Javascript objects (vendored copy of the official 4.3.1 release with a single prototype-poisoning guard — see PATCH.md)",
+  "keywords": [
+    "merge",
+    "deep",
+    "extend",
+    "copy",
+    "clone",
+    "recursive"
+  ],
+  "version": "4.3.1",
+  "homepage": "https://github.com/TehShrike/deepmerge",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TehShrike/deepmerge.git"
+  },
+  "main": "dist/cjs.js",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "license": "MIT",
+  "_vendored": {
+    "reason": "CVE-2026-93753 / GHSA-gcqx-w48m-w2h4 has no upstream patched release; this is a minimal, auditable local fix.",
+    "basedOn": "deepmerge@4.3.1 (official npm release), verbatim except the getKeys() guard documented in PATCH.md",
+    "change": "getKeys() filters an own \"__proto__\" key before enumeration; no other behavioral change.",
+    "usedBy": "transitive dependency of workbox-build via @rollup/plugin-node-resolve; wired through the root package.json \"overrides\" field."
+  }
+}

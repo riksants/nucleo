@@ -37,3 +37,9 @@ dist-e2e-captcha
 .claude/skills/
 skills-lock.json
 dist-e2e-ia
+
+# Exceção: a cópia vendorizada e corrigida do deepmerge (ver vendor/deepmerge/PATCH.md).
+# A regra "dist" acima também pegaria vendor/deepmerge/dist; estes dist PRECISAM ser versionados
+# para que git clone + npm ci reproduzam a correção de segurança.
+!vendor/deepmerge/dist/
+!vendor/deepmerge/dist/**
