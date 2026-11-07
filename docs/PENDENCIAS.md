@@ -1,6 +1,26 @@
 # Pendências
 
-## PARTE 9 — rate limiting — APLICADO E VALIDADO EM PRODUÇÃO (2026-11-07)
+## Regra de dependências (Parte 11, 2026-11-07)
+
+**Nunca instalar um pacote sugerido por IA sem antes confirmar que ele existe e é legítimo** (nome exato,
+mantenedor e versão no registry/npm oficial e repositório/documentação). Evita typosquatting e pacotes
+inventados. Preferir solução sem nova dependência quando simples. CI usa `npm ci` (instalação reproduzível).
+
+## PARTE 11 — dependências / supply chain (2026-11-07) — sem alteração necessária
+
+- npm audit: 0 críticas, 0 altas, 4 moderadas, 2 baixas — TODAS numa só devDependency de build
+  (`vite-plugin-pwa` → `workbox-build@7.4.1` → glob/minimatch/deepmerge). São ferramentas de build, não vão
+  para o bundle nem para o service worker (conferido) e não processam dado do usuário. Sem correção para frente:
+  `vite-plugin-pwa@2.0.0` (major) ainda usa `workbox-build@7.4.1`; a "correção" do npm é um downgrade que quebra.
+  Exposição real ≈ nula → NÃO atualizar (evita quebrar o build por warnings de dev).
+- devDependencies não usadas: `web-push` e `@types/web-push` (o envio de push foi reescrito em WebCrypto em
+  `supabase/functions/_shared/push/webpush.ts`; o pacote quebra no runtime Edge). Remoção é segura e opcional
+  (não é segurança; não removido para não mexer sem necessidade).
+- Lockfile único (npm), em sincronia; Node 24 local = CI; Actions oficiais fixadas por SHA; imports das Edge
+  Functions são `npm:` com versão fixa; sem script preinstall/install/postinstall em dependências; sem
+  typosquatting, git deps ou registry alternativo.
+
+
 
 - Medido em produção: login, cadastro, recuperação, reenvio e OTP sem CAPTCHA válido → 400 captcha_failed em
   rajada e em paralelo (nenhuma sessão, conta ou e-mail). CAPTCHA (Turnstile) continua obrigatório.
