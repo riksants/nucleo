@@ -57,6 +57,14 @@ jobs:
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
           # Cloudflare Turnstile SITE key (public). The secret key goes only to Supabase Auth → Attack Protection.
           VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+          # Monitoramento (PARTE 14). DSN é PÚBLICO (Variable); vazio = Sentry desligado. Release = commit.
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
+          # Upload de source maps ao Sentry: SÓ o token é secreto (Secret, nunca VITE_). Org/Project são Variables.
+          # Sem o token, o build apenas não gera/sobe maps (app continua funcionando).
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: dist

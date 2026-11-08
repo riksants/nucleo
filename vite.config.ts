@@ -1,3 +1,4 @@
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { createHash } from 'node:crypto'
@@ -22,6 +23,14 @@ function contentSecurityPolicy(mode: string): Plugin {
       const turnstile = 'https://challenges.cloudflare.com'
       const connect = ["'self'", 'https://open.er-api.com', 'https://cdn.jsdelivr.net', turnstile]
       if (supabase) connect.push(supabase.origin, `${supabase.protocol === 'https:' ? 'wss' : 'ws'}://${supabase.host}`)
+      // Monitoramento (PARTE 14): libera SÓ o endpoint de ingestão do Sentry derivado do DSN (sem curinga).
+      let sentryOrigin = null
+      try {
+        sentryOrigin = env.VITE_SENTRY_DSN ? new URL(env.VITE_SENTRY_DSN).origin : null
+      } catch {
+        sentryOrigin = null
+      }
+      if (sentryOrigin) connect.push(sentryOrigin)
       const policy = [
         "default-src 'self'",
         `script-src 'self' ${inline.join(' ')} ${turnstile}`,
@@ -47,10 +56,26 @@ const baseFor = (mode: string) => process.env.NUCLEO_BASE || (mode.startsWith('e
 
 export default defineConfig(({ mode }) => {
   const BASE = baseFor(mode)
+  // Release = commit do deploy (CI). Sem hardcode: o cliente lê import.meta.env.VITE_RELEASE.
+  const release = process.env.VITE_RELEASE || process.env.GITHUB_SHA || undefined
+  // Upload de source maps ao Sentry só quando o token (GitHub Secret, nunca VITE_) está presente — aí os
+  // .map são gerados "hidden" (sem referência no bundle), enviados e APAGADOS do dist (não vão ao Pages).
+  const sentryUpload = process.env.SENTRY_AUTH_TOKEN
+    ? sentryVitePlugin({
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT,
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        release: release ? { name: release } : undefined,
+        sourcemaps: { filesToDeleteAfterUpload: ['**/*.map'] },
+        telemetry: false,
+      })
+    : null
   return {
     base: BASE,
     // Vitest: generous timeout, the first time-zone formatting can be slow on a busy machine.
     test: { testTimeout: 30_000 },
+    // Source maps só quando vamos enviar+apagar (com o token do CI); nunca ficam públicos no Pages.
+    build: { sourcemap: process.env.SENTRY_AUTH_TOKEN ? 'hidden' : false },
     plugins: [
       react(),
       tailwindcss(),
@@ -86,6 +111,8 @@ export default defineConfig(({ mode }) => {
           importScripts: ['push-sw.js'],
         },
       }),
+      // Por último: envia os source maps ao Sentry e os remove do dist. Só ativo com o token do CI.
+      ...(sentryUpload ? [sentryUpload] : []),
     ],
   }
 })

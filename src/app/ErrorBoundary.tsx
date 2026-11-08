@@ -4,6 +4,7 @@ import { useStore } from '../data/store'
 import type { Settings } from '../data/types'
 import { backupFileName, buildBackup, saveFile } from '../lib/backup'
 import { isChunkError, logError } from '../lib/errorLog'
+import { captureRenderError } from '../lib/monitoring'
 
 const RELOAD_KEY = 'nucleo:chunkReloadAt'
 
@@ -39,6 +40,8 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     logError('tela', error)
+    // Monitoramento (PARTE 14): uma captura por crash de render; não envia para um chunk-reload esperado.
+    if (!isChunkError(error)) captureRenderError(error, info.componentStack)
     console.error('Erro na tela', error, info.componentStack)
     if (isChunkError(error)) reloadForNewVersion()
   }

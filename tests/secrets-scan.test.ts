@@ -24,6 +24,8 @@ const read = (f: string) => readFileSync(f, 'utf8')
 const PUBLIC_ENV = new Set([
   'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_NUCLEO_IA',
   'VITE_PLANNER_AI', 'VITE_VAPID_PUBLIC_KEY', 'VITE_TURNSTILE_SITE_KEY',
+  // Sentry: o DSN é PÚBLICO (só permite enviar eventos). O token de upload é secreto e NÃO é VITE_ (teste abaixo).
+  'VITE_SENTRY_DSN', 'VITE_RELEASE',
 ])
 
 describe('PARTE 13: nenhum segredo real no código do cliente', () => {
@@ -48,6 +50,18 @@ describe('PARTE 13: nenhum segredo real no código do cliente', () => {
     const notAllowed = [...used].filter((v) => !PUBLIC_ENV.has(v))
     expect(notAllowed).toEqual([]) // uma env nova não-pública entraria no bundle: precisa de revisão
     expect(used.size).toBeGreaterThan(0) // sanidade: o scanner realmente encontrou as envs
+  })
+
+  it('o token de upload do Sentry nunca é VITE_ nem aparece no código do cliente (PARTE 14)', () => {
+    // SENTRY_AUTH_TOKEN é segredo de CI (GitHub Secret). Nunca pode ser exposto como VITE_ (iria ao bundle),
+    // nem lido pelo cliente via import.meta.env, nem ter valor literal em src.
+    const badEnv = /import\.meta\.env\.VITE_SENTRY_[A-Z_]*(TOKEN|AUTH|SECRET)/
+    const badRef = /import\.meta\.env\.SENTRY_AUTH_TOKEN|VITE_SENTRY_AUTH_TOKEN/
+    const hits = SRC.filter((f) => {
+      const t = read(f)
+      return badEnv.test(t) || badRef.test(t)
+    })
+    expect(hits).toEqual([])
   })
 
   it('nenhum segredo de servidor é atribuído a um valor literal em src', () => {

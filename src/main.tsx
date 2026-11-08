@@ -13,6 +13,7 @@ import { SessionProvider, useSession } from './features/account/session'
 import { VaultProvider } from './features/accounts/vault'
 import './index.css'
 import { installErrorLog } from './lib/errorLog'
+import { initMonitoring, setMonitoringUser } from './lib/monitoring'
 import { supabase } from './lib/supabase'
 import { FeedbackProvider } from './ui/Feedback'
 
@@ -54,6 +55,9 @@ function Root() {
     }
   }, [userId])
 
+  // Monitoramento: usuário pseudônimo no login, limpo no logout/troca de conta (PARTE 14).
+  useEffect(() => setMonitoringUser(userId), [userId])
+
   // Nothing on screen while the session is checked or an ended account is being removed.
   if (!checked || clearing) return null
   if (screen && (screen !== 'newPassword' || userId)) return <AuthScreen />
@@ -68,6 +72,7 @@ function Root() {
   )
 }
 
+initMonitoring()
 installErrorLog()
 
 createRoot(document.getElementById('root')!).render(
