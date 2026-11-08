@@ -61,8 +61,35 @@ jobs:
         with:
           path: dist
 
+  # Jornadas críticas de autenticação/segurança no navegador (login, sessão, troca A→B, recuperação,
+  # exclusão de conta, rota privada), contra o mock LOCAL do Supabase — nunca produção, nunca e-mail
+  # real, nunca custo externo. Se uma quebrar, o deploy é bloqueado (deploy needs: [build, e2e]).
+  e2e:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:e2e-cloud
+      - name: Localiza o Chrome do runner
+        id: chrome
+        run: echo "path=$(which google-chrome || which chromium-browser || which chromium)" >> "$GITHUB_OUTPUT"
+      - name: E2E crítico (auth/segurança no mock local)
+        run: npm run e2e:critical
+        env:
+          # O runner Linux usa Chromium via EDGE_PATH; cdp.mjs liga --no-sandbox quando CI está setado.
+          EDGE_PATH: ${{ steps.chrome.outputs.path }}
+          TZ: America/Sao_Paulo
+
   deploy:
-    needs: build
+    needs: [build, e2e]
     runs-on: ubuntu-latest
     permissions:
       pages: write

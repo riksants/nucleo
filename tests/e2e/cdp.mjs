@@ -10,7 +10,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 export async function launch(port = 9333) {
   const profile = mkdtempSync(join(tmpdir(), 'edge-nucleo-'))
-  const proc = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-gpu', 'about:blank'], { stdio: 'ignore' })
+  // In CI (Linux runner, Chromium via EDGE_PATH) the sandbox needs to be off and /dev/shm is tiny.
+  // Harmless and unused locally on Windows/Edge; only added when CI is set.
+  const ciFlags = process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []
+  const proc = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-gpu', ...ciFlags, 'about:blank'], { stdio: 'ignore' })
   let targets
   // Up to 30 s: right after a build, on a machine short of memory, Edge can take well over 10 s to open.
   for (let i = 0; i < 150; i++) {
@@ -107,21 +110,31 @@ async function connect(port, page, onClose) {
       const r = await send('Page.captureScreenshot', { format: 'png' })
       writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.result.data, 'base64'))
     },
-    /** Clicks the first visible element whose text (or aria-label) matches. */
+    /**
+     * Clicks the first visible element whose text (or aria-label) matches. Waits for the element to appear
+     * (polls up to ~6 s) instead of a single fixed-sleep attempt, so a slow render/transition doesn't flake
+     * the test (deterministic wait for state, not an arbitrary sleep).
+     */
     async click(text, selector = 'button, a, [role=switch], [role=radio], label') {
-      const ok = await api.eval(`(() => {
+      const attempt = () => api.eval(`(() => {
         const els = [...document.querySelectorAll(${JSON.stringify(selector)})].filter(e => e.offsetParent !== null || e.getClientRects().length)
         const t = ${JSON.stringify(text)}
         const el = els.find(e => (e.getAttribute('aria-label') || '').trim() === t) || els.find(e => e.textContent.trim() === t) || els.find(e => e.textContent.trim().includes(t))
         if (!el) return false
         el.scrollIntoView({ block: 'center' }); el.click(); return true
       })()`)
-      if (!ok) throw new Error('click: not found ' + text)
-      await sleep(450)
+      for (let i = 0; i < 24; i++) {
+        if (await attempt().catch(() => false)) {
+          await sleep(350)
+          return
+        }
+        await sleep(250)
+      }
+      throw new Error('click: not found ' + text)
     },
-    /** Types into an input found by its field label text (React-safe). */
+    /** Types into an input found by its field label text (React-safe). Waits for the field to appear. */
     async fill(label, value, nth = 0) {
-      const ok = await api.eval(`(() => {
+      const attempt = () => api.eval(`(() => {
         const labels = [...document.querySelectorAll('label')].filter(l => l.textContent.trim().startsWith(${JSON.stringify(label)}) && (l.offsetParent !== null))
         const l = labels[${nth}]; if (!l) return false
         const el = l.querySelector('input, textarea, select'); if (!el) return false
@@ -130,8 +143,14 @@ async function connect(port, page, onClose) {
         el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }))
         return true
       })()`)
-      if (!ok) throw new Error('fill: not found ' + label)
-      await sleep(150)
+      for (let i = 0; i < 24; i++) {
+        if (await attempt().catch(() => false)) {
+          await sleep(150)
+          return
+        }
+        await sleep(250)
+      }
+      throw new Error('fill: not found ' + label)
     },
     text: () => api.eval('document.body.innerText'),
     sleep,

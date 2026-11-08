@@ -11,7 +11,8 @@
     "test": "vitest run",
     "build:e2e": "vite build --mode e2e --outDir dist-e2e --emptyOutDir",
     "build:e2e-cloud": "vite build --mode e2e-cloud --outDir dist-e2e-cloud --emptyOutDir",
-    "build:e2e-captcha": "vite build --mode e2e-captcha --outDir dist-e2e-captcha --emptyOutDir"
+    "build:e2e-captcha": "vite build --mode e2e-captcha --outDir dist-e2e-captcha --emptyOutDir",
+    "e2e:critical": "node tests/e2e/run-critical.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

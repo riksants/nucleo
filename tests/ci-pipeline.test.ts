@@ -16,12 +16,15 @@ function job(name: string): string {
 
 const test = job('test')
 const build = job('build')
+const e2e = job('e2e')
 const deploy = job('deploy')
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
 
 describe('PARTE 13: o pipeline bloqueia o deploy sem as etapas críticas', () => {
-  it('os três jobs existem (test, build, deploy)', () => {
+  it('os quatro jobs existem (test, build, e2e, deploy)', () => {
     expect(test).not.toBe('')
     expect(build).not.toBe('')
+    expect(e2e).not.toBe('')
     expect(deploy).not.toBe('')
   })
 
@@ -36,12 +39,23 @@ describe('PARTE 13: o pipeline bloqueia o deploy sem as etapas críticas', () =>
     expect(build).toMatch(/needs:\s*test/)
   })
 
-  it('o deploy só ocorre depois do build (needs: build) — nada publica se testes/build falharem', () => {
-    expect(deploy).toMatch(/needs:\s*build/)
+  it('o gate E2E crítico roda build:e2e-cloud + e2e:critical e depende dos testes', () => {
+    expect(e2e).toMatch(/needs:\s*test/)
+    expect(e2e).toMatch(/run:\s*npm run build:e2e-cloud/)
+    expect(e2e).toMatch(/run:\s*npm run e2e:critical/)
+    // o runner e o script existem
+    expect(pkg.scripts['e2e:critical']).toMatch(/run-critical\.mjs/)
+  })
+
+  it('o deploy depende de TODOS os gates: build E e2e (não publica se qualquer um falhar)', () => {
+    const needs = (deploy.match(/needs:\s*(.+)/)?.[1] ?? '').trim()
+    expect(needs).toMatch(/build/)
+    expect(needs).toMatch(/e2e/)
+    // precisa ser a forma de lista [build, e2e] — um `needs: build` sozinho não cobriria o e2e
+    expect(needs).toMatch(/\[.*\]/)
   })
 
   it('`npm run build` executa o TypeScript (tsc) antes do Vite — tsc é obrigatório no gate', () => {
-    const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
     expect(pkg.scripts.build).toMatch(/tsc\b[^&]*&&[^&]*vite build/)
   })
 })
