@@ -1,8 +1,10 @@
 /**
- * PARTE 12: migration 20261108000000_senha_sem_plaintext.sql num Postgres real (PGlite), escrevendo como o
- * usuário faz via PostgREST. O banco passa a recusar senha do Cofre em texto aberto (data->>'password' não
- * vazio em collection accounts); a senha de verdade só existe cifrada em data->'secret' (AES-GCM). A proteção
- * fica no PostgreSQL, não só no frontend — nem a service_role grava plaintext.
+ * PARTE 12: cobertura da constraint records_no_plain_password (definida no CREATE TABLE records da migration
+ * inicial 20261001000000_nucleo_init.sql) num Postgres real (PGlite), escrevendo como o usuário faz via
+ * PostgREST. O banco recusa senha do Cofre em texto aberto (data->>'password' não vazio em collection
+ * accounts); a senha de verdade só existe cifrada em data->'secret' (AES-GCM). A proteção fica no PostgreSQL,
+ * não só no frontend — nem a service_role grava plaintext (CHECK vale mesmo para bypassrls). Complementa
+ * tests/rls.test.ts com os casos de UPDATE, service_role, outras collections, tombstone e formato do secret.
  */
 import { PGlite } from '@electric-sql/pglite'
 import { readdirSync, readFileSync } from 'node:fs'
@@ -60,7 +62,7 @@ async function patch(collection: string, id: string, data: Record<string, unknow
   }
 }
 
-const refused = expect.stringMatching(/records_accounts_no_plaintext_password/)
+const refused = expect.stringMatching(/records_no_plain_password/)
 
 beforeAll(async () => {
   db = new PGlite()
