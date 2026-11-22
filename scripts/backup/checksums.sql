@@ -16,5 +16,8 @@ union all
 select 'schema_version', count(*), md5(coalesce(string_agg(md5(t::text), '' order by t.version collate "C"), ''))
   from (select version, applied_at, note from public.schema_version) t
 union all
+select 'ai_entitlements', count(*), md5(coalesce(string_agg(md5(t::text), '' order by t.user_id), ''))
+  from (select user_id, tier, valid_until, started_at, updated_at from public.ai_entitlements) t
+union all
 select 'accounts', count(*), md5(coalesce(string_agg(md5(t::text), '' order by t.id), ''))
   from (select id, email, created_at from public.backup_accounts()) t;

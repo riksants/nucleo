@@ -47,13 +47,26 @@ Nada disso fica no repositório. A chave privada nunca vai para o GitHub.
 
 ## O que o backup faz a cada dia
 
-1. Lê tudo numa única transação de leitura (um instante só, mesmo com o app gravando).
+1. Lê tudo numa única transação de leitura (um instante só, mesmo com o app gravando): `records`,
+   `user_settings`, `quota_limits`, `schema_version`, `ai_entitlements` (níveis de IA por conta) e a
+   lista de contas (`accounts.csv`: id, e-mail, data de criação).
 2. Restaura num Postgres vazio, com todas as migrations do repositório, e compara linhas e somas de
    verificação de todas as tabelas. Se não ficar idêntico, a execução falha e o GitHub manda e-mail.
-3. Avisa (aviso amarelo) se a produção não tiver exatamente as migrations do repositório.
-4. Criptografa para a sua chave pública e confere que o arquivo criptografado abre igual (com uma segunda
+3. **Valida a estrutura** do banco restaurado (`scripts/backup/validate.sql`): tabelas, constraints de
+   proteção, índices, funções, triggers, RLS/policies e invariantes (contadores, nada órfão), e **lê um
+   registro real** de volta. Qualquer peça faltando falha a execução.
+4. Avisa (aviso amarelo) se a produção não tiver exatamente as migrations do repositório.
+5. Monta um backup **autossuficiente** (formato 2): junta aos dados a pasta `schema/` com todo o DDL
+   (stub, migrations, `restore.sql`, `validate.sql`), o script `restore-from-bundle.sh`, o runbook de
+   desastre e um `RESTORE.txt`. Assim o `.age` + a chave privada bastam para restaurar, mesmo sem o repositório.
+6. Criptografa para a sua chave pública e confere que o arquivo criptografado abre igual (com uma segunda
    chave de uso único, criada e destruída na mesma máquina).
-5. Guarda só o arquivo `.age`.
+7. Guarda só o arquivo `.age`.
+
+Além do backup diário, o workflow **Backup self-test** (`.github/workflows/backup-selftest.yml`) roda em
+todo push e semanalmente: monta uma origem **sintética** (dados falsos, sem produção e sem secrets),
+passa pelo pipeline inteiro (export → `age` → restaura num banco vazio → compara → `validate.sql`) num
+Postgres de verdade e fica **vermelho** se a restauração quebrar — antes de chegar ao backup real.
 
 **Logs:** só nomes de tabela, quantidade de linhas e tamanhos. Erros do Postgres aparecem só na primeira linha
 (os valores ficam em DETAIL/CONTEXT, que são cortados) e endereços de conexão são escondidos. O secret é
@@ -102,5 +115,14 @@ Nunca restaure direto no Supabase sem antes conferir localmente.
 ## O que o backup não cobre
 
 - Lembretes agendados e aparelhos com notificação (o app recria).
-- Senhas das contas de login (o Supabase guarda; num projeto novo, cada pessoa cria a conta de novo).
+- Senhas das contas de login. **De propósito:** o usuário de backup é só-leitura e **não enxerga hash de
+  senha**, então, se a connection string vazasse, nenhuma senha vazaria junto. Num projeto novo, as contas
+  são recriadas pelos ids do `accounts.csv` e cada pessoa define a senha pelo "Esqueci minha senha" — sem
+  perder dado nenhum. Passo a passo em **`docs/RECUPERACAO-DESASTRE.md`**.
 - O histórico de versões (o backup é o estado de cada dia).
+
+## Perda total do projeto
+
+Para o cenário extremo (projeto Supabase apagado/perdido), siga **`docs/RECUPERACAO-DESASTRE.md`**: onde
+está o último backup, como descriptografar, criar o projeto novo, a ordem do restore, recriar as contas
+preservando os ids, o que reconfigurar manualmente e como validar antes de apontar o Núcleo para o banco novo.

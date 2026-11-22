@@ -63,6 +63,9 @@ restore_and_compare() {
     diff <(cut -f1,2 "$dir/checksums.txt") <(cut -f1,2 "$WORK/checksums-restored.out") || true
     exit 1
   fi
+  # The rows match; now prove the restored database is a working one (structure + invariants) and
+  # that a real record reads back. A missing table/constraint/function/trigger/policy fails here.
+  run validate psql_to "$url" -f "$(native "$HERE/validate.sql")"
 }
 
 # Table and rows (no checksums in the log).

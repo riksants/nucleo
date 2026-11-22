@@ -3,7 +3,7 @@ import { markSuggestion, ruleSuggestions, visibleSuggestion } from '../src/core/
 import { TEMPLATES } from '../src/core/rules/templates'
 import type { AutomationRun, DataState, Transaction } from '../src/data/types'
 import { addDaysToDate } from '../src/core/period'
-import { client, data, goal, project, rule, sale, settings, task, TODAY, tx } from './rules-helpers'
+import { client, data, goal, NOW, project, rule, sale, settings, task, TODAY, tx } from './rules-helpers'
 
 const at = (day: string) => `${day}T12:00:00.000Z`
 const ago = (n: number) => addDaysToDate(TODAY, -n)
@@ -104,7 +104,9 @@ describe('respostas às sugestões', () => {
     const dismissed = markSuggestion({}, key, { s: 'dismissed' })
     expect(visibleSuggestion(list, dismissed, TODAY)).toBeNull()
     expect(visibleSuggestion(list, dismissed, '2030-01-01')).toBeNull()
-    const snoozed = markSuggestion({}, key, { s: 'snoozed', until: addDaysToDate(TODAY, 30) })
+    // Relógio fixo (NOW = TODAY): sem ele, markSuggestion usa new Date() e descarta o snooze como
+    // vencido quando a data real passa de TODAY+30 — o teste virava um time-bomb (quebrava após essa data).
+    const snoozed = markSuggestion({}, key, { s: 'snoozed', until: addDaysToDate(TODAY, 30) }, NOW)
     expect(visibleSuggestion(list, snoozed, addDaysToDate(TODAY, 29))).toBeNull()
     expect(visibleSuggestion(list, snoozed, addDaysToDate(TODAY, 30))?.key).toBe(key)
   })

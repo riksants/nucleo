@@ -1,0 +1,51 @@
+name: Backup self-test
+
+# Proves the backup/restore machinery on a REAL Postgres with SYNTHETIC data — no production, no
+# secrets, no artifacts. Runs on every push and PR (so a change that breaks the restore goes red
+# before it can reach the real daily backup) and weekly on its own. scripts/backup/selftest.sh.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '41 7 * * 1' # Mondays, 04:41 in Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      pg:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: only-for-this-throwaway-container
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Ferramentas (psql, age)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client age > /dev/null
+          psql --version
+          age --version
+      - name: Dois bancos vazios e descartáveis (origem e destino)
+        env:
+          PGPASSWORD: only-for-this-throwaway-container
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "create database src" -c "create database dst"
+      - name: Pipeline completo (export → age → restore → comparar → validar)
+        env:
+          SOURCE_DB_URL: postgresql://postgres:only-for-this-throwaway-container@localhost:5432/src
+          VERIFY_DB_URL: postgresql://postgres:only-for-this-throwaway-container@localhost:5432/dst
+        run: bash scripts/backup/selftest.sh
