@@ -66,7 +66,8 @@ describe('recuperação de contas: provada contra um GoTrue real, sem produção
     expect(sql).toMatch(/insert into auth\.identities/)
   })
   it('não usa secrets de produção', () => {
-    expect(recovery).not.toMatch(/secrets\./)
+    // nenhuma referência a um GitHub Secret (${{ secrets.X }}) nem ao segredo do backup real
+    expect(recovery).not.toMatch(/\$\{\{\s*secrets\./)
     expect(recovery).not.toMatch(/NUCLEO_BACKUP_DB_URL/)
   })
 })

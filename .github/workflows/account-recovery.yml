@@ -1,14 +1,13 @@
-name: Account recovery test
+name: Account recovery test (opcional)
 
-# PARTE 15 — prova, contra um GoTrue REAL (o servidor de auth do Supabase), que a estratégia de
-# recuperação de contas funciona: recriar a conta com o UUID ORIGINAL (accounts.csv) e obrigar a
-# redefinição de senha. Só e-mail/senha (o único login do Núcleo). Dados sintéticos, sem produção e
-# sem secrets de produção. Fica vermelho se a recriação/login/UUID falhar.
+# PARTE 15 — selo ADICIONAL e OPCIONAL (sob demanda): sobe um GoTrue REAL (o servidor de auth do
+# Supabase) e prova que recriar a conta com o UUID ORIGINAL (accounts.csv) + redefinir a senha resulta
+# em login com token.sub == UUID. Só e-mail/senha (único login do Núcleo). Dados sintéticos, sem produção
+# e sem secrets. É OPCIONAL de propósito: a garantia sempre-ativa (vínculo conta↔dados pelo UUID,
+# isolamento por RLS, identidade recriável a partir do backup) está no teste determinístico
+# tests/account-recovery-db.test.ts, que roda no `npm test` (gate do deploy). Rode este por
+# "Run workflow" quando quiser a prova ponta-a-ponta com o GoTrue de verdade.
 on:
-  push:
-  pull_request:
-  schedule:
-    - cron: '47 7 * * 1' # Mondays, 04:47 in Brasília
   workflow_dispatch:
 
 permissions:

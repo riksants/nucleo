@@ -85,8 +85,10 @@ vazaria junto. Num projeto novo, há dois caminhos:
   ```
   `encrypted_password` vazio = **sem senha utilizável**; cada pessoa usa **"Esqueci minha senha"** para
   definir a senha nova. Como os ids são os mesmos, `records`/`user_settings`/`ai_entitlements` restauram
-  batendo com `user_id` — **sem remapear nada**. Essa recriação (UUID original → reset → login mantendo o
-  UUID) é testada contra um GoTrue real no CI (`.github/workflows/account-recovery.yml`).
+  batendo com `user_id` — **sem remapear nada**. O vínculo conta↔dados pelo UUID e o isolamento por RLS
+  são provados de forma determinística em `tests/account-recovery-db.test.ts` (roda no `npm test`); a
+  prova ponta-a-ponta de login contra um GoTrue real é opcional, sob demanda, em
+  `.github/workflows/account-recovery.yml` ("Run workflow").
 - **Alternativa — recadastro:** se preferir não inserir em `auth.users`, as pessoas se cadastram de novo
   (ids novos). Aí, antes de gravar os dados, troque no banco local o `user_id` antigo pelo novo (ligados
   pelo e-mail no `accounts.csv`), numa transação, conferindo as contagens antes do `commit`.
