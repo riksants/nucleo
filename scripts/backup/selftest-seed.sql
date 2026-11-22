@@ -14,7 +14,7 @@ insert into auth.users (id, email, created_at) values
 insert into public.records (user_id, collection, id, data, deleted, client_updated_at, server_updated_at) values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'notes', 'n1', '{"id":"n1","title":"primeira nota"}', false, '2026-03-01T10:00:00Z', '2026-03-01T10:00:00Z'),
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'notes', 'n2', '{"id":"n2","title":"apagada"}', true,  '2026-03-02T10:00:00Z', '2026-03-02T10:00:00Z'),
-  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'transactions', 't1', '{"id":"t1","cents":12345,"kind":"in"}', false, '2026-03-03T10:00:00Z', '2026-03-03T10:00:00Z'),
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'transactions', 't1', '{"id":"t1","type":"in","currency":"BRL","amount":12345,"baseAmount":12345}', false, '2026-03-03T10:00:00Z', '2026-03-03T10:00:00Z'),
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'accounts', 'ac1', '{"id":"ac1","label":"e-mail","secret":{"v":1,"iv":"YWFh","ct":"YmJi"}}', false, '2026-03-04T10:00:00Z', '2026-03-04T10:00:00Z'),
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'tasks', 'k1', '{"id":"k1","text":"tarefa do bob"}', false, '2026-03-05T10:00:00Z', '2026-03-05T10:00:00Z');
 

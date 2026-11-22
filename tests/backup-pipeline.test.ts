@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs'
 const read = (p: string) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const backup = read('.github/workflows/backup.yml')
 const selftest = read('.github/workflows/backup-selftest.yml')
+const recovery = read('.github/workflows/account-recovery.yml')
 const backupSh = read('scripts/backup/backup.sh')
 const libSh = read('scripts/backup/lib.sh')
 const exportSql = read('scripts/backup/export.sql')
@@ -50,6 +51,23 @@ describe('self-test do restore (CI, isolado): prova sem produção nem secrets',
     expect(selftest).toMatch(/image:\s*postgres:/)
     expect(selftest).toMatch(/bash scripts\/backup\/selftest\.sh/)
     expect(selftest).toMatch(/install[^\n]*\bage\b/)
+  })
+})
+
+describe('recuperação de contas: provada contra um GoTrue real, sem produção', () => {
+  it('sobe o GoTrue oficial e roda o teste de reset+login', () => {
+    expect(recovery).toMatch(/image:\s*supabase\/gotrue/i)
+    expect(recovery).toMatch(/account-recovery-recreate\.sql/)
+    expect(recovery).toMatch(/node scripts\/backup\/account-recovery-test\.mjs/)
+  })
+  it('recria em auth.users E auth.identities (identidade de e-mail exigida)', () => {
+    const sql = read('scripts/backup/account-recovery-recreate.sql')
+    expect(sql).toMatch(/insert into auth\.users/)
+    expect(sql).toMatch(/insert into auth\.identities/)
+  })
+  it('não usa secrets de produção', () => {
+    expect(recovery).not.toMatch(/secrets\./)
+    expect(recovery).not.toMatch(/NUCLEO_BACKUP_DB_URL/)
   })
 })
 

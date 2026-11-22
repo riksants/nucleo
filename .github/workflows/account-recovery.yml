@@ -1,0 +1,93 @@
+name: Account recovery test
+
+# PARTE 15 — prova, contra um GoTrue REAL (o servidor de auth do Supabase), que a estratégia de
+# recuperação de contas funciona: recriar a conta com o UUID ORIGINAL (accounts.csv) e obrigar a
+# redefinição de senha. Só e-mail/senha (o único login do Núcleo). Dados sintéticos, sem produção e
+# sem secrets de produção. Fica vermelho se a recriação/login/UUID falhar.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '47 7 * * 1' # Mondays, 04:47 in Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOTRUE_IMAGE: supabase/gotrue:v2.198.0
+  JWT_SECRET: throwaway-jwt-secret-for-nucleo-dr-test-0123456789abcdef
+  ACCOUNT_UID: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+  ACCOUNT_EMAIL: recuperacao@selftest.invalid
+  ACCOUNT_CREATED: '2026-01-02T03:04:05Z'
+
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      pg:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: only-for-this-throwaway-container
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client > /dev/null
+      - name: Subir o GoTrue real (migra o schema auth e serve)
+        env:
+          PG_URL: postgres://postgres:only-for-this-throwaway-container@localhost:5432/postgres?sslmode=disable
+        run: |
+          docker run -d --name gotrue --network host \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e GOTRUE_DB_DATABASE_URL="$PG_URL" \
+            -e GOTRUE_SITE_URL=http://localhost:3000 \
+            -e GOTRUE_API_HOST=0.0.0.0 \
+            -e PORT=9999 \
+            -e API_EXTERNAL_URL=http://localhost:9999 \
+            -e GOTRUE_JWT_SECRET="$JWT_SECRET" \
+            -e GOTRUE_JWT_ADMIN_ROLES=service_role \
+            -e GOTRUE_JWT_AUD=authenticated \
+            -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated \
+            -e GOTRUE_JWT_EXP=3600 \
+            -e GOTRUE_MAILER_AUTOCONFIRM=true \
+            -e GOTRUE_DISABLE_SIGNUP=false \
+            "$GOTRUE_IMAGE"
+      - name: Esperar o GoTrue ficar pronto
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9999/health > /dev/null; then echo "GoTrue no ar"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::GoTrue não subiu a tempo"; docker logs gotrue || true; exit 1
+      - name: Recriar a conta pelo UUID original (docs/RECUPERACAO-DESASTRE.md)
+        env:
+          PGPASSWORD: only-for-this-throwaway-container
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -v uid="$ACCOUNT_UID" -v email="$ACCOUNT_EMAIL" -v created="$ACCOUNT_CREATED" \
+            -f scripts/backup/account-recovery-recreate.sql
+          # Confere no banco que o UUID foi preservado e a identidade de e-mail existe.
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c \
+            "do \$\$ begin
+               if not exists (select 1 from auth.users where id = '$ACCOUNT_UID' and email = '$ACCOUNT_EMAIL') then
+                 raise exception 'conta não recriada com o UUID original'; end if;
+               if not exists (select 1 from auth.identities where user_id = '$ACCOUNT_UID' and provider = 'email') then
+                 raise exception 'faltou a identidade de e-mail'; end if;
+             end \$\$;"
+      - name: Provar reset de senha + login mantendo o UUID
+        env:
+          GOTRUE_URL: http://localhost:9999
+        run: node scripts/backup/account-recovery-test.mjs
+      - name: Logs do GoTrue se algo falhar
+        if: failure()
+        run: docker logs gotrue || true

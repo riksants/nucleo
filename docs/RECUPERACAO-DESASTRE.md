@@ -64,14 +64,29 @@ backup é só-leitura e **não enxerga hash de senha**, então, se a connection 
 vazaria junto. Num projeto novo, há dois caminhos:
 
 - **Preferido — preservar os ids (sem remapear dados):** no SQL Editor do projeto novo, recrie cada conta
-  com o **id original** do `accounts.csv`:
+  com o **id original** do `accounts.csv`, criando a linha em `auth.users` **e** em `auth.identities` (em
+  versões recentes do Supabase o login de e-mail exige a identidade; as colunas de token ficam `''`, nunca
+  `NULL`). É exatamente o script `scripts/backup/account-recovery-recreate.sql` (também vai dentro do backup):
   ```sql
-  insert into auth.users (instance_id, id, aud, role, email, email_confirmed_at, created_at, updated_at)
-  values ('00000000-0000-0000-0000-000000000000', '<id do accounts.csv>', 'authenticated',
-          'authenticated', '<email>', now(), '<created_at>', now());
+  -- repita por conta, com uid/email/created do accounts.csv
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data,
+    confirmation_token, recovery_token, email_change, email_change_token_new
+  ) values (
+    '00000000-0000-0000-0000-000000000000', '<uid>', 'authenticated', 'authenticated', '<email>',
+    '', now(), '<created_at>', now(),
+    '{"provider":"email","providers":["email"]}', '{}', '', '', '', ''
+  );
+  insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values ('<uid>', '<uid>', jsonb_build_object('sub','<uid>','email','<email>','email_verified',true),
+          'email', now(), now(), now());
   ```
-  Depois cada pessoa usa **"Esqueci minha senha"** para definir uma senha nova. Como os ids são os mesmos,
-  `records`/`user_settings`/`ai_entitlements` restauram batendo com `user_id` — **sem remapear nada**.
+  `encrypted_password` vazio = **sem senha utilizável**; cada pessoa usa **"Esqueci minha senha"** para
+  definir a senha nova. Como os ids são os mesmos, `records`/`user_settings`/`ai_entitlements` restauram
+  batendo com `user_id` — **sem remapear nada**. Essa recriação (UUID original → reset → login mantendo o
+  UUID) é testada contra um GoTrue real no CI (`.github/workflows/account-recovery.yml`).
 - **Alternativa — recadastro:** se preferir não inserir em `auth.users`, as pessoas se cadastram de novo
   (ids novos). Aí, antes de gravar os dados, troque no banco local o `user_id` antigo pelo novo (ligados
   pelo e-mail no `accounts.csv`), numa transação, conferindo as contagens antes do `commit`.
