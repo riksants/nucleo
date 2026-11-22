@@ -54,10 +54,31 @@ log "3/4 criptografando"
 name="nucleo-backup-$(date -u +%Y-%m-%dT%H%MZ)"
 {
   echo "app=nucleo"
-  echo "format=1"
+  echo "format=2"
   echo "created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "commit=${GITHUB_SHA:-local}"
 } > "$DATA/manifest.txt"
+# Self-contained recovery: the DDL that rebuilds the whole database (schema, functions, policies/RLS,
+# triggers) and a standalone restore script travel INSIDE the encrypted backup. The .age file plus the
+# private key are enough to restore, even if this repository is ever lost. (format=2)
+mkdir -p "$DATA/schema/migrations"
+cp "$REPO"/supabase/migrations/*.sql "$DATA/schema/migrations/"
+cp "$HERE/supabase-stub.sql" "$HERE/restore.sql" "$HERE/checksums.sql" "$HERE/validate.sql" \
+   "$HERE/restore-from-bundle.sh" "$DATA/schema/"
+cp "$REPO/docs/RECUPERACAO-DESASTRE.md" "$DATA/schema/" 2> /dev/null || true
+cat > "$DATA/schema/RESTORE.txt" << 'TXT'
+Restaurar este backup num Postgres LOCAL vazio (nunca no Supabase), sem precisar do repositório:
+  1. Instale o age (https://github.com/FiloSottile/age) e o cliente do Postgres (psql) 15+.
+  2. Abra:  age -d -i SUA-CHAVE-PRIVADA.txt -o backup.tar.gz nucleo-backup-....tar.gz.age
+            tar -xzf backup.tar.gz
+  3. Entre na pasta schema/ e rode:
+            bash restore-from-bundle.sh "postgresql://postgres@localhost:5432/teste"
+     (o banco "teste" é apagado e recriado; o script confere estrutura e lê um registro real.)
+Conteúdo: records.csv, user_settings.csv, quota_limits.csv, schema_version.csv, ai_entitlements.csv,
+accounts.csv (id/e-mail/criação das contas), checksums.txt, manifest.txt e schema/ (todo o DDL).
+NÃO incluso: senhas de login (o dono recria as contas — ver RECUPERACAO-DESASTRE.md), notificações
+agendadas e aparelhos de push (o app recria), e o histórico de versões (o backup é o estado do dia).
+TXT
 tar -C "$DATA" -czf "$WORK/$name.tar.gz" .
 run keygen "$AGE_KEYGEN" -o "$(native "$WORK/check.key")"
 check_recipient=$("$AGE_KEYGEN" -y "$(native "$WORK/check.key")")
