@@ -51,10 +51,18 @@ jobs:
           # Num Postgres puro faltam os papéis do Supabase; os GRANTs das migrations do GoTrue exigem que
           # eles existam. supabase_auth_admin é quem o GoTrue usa (superuser no banco descartável).
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "create role anon nologin" \
-            -c "create role authenticated nologin" \
-            -c "create role service_role nologin bypassrls" \
-            -c "create role supabase_auth_admin login password 'authpw' superuser createrole" \
+            -c "do \$\$ begin
+                  create role anon nologin;
+                  create role authenticated nologin;
+                  create role service_role nologin bypassrls;
+                  create role authenticator noinherit login password 'authpw';
+                  create role dashboard_user nologin;
+                  create role supabase_admin login password 'authpw' superuser createrole createdb replication bypassrls;
+                  create role supabase_auth_admin login password 'authpw' superuser createrole;
+                  create role supabase_storage_admin login password 'authpw' createrole;
+                  create role supabase_functions_admin nologin;
+                  grant anon, authenticated, service_role to authenticator;
+                exception when duplicate_object then null; end \$\$;" \
             -c "create extension if not exists pgcrypto"
       - name: Subir o GoTrue real (migra o schema auth e serve)
         env:
@@ -79,10 +87,13 @@ jobs:
       - name: Esperar o GoTrue ficar pronto
         run: |
           for i in $(seq 1 60); do
-            if curl -sf http://localhost:9999/health > /dev/null; then echo "GoTrue no ar"; exit 0; fi
+            if curl -sf http://localhost:9999/health > /dev/null; then echo "GoTrue no ar"; curl -s http://localhost:9999/health; exit 0; fi
             sleep 2
           done
-          echo "::error::GoTrue não subiu a tempo"; docker logs gotrue || true; exit 1
+          echo "::error::GoTrue não subiu a tempo"
+          echo "===== docker ps -a ====="; docker ps -a || true
+          echo "===== docker logs gotrue ====="; docker logs gotrue || true
+          exit 1
       - name: Recriar a conta pelo UUID original (docs/RECUPERACAO-DESASTRE.md)
         env:
           PGPASSWORD: only-for-this-throwaway-container
