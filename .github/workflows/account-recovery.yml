@@ -43,15 +43,29 @@ jobs:
           persist-credentials: false
       - name: psql
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client > /dev/null
+      - name: Preparar o Postgres (papéis que as migrations do GoTrue exigem)
+        env:
+          PGPASSWORD: only-for-this-throwaway-container
+        run: |
+          for i in $(seq 1 30); do pg_isready -h localhost -U postgres && break; sleep 2; done
+          # Num Postgres puro faltam os papéis do Supabase; os GRANTs das migrations do GoTrue exigem que
+          # eles existam. supabase_auth_admin é quem o GoTrue usa (superuser no banco descartável).
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "create role anon nologin" \
+            -c "create role authenticated nologin" \
+            -c "create role service_role nologin bypassrls" \
+            -c "create role supabase_auth_admin login password 'authpw' superuser createrole" \
+            -c "create extension if not exists pgcrypto"
       - name: Subir o GoTrue real (migra o schema auth e serve)
         env:
-          PG_URL: postgres://postgres:only-for-this-throwaway-container@localhost:5432/postgres?sslmode=disable
+          PG_URL: postgres://supabase_auth_admin:authpw@localhost:5432/postgres?sslmode=disable
         run: |
-          docker run -d --name gotrue --network host \
+          docker run -d --name gotrue --network host --restart on-failure:10 \
             -e GOTRUE_DB_DRIVER=postgres \
             -e GOTRUE_DB_DATABASE_URL="$PG_URL" \
             -e GOTRUE_SITE_URL=http://localhost:3000 \
             -e GOTRUE_API_HOST=0.0.0.0 \
+            -e GOTRUE_API_PORT=9999 \
             -e PORT=9999 \
             -e API_EXTERNAL_URL=http://localhost:9999 \
             -e GOTRUE_JWT_SECRET="$JWT_SECRET" \

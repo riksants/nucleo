@@ -22,7 +22,7 @@ const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').
 function serviceToken() {
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const now = Math.floor(Date.now() / 1000)
-  const body = b64url(JSON.stringify({ role: 'service_role', aud: 'authenticated', iss: 'selftest', iat: now, exp: now + 3600 }))
+  const body = b64url(JSON.stringify({ role: 'service_role', aud: 'authenticated', sub: '00000000-0000-4000-8000-000000000000', iss: 'selftest', iat: now, exp: now + 3600 }))
   const sig = b64url(createHmac('sha256', SECRET).update(`${header}.${body}`).digest())
   return `${header}.${body}.${sig}`
 }
