@@ -9,13 +9,18 @@ on:
 permissions:
   contents: read
 
+# Só um deploy de produção por vez, e NUNCA cancelar um em andamento: dois runs nunca se sobrescrevem;
+# o segundo espera o primeiro terminar de publicar (recomendação oficial do GitHub Pages).
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # Nothing is published when a test or the lint fails (A7).
+  # Guarda de produção: só a main publica. push só dispara na main; esta condição também impede que um
+  # workflow_dispatch escolhido a partir de uma feature branch chegue a produção.
   test:
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -35,6 +40,7 @@ jobs:
 
   build:
     needs: test
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -74,6 +80,7 @@ jobs:
   # real, nunca custo externo. Se uma quebrar, o deploy é bloqueado (deploy needs: [build, e2e]).
   e2e:
     needs: test
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -98,6 +105,7 @@ jobs:
 
   deploy:
     needs: [build, e2e]
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -108,3 +116,36 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+  # VERIFICAÇÃO PÓS-DEPLOY: carrega hellonucleo.app de verdade (sem login, sem tocar dados) e falha
+  # claramente se a produção estiver quebrada — HTML/assets, white screen ou erro de inicialização.
+  smoke:
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Localiza o Chrome do runner
+        id: chrome
+        run: echo "path=$(which google-chrome || which chromium-browser || which chromium)" >> "$GITHUB_OUTPUT"
+      - name: Smoke test de produção (sem login, sem dados de usuário)
+        run: node scripts/deploy/smoke.mjs
+        env:
+          SMOKE_URL: https://hellonucleo.app
+          EDGE_PATH: ${{ steps.chrome.outputs.path }}
+          E2E_SHOTS: ${{ runner.temp }}/smoke-shots
+          CI: '1'
+      - name: Screenshot do smoke (ajuda a diagnosticar se quebrar)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: smoke-shot
+          path: ${{ runner.temp }}/smoke-shots/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,173 @@
+name: Rollback
+
+# PARTE 16 — rollback de emergência do FRONTEND (GitHub Pages). Em produção: Actions → Rollback →
+# Run workflow. Por padrão volta para o último deploy anterior que terminou com sucesso; opcionalmente
+# aceita um SHA específico. Só aceita commits que pertencem ao histórico da main. NÃO mexe no banco.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'SHA específico para publicar (vazio = último deploy anterior que deu certo)'
+        required: false
+        default: ''
+      reason:
+        description: 'Motivo do rollback (aparece no resumo do run)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+# MESMA trava do deploy normal (group: pages): um rollback e um deploy nunca rodam juntos nem se
+# sobrescrevem; o segundo espera o primeiro terminar de publicar.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # 1) Decide o SHA alvo (input OU last-known-good pela API de deployments) e PROVA que ele pertence
+  #    à história da main — isso impede publicar código arbitrário de uma branch maliciosa.
+  resolve:
+    if: github.ref == 'refs/heads/main' && github.repository == 'riksants/nucleo'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      target: ${{ steps.pick.outputs.target }}
+      current: ${{ steps.pick.outputs.current }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # história completa da main, para validar ancestralidade do SHA
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Resolver SHA alvo e validar que pertence à main
+        id: pick
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # só leitura; token padrão do run, nenhum token novo
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          # current = SHA que está saindo; lkg = último deploy anterior que deu certo.
+          OUT="$(GITHUB_OUTPUT= node scripts/deploy/last-known-good.mjs)"
+          echo "$OUT"
+          CURRENT="$(printf '%s\n' "$OUT" | sed -n 's/^CURRENT=//p' | tail -1)"
+          LKG="$(printf '%s\n' "$OUT" | sed -n 's/^TARGET=//p' | tail -1)"
+
+          RAW="${INPUT_SHA:-$LKG}"
+          if [ -z "$RAW" ]; then
+            echo "::error::Sem SHA: informe um SHA específico (não há deploy de sucesso anterior para usar como padrão)."
+            exit 1
+          fi
+
+          # Precisa existir no repositório E ser ancestral da main (commit comprovadamente da main).
+          git fetch --no-tags --quiet origin main
+          if ! TARGET="$(git rev-parse --verify --quiet "${RAW}^{commit}")"; then
+            echo "::error::SHA inválido ou desconhecido: ${RAW}"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$TARGET" origin/main; then
+            echo "::error::${TARGET} não pertence ao histórico da main — recusado (rollback só publica commits da main)."
+            exit 1
+          fi
+
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Rollback solicitado"
+            echo "- SHA que está saindo (produção agora): \`${CURRENT:0:12}\`"
+            echo "- SHA alvo (vai entrar): \`${TARGET:0:12}\`"
+            echo "- Origem do alvo: ${INPUT_SHA:+input manual}${INPUT_SHA:-último deploy bom (automático)}"
+            echo "- Motivo: ${{ inputs.reason }}"
+            echo "- Banco de dados: **não será alterado** (rollback é só de frontend)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # 2) Build EXATO da versão escolhida, com a mesma configuração segura do deploy normal.
+  #    VITE_RELEASE = SHA alvo → o release do Sentry corresponde ao que foi realmente publicado.
+  build:
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve.outputs.target }} # checkout exatamente da versão escolhida
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_NUCLEO_IA: ${{ vars.VITE_NUCLEO_IA || 'on' }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          # O release do Sentry é o SHA que está sendo publicado agora (não o HEAD da main).
+          VITE_RELEASE: ${{ needs.resolve.outputs.target }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: dist
+
+  # 3) Publica pelo GitHub Pages (mesmo environment) e registra claramente SHA que saiu → SHA que entrou.
+  deploy:
+    needs: [resolve, build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      - name: Registro do rollback
+        run: |
+          {
+            echo "### Rollback publicado ✅"
+            echo "- SHA que saiu: \`${{ needs.resolve.outputs.current }}\`"
+            echo "- SHA que entrou: \`${{ needs.resolve.outputs.target }}\`"
+            echo "- URL: ${{ steps.deployment.outputs.page_url }}"
+            echo "- Banco de dados: não tocado."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # 4) Smoke test pós-rollback (mesmo do deploy): produção responde, assets carregam, sem white screen.
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Localiza o Chrome do runner
+        id: chrome
+        run: echo "path=$(which google-chrome || which chromium-browser || which chromium)" >> "$GITHUB_OUTPUT"
+      - name: Smoke test de produção (sem login, sem dados de usuário)
+        run: node scripts/deploy/smoke.mjs
+        env:
+          SMOKE_URL: https://hellonucleo.app
+          EDGE_PATH: ${{ steps.chrome.outputs.path }}
+          E2E_SHOTS: ${{ runner.temp }}/smoke-shots
+          CI: '1'
+      - name: Screenshot do smoke
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rollback-smoke-shot
+          path: ${{ runner.temp }}/smoke-shots/
+          if-no-files-found: ignore
+          retention-days: 7
